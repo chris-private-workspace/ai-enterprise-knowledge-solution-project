@@ -1,0 +1,61 @@
+"""Query / Citation Pydantic schemas (per architecture.md §4.5)."""
+
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+
+class ImageRef(BaseModel):
+    blob_url: str
+    alt_text: str
+    checksum_sha256: str
+    width: int
+    height: int
+
+
+class ChunkPreview(BaseModel):
+    chunk_id: str
+    chunk_title: str
+    chunk_text: str
+    relevance_score: float
+
+
+class Citation(BaseModel):
+    chunk_id: str
+    doc_id: str
+    doc_title: str
+    chunk_title: str
+    chunk_index: int
+    section_path: list[str]
+    relevance_score: float
+    embedded_images: list[ImageRef]
+
+
+class QueryRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=2000)
+    kb_id: str
+    top_k_retrieval: int = 50
+    top_k_rerank: int = 5
+    llm_model: Literal["gpt-5.5", "gpt-5.4-mini"] = "gpt-5.5"
+    reranker: Literal[
+        "cohere-v3.5",
+        "voyage-rerank-2.5",
+        "zeroentropy-zerank-1",
+        "azure-semantic",
+        "off",
+    ] = "cohere-v3.5"
+    enable_crag: bool = True
+    enable_intent_routing: bool = False
+
+
+class QueryResponse(BaseModel):
+    answer: str
+    citations: list[Citation]
+    retrieved_chunks: list[ChunkPreview]
+    crag_triggered: bool
+    crag_iterations: int
+    latency_ms: int
+    trace_id: str
+    model_used: str
+    reranker_used: str
+    refused: bool = False
