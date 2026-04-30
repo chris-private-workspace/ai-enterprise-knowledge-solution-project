@@ -160,6 +160,9 @@ data/temp/
 .cursor/
 .zed/
 
+# Claude Code(per-developer local state:settings、memory、sessions)
+.claude/
+
 
 # ----------------------------------------------------------------------------
 # OS-specific

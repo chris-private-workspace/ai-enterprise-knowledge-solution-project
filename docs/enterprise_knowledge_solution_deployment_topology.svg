@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 1200 880"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', sans-serif">
+  <title>Enterprise Knowledge Solution — System Architecture (Deployment Topology)</title>
+  <desc>Traditional deployment-topology view: Knowledge clients connect through the Enterprise Knowledge Service (Agent runtime, Retrieval, MCP gateway, LLM gateway) which talks to external Model providers and Data sources, reads from a Knowledge fabric populated by an Ingestion pipeline, and is governed by Identity, Observability and Evaluation tiers.</desc>
+
+  <style>
+    .h1   { font-size: 14.5px; font-weight: 500; fill: #1A237E; }
+    .h2   { font-size: 13px;   font-weight: 500; fill: #212121; }
+    .lbl  { font-size: 12px;   font-weight: 400; fill: #212121; }
+    .sub  { font-size: 10.5px; font-weight: 400; fill: #5F6368; }
+    .key  { font-size: 11px;   font-weight: 400; fill: #424242; }
+
+    .arr   { stroke: #455A64; stroke-width: 1.4; fill: none; }
+    .arr-d { stroke: #455A64; stroke-width: 1.4; fill: none; stroke-dasharray: 5 4; }
+
+    .c-blue-bg-deep { fill: #BBDEFB; stroke: #0D47A1; stroke-width: 1.2; }
+    .c-blue-bg      { fill: #E3F2FD; stroke: #1976D2; stroke-width: 1; }
+    .c-blue-sub     { fill: #FFFFFF; stroke: #1976D2; stroke-width: 0.8; }
+
+    .c-teal-bg      { fill: #E0F2F1; stroke: #00796B; stroke-width: 1; }
+    .c-teal-sub     { fill: #FFFFFF; stroke: #00796B; stroke-width: 0.8; }
+
+    .c-warm-bg      { fill: #FFF3E0; stroke: #E65100; stroke-width: 1; }
+    .c-warm-sub     { fill: #FFFFFF; stroke: #E65100; stroke-width: 0.8; }
+
+    .c-gray-bg      { fill: #ECEFF1; stroke: #455A64; stroke-width: 1; }
+    .c-gray-sub     { fill: #FFFFFF; stroke: #455A64; stroke-width: 0.8; }
+
+    .c-purple-bg    { fill: #F3E5F5; stroke: #6A1B9A; stroke-width: 1; }
+    .c-purple-sub   { fill: #FFFFFF; stroke: #6A1B9A; stroke-width: 0.8; }
+  </style>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1 L8 5 L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- ========================================== INTERNET CLOUD ========================================== -->
+  <g>
+    <path d="M573 38 q-4 -16 14 -18 q12 -12 28 -2 q14 -10 24 4 q16 0 14 16 q4 12 -10 14 h-62 q-14 -2 -8 -14 z"
+          fill="#FFFFFF" stroke="#1976D2" stroke-width="1.2"/>
+    <text class="lbl" x="610" y="68" text-anchor="middle">Internet</text>
+  </g>
+
+  <!-- ========================================== KEY (LEGEND) ========================================== -->
+  <g>
+    <rect x="900" y="14" width="285" height="56" rx="4" fill="#FFFFFF" stroke="#9E9E9E" stroke-width="0.8"/>
+    <text class="h2" x="912" y="32">Key</text>
+    <line x1="912" y1="48" x2="950" y2="48" class="arr" marker-end="url(#arrow)"/>
+    <text class="key" x="958" y="51">Default flow</text>
+    <line x1="912" y1="63" x2="950" y2="63" class="arr-d" marker-end="url(#arrow)"/>
+    <text class="key" x="958" y="66">Optional / control plane</text>
+  </g>
+
+  <!-- ========================================== KNOWLEDGE CLIENTS ========================================== -->
+  <g>
+    <rect class="c-blue-bg" x="20" y="80" width="220" height="280" rx="8"/>
+    <text class="h1" x="130" y="105" text-anchor="middle">Knowledge clients · 客戶端</text>
+
+    <rect class="c-blue-sub" x="40" y="125" width="180" height="36" rx="4"/>
+    <text class="lbl" x="130" y="148" text-anchor="middle">Web / chat UI</text>
+
+    <rect class="c-blue-sub" x="40" y="173" width="180" height="36" rx="4"/>
+    <text class="lbl" x="130" y="196" text-anchor="middle">Mobile / native</text>
+
+    <rect class="c-blue-sub" x="40" y="221" width="180" height="36" rx="4"/>
+    <text class="lbl" x="130" y="244" text-anchor="middle">Slack / Teams bot</text>
+
+    <rect class="c-blue-sub" x="40" y="269" width="180" height="36" rx="4"/>
+    <text class="lbl" x="130" y="292" text-anchor="middle">IDE / Copilot</text>
+
+    <rect class="c-blue-sub" x="40" y="317" width="180" height="36" rx="4"/>
+    <text class="lbl" x="130" y="340" text-anchor="middle">MCP clients</text>
+  </g>
+
+  <!-- ========================================== ENTERPRISE KNOWLEDGE SERVICE (CORE) ========================================== -->
+  <g>
+    <rect class="c-blue-bg-deep" x="270" y="80" width="670" height="390" rx="8"/>
+    <text class="h1" x="605" y="105" text-anchor="middle">Enterprise knowledge service · 企業知識服務</text>
+
+    <!-- Agent runtime sub-section -->
+    <rect class="c-blue-bg" x="290" y="130" width="315" height="155" rx="6"/>
+    <text class="h2" x="447" y="151" text-anchor="middle">Agent runtime</text>
+    <rect class="c-blue-sub" x="305" y="165" width="285" height="30" rx="4"/>
+    <text class="lbl" x="447" y="184" text-anchor="middle">Orchestrator (LangGraph, MS Agent FW)</text>
+    <rect class="c-blue-sub" x="305" y="200" width="285" height="30" rx="4"/>
+    <text class="lbl" x="447" y="219" text-anchor="middle">Reasoning loop (CRAG, Self-RAG, ReAct)</text>
+    <rect class="c-blue-sub" x="305" y="235" width="285" height="30" rx="4"/>
+    <text class="lbl" x="447" y="254" text-anchor="middle">Memory &amp; state store</text>
+
+    <!-- Retrieval sub-section -->
+    <rect class="c-blue-bg" x="620" y="130" width="305" height="155" rx="6"/>
+    <text class="h2" x="772" y="151" text-anchor="middle">Retrieval</text>
+    <rect class="c-blue-sub" x="635" y="165" width="275" height="30" rx="4"/>
+    <text class="lbl" x="772" y="184" text-anchor="middle">Query planner (decompose, HyDE)</text>
+    <rect class="c-blue-sub" x="635" y="200" width="275" height="30" rx="4"/>
+    <text class="lbl" x="772" y="219" text-anchor="middle">Hybrid retriever (vec + BM25 + graph)</text>
+    <rect class="c-blue-sub" x="635" y="235" width="275" height="30" rx="4"/>
+    <text class="lbl" x="772" y="254" text-anchor="middle">Re-ranker (cross-encoder)</text>
+
+    <!-- MCP gateway sub-section -->
+    <rect class="c-blue-bg" x="290" y="300" width="315" height="155" rx="6"/>
+    <text class="h2" x="447" y="321" text-anchor="middle">MCP / tool gateway</text>
+    <rect class="c-blue-sub" x="305" y="335" width="285" height="30" rx="4"/>
+    <text class="lbl" x="447" y="354" text-anchor="middle">MCP server (Linux Foundation spec)</text>
+    <rect class="c-blue-sub" x="305" y="370" width="285" height="30" rx="4"/>
+    <text class="lbl" x="447" y="389" text-anchor="middle">Tool registry &amp; invocation</text>
+    <rect class="c-blue-sub" x="305" y="405" width="285" height="30" rx="4"/>
+    <text class="lbl" x="447" y="424" text-anchor="middle">Tool auth &amp; policy</text>
+
+    <!-- LLM gateway sub-section -->
+    <rect class="c-blue-bg" x="620" y="300" width="305" height="155" rx="6"/>
+    <text class="h2" x="772" y="321" text-anchor="middle">LLM gateway</text>
+    <rect class="c-blue-sub" x="635" y="335" width="275" height="30" rx="4"/>
+    <text class="lbl" x="772" y="354" text-anchor="middle">Provider routing &amp; selection</text>
+    <rect class="c-blue-sub" x="635" y="370" width="275" height="30" rx="4"/>
+    <text class="lbl" x="772" y="389" text-anchor="middle">Cost control &amp; fallback</text>
+    <rect class="c-blue-sub" x="635" y="405" width="275" height="30" rx="4"/>
+    <text class="lbl" x="772" y="424" text-anchor="middle">Cache &amp; batching</text>
+  </g>
+
+  <!-- ========================================== MODEL PROVIDERS ========================================== -->
+  <g>
+    <rect class="c-warm-bg" x="970" y="80" width="210" height="230" rx="8"/>
+    <text class="h1" x="1075" y="105" text-anchor="middle">Model providers</text>
+
+    <rect class="c-warm-sub" x="985" y="125" width="180" height="38" rx="4"/>
+    <text class="lbl" x="1075" y="149" text-anchor="middle">OpenAI / Azure OpenAI</text>
+
+    <rect class="c-warm-sub" x="985" y="170" width="180" height="38" rx="4"/>
+    <text class="lbl" x="1075" y="194" text-anchor="middle">Anthropic / Bedrock</text>
+
+    <rect class="c-warm-sub" x="985" y="215" width="180" height="38" rx="4"/>
+    <text class="lbl" x="1075" y="239" text-anchor="middle">Google Gemini / Vertex</text>
+
+    <rect class="c-warm-sub" x="985" y="260" width="180" height="38" rx="4"/>
+    <text class="lbl" x="1075" y="284" text-anchor="middle">Self-hosted (vLLM, TGI)</text>
+  </g>
+
+  <!-- ========================================== IDENTITY & SECURITY ========================================== -->
+  <g>
+    <rect class="c-purple-bg" x="20" y="390" width="220" height="260" rx="8"/>
+    <text class="h1" x="130" y="415" text-anchor="middle">Identity &amp; security</text>
+
+    <rect class="c-purple-sub" x="40" y="435" width="180" height="40" rx="4"/>
+    <text class="lbl" x="130" y="460" text-anchor="middle">SSO (Azure AD, Okta)</text>
+
+    <rect class="c-purple-sub" x="40" y="487" width="180" height="40" rx="4"/>
+    <text class="lbl" x="130" y="512" text-anchor="middle">RBAC / ACL propagation</text>
+
+    <rect class="c-purple-sub" x="40" y="539" width="180" height="40" rx="4"/>
+    <text class="lbl" x="130" y="564" text-anchor="middle">PII / DLP scanner</text>
+
+    <rect class="c-purple-sub" x="40" y="591" width="180" height="40" rx="4"/>
+    <text class="lbl" x="130" y="616" text-anchor="middle">Secrets &amp; KMS</text>
+  </g>
+
+  <!-- ========================================== KNOWLEDGE FABRIC ========================================== -->
+  <g>
+    <rect class="c-teal-bg" x="270" y="500" width="670" height="150" rx="8"/>
+    <text class="h1" x="605" y="525" text-anchor="middle">Knowledge fabric · 知識基礎設施</text>
+
+    <rect class="c-teal-sub" x="290" y="545" width="118" height="90" rx="4"/>
+    <text class="h2" x="349" y="567" text-anchor="middle">Vector DB</text>
+    <text class="sub" x="349" y="585" text-anchor="middle">Qdrant, pgvector,</text>
+    <text class="sub" x="349" y="599" text-anchor="middle">Pinecone</text>
+    <text class="sub" x="349" y="619" text-anchor="middle">Dense retrieval</text>
+
+    <rect class="c-teal-sub" x="418" y="545" width="118" height="90" rx="4"/>
+    <text class="h2" x="477" y="567" text-anchor="middle">Graph DB</text>
+    <text class="sub" x="477" y="585" text-anchor="middle">Neo4j, TigerGraph,</text>
+    <text class="sub" x="477" y="599" text-anchor="middle">Memgraph</text>
+    <text class="sub" x="477" y="619" text-anchor="middle">GraphRAG / KG</text>
+
+    <rect class="c-teal-sub" x="546" y="545" width="118" height="90" rx="4"/>
+    <text class="h2" x="605" y="567" text-anchor="middle">Search index</text>
+    <text class="sub" x="605" y="585" text-anchor="middle">OpenSearch,</text>
+    <text class="sub" x="605" y="599" text-anchor="middle">Azure AI Search</text>
+    <text class="sub" x="605" y="619" text-anchor="middle">BM25 + hybrid</text>
+
+    <rect class="c-teal-sub" x="674" y="545" width="118" height="90" rx="4"/>
+    <text class="h2" x="733" y="567" text-anchor="middle">Warehouse</text>
+    <text class="sub" x="733" y="585" text-anchor="middle">Snowflake,</text>
+    <text class="sub" x="733" y="599" text-anchor="middle">BigQuery</text>
+    <text class="sub" x="733" y="619" text-anchor="middle">Text-to-SQL</text>
+
+    <rect class="c-teal-sub" x="802" y="545" width="118" height="90" rx="4"/>
+    <text class="h2" x="861" y="567" text-anchor="middle">Object store</text>
+    <text class="sub" x="861" y="585" text-anchor="middle">S3, GCS, Blob</text>
+    <text class="sub" x="861" y="599" text-anchor="middle">Raw + parsed</text>
+    <text class="sub" x="861" y="619" text-anchor="middle">artifacts</text>
+  </g>
+
+  <!-- ========================================== DATA SOURCES ========================================== -->
+  <g>
+    <rect class="c-warm-bg" x="970" y="345" width="210" height="305" rx="8"/>
+    <text class="h1" x="1075" y="370" text-anchor="middle">Data sources</text>
+
+    <rect class="c-warm-sub" x="985" y="390" width="180" height="42" rx="4"/>
+    <text class="lbl" x="1075" y="408" text-anchor="middle">File systems</text>
+    <text class="sub" x="1075" y="423" text-anchor="middle">Drive, SharePoint, S3</text>
+
+    <rect class="c-warm-sub" x="985" y="438" width="180" height="42" rx="4"/>
+    <text class="lbl" x="1075" y="456" text-anchor="middle">Databases</text>
+    <text class="sub" x="1075" y="471" text-anchor="middle">Snowflake, Postgres</text>
+
+    <rect class="c-warm-sub" x="985" y="486" width="180" height="42" rx="4"/>
+    <text class="lbl" x="1075" y="504" text-anchor="middle">Wiki / docs</text>
+    <text class="sub" x="1075" y="519" text-anchor="middle">Confluence, Notion</text>
+
+    <rect class="c-warm-sub" x="985" y="534" width="180" height="42" rx="4"/>
+    <text class="lbl" x="1075" y="552" text-anchor="middle">SaaS apps</text>
+    <text class="sub" x="1075" y="567" text-anchor="middle">Jira, Salesforce (MCP)</text>
+
+    <rect class="c-warm-sub" x="985" y="582" width="180" height="42" rx="4"/>
+    <text class="lbl" x="1075" y="600" text-anchor="middle">Email / chat</text>
+    <text class="sub" x="1075" y="615" text-anchor="middle">Outlook, Slack, Teams</text>
+  </g>
+
+  <!-- ========================================== INGESTION PIPELINE ========================================== -->
+  <g>
+    <rect class="c-gray-bg" x="20" y="680" width="680" height="180" rx="8"/>
+    <text class="h1" x="360" y="705" text-anchor="middle">Ingestion pipeline · 構建管線</text>
+
+    <rect class="c-gray-sub" x="40" y="725" width="115" height="115" rx="4"/>
+    <text class="h2" x="97" y="747" text-anchor="middle">Connectors</text>
+    <text class="sub" x="97" y="767" text-anchor="middle">Drive, SP, DB,</text>
+    <text class="sub" x="97" y="781" text-anchor="middle">SaaS pull</text>
+    <text class="sub" x="97" y="801" text-anchor="middle">Scheduled or</text>
+    <text class="sub" x="97" y="815" text-anchor="middle">webhook</text>
+
+    <line x1="160" y1="782" x2="172" y2="782" class="arr" marker-end="url(#arrow)"/>
+
+    <rect class="c-gray-sub" x="175" y="725" width="115" height="115" rx="4"/>
+    <text class="h2" x="232" y="747" text-anchor="middle">Parser / OCR</text>
+    <text class="sub" x="232" y="767" text-anchor="middle">Docling,</text>
+    <text class="sub" x="232" y="781" text-anchor="middle">MinerU 2.5</text>
+    <text class="sub" x="232" y="801" text-anchor="middle">Tables, layout,</text>
+    <text class="sub" x="232" y="815" text-anchor="middle">images</text>
+
+    <line x1="295" y1="782" x2="307" y2="782" class="arr" marker-end="url(#arrow)"/>
+
+    <rect class="c-gray-sub" x="310" y="725" width="115" height="115" rx="4"/>
+    <text class="h2" x="367" y="747" text-anchor="middle">Chunk / embed</text>
+    <text class="sub" x="367" y="767" text-anchor="middle">Gemini, Voyage,</text>
+    <text class="sub" x="367" y="781" text-anchor="middle">ColPali</text>
+    <text class="sub" x="367" y="801" text-anchor="middle">Multi-vector</text>
+    <text class="sub" x="367" y="815" text-anchor="middle">supported</text>
+
+    <line x1="430" y1="782" x2="442" y2="782" class="arr" marker-end="url(#arrow)"/>
+
+    <rect class="c-gray-sub" x="445" y="725" width="115" height="115" rx="4"/>
+    <text class="h2" x="502" y="747" text-anchor="middle">Entity / NER</text>
+    <text class="sub" x="502" y="767" text-anchor="middle">Schema-bound</text>
+    <text class="sub" x="502" y="781" text-anchor="middle">extraction</text>
+    <text class="sub" x="502" y="801" text-anchor="middle">For graph nodes</text>
+    <text class="sub" x="502" y="815" text-anchor="middle">&amp; metadata</text>
+
+    <line x1="565" y1="782" x2="577" y2="782" class="arr" marker-end="url(#arrow)"/>
+
+    <rect class="c-gray-sub" x="580" y="725" width="115" height="115" rx="4"/>
+    <text class="h2" x="637" y="747" text-anchor="middle">KG builder</text>
+    <text class="sub" x="637" y="767" text-anchor="middle">LightRAG,</text>
+    <text class="sub" x="637" y="781" text-anchor="middle">LazyGraphRAG</text>
+    <text class="sub" x="637" y="801" text-anchor="middle">Incremental</text>
+    <text class="sub" x="637" y="815" text-anchor="middle">updates</text>
+  </g>
+
+  <!-- ========================================== OBSERVABILITY & EVALUATION ========================================== -->
+  <g>
+    <rect class="c-gray-bg" x="720" y="680" width="460" height="180" rx="8"/>
+    <text class="h1" x="950" y="705" text-anchor="middle">Observability &amp; evaluation</text>
+
+    <rect class="c-gray-sub" x="740" y="725" width="100" height="115" rx="4"/>
+    <text class="h2" x="790" y="747" text-anchor="middle">Tracing</text>
+    <text class="sub" x="790" y="767" text-anchor="middle">Langfuse,</text>
+    <text class="sub" x="790" y="781" text-anchor="middle">Phoenix, OTel</text>
+    <text class="sub" x="790" y="801" text-anchor="middle">Spans &amp; cost</text>
+    <text class="sub" x="790" y="815" text-anchor="middle">per query</text>
+
+    <rect class="c-gray-sub" x="850" y="725" width="100" height="115" rx="4"/>
+    <text class="h2" x="900" y="747" text-anchor="middle">Eval</text>
+    <text class="sub" x="900" y="767" text-anchor="middle">RAGAS, custom</text>
+    <text class="sub" x="900" y="781" text-anchor="middle">eval set</text>
+    <text class="sub" x="900" y="801" text-anchor="middle">CI + offline</text>
+    <text class="sub" x="900" y="815" text-anchor="middle">regression</text>
+
+    <rect class="c-gray-sub" x="960" y="725" width="100" height="115" rx="4"/>
+    <text class="h2" x="1010" y="747" text-anchor="middle">Audit log</text>
+    <text class="sub" x="1010" y="767" text-anchor="middle">Who saw what,</text>
+    <text class="sub" x="1010" y="781" text-anchor="middle">when</text>
+    <text class="sub" x="1010" y="801" text-anchor="middle">Compliance</text>
+    <text class="sub" x="1010" y="815" text-anchor="middle">trail</text>
+
+    <rect class="c-gray-sub" x="1070" y="725" width="100" height="115" rx="4"/>
+    <text class="h2" x="1120" y="747" text-anchor="middle">Cost &amp; usage</text>
+    <text class="sub" x="1120" y="767" text-anchor="middle">Token spend,</text>
+    <text class="sub" x="1120" y="781" text-anchor="middle">latency</text>
+    <text class="sub" x="1120" y="801" text-anchor="middle">Per tenant /</text>
+    <text class="sub" x="1120" y="815" text-anchor="middle">user</text>
+  </g>
+
+  <!-- ========================================== ARROWS ========================================== -->
+
+  <!-- 1. Internet -> Knowledge Clients -->
+  <path d="M 593 60 L 130 60 L 130 80" class="arr" marker-end="url(#arrow)"/>
+
+  <!-- 2. Internet -> Model Providers (passes through area below the Key — use a slight detour) -->
+  <path d="M 627 60 L 627 75 L 1075 75 L 1075 80" class="arr" marker-end="url(#arrow)"/>
+
+  <!-- 3. Knowledge Clients <-> Service (bidirectional) -->
+  <line x1="240" y1="200" x2="270" y2="200" class="arr" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+
+  <!-- 4. Service (LLM gateway) -> Model Providers — L bend up the right side -->
+  <path d="M 925 360 L 950 360 L 950 195 L 970 195" class="arr" marker-end="url(#arrow)"/>
+
+  <!-- 5. Service -> Knowledge Fabric (read) -->
+  <path d="M 605 470 L 605 500" class="arr" marker-end="url(#arrow)"/>
+
+  <!-- 6. Ingestion -> Knowledge Fabric (write) -->
+  <path d="M 637 680 L 637 670 L 605 670 L 605 651" class="arr" marker-end="url(#arrow)"/>
+
+  <!-- 7. Data Sources -> Ingestion (down then left across the gap band) -->
+  <path d="M 985 651 L 985 670 L 100 670 L 100 680" class="arr" marker-end="url(#arrow)"/>
+
+  <!-- 8. Data Sources <-> Service (live MCP / direct tool, dashed bidirectional) -->
+  <path d="M 925 425 L 952 425 L 952 460 L 970 460" class="arr-d" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+  <text class="sub" x="956" y="442" text-anchor="middle" transform="rotate(-90 956 442)">Live MCP</text>
+
+  <!-- 9. Identity -> Service (auth, dashed) -->
+  <path d="M 240 420 L 270 420" class="arr-d" marker-end="url(#arrow)"/>
+  <text class="sub" x="255" y="412" text-anchor="middle">Auth</text>
+
+  <!-- 10. Service -> Observability (telemetry, dashed; routes around fabric on right side) -->
+  <path d="M 800 470 L 800 485 L 955 485 L 955 670 L 850 670 L 850 680" class="arr-d" marker-end="url(#arrow)"/>
+  <text class="sub" x="966" y="568" text-anchor="middle" transform="rotate(-90 966 568)">Telemetry</text>
+
+</svg>
