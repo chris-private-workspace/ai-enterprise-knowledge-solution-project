@@ -23,7 +23,7 @@
 ## 1. Behavioral Baseline(Karpathy Guidelines — universal)
 
 > **Source**: `andrej-karpathy-skills` plugin(`karpathy-guidelines`,`alwaysApply: true`)
-> **適用範圍**:**所有** code change、review、refactor —— 與 §2–§13 嘅 project-specific rule 並行,優先級僅次於 §5 Hard Constraints。
+> **適用範圍**:**所有** code change、review、refactor —— 與 §2–§14 嘅 project-specific rule 並行,優先級僅次於 §5 Hard Constraints。
 > **Tradeoff**:呢套 guideline bias toward caution over speed。Trivial task 可以用 judgment,但 non-trivial task 必須跟。
 
 ### 1.1 Think Before Coding —— 思考先,寫 code 後
@@ -36,7 +36,7 @@
 - 如果有更簡單做法,**講出嚟**;有需要就 push back
 - 唔清楚就 stop,**講明邊度唔清楚**,然後問
 
-呢條同 §12 "When in doubt → ask, don't guess" 互相強化。
+呢條同 §13 "When in doubt → ask, don't guess" 互相強化。
 
 ### 1.2 Simplicity First —— 最少嘅 code 解決問題
 
@@ -50,7 +50,7 @@
 
 自我檢查:「senior engineer 會話呢段 over-engineered 嗎?」答 yes 就簡化。
 
-對 EKP 嘅意義:Tier 1 階段 simplicity wins(已喺 §12 寫明,呢條係執行細則)。
+對 EKP 嘅意義:Tier 1 階段 simplicity wins(已喺 §13 寫明,呢條係執行細則)。
 
 ### 1.3 Surgical Changes —— 精準改動,只清自己嘅 mess
 
@@ -88,7 +88,7 @@ Multi-step task 要先講 plan:
 
 **Strong success criteria** 等你可以獨立 loop;**weak criteria**(如「make it work」)會逼用戶不斷 clarify。
 
-對 EKP 嘅意義:同 §11 Self-Verification checklist 互補 —— §11 係 task done 嘅 gate,§1.4 係 task start 嘅 framing。
+對 EKP 嘅意義:同 §12 Self-Verification checklist 互補 —— §12 係 task done 嘅 gate,§1.4 係 task start 嘅 framing。
 
 ---
 
@@ -105,6 +105,7 @@ Multi-step task 要先講 plan:
 
 | 情況 | 必讀文件 | 補充 |
 |---|---|---|
+| **Multi-day phase / sprint work**(任何超 single session implementation) | [`docs/01-planning/PROCESS.md`](./docs/01-planning/PROCESS.md) + active phase folder | Per phase plan / checklist / journal — 詳見 §10 |
 | Setup local dev environment | `docs/setup.md` | 包括 Azurite、Langfuse、docker-compose、env vars |
 | 寫 / 改 backend feature | `docs/architecture.md` §3 + §4 | RAG core + application architecture |
 | 寫 / 改 frontend feature | `docs/architecture.md` §5 + Dify ref(see §7) | UI specifications + visual identity policy |
@@ -428,7 +429,48 @@ references/DIFY_PINNED_COMMIT.txt
 
 ---
 
-## 10. Output / Communication Conventions
+## 10. Phase Planning Workflow
+
+> 配合 §9 Sprint Awareness:每個 sprint week 屬一個 phase,有 dedicated planning artifacts。
+> Source of truth:[`docs/01-planning/PROCESS.md`](./docs/01-planning/PROCESS.md)(完整 lifecycle、template、anti-pattern)。
+
+### 10.1 Per-Phase Artifacts(3 docs)
+
+每 phase 喺 `docs/01-planning/W{NN}-{phase-name}/` folder 內建立:
+- **`plan.md`** — Phase scope + deliverables + acceptance criteria + risks(kickoff 寫,locked,改要 changelog)
+- **`checklist.md`** — Atomic checkbox items per deliverable(daily tick)
+- **`journal.md`** — Daily progress + decisions + commits + 結尾 retro
+
+### 10.2 Binding Rules(R1–R5,process-level constraint)
+
+- **R1**:任何 multi-day implementation 之前必須有對應 phase `plan.md` committed。**無 plan 唔可以 implement → STOP and ask**
+- **R2**:Daily commit 必須對應 `journal.md` Day-N entry(`docs(planning):` housekeeping commits 例外)
+- **R3**:Plan deviation(scope change / new deliverable / 取消 deliverable)必須 log 入 `plan.md` changelog,**唔可以 silent drift**
+- **R4**:OQ resolved → 同步更新 `decision-form.md` AND `journal.md` Day-N entry mention
+- **R5**:Phase closeout 之前任何 architectural-adjacent decision(per §5.1 H1)必須寫 ADR
+
+### 10.3 AI Session Start Protocol
+
+每個 Claude session 開始(在 §0 quick identity check 之後):
+1. 讀 active phase 嘅 `plan.md`(知 scope)
+2. 讀 `checklist.md`(知 next un-checked item)
+3. 讀 `journal.md` 最近 3 個 Day-N entries(知 context + blockers)
+4. 唔清楚 / item acceptance criteria 模糊 → ask user(per §13 When in Doubt)
+
+### 10.4 Phase Folder Naming
+
+`W{NN}-{phase-kebab-name}/` 對應 §9 Sprint Awareness 嘅 W{NN} sprint week。
+Example:`W01-foundation/`、`W02-multi-format-ingestion/`、`W04-crag-eval-shootout/`。**Rolling JIT**:每 phase 喺 kickoff 先建,**唔可以一次過建 W01–W12**。
+
+### 10.5 Reference
+
+- Workflow source of truth:[`docs/01-planning/PROCESS.md`](./docs/01-planning/PROCESS.md)
+- Templates:[`docs/01-planning/_templates/`](./docs/01-planning/_templates/)
+- W01 reference example:[`docs/01-planning/W01-foundation/`](./docs/01-planning/W01-foundation/)
+
+---
+
+## 11. Output / Communication Conventions
 
 當你 reply 喺 chat 入面:
 
@@ -448,7 +490,7 @@ references/DIFY_PINNED_COMMIT.txt
 
 ---
 
-## 11. Self-Verification Before Marking Task Done
+## 12. Self-Verification Before Marking Task Done
 
 完成一個 task 之前,**run through 以下 checklist**:
 
@@ -461,10 +503,11 @@ references/DIFY_PINNED_COMMIT.txt
 - [ ] 任何 architectural-adjacent 改動 → ADR 寫咗未?
 - [ ] 用咗 Dify reference?在 PR comment 標 source 未?
 - [ ] OQ status check:呢個 task 依賴邊條 OQ?status 係咩?
+- [ ] Phase checklist 對應 item tick'd?Journal Day-N entry 寫咗未?(per §10 R2)
 
 ---
 
-## 12. When in Doubt(default behavior)
+## 13. When in Doubt(default behavior)
 
 | 情況 | Default |
 |---|---|
@@ -478,7 +521,7 @@ references/DIFY_PINNED_COMMIT.txt
 
 ---
 
-## 13. Update This File
+## 14. Update This File
 
 **呢份 CLAUDE.md 會 evolve**。當以下情況發生,update 呢份 file:
 
@@ -512,6 +555,6 @@ EKP Tier 1 — Strict Mode
 ---
 
 **End of CLAUDE.md**
-**Version 1.2 — promoted Karpathy guidelines from Appendix B to §1, renumbered §2–§13**
+**Version 1.3 — added §10 Phase Planning Workflow + R1–R5 binding rules; renumbered §11–§14; §2 routing table + §12 self-verification updated**
 **Effective: from W1 Day 1**
 **Owner: Chris(技術 Lead)**

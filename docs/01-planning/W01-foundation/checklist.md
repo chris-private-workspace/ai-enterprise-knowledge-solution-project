@@ -1,0 +1,134 @@
+---
+phase: W01-foundation
+plan_ref: ./plan.md
+status: in-progress
+last_updated: 2026-04-30
+---
+
+# Phase W01 — Checklist
+
+> Atomic checkbox(每 item ≤ 1–2 hour effort)。
+> AI tick 完成嘅 item;唔可以 tick 嘅 item 喺 journal Day-N entry 寫原因。
+
+## F1 — Repo hygiene + Dify reference clone
+
+- [x] Rename `gitignore` → `.gitignore`(critical pattern verify:`.env`、`references/dify/`、`DIFY_PINNED_COMMIT.txt` 都喺度) — commit `9ea18f1`
+- [x] `git init` + branch=main + initial commit `chore(repo): initial portfolio scaffold`
+- [x] `git clone --depth 1 https://github.com/langgenius/dify.git` to `references/dify/`(retry with `git -c core.longpaths=true restore` after Windows MAX_PATH hit)
+- [x] Generate `references/DIFY_PINNED_COMMIT.txt` 寫入 commit SHA(`fe2f7a8920`)
+- [x] `git check-ignore references/dify/ references/DIFY_PINNED_COMMIT.txt` 兩者都 ignored
+
+## F2 — Backend FastAPI skeleton
+
+- [x] `backend/pyproject.toml`(Python 3.12+,FastAPI、Pydantic v2、Pydantic Settings、structlog、tenacity、httpx、python-multipart、pyyaml + dev deps)
+- [x] `backend/Dockerfile` + `.dockerignore`
+- [x] 7 `__init__.py` package marker(backend, api, routes, schemas, observability, storage, tests)
+- [x] `backend/api/server.py`(FastAPI app + 8 router includes + `/health`)
+- [x] 8 routes:`query.py`、`feedback.py`、`kb.py`、`documents.py`、`chunks.py`、`eval.py`、`debug.py`、`screenshots.py`(18 endpoints,各 raise HTTPException(501) with spec ref)
+- [x] 4 schema:`query.py`、`kb.py`、`eval.py`、`feedback.py`(per §4.5)
+- [x] `backend/storage/settings.py`(Pydantic Settings,UPPER_SNAKE env var via `case_sensitive=False`)
+- [x] `backend/observability/langfuse_tracer.py`(stub structlog JSON config)
+- [x] `backend/tests/test_api_skeleton.py`(8 smoke tests,per H6 query.py critical)
+- [x] Ruff `check .` clean
+- [x] `python -m compileall .` clean
+- [ ] **DEFERRED to W2 D1** — pytest run(blocked by Python 3.14 cp314 wheel supply for pydantic-core / httptools — not env-resolvable in W1 Day 1) — commit `b21a0a2`
+
+## F3 — Frontend Next.js 14 skeleton
+
+- [x] `frontend/package.json`(Next.js 14、shadcn-ui foundation、Tailwind 3.4、Vercel AI SDK、TanStack Query、Zustand、TypeScript 5.7)
+- [x] `frontend/tsconfig.json`(strict mode)
+- [x] `frontend/next.config.mjs`(App Router,standalone build,API rewrite to `:8000`)
+- [x] `frontend/tailwind.config.ts`(uses ekpTokens)
+- [x] `frontend/postcss.config.js` + `frontend/Dockerfile` + `.dockerignore` + `.eslintrc.json` + `.prettierrc`
+- [x] `frontend/lib/theming/tokens.ts`(neutral grayscale per OQ-Q10 default,W4 designer pass)
+- [x] `frontend/lib/api-client.ts`(thin fetch wrapper)
+- [x] `frontend/lib/utils.ts`(`cn()` shadcn helper)
+- [x] `frontend/app/globals.css` + `app/layout.tsx`
+- [x] 6 routes:`/`、`/admin`、`/admin/kb`、`/admin/kb/[id]`、`/eval`、`/debug/[traceId]`
+- [x] `pnpm install` 成功(3 min,376 packages)
+- [x] `pnpm type-check` clean(after `as const` removal in tokens.ts)
+- [x] `pnpm lint` 0 warnings/errors — commit `7589110`
+
+## F4 — Local dev stack
+
+- [x] `docker-compose.yml` `langfuse:2-latest` → `langfuse:2` tag fix(2-latest no longer published)— commit `f7ba973`
+- [x] Postgres 16-alpine 起 healthy(port 5432 internal)
+- [x] Langfuse v2 起 → `/api/public/health` HTTP 200(image pulled via `docker.io/langfuse/langfuse:2` direct,bypass MCR mirror)
+- [x] Azurite via npm fallback(`npm install -g azurite` 376 packages 1 min)
+- [x] Azurite Blob/Queue/Table listening at `http://127.0.0.1:10000`-10002
+- [ ] **PENDING** — Azurite via Docker(blocked by Ricoh corp DNS intercept on MCR;workaround in place via npm,W2+ if VPN / IT whitelist)
+
+## F5 — Eval set v0 schema validator
+
+- [x] `scripts/__init__.py`
+- [x] `scripts/validate_eval_set.py`(stdlib + pyyaml,no pydantic dep)
+- [x] Validation rules:total_queries match,duplicate id,oos must `expected_refusal`,non-oos must have `primary_chunk_ids`
+- [x] Run `python -m scripts.validate_eval_set docs/eval-set-v0.yaml` → exit 0 OK(after fixed null difficulty handling for oos queries)
+- [x] Ruff clean — commit `cc0b90b`
+
+## F6 — Sample manual structure inspector
+
+- [x] `scripts/inspect_docx_structure.py`(stdlib `zipfile` + `xml.etree`)
+- [x] Q17:heading style coverage(H1/H2/H3 counts + paragraphs with hardcoded font size)
+- [x] Q18:embedded image format inventory(PNG/JPG/WMF/EMF/SVG/HEIC counts)
+- [x] CLI:accepts file or directory,edge case(path-not-found / non-docx)handled
+- [ ] **BLOCKED on Q2** — Run on 5 sample Ricoh manual,produce Q17/Q18 finding report
+
+## F7 — KB management CRUD impl
+
+- [ ] In-memory KB service(`backend/kb_management/kb_service.py`)
+- [ ] `POST /kb` create
+- [ ] `GET /kb` list
+- [ ] `GET /kb/{kb_id}` detail
+- [ ] `DELETE /kb/{kb_id}` delete + cleanup
+- [ ] `PATCH /kb/{kb_id}/settings` update
+- [ ] Unit tests for CRUD(mock storage backend)
+
+## F8 — Docling `.docx` parser PoC
+
+- [ ] **BLOCKED on Q2** — sample manual access
+- [ ] Install Docling(pip)— note:Docling Docker image 2GB,但 backend 用 Docling library 直接 install,唔需要 Docker
+- [ ] `backend/ingestion/parsers/docx_parser.py` 用 Docling
+- [ ] Parse 5 sample,extract heading-aware sections + embedded image inventory + table structure
+- [ ] Sanity check report output
+
+## F9 — Azure AI Search index 創建
+
+- [ ] **BLOCKED on Q3** — resource detail(name + region + tier + admin key)入 `.env`
+- [ ] Index schema match `architecture.md §3.6`
+- [ ] HNSW vectorSearch profile
+- [ ] Semantic config
+- [ ] Index 創建 success(`az search` CLI or SDK script)
+
+## F10 — Embedding pipeline first-pass
+
+- [ ] **BLOCKED on Q4** — Azure OpenAI deployment names + endpoint + API key 入 `.env`
+- [ ] `backend/generation/azure_openai_client.py` async embedding(text-embedding-3-large,1024d MRL)
+- [ ] Smoke test:1 條 sample → 1024d vector
+- [ ] Structlog cost log
+
+## F11 — 30 條 synthetic eval set ground truth fill
+
+- [ ] **BLOCKED on Q14** — specific SME labeler name(W1 末 by Chris)+ Q2(chunk_id discovery from sample manual)
+- [ ] All 30 main queries `annotation.validated: true`
+- [ ] Replace placeholder chunk_id with real ones
+- [ ] `docs/eval-set-v1.yaml`(rename from v0 once SME-validated)
+- [ ] `python -m scripts.validate_eval_set docs/eval-set-v1.yaml` exit 0
+
+---
+
+## Cross-Cutting
+
+- [x] Decision-form.md updated for 6 critical OQ resolution(Q1-Q4 + Q13 + Q14) — commit `d74fee2`
+- [x] `.gitignore` add `.claude/` + checkpoint dev log + topology svg — commit `e3fc338`
+- [x] **NEW**:Phase planning framework introduced mid-W1 D1(PROCESS.md + 3 templates + W01 retroactive docs)
+- [ ] All deliverables(F7-F11)committed by W1 D5(2026-05-04)
+- [ ] All OQ status changes synced to `decision-form.md`(ongoing W1 末 by Chris for Q14 specific name)
+- [ ] All architectural-adjacent decisions documented as ADR(per CLAUDE.md §5.1 H1)— W1 暫無
+- [ ] `journal.md` retro section written W1 D5 末
+- [ ] `journal.md` frontmatter status flipped to `closed`
+- [ ] Phase W02 kickoff trigger noted in retro
+
+---
+
+**Lifecycle reminder**:呢份 checklist 隨 plan deliverables 衍生。新加 deliverable 必須先入 plan + changelog,然後再加 checklist item。
