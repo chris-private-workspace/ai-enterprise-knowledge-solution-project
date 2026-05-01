@@ -105,7 +105,9 @@ Multi-step task 要先講 plan:
 
 | 情況 | 必讀文件 | 補充 |
 |---|---|---|
-| **Multi-day phase / sprint work**(任何超 single session implementation) | [`docs/01-planning/PROCESS.md`](./docs/01-planning/PROCESS.md) + active phase folder | Per phase plan / checklist / journal — 詳見 §10 |
+| **Multi-day phase / sprint work**(任何超 single session implementation) | [`docs/01-planning/PROCESS.md §2`](./docs/01-planning/PROCESS.md) + active phase folder | Per phase plan / checklist / progress — 詳見 §10 |
+| **Change to existing feature**(modify behavior, < 3 days) | [`docs/01-planning/PROCESS.md §3`](./docs/01-planning/PROCESS.md) + new instance `docs/03-implementation/changes/CH-{NNN}-{kebab}/` | Pre-doc:**spec.md**(approved by user)→ derive checklist + progress;AI auto-classify per PROCESS.md §1 |
+| **Bug-fix**(fix incorrect / broken / regressed behavior) | [`docs/01-planning/PROCESS.md §4`](./docs/01-planning/PROCESS.md) + new instance `docs/03-implementation/bugs/BUG-{NNN}-{kebab}/` | Pre-doc:**report.md**(severity Sev1-Sev4)→ derive checklist + progress;Sev1/Sev2 mandatory postmortem |
 | **改 / 新加 component**(明確涉及 EKP 12 modules 之一)| [`docs/02-architecture/COMPONENT_CATALOG.md`](./docs/02-architecture/COMPONENT_CATALOG.md) + 對應 `components/Cn-{kebab}.md`(若已存在)| 識別 component → spec ref + dep + tech + status,再跳去 architecture.md 對應 section 落實作 |
 | **Risk-related decision / mitigation update** | [`docs/01-planning/RISK_REGISTER.md`](./docs/01-planning/RISK_REGISTER.md)(living)+ `docs/architecture.md §8`(frozen baseline)| 新 risk / status update 入 living register,§8 不動 |
 | Setup local dev environment | `docs/setup.md` | 包括 Azurite、Langfuse、docker-compose、env vars |
@@ -441,14 +443,14 @@ references/DIFY_PINNED_COMMIT.txt
 每 phase 喺 `docs/01-planning/W{NN}-{phase-name}/` folder 內建立:
 - **`plan.md`** — Phase scope + deliverables + acceptance criteria + risks(kickoff 寫,locked,改要 changelog)
 - **`checklist.md`** — Atomic checkbox items per deliverable(daily tick)
-- **`journal.md`** — Daily progress + decisions + commits + 結尾 retro
+- **`progress.md`** — Daily progress + decisions + commits + 結尾 retro(v1.0 嘅 `journal.md` 已 rename per PROCESS.md v2.0)
 
 ### 10.2 Binding Rules(R1–R5,process-level constraint)
 
 - **R1**:任何 multi-day implementation 之前必須有對應 phase `plan.md` committed。**無 plan 唔可以 implement → STOP and ask**
-- **R2**:Daily commit 必須對應 `journal.md` Day-N entry(`docs(planning):` housekeeping commits 例外)
+- **R2**:Daily commit 必須對應 `progress.md` Day-N entry(`docs(planning):` housekeeping commits 例外)
 - **R3**:Plan deviation(scope change / new deliverable / 取消 deliverable)必須 log 入 `plan.md` changelog,**唔可以 silent drift**
-- **R4**:OQ resolved → 同步更新 `decision-form.md` AND `journal.md` Day-N entry mention
+- **R4**:OQ resolved → 同步更新 `decision-form.md` AND `progress.md` Day-N entry mention
 - **R5**:Phase closeout 之前任何 architectural-adjacent decision(per §5.1 H1)必須寫 ADR
 
 ### 10.3 AI Session Start Protocol
@@ -456,7 +458,7 @@ references/DIFY_PINNED_COMMIT.txt
 每個 Claude session 開始(在 §0 quick identity check 之後):
 1. 讀 active phase 嘅 `plan.md`(知 scope)
 2. 讀 `checklist.md`(知 next un-checked item)
-3. 讀 `journal.md` 最近 3 個 Day-N entries(知 context + blockers)
+3. 讀 `progress.md` 最近 3 個 Day-N entries(知 context + blockers)
 4. 唔清楚 / item acceptance criteria 模糊 → ask user(per §13 When in Doubt)
 
 ### 10.4 Phase Folder Naming

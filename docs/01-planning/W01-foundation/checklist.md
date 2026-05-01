@@ -8,7 +8,7 @@ last_updated: 2026-04-30
 # Phase W01 — Checklist
 
 > Atomic checkbox(每 item ≤ 1–2 hour effort)。
-> AI tick 完成嘅 item;唔可以 tick 嘅 item 喺 journal Day-N entry 寫原因。
+> AI tick 完成嘅 item;唔可以 tick 嘅 item 喺 progress Day-N entry 寫原因。
 
 ## F1 — Repo hygiene + Dify reference clone
 
@@ -136,7 +136,7 @@ last_updated: 2026-04-30
 - [x] `.gitignore` add `.claude/` + checkpoint dev log + topology svg — commit `e3fc338`
 - [x] **NEW**:Phase planning framework introduced mid-W1 D1(PROCESS.md + 3 templates + W01 retroactive docs)
 - [x] **W1 D2 H5 remediation** — gitignore `docs/11-env-resources-detail/` + relocate Q3+Q4 plaintext secrets to root `.env` + sanitize markdown 為 reference table — commit pending(this batch)
-- [x] **W1 D2 Python 3.12.10 install** — winget per-user,resolve W1 D1 R5 risk(cp314 wheel supply)— covered in journal Day 2
+- [x] **W1 D2 Python 3.12.10 install** — winget per-user,resolve W1 D1 R5 risk(cp314 wheel supply)— covered in progress Day 2
 - [ ] All deliverables(F7-F11)committed by W1 D5(2026-05-04)
 - [x] **W1 D2 OQ sync to `decision-form.md`**:Q3 → `Resolved (pending tier+region W2 D1)`,Q4 → `Resolved (full)`,Q14 → `Resolved (full — Chris Lai self-assigned)`;dashboard table + pending implementation list 同步更新 — commit `dfcafbf`
 - [x] **W1 D3 Component Catalog spine**(per Chris strategic call)— commits `220f75a` + `2dc0948` + `99ebf0c`
@@ -157,8 +157,8 @@ last_updated: 2026-04-30
 - [ ] (Ongoing)Future ADR / phase plan / risk update 必 component-tag(per CC-1/2/3/4)
 - [ ] (Ongoing)Per-component design note status bumps(v0-draft → v1-active → v2-stable)隨 implementation 進行
 - [ ] All architectural-adjacent decisions documented as ADR(per CLAUDE.md §5.1 H1)— W1 暫無
-- [ ] `journal.md` retro section written W1 D5 末
-- [ ] `journal.md` frontmatter status flipped to `closed`
+- [ ] `progress.md` retro section written W1 D5 末
+- [ ] `progress.md` frontmatter status flipped to `closed`
 - [ ] Phase W02 kickoff trigger noted in retro
 
 ---

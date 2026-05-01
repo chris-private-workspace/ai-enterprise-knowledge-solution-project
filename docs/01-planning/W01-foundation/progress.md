@@ -5,7 +5,7 @@ checklist_ref: ./checklist.md
 status: in-progress
 ---
 
-# Phase W01 — Journal
+# Phase W01 — Progress
 
 > Daily progress + 結尾 retro。
 > 每 commit 必須對應一個 Day-N entry mention(R2 binding rule per PROCESS.md §5)。
@@ -23,7 +23,7 @@ status: in-progress
 
 **Note**:正常 lifecycle Day 0 應該係 phase kickoff、Day 1 起 implementation。本次因 framework 喺 Day 1 中段引入(per Chris guidance),Day 0 entry 同 Day 1 同日(2026-04-30)。Future phases follow 正常 D0 / D1 split。
 
-**Commits relevant**:Phase planning framework setup commit pending(framework files 同呢份 journal 一齊 commit)。
+**Commits relevant**:Phase planning framework setup commit pending(framework files 同呢份 progress 一齊 commit)。
 
 ---
 
@@ -309,4 +309,6 @@ _(填於 phase 結束 — closeout commit hash + status flip + W2 kickoff trigge
 
 ---
 
-**End of W01 journal**(in progress)
+**End of W01 progress**(in progress)
+
+> **Migration note**(2026-05-01):此 file 由 `journal.md` rename 為 `progress.md` 對齊 `PROCESS.md v2.0` unified naming(per migration commit)。歷史 Day-0 / Day-1 narrative 入面提到 `journal.md` 嘅 wording 屬當時準確記錄,保留不改(同 commit message 嘅 historical preservation 原則)。
