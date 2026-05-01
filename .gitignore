@@ -24,6 +24,10 @@
 secrets/
 .secrets/
 
+# Env-resource detail dump folder (plaintext credentials staging area before .env wiring)
+# 詳見 docs/setup.md §5 — credentials 應該 only live in .env (gitignored)
+docs/11-env-resources-detail/
+
 
 # ----------------------------------------------------------------------------
 # Reference Repositories(read-only,clone locally)

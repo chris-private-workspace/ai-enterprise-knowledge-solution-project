@@ -198,6 +198,7 @@ W01 係 EKP Tier 1 嘅 foundation phase。建立 repo + Dify reference + backend
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-04-30 | Initial plan(retroactive after Day 1 implementation) | Phase planning framework introduced mid-Day 1;backfill captures Day 1 已執行 deliverables F1-F6 + remaining F7-F11 forward planning | Chris |
+| 2026-05-01 | **F2 pytest retry re-deferred** D2 → post-pip-install window;**F7 unit tests deferred** D2 → post-pip-install window | Python 3.12.10 install ✅ resolves W1 D1 cp314 wheel issue,but pip install hits NEW blocker:Ricoh corp proxy 對 PyPI/TUNA wheel >500KB 落 `IncompleteRead(0 bytes)`(tested via pip default、`--retries 10`、TUNA mirror,全部斷流)。P3 pivot path:H5 remediation commit + F7 implementation code 今日推進,F2 + F7 pytest verification 等 P1(VPN/hotspot)或 P2(IT whitelist)window | Chris(P3 approved) |
 
 ---
 

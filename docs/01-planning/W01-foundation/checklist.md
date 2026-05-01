@@ -31,7 +31,11 @@ last_updated: 2026-04-30
 - [x] `backend/tests/test_api_skeleton.py`(8 smoke tests,per H6 query.py critical)
 - [x] Ruff `check .` clean
 - [x] `python -m compileall .` clean
-- [ ] **DEFERRED to W2 D1** — pytest run(blocked by Python 3.14 cp314 wheel supply for pydantic-core / httptools — not env-resolvable in W1 Day 1) — commit `b21a0a2`
+- [ ] **DEFERRED to post-pip-install window** — pytest run
+  - W1 D1 blocker(cp314 wheel):**RESOLVED** W1 D2 via Python 3.12.10 install
+  - W1 D2 NEW blocker:Ricoh corp proxy 對 PyPI/TUNA wheel >500KB 全部 `IncompleteRead(0 bytes)`
+  - Mitigation:P1(VPN/hotspot ops window)或 P2(IT whitelist)— Chris ops decision pending
+  - commit ref:`b21a0a2`(skeleton),pytest retry 待 window
 
 ## F3 — Frontend Next.js 14 skeleton
 
@@ -122,8 +126,10 @@ last_updated: 2026-04-30
 - [x] Decision-form.md updated for 6 critical OQ resolution(Q1-Q4 + Q13 + Q14) — commit `d74fee2`
 - [x] `.gitignore` add `.claude/` + checkpoint dev log + topology svg — commit `e3fc338`
 - [x] **NEW**:Phase planning framework introduced mid-W1 D1(PROCESS.md + 3 templates + W01 retroactive docs)
+- [x] **W1 D2 H5 remediation** — gitignore `docs/11-env-resources-detail/` + relocate Q3+Q4 plaintext secrets to root `.env` + sanitize markdown 為 reference table — commit pending(this batch)
+- [x] **W1 D2 Python 3.12.10 install** — winget per-user,resolve W1 D1 R5 risk(cp314 wheel supply)— covered in journal Day 2
 - [ ] All deliverables(F7-F11)committed by W1 D5(2026-05-04)
-- [ ] All OQ status changes synced to `decision-form.md`(ongoing W1 末 by Chris for Q14 specific name)
+- [ ] All OQ status changes synced to `decision-form.md`(Q14 specific name DONE D2,Q3+Q4 full Resolved D2 — sync `decision-form.md` pending separate commit)
 - [ ] All architectural-adjacent decisions documented as ADR(per CLAUDE.md §5.1 H1)— W1 暫無
 - [ ] `journal.md` retro section written W1 D5 末
 - [ ] `journal.md` frontmatter status flipped to `closed`

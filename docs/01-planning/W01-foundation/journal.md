@@ -93,20 +93,71 @@ status: in-progress
 
 ---
 
-## Day 2 — 2026-05-01(planned)
+## Day 2 — 2026-05-01
 
-### Targeted deliverables
+> Status: **partial mid-day update** — H5 remediation + Python 3.12 install done;F7 implementation pending(start after this commit);F2/F7 pytest verification deferred to post-pip-install window per P3 pivot。
 
-- F7 KB CRUD impl(in-memory storage backend OK 因 Q3 implementation detail pending)
-- F8 start Docling `.docx` parser PoC(若 Q2 sample 到位)
-- W2 D1 retry pytest(if Python 3.12 installed by Chris)
+### Pre-flight checks(D1 末 carry-over,confirmed D2 早段)
 
-### Pre-flight checks
+- [x] **Q14**:Chris Lai / `chris.lai@rapo.com.hk` ✅
+- [ ] **Q2**:仍 pending direct upload from Chris
+- [x] **Q3**:endpoint + key delivered via `docs/11-env-resources-detail/` markdown(triggered H5,now relocated to `.env`)
+- [x] **Q4**:endpoint + key + 6 deployments delivered same path(同上)
+- [x] **Python 3.12**:installed via winget(see Done below)
 
-- [ ] Q14 specific labeler name 收到?
-- [ ] Q2 sample manual zip / folder access?
-- [ ] Q3 / Q4 .env value 收到?
-- [ ] Python 3.12 installed?(可選,W1 D2 decision)
+### Done(by ~16:30 local approx)
+
+**H5 hard-constraint remediation**:
+- Trigger:Q3 + Q4 secret values delivered via plaintext markdown in `docs/11-env-resources-detail/`,folder 未 gitignored
+- Verified safe state:`git ls-files docs/11-env-resources-detail/` empty + `git log --all -- docs/...` empty → key 從未入 git history
+- Remediation:
+  - `.gitignore` 加 `docs/11-env-resources-detail/`(line 28-31)
+  - Plaintext key 全部 relocate 到 root `.env`(line 18 既 gitignored,verify via `git check-ignore`)
+  - Markdown rewrite 為 reference table only(deployment name + `.env` var name,zero plaintext)
+
+**Python 3.12 install**(W1 D1 R5 risk mitigation):
+- Initial `winget install Python.Python.3.12` failed:`msstore` source cert mismatch(`0x8a15005e`,Ricoh corp SSL inspection)
+- Workaround:`--source winget`(skip msstore enumeration)→ Python 3.12.10 installed per-user
+- `py -0` 顯示 3.14 + 3.12 共存
+- `backend/.venv` 用 `py -3.12 -m venv` 重建;舊 cp314 venv rename `backend/.venv-py314-backup` 留 rollback
+
+**Pip install attempt**(blocked,trigger P3 pivot):
+- `pip install -e backend[dev]`:落 `mypy-1.20.2-cp312-cp312-win_amd64.whl (10.9MB)` → `IncompleteRead(0 bytes read)`
+- Retry x10 + timeout 120s:同樣斷流
+- TUNA mirror(`pypi.tuna.tsinghua.edu.cn`):503 errors
+- Pattern:任何 >500KB wheel 落到 corp proxy → 0 bytes connection broken
+
+### Decisions / OQ Resolved
+
+- **OQ-Q3 Resolved (full)**:endpoint + key + region eastus2(inferred)+ tier default Standard S1 per architecture.md §3.2(W2 D1 confirm)
+- **OQ-Q4 Resolved (full)**:endpoint + api version `2024-12-01-preview` + 6 deployments(`gpt-5.5` / `gpt-5.4` / `gpt-5.4-mini` / `gpt-5.4-nano` / `text-embedding-3-small` / `text-embedding-3-large`)
+- **OQ-Q14 Resolved (full)**:SME labeler = Chris Lai(`chris.lai@rapo.com.hk`)
+- **Decision** — Eval judge default 用 `gpt-5.4-mini`(`gpt-5.5-pro` not deployed POC stage,spec-compliant per CLAUDE.md §5.2 H2 alternative)
+- **Decision (P3 pivot,Chris approved)** — pip install 暫時 blocked,F2 pytest verification + F7 unit tests defer 到 post-pip-install window;F7 implementation code 今日推進(no test framework runtime dep)
+
+### Blockers
+
+- 🔴 **Ricoh corp proxy on PyPI/TUNA**:任何 wheel >500KB 落到 `IncompleteRead(0 bytes read)`。Mitigation:P1(VPN / mobile hotspot ops window)或 P2(IT whitelist long-term)
+- 🚫 **Q2 sample manual**:仍 pending direct upload。F8 + F11 仍 BLOCKED
+- ⚠️ **F2 pytest retry**:cp312 wheel(mypy / pyyaml / 其他大檔)同樣 corp proxy block。Re-defer 到 post-pip-install window
+- ⚠️ **F7 unit tests**:同上原因,defer。F7 implementation code 仍按計劃推進
+
+### Actual vs Planned Effort(partial,EOD update follow)
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| H5 remediation(unplanned)| 0 | 1 | +1h | Q3+Q4 secret 提供方式撞 H5 |
+| Python 3.12 install | 0.2 | 0.3 | +0.1h | msstore cert retry |
+| `.venv` recreate + pip attempts | 0.2 | 1+ | +0.8h | Corp proxy block, P3 pivot |
+| F7(在跑緊)| 4 | TBD | TBD | Code-only,no unit test 今日 |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| `(this commit)` | chore(security): gitignore env-resources folder + W1 D2 mid-day journal |
+| `(planned)` | feat(kb): impl KB CRUD with in-memory backend (P3: no unit tests today) |
+| `(planned EOD)` | docs(planning): W1 D2 journal closeout |
 
 ---
 
