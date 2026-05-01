@@ -61,7 +61,7 @@ prior_phase: W{NN-1}-{name}   # null if first phase
 
 ## 6. Dependencies on Prior Phase
 
-Carry-over from `W{NN-1}-{phase}/journal.md` retro:
+Carry-over from `W{NN-1}-{phase}/progress.md` retro:
 - {item 1}
 - {item 2}
 

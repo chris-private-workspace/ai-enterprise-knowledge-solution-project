@@ -8,7 +8,7 @@ last_updated: YYYY-MM-DD
 # Phase W{NN} — Checklist
 
 > Atomic checkbox(每 item ≤ 1–2 hour effort)。
-> AI tick 完成嘅 item;唔可以 tick 嘅 item 喺 journal Day-N entry 寫原因。
+> AI tick 完成嘅 item;唔可以 tick 嘅 item 喺 progress Day-N entry 寫原因。
 
 ## F1 — {Deliverable name from plan}
 
@@ -29,8 +29,8 @@ last_updated: YYYY-MM-DD
 - [ ] All deliverables committed to git
 - [ ] All OQ status changes reflected in `docs/decision-form.md`
 - [ ] All architectural-adjacent decisions documented as ADR(per CLAUDE.md §5.1 H1)
-- [ ] `journal.md` retro section written
-- [ ] `journal.md` frontmatter status flipped to `closed`
+- [ ] `progress.md` retro section written
+- [ ] `progress.md` frontmatter status flipped to `closed`
 - [ ] Phase N+1 kickoff trigger noted in retro
 
 ---

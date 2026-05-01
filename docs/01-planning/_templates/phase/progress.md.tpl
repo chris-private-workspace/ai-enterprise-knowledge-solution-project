@@ -5,7 +5,7 @@ checklist_ref: ./checklist.md
 status: in-progress    # in-progress | closed
 ---
 
-# Phase W{NN} — Journal
+# Phase W{NN} — Progress
 
 > Daily progress + 結尾 retro。
 > 每 commit 必須對應一個 Day-N entry mention(R2 binding rule per PROCESS.md §5)。
@@ -15,7 +15,7 @@ status: in-progress    # in-progress | closed
 ## Day 0 — YYYY-MM-DD: Kickoff
 
 **Action**:Phase W{NN} kickoff
-- Templates copied from `_templates/`
+- Templates copied from `_templates/phase/`
 - `plan.md` filled,status=`active`
 - `checklist.md` derived from plan deliverables
 - Carry-over from W{NN-1} retro:{list}
@@ -89,4 +89,4 @@ status: in-progress    # in-progress | closed
 
 ---
 
-**End of W{NN} journal**
+**End of W{NN} progress**
