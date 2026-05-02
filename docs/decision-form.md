@@ -359,7 +359,7 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 |---|---|---|---|---|---|---|
 | Q1 | Format ratio | Stakeholder + SME | 🔴 | C01 | `Resolved` | 2026-04-30 |
 | Q2 | Source access | Stakeholder | 🔴 | C01 + C06 | `Resolved` | 2026-04-30 |
-| Q3 | Azure AI Search | Stakeholder + IT | 🔴 | C03 | `Resolved` (pending tier+region W2 D1) | 2026-05-01 |
+| Q3 | Azure AI Search | Stakeholder + IT | 🔴 | C03 | `Resolved` (full — index ekp-kb-drive-v1 created) | 2026-05-02 |
 | Q4 | Azure OpenAI deployment | Stakeholder + IT | 🔴 | C05 + C01 | `Resolved` (full) | 2026-05-01 |
 | Q5 | Cohere procurement | Stakeholder | | C04 | Open | — |
 | Q6 | Real query collection | Stakeholder | | C06 | Open | — |

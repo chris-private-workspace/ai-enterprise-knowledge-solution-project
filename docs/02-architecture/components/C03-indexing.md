@@ -3,13 +3,13 @@ component: C03
 name: Indexing Service
 catalog_ref: ../COMPONENT_CATALOG.md#c03--indexing-service
 spec_refs: [architecture.md §3.6, architecture.md §3.4]
-status: v0-draft
-last_updated: 2026-05-01
+status: v1-active
+last_updated: 2026-05-02
 ---
 
 # C03 — Indexing Service Design Note
 
-> **Status**:`v0-draft`(W2 D1 first-touch:F9 index 創建 `ekp-kb-drive-v1`;依賴 Q3 endpoint+key 已喺 .env per H5 commit `09138d4`)
+> **Status**:`v1-active`(W1 D4 2026-05-02:F9 `ekp-kb-drive-v1` index created via REST CLI,GET verified — 18 fields + ekp-vector-profile + ekp-semantic-config match spec §3.6;C03 design contract validated by reality)
 >
 > **Owner**:AI(SDK / REST script)+ Chris(Q3 tier+region confirmation)
 
@@ -165,13 +165,15 @@ with urllib.request.urlopen(req) as resp:
 
 ## 8. Open Items / TODO
 
-- [ ] **Q3 outstanding minor**:tier confirm + region confirm(Standard S1 default per spec,eastus2 inferred)
-- [ ] **W2 D1 `scripts/create_index.py`** REST CLI implementation
-- [ ] **W2 D1 `backend/indexing/schemas.py`** match `architecture.md §3.6` JSON
-- [ ] **W2 D2 `IndexService` class** wrap REST(future SDK swap)
-- [ ] **W2 D2 schema diff check**(detect drift from spec)
-- [ ] **W2+ Azure SDK swap** when R8 corp proxy unblocks pip install
+- [x] **W1 D4(2026-05-02 — earlier than planned W2 D1)** `scripts/create_index.py` REST CLI ✅ — stdlib only(urllib.request),supports create/get/delete subcommands,minimal `.env` loader
+- [x] **W1 D4** `backend/indexing/schema.json` match `architecture.md §3.6` JSON literal ✅
+- [x] **W1 D4** First index `ekp-kb-drive-v1` created on POC instance via `python -m scripts.create_index create` → HTTP 201 ✅;verified via `get` → 18 fields + ekp-vector-profile + ekp-semantic-config ✅
+- [ ] **Q3 outstanding minor**:tier confirm(Standard S1 default per spec,assumed in service config)+ region confirm(eastus2 inferred from hostname `azureaisearchtesting`)
+- [ ] **W2 D2 `backend/indexing/index_service.py`** wrap REST as `IndexService` class(future SDK swap)
+- [ ] **W2 D2 schema diff check**(detect drift between in-code schema.json vs spec §3.6 JSON literal)
+- [ ] **W2+ Azure SDK swap**(`azure-search-documents`) when R8 corp proxy unblocks pip install
 - [ ] **Q9 CMK decision** before W7 production deploy
+- [ ] **W2 D5 versioning regression**(create v2 alongside v1 → switch → drop v1)— deferred to post-Gate-1 if needed
 
 ---
 

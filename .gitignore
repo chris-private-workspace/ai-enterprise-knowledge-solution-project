@@ -28,6 +28,11 @@ secrets/
 # 詳見 docs/setup.md §5 — credentials 應該 only live in .env (gitignored)
 docs/11-env-resources-detail/
 
+# Source sample documents (Drive Project user manuals — per Q2)
+# Large binaries (~36MB total), tracked separately by stakeholder
+# Path referenced in code/eval; folder existence + presence verified at runtime
+docs/06-reference/01-sample-doc/
+
 
 # ----------------------------------------------------------------------------
 # Reference Repositories(read-only,clone locally)

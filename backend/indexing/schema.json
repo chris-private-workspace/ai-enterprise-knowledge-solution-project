@@ -1,0 +1,51 @@
+{
+  "name": "ekp-kb-drive-v1",
+  "fields": [
+    {"name": "chunk_id", "type": "Edm.String", "key": true, "filterable": true, "retrievable": true, "searchable": false, "sortable": false, "facetable": false},
+    {"name": "kb_id", "type": "Edm.String", "filterable": true, "facetable": true, "retrievable": true, "searchable": false, "sortable": false},
+    {"name": "doc_id", "type": "Edm.String", "filterable": true, "facetable": true, "retrievable": true, "searchable": false, "sortable": false},
+    {"name": "doc_title", "type": "Edm.String", "searchable": true, "retrievable": true, "filterable": false, "sortable": false, "facetable": false},
+    {"name": "doc_format", "type": "Edm.String", "filterable": true, "facetable": true, "retrievable": true, "searchable": false, "sortable": false},
+    {"name": "chunk_index", "type": "Edm.Int32", "filterable": true, "sortable": true, "retrievable": true, "facetable": false},
+    {"name": "chunk_title", "type": "Edm.String", "searchable": true, "analyzer": "en.microsoft", "retrievable": true, "filterable": false, "sortable": false, "facetable": false},
+    {"name": "chunk_text", "type": "Edm.String", "searchable": true, "analyzer": "en.microsoft", "retrievable": true, "filterable": false, "sortable": false, "facetable": false},
+    {"name": "section_path", "type": "Collection(Edm.String)", "filterable": true, "facetable": true, "retrievable": true, "searchable": false, "sortable": false},
+    {"name": "embedded_images_json", "type": "Edm.String", "retrievable": true, "searchable": false, "filterable": false, "sortable": false, "facetable": false},
+    {"name": "prev_chunk_id", "type": "Edm.String", "retrievable": true, "searchable": false, "filterable": false, "sortable": false, "facetable": false},
+    {"name": "next_chunk_id", "type": "Edm.String", "retrievable": true, "searchable": false, "filterable": false, "sortable": false, "facetable": false},
+    {"name": "tags", "type": "Collection(Edm.String)", "filterable": true, "facetable": true, "retrievable": true, "searchable": false, "sortable": false},
+    {"name": "low_value_flag", "type": "Edm.Boolean", "filterable": true, "retrievable": true, "facetable": false, "searchable": false, "sortable": false},
+    {"name": "enabled", "type": "Edm.Boolean", "filterable": true, "retrievable": true, "facetable": false, "searchable": false, "sortable": false},
+    {"name": "source_url", "type": "Edm.String", "retrievable": true, "searchable": false, "filterable": false, "sortable": false, "facetable": false},
+    {"name": "ingested_at", "type": "Edm.DateTimeOffset", "filterable": true, "sortable": true, "retrievable": true, "facetable": false},
+    {
+      "name": "content_vector",
+      "type": "Collection(Edm.Single)",
+      "dimensions": 1024,
+      "vectorSearchProfile": "ekp-vector-profile",
+      "searchable": true,
+      "retrievable": false,
+      "filterable": false,
+      "sortable": false,
+      "facetable": false
+    }
+  ],
+  "vectorSearch": {
+    "profiles": [{"name": "ekp-vector-profile", "algorithm": "ekp-hnsw"}],
+    "algorithms": [{
+      "name": "ekp-hnsw",
+      "kind": "hnsw",
+      "hnswParameters": {"m": 4, "efConstruction": 400, "efSearch": 500, "metric": "cosine"}
+    }]
+  },
+  "semantic": {
+    "configurations": [{
+      "name": "ekp-semantic-config",
+      "prioritizedFields": {
+        "titleField": {"fieldName": "chunk_title"},
+        "prioritizedContentFields": [{"fieldName": "chunk_text"}],
+        "prioritizedKeywordsFields": [{"fieldName": "tags"}]
+      }
+    }]
+  }
+}

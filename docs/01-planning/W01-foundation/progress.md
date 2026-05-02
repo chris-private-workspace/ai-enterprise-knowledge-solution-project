@@ -277,6 +277,62 @@ status: in-progress
 
 ---
 
+## Day 4 — 2026-05-02
+
+> Status: **F9 Path A executed** — Q2 sample manuals 到位 + F9 Azure AI Search index 創建 success(C03 first-touch shifted from W2 D1 → W1 D4 because Q3 unblocked early)。
+
+### Done
+
+**Q2 Sample Inventory**(R10 partial unblock):
+- 6 .docx Drive Finance modules uploaded to `docs/06-reference/01-sample-doc/`:AR / AP / FA / CB / GL / BM(380KB-10.6MB,total ~36MB)
+- F6 inspector script run on all 6 → Q17/Q18 finding:
+  - **Heading style coverage ~3% only**(< 5%)— Drive manuals 用 hardcoded font size 多過 Heading style → C01 ingestion 設計 implication:layout-aware chunker 唔可以單靠 Heading style detect section,需 fallback to font-size heuristic 或 visual layout
+  - **890 embedded images aggregate**(868 PNG + 18 SVG + 4 EMF)— PNG dominant ✅,EMF(4)需要 Pillow conversion path(per C01 design note §4 edge case)
+  - 6 docs total **5009 paragraphs + 156 tables**
+
+**F9 — Azure AI Search Index 創建**(C03 first-touch):
+- `backend/indexing/schema.json` extracted from spec §3.6(18 fields + HNSW + semantic config,literal source-of-truth for index lifecycle)
+- `scripts/create_index.py` REST CLI(stdlib only — `urllib.request` per C03 design;no SDK / pip dep,bypass R8 corp proxy)
+  - Subcommands:`create` / `get` / `delete --yes`
+  - Minimal `.env` loader(no python-dotenv dep)
+  - Reads `AZURE_SEARCH_ENDPOINT` + `AZURE_SEARCH_ADMIN_KEY`
+- `python -m scripts.create_index create` → **HTTP 201** ✅(2026-05-02 14:xx local)
+- `python -m scripts.create_index get` → 18 fields + ekp-vector-profile + ekp-semantic-config ✅
+- C03 design note bumped `v0-draft → v1-active`(per CC-5)
+- ruff check ✅ + ruff format ✅ + compileall ✅
+
+### Decisions
+
+- **Schema literal as `backend/indexing/schema.json`**(non Python dict in `schemas.py`)— easier diff against spec §3.6 JSON,單一 source of truth,W2 schema validation 可以 direct compare
+- **API version `2024-07-01`** stable GA(non preview)— preview API 對 Tier 1 唔需要,stable 更穩定
+- **`.env` loader minimal stdlib**(non python-dotenv)— avoid R8 corp proxy block;`os.environ.setdefault` 唔覆蓋 shell-set vars
+- **C03 status v0-draft → v1-active**(per CC-5)— design contract validated by real Azure AI Search creation,18 fields + HNSW + semantic config 全部 match;W2 D2 加 `IndexService` wrap class 後可 v1-active → v2-stable
+
+### Blockers(updated)
+
+- 🟡 **R10 Q2 sample**:partial unblock(F6 / Q17 / Q18 cleared);F8 Docling parser 仍 pending W2 D2(plan 內順序)
+- 🔴 **R8 Ricoh corp proxy on PyPI**:仍 active,F2 pytest + F7 unit tests 仍 deferred — but R8 mitigation 證明可用 pure stdlib 路徑(F9 today demo)
+- 🚫 **Q3 outstanding minor**:tier + region 仍 awaiting Chris confirm(non-blocking,index already created)
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| Q2 sample inventory + F6 run | 0.5(Q2 unblock arrived)| 0.3 | -0.2h | Inspector pre-built W1 D1 |
+| Schema literal extract | 0.5 | 0.3 | -0.2h | Direct copy from spec |
+| `create_index.py` impl | 1 | 0.7 | -0.3h | stdlib clean |
+| Index creation + verify | 0.3 | 0.2 | -0.1h | First try success |
+| C03 design note bump + planning artifact updates | 0.5 | 0.3 | -0.2h | — |
+| **Total D4 Path A** | **2.8** | **1.8** | **-1h** | Path A faster than estimated |
+
+### Commits(this turn)
+
+| Hash | Subject |
+|---|---|
+| `(this commit)` | feat(c03): create AI Search index ekp-kb-drive-v1 via REST CLI (F9) |
+
+---
+
 ## Retro(寫於 phase 結束 W1 D5 / 2026-05-04)
 
 ### What worked

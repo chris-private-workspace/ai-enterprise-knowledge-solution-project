@@ -105,13 +105,15 @@ last_updated: 2026-04-30
 - [ ] Parse 5 sample,extract heading-aware sections + embedded image inventory + table structure
 - [ ] Sanity check report output
 
-## F9 — Azure AI Search index 創建
+## F9 — Azure AI Search index 創建 ✅
 
-- [ ] **BLOCKED on Q3** — resource detail(name + region + tier + admin key)入 `.env`
-- [ ] Index schema match `architecture.md §3.6`
-- [ ] HNSW vectorSearch profile
-- [ ] Semantic config
-- [ ] Index 創建 success(`az search` CLI or SDK script)
+- [x] **W1 D2** Q3 endpoint + admin key delivered to root `.env`(commit `09138d4`)
+- [x] **W1 D4(2026-05-02)** `backend/indexing/schema.json` extracted as spec §3.6 JSON literal
+- [x] HNSW vectorSearch profile `ekp-vector-profile`(m=4 efConstruction=400 efSearch=500 cosine)— in schema
+- [x] Semantic config `ekp-semantic-config` — in schema
+- [x] `scripts/create_index.py` REST CLI(stdlib `urllib.request`,no SDK / pip dep — bypass R8 corp proxy)
+- [x] Index 創建 success:`python -m scripts.create_index create` → HTTP 201(2026-05-02);GET verify → 18 fields + ekp-vector-profile + ekp-semantic-config ✅
+- [x] C03 design note `v0-draft → v1-active`(per CC-5)
 
 ## F10 — Embedding pipeline first-pass
 
