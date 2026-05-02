@@ -39,7 +39,7 @@ status: closed          # in-progress | closed
 ### Commits
 | Hash | Subject |
 |---|---|
-| `(this commit)` | chore(bugfix): open BUG-001 langfuse health degradation (Sev3 triaged) |
+| `c4473b2` | chore(bugfix): open BUG-001 langfuse health degradation (Sev3 triaged) |
 
 ---
 
@@ -83,7 +83,7 @@ status: closed          # in-progress | closed
 | Hash | Subject |
 |---|---|
 | `c4473b2` | chore(bugfix): open BUG-001 langfuse health degradation (Sev3 triaged) |
-| `(this commit pending)` | chore(bugfix): BUG-001 investigation — root cause confirmed (zombie + orphan deadlock) |
+| `9f20236` | chore(bugfix): BUG-001 investigation — root cause confirmed |
 
 ---
 
@@ -124,7 +124,7 @@ status: closed          # in-progress | closed
 |---|---|
 | `c4473b2` | chore(bugfix): open BUG-001 langfuse health degradation (Sev3 triaged) |
 | `9f20236` | chore(bugfix): BUG-001 investigation — root cause confirmed |
-| `(this commit pending)` | chore(bugfix): BUG-001 Path A executed — orphan removed, zombie escalates Path B |
+| `e815556` | chore(bugfix): BUG-001 Path A executed — orphan removed, zombie escalates Path B |
 
 ---
 
@@ -165,7 +165,7 @@ status: closed          # in-progress | closed
 | `c4473b2` | chore(bugfix): open BUG-001 langfuse health degradation (Sev3 triaged) |
 | `9f20236` | chore(bugfix): BUG-001 investigation — root cause confirmed |
 | `e815556` | chore(bugfix): BUG-001 Path A executed — orphan removed, zombie escalates Path B |
-| `(this commit pending)` | fix(c07): BUG-001 closed — Path B recovery verified, R11 closed |
+| `10be96d` | fix(c07): BUG-001 closed — Path B recovery verified, R11 closed |
 
 ---
 

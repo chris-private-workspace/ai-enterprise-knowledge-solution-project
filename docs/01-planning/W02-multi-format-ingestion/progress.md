@@ -83,7 +83,7 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 
 | Hash | Subject |
 |---|---|
-| `(this commit)` | chore(bugfix): open BUG-001 langfuse health degradation (Sev3 triaged) |
+| `c4473b2` | chore(bugfix): open BUG-001 langfuse health degradation (Sev3 triaged) |
 
 ---
 
