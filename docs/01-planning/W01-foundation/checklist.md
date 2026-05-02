@@ -162,7 +162,7 @@ last_updated: 2026-05-02
 - [x] `progress.md` retro section written **W1 D5 early closeout 2026-05-02**(D4 draft → D5 final fill compressed same-day per Chris session decision)
 - [x] `progress.md` frontmatter status flipped to `closed`(D5 closeout commit)
 - [x] Phase W02 kickoff trigger noted in retro(W02 plan flipped status `draft → active` D5 closeout commit)
-- [x] **D5 early closeout cross-cutting**(this commit):
+- [x] **D5 early closeout cross-cutting**(commit `dc7e37f`):
   - Q3 full Resolved(tier Standard S1 + region eastus2 confirmed by Chris)→ R4 sync `decision-form.md`
   - R8 P1 retest 2026-05-02 → confirmed still blocked,同 W1 D2 同樣 `IncompleteRead(0 bytes read)` pattern → carry to W2 F10
   - G3 Langfuse health degradation NEW finding → W2 carry-over for Chris triage(候選 BUG-001 Sev3)

@@ -35,7 +35,7 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 
 **Commits relevant**:
 - `0468040` — `chore(planning): W1 D5 prep — retro draft + W02 kickoff (status=draft)`
-- `(this commit)` — `docs(planning): W1 closeout retro + W02 plan status=active`
+- `dc7e37f` — `docs(planning): W1 closeout retro + W02 plan status=active`
 
 ---
 

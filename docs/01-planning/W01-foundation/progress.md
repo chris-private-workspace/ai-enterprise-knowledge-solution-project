@@ -230,7 +230,7 @@ status: closed
 | Block C Journal Day 3(noon)| 1 | 0.5 | -0.5h | Closure simple |
 | **Design Note Batch 1**(CC-5 update + 5 backend notes) | 5 | 3.5 | -1.5h | Maturity-first ordering helped;clear spec sections speed |
 | **Design Note Batch 2**(6 forward-looking notes) | 8 | 5 | -3h | Spec ref 完整,template-driven |
-| **Final Closeout**(this commit) | 0.5 | 0.5 | 0 | — |
+| **Final Closeout**(commit `85d5b76`) | 0.5 | 0.5 | 0 | — |
 | **Total D3 (revised)** | **19.5** | **13.5** | **-6h** | Massive structural day,11/12 design notes shipped |
 
 ### Done(afternoon — Design Note Batch per Chris W1 D3 update)
@@ -273,7 +273,7 @@ status: closed
 | `99ebf0c` | docs(planning): W1 D3 journal + checklist tick — component spine |
 | `7737069` | docs(catalog): batch 1 — 5 backend component design notes (v0-draft) |
 | `6b5660a` | docs(catalog): batch 2 — 6 forward-looking design notes (v0-draft) |
-| `(this commit)` | docs(planning): W1 D3 final closeout — 11/12 design notes complete |
+| `85d5b76` | docs(planning): W1 D3 final closeout — 11/12 design notes complete |
 
 ---
 
@@ -339,7 +339,7 @@ status: closed
 
 | Hash | Subject |
 |---|---|
-| `(this commit)` | docs(planning): W1 closeout retro + W02 plan status=active |
+| `dc7e37f` | docs(planning): W1 closeout retro + W02 plan status=active |
 
 ---
 
@@ -395,7 +395,7 @@ status: closed
 
 | Hash | Subject |
 |---|---|
-| `(this commit)` | feat(c03): create AI Search index ekp-kb-drive-v1 via REST CLI (F9) |
+| `349c33e` | feat(c03): create AI Search index ekp-kb-drive-v1 via REST CLI (F9) |
 
 ---
 
@@ -469,7 +469,7 @@ status: closed
 
 ### Phase status(2026-05-02 early closeout)
 
-- Closeout commit:`(this commit)` `docs(planning): W1 closeout retro + W02 plan status=active`
+- Closeout commit:`dc7e37f` `docs(planning): W1 closeout retro + W02 plan status=active`
 - Frontmatter status flipped to `closed`:✅ `status: in-progress → closed`
 - Phase W02 kickoff trigger:✅ W02 plan flipped `status: draft → active`(Chris 2026-05-02 evening sign-off);W2 D1 = 2026-05-05 Tue 按 plan 啟動 implementation per PROCESS.md §2.3 daily execution lifecycle
 
