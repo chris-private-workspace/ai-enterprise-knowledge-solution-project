@@ -34,9 +34,15 @@ def test_query_stream_route_registered_returns_501() -> None:
     assert response.status_code == 501
 
 
-def test_kb_list_route_registered_returns_501() -> None:
+def test_kb_list_route_returns_empty_in_memory() -> None:
+    """W1 D2 F7 (commit c6ca6e3) replaced 501 stub with in-memory KB CRUD.
+
+    GET /kb returns 200 with empty list when no KBs created. W2 D1 swap to
+    Azure-backed backend per W02 plan F1 dependency.
+    """
     response = client.get("/kb")
-    assert response.status_code == 501
+    assert response.status_code == 200
+    assert response.json() == []
 
 
 def test_eval_run_route_registered_returns_501() -> None:
