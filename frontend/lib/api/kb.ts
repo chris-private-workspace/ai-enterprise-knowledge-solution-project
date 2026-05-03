@@ -1,0 +1,62 @@
+/**
+ * Typed KB API methods (per architecture.md §4.4 #6-#11 + §4.5 KbConfig schema).
+ *
+ * W2 D5 F9 baseline: list + get + patch settings + upload doc. Other endpoints
+ * (chunks toggle, drop, etc.) deferred to W3+.
+ */
+
+import { ApiClient } from '../api-client';
+
+const client = new ApiClient();
+
+export interface KbConfig {
+  embedding_model: string;
+  embedding_dimension: number;
+  chunk_strategy: 'heading_aware' | 'layout_aware' | 'slide_based' | 'auto';
+  default_top_k: number;
+  default_rerank_k: number;
+}
+
+export interface FailureRecord {
+  doc_id: string;
+  stage: string;
+  error: string;
+}
+
+export interface KbStatus {
+  kb_id: string;
+  name: string;
+  description: string;
+  config: KbConfig;
+  total_documents: number;
+  total_chunks: number;
+  total_screenshots: number;
+  failed_documents: FailureRecord[];
+  last_indexed_at: string;
+  storage_size_mb: number;
+}
+
+export const kbApi = {
+  list: (): Promise<KbStatus[]> => client.get<KbStatus[]>('/kb'),
+
+  get: (kbId: string): Promise<KbStatus> => client.get<KbStatus>(`/kb/${kbId}`),
+
+  patchSettings: (kbId: string, config: Partial<KbConfig>): Promise<KbStatus> =>
+    client.patch<KbStatus>(`/kb/${kbId}/settings`, config),
+
+  uploadDoc: async (kbId: string, file: File): Promise<{ doc_id: string }> => {
+    const form = new FormData();
+    form.append('file', file);
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'}/kb/${kbId}/documents`,
+      {
+        method: 'POST',
+        body: form,
+      },
+    );
+    if (!response.ok) {
+      throw new Error(`upload failed: ${response.status} ${await response.text()}`);
+    }
+    return response.json() as Promise<{ doc_id: string }>;
+  },
+};

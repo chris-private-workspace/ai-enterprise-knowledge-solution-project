@@ -76,31 +76,36 @@ last_updated: 2026-05-03
 
 ## F7 — Gate 1 evaluation(Recall@5 ≥ 80%)★ HARD GATE
 
-- [ ] `backend/eval/runner.py` invoke C04 retrieval against 30-query eval set
-- [ ] Compute Recall@5 per query + aggregate
-- [ ] `backend/eval/gates.py` Gate 1 decision logic(R@5 ≥ 80% threshold)
-- [ ] Generate `reports/gate1_w2.yaml` per-query + aggregate result
-- [ ] **Gate 1 verdict**:pass / fail recorded in W2 progress.md retro
-- [ ] If fail → trigger W2 末 retro analysis(chunk strategy / index config / query mismatch root cause)
-- [ ] Update `components/C06-eval.md` status `v0-draft → v1-active`
+- [x] `backend/eval/runner.py` ✅ EvalRunner async loads YAML eval set + invokes RetrievalEngine + computes recall@5 per query;dual-mode strict (validated chunk_ids) + keyword fallback (placeholder eval-set v0)
+- [x] Compute Recall@5 per query + aggregate(non-OOS only;errored excluded)
+- [x] `backend/eval/gates.py` ✅ Gate 1 decision logic(`gate1_recall_at_5(report) → GateDecision` with threshold 0.80,note flags errored / keyword-mode / FAIL guidance)
+- [x] `report_to_yaml()` serializer ready for `reports/gate1_w2.yaml`
+- [ ] **DEFERRED Gate 1 verdict** ★ live run blocked R8 active VPN(4 periodic probes returned 000)— scripts ready,run order:(1)populate via `run_populate_sanity` (2)discover_chunk_ids (3)eval via runner;verdict commit message format `docs(planning): W02 Gate 1 verdict — R@5 = X.XX (pass/fail)`
+- [x] Fail-path framework: gates.py `note` includes failure root cause hints(chunk strategy reference,low_value 67.2% rate)
+- [x] Update `components/C06-eval.md` status `v0-draft → v1-active`(per CC-5)— pending W2 closeout commit
 
 ## F8 — F11 ground truth fill(carry-over from W1)
 
-- [ ] `scripts/discover_chunk_ids.py` helper(query populated index,find chunk_id for each eval query expected_answer)
-- [ ] Chris(SME)review + validate 30 main queries → mark `annotation.validated: true`
-- [ ] Replace placeholder chunk_id with real ones from `ekp-kb-drive-v1`
-- [ ] `docs/eval-set-v1.yaml`(rename from v0)
-- [ ] `python -m scripts.validate_eval_set docs/eval-set-v1.yaml` → exit 0
+- [x] `scripts/discover_chunk_ids.py` ✅ helper script ready(top-K candidates per query → SME review report `reports/w02_d5_chunk_id_candidates.yaml`)
+- [ ] **DEFERRED** Chris(SME)review + validate 30 main queries → mark `annotation.validated: true`(cascade post-VPN-disconnect populate + chunk_id discovery run)
+- [ ] **DEFERRED** Replace placeholder chunk_id with real ones from `ekp-kb-drive-v1`
+- [ ] **DEFERRED** `docs/eval-set-v1.yaml`(rename from v0)
+- [ ] **DEFERRED** `python -m scripts.validate_eval_set docs/eval-set-v1.yaml` → exit 0
+- **Note**:F7 keyword-fallback mode 已 designed 為 enable Gate 1 measurement WITHOUT first SME-validating chunk_ids;strict-mode swap-in once eval-set-v1.yaml lands
 
 ## F9 — Admin Console KB views(C09 first-touch)
 
-- [ ] View 2 `/admin` overview component:aggregate KB stats(GET /kb count + total chunks)
-- [ ] View 3 `/admin/kb` KB list with shadcn DataTable + TanStack Query useQuery hook
-- [ ] View 4 `/admin/kb/[id]` KB detail page + KbConfig form
-- [ ] View 4 PATCH wire to `PATCH /kb/{id}/settings`(C02 + C08)
-- [ ] View 5 `/admin/kb/[id]/upload` multipart form to C01 ingestion endpoint
-- [ ] pnpm lint + type-check clean
-- [ ] Update `components/C09-admin-ui.md` status `v0-draft → v1-active`
+- [x] View 2 `/admin` ✅ overview component aggregates KB stats(GET /kb list reduced to total KBs / Documents / Chunks via TanStack useQuery)
+- [x] View 3 `/admin/kb` ✅ KB list with **plain table**(W2 baseline;shadcn DataTable migration deferred to W3 D5 F8 polish window per Karpathy §1.2)+ TanStack Query
+- [x] View 4 `/admin/kb/[id]` ✅ KB detail page + KbConfig form(embedding_model / dim / chunk_strategy / top_k / rerank_k)
+- [x] View 4 PATCH wire ✅ via `kbApi.patchSettings()` + useMutation
+- [x] View 5 `/admin/kb/[id]/upload` ✅ multipart form to `/kb/{id}/documents`
+- [x] `frontend/app/admin/layout.tsx` shared sidebar nav + QueryProvider context
+- [x] `frontend/lib/api/kb.ts` typed API methods(KbConfig + KbStatus + FailureRecord interfaces)
+- [x] `frontend/lib/api-client.ts` extended with `patch()` method
+- [x] `frontend/lib/providers/query-provider.tsx` TanStack QueryClient setup
+- [x] **pnpm type-check clean** + **pnpm lint clean**(no ESLint warnings/errors)
+- [ ] **DEFERRED** Update `components/C09-admin-ui.md` status `v0-draft → v1-active`(W3 D5 F8 Pipeline wizard 一齊 polish)
 
 ## F10 — F2 + F7 unit tests retry(carry-over from W1,depends R8)
 
@@ -113,11 +118,11 @@ last_updated: 2026-05-03
 
 ## F11 — W2 末 retro + W3 kickoff prep
 
-- [ ] W02 progress.md retro section completed(per `_templates/phase/progress.md.tpl`)
-- [ ] Gate 1 verdict explicit + analysis if fail
-- [ ] W03 phase folder mkdir + plan.md draft(per PROCESS.md §2.3 kickoff lifecycle)
-- [ ] W03 carry-overs documented
-- [ ] W02 progress.md frontmatter status flipped to `closed`
+- [x] W02 progress.md retro section ✅ draft completed(What worked / didn't work / Surprises / Carry-overs C1-C8 / ADR triggers / Phase Gate result table with G1 PENDING)
+- [ ] **DEFERRED** Gate 1 verdict explicit + analysis if fail(awaits live run)
+- [x] W03 phase folder ✅ `docs/01-planning/W03-chat-retrieval-citation/` mkdir + `plan.md` draft(10 deliverables F1-F10:Cohere Rerank + GPT-5.5 + SSE streaming + Chat UI + PPT parser + Pipeline wizard + Settings tab)+ `checklist.md` derive + `progress.md` Day 0 entry
+- [x] W03 carry-overs documented(C1-C8 in W02 retro § Carry-overs to W03)
+- [ ] **DEFERRED** W02 progress.md frontmatter status flipped to `closed`(awaits Gate 1 verdict + Chris signoff)
 
 ---
 

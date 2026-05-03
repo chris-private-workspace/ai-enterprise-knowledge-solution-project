@@ -531,35 +531,188 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 
 ## Day 5 — 2026-05-07 (Thu)
 
-_(同上 + retro draft 開始)_
+> Note:呢個 entry 喺 2026-05-03 Sun 晚 D4 完工後 same-session 完成 D5 work。D5 calendar date 仍 2026-05-07 per Option A shifted plan。R8 active VPN throughout session blocked Gate 1 live run;framework + scripts ready,verdict deferred to user's next post-VPN-disconnect window。
+
+### Done
+
+**F7 Eval framework + F8 chunk_id discovery + F9 Admin UI + F11 retro + W3 kickoff prep delivered**:
+
+#### F7 — Gate 1 evaluation framework(live run deferred R8)
+
+- F7.a — `backend/eval/{__init__.py, runner.py, gates.py}`:
+  - `EvalRunner.run(eval_set_path) → EvalReport` async loads YAML + invokes RetrievalEngine
+  - **Dual recall mode auto-selection**:`strict`(validated chunk_ids,non-placeholder)vs `keyword` fallback(placeholder chunk_ids in eval-set-v0)
+  - Strict mode:Recall@5 = |retrieved ∩ acceptable| / |acceptable|
+  - Keyword mode:Recall@5 = |found_keywords| / |expected_keywords|(case-insensitive substring search across top-5 chunk_text)
+  - OOS queries(expected_refusal=true)excluded from aggregate
+  - Per-query error path:caught + recorded,excluded from aggregate
+  - `gate1_recall_at_5(report) → GateDecision` with threshold 0.80(W3 promotion gate per architecture.md §6.3)
+  - `report_to_yaml()` serializer ready for `reports/gate1_w2.yaml`
+- F7.b — `backend/tests/test_eval_runner.py` 11 tests pass:
+  - keyword mode placeholder detection / partial match / strict mode for validated / OOS exclusion / per-query error / gate1 above-threshold pass / below-threshold fail / exactly-at-threshold pass / errored-queries warning note / report YAML round-trip / zero-keywords-match recall=0
+
+#### F8 — chunk_id discovery helper
+
+- F8.a — `scripts/discover_chunk_ids.py`:
+  - Iterates eval-set-v0.yaml queries(skip OOS)
+  - Top-K=8 retrieval per query → emit candidates per query for SME(Chris)review
+  - Output:`reports/w02_d5_chunk_id_candidates.yaml` with chunk_id + doc_id + section_path + chunk_title + score + chunk_text_preview
+  - Live run **DEFERRED**(R8 active);post-VPN-disconnect immediate
+  - F8 SME validation cascade:Chris reviews → picks acceptable_chunk_ids → bumps eval-set-v0.yaml → eval-set-v1.yaml `annotation.validated: true`
+
+#### F9 — Admin Console KB views(static frontend)
+
+- `frontend/lib/api/kb.ts` — typed API methods(`kbApi.list/get/patchSettings/uploadDoc`)+ KbConfig + KbStatus + FailureRecord TypeScript interfaces
+- `frontend/lib/api-client.ts` — extended with `patch()` method
+- `frontend/lib/providers/query-provider.tsx` — TanStack QueryClient ('use client')
+- `frontend/app/admin/layout.tsx` — shared sidebar nav(Overview / Knowledge Bases / Eval Console)+ QueryProvider context wrap
+- `frontend/app/admin/page.tsx`(View 2)— Overview with aggregate KB stats(KBs / Documents / Chunks)from GET /kb list reduce
+- `frontend/app/admin/kb/page.tsx`(View 3)— KB list with **plain table**(shadcn DataTable migration deferred W3 D5 F8 polish per Karpathy §1.2)+ TanStack useQuery
+- `frontend/app/admin/kb/[id]/page.tsx`(View 4)— KB detail + KbConfig form + PATCH wire via useMutation + Failed Documents section + 3-stat summary
+- `frontend/app/admin/kb/[id]/upload/page.tsx`(View 5)— multipart upload form to `/kb/{id}/documents`(.docx/.pdf/.pptx)
+- **Frontend gates**:`pnpm type-check` clean + `pnpm lint` clean(no ESLint warnings/errors)
+- Layout reference Dify Image 4 sidebar pattern(no code copy per CLAUDE.md §7);EKP design tokens only(`oklch(0.42 0.04 260)` primary etc per `lib/theming/tokens.ts`)
+- Backend live data fetch will return 502/503 while R8 active — gracefully handled with error UI
+
+#### F11 — W2 retro draft + W3 kickoff prep
+
+- `docs/01-planning/W02-multi-format-ingestion/progress.md` retro section ✅:
+  - **What worked**(8 items):Docling SECTION_HEADER beats W1 D4 finding 2× / Tables-as-chunks per spec / doc_order interleaved walker / atomic-per-doc + image best-effort / httpx async REST consistent / mocked-test defensiveness / pyproject + import standardization / per-Day variance trending negative
+  - **What didn't work**(6 items):R8 reactivation pattern / R12 Azurite SDK signature mismatch / plan F2 estimate -85% vs actual / Bash cd persistence quirk / W1 stale test / F8 cascade block
+  - **Surprises**(7 items):TOC level=10 anomaly / H2→H4 jump / 14% intra-batch image dedup / Q19 implicit-decided / plan §5 「rough」 tolerance / keyword-mode fallback design / lifespan aenter/aexit pattern
+  - **Carry-overs to W03**(8 items):F7 live Gate 1 / F8 chunk_id discovery / R12 cloud defer / Q5 Cohere procurement / chunk count revision / R8 procedural mitigation / F9 W3 polish / low_value 67.2% Gate 1 risk
+  - **ADR triggers**:none required(all decisions spec-aligned or internal-pipeline);future candidates noted L3 routing + Cohere Path A vs B
+  - **Phase Gate result table**:G1 PENDING / G2 11/11 code-complete / G3 deferred / G4 6 sample code-complete / G5 backend clean + frontend clean post-F9 / G6 component bumps acceptable
+- `docs/01-planning/W03-chat-retrieval-citation/` ✅ created:
+  - `plan.md` 10 deliverables(F1 Cohere Rerank Q5 path A/B critical / F2 GPT-5.5 synthesis / F3 citation enrichment / F4 SSE streaming / F5 PPT parser / F6 Chat UI / F7 Screenshot modal / F8 Pipeline wizard / F9 Settings tab / F10 retro)+ §3 success criteria + §4 6 risks(R1 Q5 procurement / R2 hallucination / R3 SSE drift / R4 R8 W3 reactivation / R5 wizard scope creep / R6 PPT samples)
+  - `checklist.md` ~70 atomic items derived
+  - `progress.md` Day 0 prep entry initialized + Day 1-5 placeholders + retro template
+  - status=`draft`(active flip pending Gate 1 pass)
+
+#### Test suite + closeout
+
+- **Full backend test suite 75/75 pass**(8 API + 12 chunker + 7 embedder + **11 eval(NEW W2 D5)** + 11 orchestrator + 7 populate + 10 retrieval + 9 screenshots)
+- **Frontend type-check + lint clean**(F9 admin views)
+
+### Decisions / OQ Resolved
+
+- **Decision** — F7 dual recall mode(strict + keyword fallback)。Rationale:eval-set-v0 placeholder chunk_ids 唔 match real populated index;keyword fallback enables Gate 1 measurement BEFORE F8 SME validation cascade complete。Strict-mode automatic upgrade once eval-set-v1.yaml lands(Chris validates → annotation.validated=true → mode=strict)。**Tradeoff**:keyword recall 比 strict 略 noisy(false positives e.g. keyword "jam" 喺 unrelated context),but proxy good enough for 80% threshold sanity
+- **Decision** — F9 frontend 用 plain table + plain HTML form 而非 shadcn components for W2 baseline。Rationale:per Karpathy §1.2 simplicity first — shadcn install + theme integration 屬 polish work,W2 baseline scope cap;W3 D5 F8 Pipeline wizard polish window 一齊 swap to shadcn DataTable + Form。Functional UI 先,visual upgrade 後
+- **Decision** — F9 component status `C09-admin-ui.md` 暫不 bump v1-active(stays v0-draft per current state)。Rationale:CC-5 約定 status v1-active = scope substantially impl + design note reflects;F9 only delivers View 2-5 minimum scaffolding(4 of 8 architectural views per §5)。W3 D5 F8 Pipeline wizard land 後 一齊 bump
+- **Decision** — Gate 1 live run **deferred to post-VPN-disconnect window**(non same-session)。Rationale:R8 active throughout W2 D5(4 periodic curl probes 000),GlobalProtect VPN metric 1 default route preferred over home WiFi metric 50。User can run any time:`backend/.venv/Scripts/python.exe -m scripts.run_populate_sanity` then `backend/.venv/Scripts/python.exe -c "from eval.runner import EvalRunner; ..."`(or wrapped in dedicated script TBD)。Verdict commit format documented in retro
+- **Decision** — W02 phase status stays `in-progress` post W2 D5(NOT flipped to `closed`)until Gate 1 verdict obtained。Rationale:per phase lifecycle,closed = retro signed-off + gate verdict explicit;W2 D5 retro draft completed but Gate 1 verdict line is `PENDING`。Phase closes officially when verdict commit lands
+- **Decision** — W03 phase plan `status=draft`(NOT active)。Rationale:per architecture.md §6.3 hard gate,Gate 1 fail → HALT POC,W3 唔啟動。Status flip `draft → active` 同 Gate 1 pass verdict commit同步
+- **No new OQ resolved this entry**(Q5 Cohere procurement W3 D1 critical;Q15-21 仍 Open per W2 spread)
+
+### Blockers
+
+- 🔴 **R8 active VPN** — gates Gate 1 live run + populate + chunk_id discovery + frontend backend connectivity demo。**User action**:disconnect GlobalProtect VPN before next session;framework + scripts全部 ready
+- 🟡 **R12 Azurite SDK signature** — F3 Blob upload remains W7+ cloud defer
+- 🟡 **F2 chunker low_value 67.2% rate** — Gate 1 retrieval risk;若 verdict fail,W3 retro 重訪 mitigation
+- ✅ All other prerequisites cleared(F1-F11 code-complete + 75/75 tests pass + frontend lint clean)
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F7.a eval runner + gates framework | 4.0 | 1.5 | -2.5h | Dual-mode design clean;R@5 calculation simple |
+| F7.b eval unit tests | 1.5 | 1.0 | -0.5h | 11 tests covering both modes + Gate 1 thresholds |
+| F8.a discover_chunk_ids script | 1.0 | 0.5 | -0.5h | Reuses RetrievalEngine + httpx patterns |
+| F11 retro + W3 kickoff prep | 3.0 | 2.0 | -1.0h | W3 plan/checklist/progress drafts at light scope |
+| F9 Admin UI 4 views(F9 acceptance scope) | 8.0 | 3.0 | -5.0h | Plain HTML/Tailwind without shadcn install saved 4-5h;TanStack patterns straightforward |
+| F40 live populate + Gate 1(deferred)| 1.5 | 0 | -1.5h | R8 blocked → defer to user post-VPN session |
+| F42 Day 5 progress + checklist + commit | 1.5 | 1.5 | 0 | Comprehensive retro + checklist updates |
+| **Total D5** | **20.5** | **9.5** | **-11.0h** | F40 deferral + F9 scope cap (no shadcn) drove largest savings;framework code reuse |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| TBD this session | feat(c01,c04,c06,c08,c09): F7 eval framework + F8 chunk_id discovery + F9 Admin UI + F11 retro + W3 kickoff prep (W2 D5) |
 
 ---
 
-## Retro(填於 W2 D5 末 / 2026-05-07)
+## Retro(W2 D5 / 2026-05-07 — code-complete draft;Gate 1 verdict pending live run post-VPN-disconnect)
 
 ### What worked
-_(W2 D5 末 fill)_
+
+- **Docling SECTION_HEADER baseline > W1 D4 F6 raw style**:Docling 內部 visual layout heuristic 提供 ~7% (later ~8.9% post-empty-skip) heading coverage averaged on 6 samples,而 W1 D4 F6 raw Word style 只 ~3%。F1.c 原 plan 嘅 standalone font-size heuristic 變 verification-only(Karpathy §1.2 simplicity first)。
+- **Tables-as-chunks per spec §3.3**:單 chunk per table simplified design + matched architecture intent;plan §2 estimate 2000-3000 actual revised to ~329 chunks(per-row chunking 從來唔係 spec)。Decision documented + non plan deviation per CLAUDE.md §13 「spec wins」。
+- **Doc_order interleaved event stream**(F2 chunker design call):F1 parser refactor `paragraphs: list[ParagraphItem]` + `tables/embedded_images` 同 `doc_order` shared index → F2 chunker 用 single sorted event walker 處理 paragraphs/tables/images section_path inheritance 一次過;clean implementation。
+- **Atomic-per-doc + image best-effort separation**(F5 orchestrator):Embed failure = fatal,image upload failure = non-fatal。Rationale matches Gate 1 retrieval text-only dependency,允許 R12 Azurite defer 唔 block W2 baseline。
+- **httpx async REST 一致**(F4 embedder + F5 populate + F6 hybrid):全部用 httpx + tenacity retry + structlog event log,coding pattern reuse W2 D3 → D4 saved time(D4 -1.9h variance)。
+- **Mocked-test-first defensiveness**:R8/R12 active 期間,full suite 75/75 pass via AsyncMock + MagicMock 確保 code path correctness;live run 任何時候 VPN-off 即可 verify。
+- **Pyproject hygiene catch-up**(F2.a)+ **Import path standardization**(F2.f)— W2 D2 surfaced + fixed dual-import isinstance issue + ingestion package 唔喺 setuptools include。Surgical-fix per Karpathy §1.3。
+- **Per-Day variance trending negative**:D1 -3.5h,D2 +0.2h,D3 -2.9h,D4 -1.9h,D5 ?(pending live run)— framework / spec maturity + Docling/openai SDK API quality drove savings。
 
 ### What didn't work / unexpected friction
-_(W2 D5 末)_
+
+- **R8 reactivation pattern** — W2 D0 evening home-network mitigation cleared R8;但 D3 onwards GlobalProtect VPN re-connected metric 1 over home WiFi metric 50,SSL inspection 阻 Azure cloud TLS。Operational 教訓:每個 cloud-bound session 開始前 verify VPN state(curl + netstat -rn)。
+- **R12 Azurite SDK signature mismatch**(NEW):Azurite 3.35 npm latest + azure-storage-blob 12.20-12.28 全 fail SharedKey signature;debug 解析至 `/devstoreaccount1/devstoreaccount1/` canonicalized-resource path bug;`--skipApiVersionCheck` + `--loose` 全無效;deferred to W7+ cloud Azure Blob。
+- **Plan §2 F2 estimate 2000-3000 chunks vs actual 329**:plan 估計 implicit 假設 per-row table chunking,但 architecture §3.3 mandates per-table。實際 -85% chunks → low_value_rate 67.2%(token median 67 + p95 297 短 chunks dominant)。**Gate 1 R@5 ≥ 80% risk**:default filter `enabled eq true and low_value_flag eq false` 排除 67% chunks,可能影響 retrievable population。W3 retro 可考慮:lower threshold to 50t / disable filter for baseline / augment short chunks with section context。
+- **Bash `cd` persistence quirk** during W2 D2-D4 sessions — `cd backend && pytest` 改變 cwd,後續 `backend/.venv/Scripts/python.exe` 失效。Workaround:每個 cwd-sensitive command 確認 pwd 先;long-term solution:`cd ..` 之後 absolute paths。
+- **W1 test 1 stale assertion**(`/query` returns 501)— F6.c rewire 後 test 失敗 → updated to accept 200/502/503 envelope。Non-fatal but reminds test需要 evolve with prod code。
+- **F8 ground truth validation cascade**:plan original assumed F1+F2+F5 → real chunk_id discovery → SME validation 喺 W2 D5 完成。實際:F5 populate 仍 deferred R8 → F8 SME validation 仍 cascade-block。Mitigation:`scripts/discover_chunk_ids.py` 已 ready,Chris async work post VPN-disconnect。
 
 ### Surprises / discoveries
-_(W2 D5 末)_
+
+- **Docling section_header level=10 spurious "Table of Contents"** — 1 per doc,easy filter via `_HEADING_LEVEL_MAX = 5` (Word standard 1-5)
+- **Drive sample documents structure jump H2 → H4 skipping H3** at certain transitions,explaining all-depth-2 section_path observation in F2 sanity report
+- **Same image SHA256 dedup ratio ~14%** intra-batch on 6 sample manuals(1018 images / 872 unique)— validates SHA256 dedup design even before cross-doc cross-KB scenarios
+- **Q19 implicit-already-decided by W1 D4 index creation**:`ekp-kb-drive-v1` 已 1024d at HNSW config(commit `349c33e`)。Decision-form Q19 explicit resolution 喺 W2 D3 alignment with already-locked-by-spec dim。
+- **plan.md §5 day-by-day labeled "rough"** — Option A date shift (2-day-earlier) 完全 within 「rough」 tolerance,non plan changelog necessary at §5 level(but `start_date`/`end_date` frontmatter changed → §7 changelog entry per R3 binding rule)
+- **Eval keyword-mode fallback scoring** — F7 designed for placeholder eval-set v0,enables Gate 1 measurement WITHOUT first SME-validating chunk_ids cascade。Strict-mode swap-in once eval-set-v1.yaml lands。
+- **FastAPI lifespan + manual aenter/aexit** — async context manager spans request lifetime via app.state cleaner than per-request reconstruction(saved ~50ms cold start per /query)
 
 ### Carry-overs to W03-chat-retrieval-citation
-_(W2 D5 末)_
+
+| # | Item | Reason / Context |
+|---|---|---|
+| C1 | **F7 live Gate 1 eval** | R8 active VPN blocked W2 D5;`scripts/run_populate_sanity.py` + `backend/eval/runner.py` ready for post-VPN-disconnect immediate run。**Gate 1 verdict决定W3 active flip** — fail = HALT POC per architecture.md §6.3 |
+| C2 | **F8 chunk_id discovery + SME validation** | `scripts/discover_chunk_ids.py` ready;cascade after C1 populate complete + R8 cleared;Chris async work for `eval-set-v0.yaml → -v1.yaml` |
+| C3 | **R12 Azurite defer to W7+ cloud** | F3 blob upload disabled in W2 baseline orchestrator(uploader=None);W7+ cloud Azure Blob 真正 verification path |
+| C4 | **Q5 Cohere procurement Path A vs B** | W3 F1 D1 critical decision;Chris W2 D5 closeout 同步 trigger procurement Q5 status check |
+| C5 | **Plan §2 F2 chunk count estimate revised** | architecture §3.3 per-table chunk explicit;eval-set v0 expected_chunk_ids placeholder pattern still valid for F8 SME pass |
+| C6 | **R8 procedural mitigation per-session** | Each cloud-bound dev session start:verify VPN state via `netstat -rn` + `curl Azure-OpenAI-endpoint`;disconnect VPN if state confirmed corp-routed |
+| C7 | **F9 Admin Console KB views**(W2 D5 partial only;backend ready)| W3 D5 F8 Pipeline wizard 同步 polish all admin views;W2 closeout 留 F9 view 2-5 minimum scaffolding |
+| C8 | **F2 chunker low_value 67.2% rate Gate 1 risk** | Per Decision §:if Gate 1 fail,W3 retro 三 mitigation candidates(threshold 50t / disable filter / augment short chunks);keep watching |
 
 ### ADR triggers
-_(W2 D5 末)_
+
+- **None require ADR** — 全部 W2 decisions 屬 spec-aligned implementation OR internal pipeline型 decisions(non architectural change per CLAUDE.md §5.1 H1):
+  - F1 path-style Docling output mapping → spec-aligned
+  - F2 table-per-chunk → spec §3.3 explicit
+  - F3 `{sha256}.{ext}` blob_path collapse → honors spec §3 design intent over §4.6 template language
+  - F4 1024d MRL truncate → architecture §3.6 + §3.2 align
+  - F5 atomic-per-doc + image best-effort → architecture §3.5 + components/C01 §4 design intent
+  - F6 hybrid + filter clause → spec §3.6 explicit
+  - W2 D3 R12 deferral → infrastructure issue,not architecture
+- **Future ADR candidates**(W3+ if needed):
+  - L3 adaptive routing(Tier 1 stretch goal, W5 conditional)
+  - Cohere Path A vs B(if procurement-decision-driven path commits us to direct API patterns long-term)
 
 ### Phase Gate result(per plan.md §3)
-- **G1 Gate 1 R@5 ≥ 80%**:_(W2 D5 末 fill — pass/fail + value)_★ critical
-- G2-G6:_(W2 D5 末)_
+
+| # | Gate | Status | Note |
+|---|---|---|---|
+| **G1** | **R@5 ≥ 80% on 30-query eval set ★ HARD GATE** | ⚠️ **PENDING live run post-VPN-disconnect**(framework + scripts ready;keyword-mode fallback designed for placeholder chunk_ids) | If pass → W3 active flip;if fail → HALT POC per architecture.md §6.3 |
+| G2 | All 11 deliverables 完成 OR explicit defer | ✅ **11/11 code-complete**(F1-F11);F7 live + F8 SME validation explicit defer post-VPN-disconnect | Acceptable |
+| G3 | F11 ground truth ≥ 30 SME-validated | ⚠️ **Deferred** cascade post-C1 (live populate + chunk_id discovery)| Chris async work pending |
+| G4 | 6 sample 全 ingested | ✅ Code-complete via `scripts/run_populate_sanity.py`;**live populate pending VPN** | Acceptable per defer rationale |
+| G5 | Backend ruff + frontend lint 0 errors | ✅ Backend ruff clean;**frontend lint pending F9 admin views完成** | F9 W2 D5 partial — full pass at W3 末 |
+| G6 | Component design note status updated | ✅ C01 v1→v2-stable / C03 last_updated bump / C04 v0→v1-active / C06 v0→v1(post F7) / C09 v0(F9 partial)/ rest unchanged | Acceptable |
+
+**Gate 1 verdict will be appended to retro after live run completes**。Verdict commit message format:`docs(planning): W02 Gate 1 verdict — R@5 = X.XX (pass/fail)`。
 
 ### Phase status
-- Closeout commit:_(W2 D5 末)_
-- Frontmatter status flipped to `closed`:_(W2 D5 末)_
-- Phase W03 kickoff trigger:_(W2 D5 末)_
+
+- **Closeout commit**:pending Gate 1 verdict + W2 D5 retro signoff(this entry will be the basis;hash backfilled after closeout commit lands)
+- **Frontmatter status flip `in-progress → closed`**:pending Gate 1 verdict obtained AND Chris signoff
+- **Phase W03 kickoff trigger**:`docs/01-planning/W03-chat-retrieval-citation/{plan,checklist,progress}.md` already drafted W2 D5 same-session(status=draft until Gate 1 pass + W2 closeout sign-off)。Activation trigger = closeout commit referencing Gate 1 pass
+
+---
+
+**End of W02 progress retro draft**(W2 D5 same-session;Gate 1 live run + Chris signoff pending VPN disconnect)
 
 ---
 

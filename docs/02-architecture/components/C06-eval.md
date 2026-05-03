@@ -3,13 +3,13 @@ component: C06
 name: Eval Framework
 catalog_ref: ../COMPONENT_CATALOG.md#c06--eval-framework
 spec_refs: [eval-methodology.md, architecture.md §6.3, architecture.md §8.1, eval-set-v0.yaml]
-status: v0-draft
-last_updated: 2026-05-01
+status: v1-active
+last_updated: 2026-05-07
 ---
 
 # C06 — Eval Framework Design Note
 
-> **Status**:`v0-draft`(W1 D1 validator + 30 條 synthetic eval set scaffold ✅;RAGAs runner + LLM judge + gate logic 仍 forward-looking W2-W4)
+> **Status**:`v1-active`(W2 D5 2026-05-07:`backend/eval/{runner,gates}.py` delivered + 11 unit tests pass。Dual-mode recall@5(strict + keyword fallback)+ Gate 1 decision logic threshold 0.80。Live run deferred R8 active VPN — framework ready for post-disconnect verdict run。RAGAs full 4-metric + LLM judge 仍 forward-looking W4)
 >
 > **Owner**:AI(framework)+ Chris(SME labeler per Q14 self-assigned)
 
