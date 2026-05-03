@@ -13,15 +13,15 @@ last_updated: 2026-05-03
 
 ## F1 — Docling .docx parser PoC(carry-over from W1)
 
-- [ ] **R8 ops decision**:Chris confirm Docling install path(VPN/hotspot for pip install OR fallback python-docx)
-- [ ] `backend/ingestion/__init__.py` package marker
-- [ ] `backend/ingestion/parsers/__init__.py`
-- [ ] `backend/ingestion/parsers/base.py` — Parser Protocol + `ParserResult` dataclass
-- [ ] `backend/ingestion/parsers/docx_parser.py` — Docling-based(or python-docx fallback)
-- [ ] **Heading style ~3% finding mitigation**:font-size heuristic detect section boundary(per W1 D4 F6 finding)
-- [ ] Run on 6 sample manuals(`docs/06-reference/01-sample-doc/`)→ extract heading-aware sections + image inventory + table structure
-- [ ] Sanity check report:per-doc parse success / fail + section count / image count / table count
-- [ ] Update `components/C01-ingestion.md` status `v0-draft → v1-active`(per CC-5)
+- [x] **R8 ops decision** ✅ closed 2026-05-03(home network P1 mitigated,non VPN/hotspot;Docling pip installed)
+- [x] `backend/ingestion/__init__.py` package marker
+- [x] `backend/ingestion/parsers/__init__.py`
+- [x] `backend/ingestion/parsers/base.py` — Parser Protocol + `ParserResult` dataclass(+ Heading / EmbeddedImage / Table dataclasses)
+- [x] `backend/ingestion/parsers/docx_parser.py` — Docling-based(`DoclingDocxParser` class implementing `Parser` Protocol)
+- [x] **Heading style ~3% finding mitigation** ✅ via Docling SECTION_HEADER visual layout heuristic(no standalone font-size code needed — F1 acceptance "OR visual layout heuristic" satisfied;6.3% coverage averaged on 6 sample = 2× W1 F6 raw style baseline)
+- [x] Run on 6 sample manuals(`docs/06-reference/01-sample-doc/`)→ extract heading-aware sections + image inventory + table structure(`scripts/run_docx_parser_sanity.py`)
+- [x] Sanity check report ✅ `reports/w02_d1_docx_parser_sanity.yaml`(0 failures,217 headings,1018 images,156 tables across 6 docs)
+- [x] Update `components/C01-ingestion.md` status `v0-draft → v1-active`(per CC-5)
 
 ## F2 — Layout-aware chunker
 

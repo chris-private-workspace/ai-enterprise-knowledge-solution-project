@@ -165,13 +165,57 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 
 ## Day 1 — 2026-05-03 (Sun)
 
-_(待 W2 D1 起填 — date shifted 2 days earlier per plan changelog 2026-05-03)_
-
 ### Done
+
+**F1 Docling .docx parser PoC delivered(F1.a–F1.e all closed)**:
+- F1.a — Ingestion package skeleton:`backend/ingestion/{__init__.py, parsers/__init__.py, parsers/base.py}`,base.py 定義 `Parser` Protocol + `ParserResult` / `Heading` / `EmbeddedImage` / `Table` dataclasses(per C01 §1 §2 contract)
+- F1.b — `DoclingDocxParser` 實作 `Parser` Protocol(`backend/ingestion/parsers/docx_parser.py`),用 Docling `DocumentConverter` 處理 6 sample,提取 SECTION_HEADER(level 2/3/4,filter level=10 TOC anomaly)+ pictures(SHA256 dedup hash 內 parser 計)+ tables(via `export_to_dataframe`)
+- F1.c — **Re-scoped to verification(non-implementation)**:Probe Docling output 後發現 SECTION_HEADER detection 已經內部用 visual layout heuristic(font-size + bold + visual cues),全 6 sample 平均 6.3% coverage(level 2/3/4 hierarchy 完整)= W1 D4 F6 raw Word style baseline 3% 嘅 2 倍。F1 acceptance 寫「chunker 必須 add font-size heuristic OR visual layout heuristic」,Docling 已滿足「OR」branch,**唔需要 standalone font-size heuristic code**(per Karpathy §1.2 Simplicity First — 唔重複 Docling 內部嘅工)。
+- F1.d — Sanity script(`scripts/run_docx_parser_sanity.py`)+ report(`reports/w02_d1_docx_parser_sanity.yaml`):
+  - 6/6 docs parse clean(0 failures)
+  - 3,469 paragraphs total,217 headings(6.3% aggregate coverage)
+  - 1,018 embedded images(872 unique SHA256 = ~14% same-doc dedup opportunity for F3 uploader)
+  - 156 tables structured
+  - 36.99 MB total image bytes
+  - Level distribution {2: 41, 3: 24, 4: 152} consistent across 6 docs
+- F1.e — `components/C01-ingestion.md` status `v0-draft → v1-active`(per CC-5);Open Items §8 同步更新 — R8/R10/F1 marked closed,新加 R7 DrawingML follow-up
+
+**Pre-existing finding observed**:
+- DrawingML elements(SmartArt / charts)warning logged by Docling — needs LibreOffice for extract,W2 baseline 暫不處理(per architecture R7 edge case);若 Gate 1 retrieval 顯示 SmartArt-rich pages 漏掉,W3+ 加 LibreOffice integration
+- `raw_text` length aggregate ~95K chars across 6 docs(~24K tokens)= ~50 chunks at 500-token budget;比 plan §2 F2 estimated 2000-3000 chunks 細好多 ★ **F2 chunker design 需要決定 table cells 點 contribute to chunk count**(table cells 唔喺 raw_text;156 tables × ~10 rows = 可能 1500+ table-row chunks 如果按 row split)— W2 D2 chunker design 第一個 design call
+
 ### Decisions / OQ Resolved
+
+- **Decision** — F1.c font-size heuristic re-scoped to verification(Docling visual layout heuristic adequate)。Rationale documented in W2 D1 progress(this entry)+ checklist F1 + C01-ingestion.md §8。Per F1 acceptance「OR」branch,non plan deviation(plan changelog 不需新 entry)
+- **Decision** — F1 parser Protocol uses sync `parse()` method,non async。理由:parser 係 CPU/IO-bound(zipfile + XML),orchestrator 將會用 `asyncio.to_thread` wrap。CLAUDE.md §3.1「Async by default」strict rule 適用 FastAPI / httpx / Azure SDK,內部 CPU-bound 用 sync 較 simple
+- **Decision** — `ParserResult` 用 `@dataclass(slots=True)` 而非 Pydantic BaseModel。理由:internal pipeline 中間型別,non API boundary;CLAUDE.md §3.1「Pydantic v2 for all schemas」suffix `(see backend/api/schemas/)` 指 API schemas;dataclass 更輕。`ChunkRecord`(F5 emit)會用 Pydantic
+- **Decision** — `EmbeddedImage.position` / `Heading.anchor` 採用 ordinal string(`t{idx}` / `img{idx}` / `tbl{idx}`)而非 paragraph element ref。理由:F2 chunker 主要靠 document-order index 做 layout-aware chunk,ordinal 已 sufficient + stable per parse run
+- **No OQ resolved this entry**(Q19 embedding dim 仍 W2 D3 decide)
+
 ### Blockers
+
+- 🟡 **F2 chunker table cells handling**:Plan §2 F2 estimated 2000-3000 chunks 假設 table cells 入 chunks;parser raw_text 唔包 table cells。W2 D2 chunker design 第一決定 — 按 row chunk 定 per-table chunk 定 mix?需要 1 個 design call。Non blocking F1,but 影響 F2 acceptance 嘅 chunk count 預期
+- 🟡 **R7 DrawingML / SmartArt edge case**:無 LibreOffice → 部分 chart / SmartArt 不 extract。W2 baseline 暫不處理;W3+ Gate 1 retrieval feedback 後決定。Non blocking F1
+- ✅ R8 cleared / R10 cleared / F1 prerequisites all clear
+- 🟡 R10/Q5/Q11/Q15-21 仍 unchanged(unrelated to F1)
+
 ### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F1.a Ingestion skeleton + Parser Protocol | 1.0 | 0.6 | -0.4h | Clean Pydantic-style schema work |
+| F1.b Docling docx_parser impl | 3.0 | 1.5 | -1.5h | Docling API surface clean,direct mapping;multi-sample probe drove faster design |
+| F1.c Heading mitigation re-scope investigation | 2.0 | 0.4 | -1.6h | Saved by Docling baseline already adequate(verify-only) |
+| F1.d Sanity script + run on 6 sample | 1.5 | 1.2 | -0.3h | Clean;Docling first cold-run ~30s/doc download model cache once |
+| F1.e C01 status bump + open items refresh | 0.5 | 0.3 | -0.2h | Standard documentation |
+| F1.f This entry + commit | 0 | 0.5 | +0.5h | Plan'd as part of D1 close |
+| **Total D1** | **8.0** | **4.5** | **-3.5h** | F1.c re-scope + Docling API maturity drove most savings |
+
 ### Commits
+
+| Hash | Subject |
+|---|---|
+| TBD this session | feat(c01): F1 Docling-based docx_parser PoC + 6-sample sanity report (W2 D1) |
 
 ---
 

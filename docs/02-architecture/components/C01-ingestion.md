@@ -3,13 +3,13 @@ component: C01
 name: Ingestion Pipeline
 catalog_ref: ../COMPONENT_CATALOG.md#c01--ingestion-pipeline
 spec_refs: [architecture.md §3.3, architecture.md §3.5]
-status: v0-draft
-last_updated: 2026-05-01
+status: v1-active
+last_updated: 2026-05-03
 ---
 
 # C01 — Ingestion Pipeline Design Note
 
-> **Status**:`v0-draft`(W1 D1 F6 docx structure inspector script ✅(scripts/inspect_docx_structure.py);W2 D2 F8 Docling parser PoC first-touch — blocked Q2 sample per R10)
+> **Status**:`v1-active`(W2 D1 F1 Docling-based docx_parser PoC delivered 2026-05-03 — `backend/ingestion/parsers/{base.py, docx_parser.py}` + `scripts/run_docx_parser_sanity.py`;all 6 Drive sample manuals parsed clean — 217 headings(6.3% coverage,2× W1 D4 F6 raw style baseline 3%)+ 1018 images + 156 tables;0 parse failures。`reports/w02_d1_docx_parser_sanity.yaml` is the sanity baseline)
 >
 > **Owner**:AI(impl)+ Chris(Q2 source delivery)
 
@@ -218,16 +218,18 @@ class ChunkRecord(BaseModel):
 
 ## 8. Open Items / TODO
 
-- [ ] **R10 Q2 sample manual delivery** ★ critical blocker — Chris direct upload 5 份 .docx
-- [ ] **W2 D2 F8 Docling parser PoC** on 5 sample(once Q2 to land)
-- [ ] **W2 D2 inspector script run** on Q2 sample → Q17/Q18 finding report
-- [ ] **W2 D3 chunker layout-aware impl**
-- [ ] **W2 D3 screenshot extractor + Blob upload**
-- [ ] **W2 D5 embedding pipeline first-pass**(F10)
+- [x] **R10 Q2 sample manual delivery** ✅ closed W1 D4(6 sample uploaded `docs/06-reference/01-sample-doc/`)
+- [x] **R8 mitigation** ✅ closed 2026-05-03(home network direct;Docling pip installed)
+- [x] **W2 D1 F1 Docling parser PoC** ✅ closed 2026-05-03(all 6 sample parse clean,0 failure,217 headings 6.3%,1018 images,156 tables;`reports/w02_d1_docx_parser_sanity.yaml` baseline)
+- [x] **W2 D1 inspector finding mitigation** ✅ via Docling SECTION_HEADER visual layout heuristic(W1 D4 F6 raw style 3% → Docling layout 6.3% averaged;no standalone font-size heuristic needed per F1 acceptance "OR" branch)
+- [ ] **W2 D2 chunker layout-aware impl**(F2 — consume `ParserResult.heading_tree` + `raw_text`)
+- [ ] **W2 D2 screenshot extractor + Blob upload**(F3 — consume `ParserResult.embedded_images`,SHA256 dedup already computed in parser)
+- [ ] **W2 D3 embedding pipeline first-pass**(F4)
+- [ ] **W2 D4 orchestrator + index population**(F5)
 - [ ] **W3 D1 .pptx parser**(python-pptx)
 - [ ] **W3 D1 .pdf parser** edge case validation
-- [ ] **R8 mitigation P1/P2**(unblock Docling pip install — for now Python lib install on .venv待 corp proxy 解)
-- [ ] **Q19 embedding dim decision**(1024 vs 3072)— W2 evaluation feedback
+- [ ] **Q19 embedding dim decision**(1024 vs 3072)— W2 D3 evaluation feedback
+- [ ] **R7 edge case follow-up**:DrawingML(SmartArt/charts)not extracted by Docling without LibreOffice — W3+ scope or per-doc finding analysis if Gate 1 retrieval impacts
 
 ---
 
@@ -236,4 +238,5 @@ class ChunkRecord(BaseModel):
 - Spec: `architecture.md §3.3`(multi-format ingestion)+ `§3.5`(ChunkRecord schema)
 - Risks: R7(format edge case),R10(Q2 delay — critical),R5(Azure OpenAI quota for embedding)
 - W1 commit: `cc0b90b`(F6 inspector script)
+- W2 D1 commit: TBD(this session — F1 docx_parser delivery)
 - Cross-component: emits to C03 (index sink);uses C12 (Blob);uses Azure OpenAI (via C12);consumed by C04
