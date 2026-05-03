@@ -2,7 +2,7 @@
 artifact: risk-register-living
 version: 1.0
 status: active
-last_updated: 2026-05-02
+last_updated: 2026-05-03
 spec_baseline: docs/architecture.md §8 (frozen v5)
 catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 ---
@@ -26,7 +26,7 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 | **R5** | Azure OpenAI quota insufficient at peak | §8.2 | 🟠 High | C05 + C01 | ⚠️ Open(W1 同 MS account team pre-negotiate;quota TPM 為 Q4 outstanding minor)|
 | **R6** | Cohere outage during demo / Beta | §8.3 | 🟡 Lower | C04 | 🟢 Hot fallback(Azure built-in semantic ranker)config flag ready |
 | **R7** | Document source format edge case | §8.3 | 🟡 Lower | C01 | 🟡 Designed(parser fail-graceful + Admin Console flag)|
-| **R8** ★ | **Ricoh corp proxy blocks PyPI large wheels** | W1 D1+D2 incident;D5 retest confirmed | 🟠 High | C12 (primary) + impacts C01 / C06 / C08 | 🔴 Open — D5 retest 2026-05-02 confirmed same `IncompleteRead(0 bytes read, 10911340 more expected)` pattern,no progress;pending P1(VPN/hotspot ops window)or P2(IT whitelist long-term)|
+| **R8** ★ | **Ricoh corp proxy blocks PyPI large wheels** | W1 D1+D2 incident;D5 retest confirmed;**2026-05-03 mitigated** | 🟠 High | C12 (primary) + impacts C01 / C06 / C08 | 🟢 **Mitigated 2026-05-03**(Path P1 home network direct;mypy 10.9MB @ 15.5 MB/s success);root cause refined:**corp proxy SSL inspection / VPN tunneling**(non corp proxy 本身)— GlobalProtect tunnel disconnect + home HKBN ISP direct → R8 disappear;P3 IT whitelist 仍 desirable long-term but non-blocking|
 | **R9** ★ | **MCR DNS intercept on Docker image pull** | W1 D1 incident | 🟡 Medium | C12 | 🟢 Mitigated(Azurite npm fallback + docker.io direct path);long-term IT whitelist desirable |
 | **R10** ★ | **Q2 sample manual delivery delay** | W1 D1 OQ partial | 🟠 High | C01 (primary) + C06 (chunk_id discovery) | 🟡 Active(W1 D4 partial unblock:6 docs arrived,F6/Q17/Q18 cleared;F8 Docling 仍 W2 D2 plan)|
 | **R11** ★ | **Langfuse health endpoint degradation**(NEW)| W1 D5 closeout finding 2026-05-02 | 🟡 Medium(triaged Sev3 → escalated BUG-001 instance) | C07 + C12 | 🟢 **Closed 2026-05-02**(BUG-001 Path B Docker Desktop GUI restart + clean compose up postgres+langfuse,Langfuse `/api/public/health` HTTP 200 verified sustained)。Mitigation:Path B recovery procedure documented in BUG-001 + W2 carry-over to C07/C12 design notes;daily morning health check ritual added W2+。BUG-001 closed same-day 2026-05-02 |
@@ -117,7 +117,7 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 
 ## 3. Net-New Risks from W1 Implementation Experience(R8+)
 
-### R8 ★ — Ricoh Corp Proxy Blocks PyPI Large Wheels
+### R8 ★ — Ricoh Corp Proxy Blocks PyPI Large Wheels(MITIGATED 2026-05-03)
 
 | Field | Value |
 |---|---|
@@ -126,11 +126,12 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 | **First observed** | 2026-04-30(W1 D1)cp314 wheel(`pydantic-core` / `httptools`)→ 2026-05-01(W1 D2)cp312 wheel(`mypy 10.9MB` / `pyyaml` / etc)|
 | **Pattern** | 任何 wheel >500KB 落 `IncompleteRead(0 bytes read)` connection broken |
 | **Tested workarounds(failed)** | pip default index、`--retries 10 --timeout 120`、TUNA mirror `pypi.tuna.tsinghua.edu.cn`(503),全部斷流 |
-| **Mitigation in place** | None resolved。F2 pytest verification + F7 unit tests deferred to post-pip-install window |
-| **P1 short-term** | Chris VPN / mobile hotspot 5-10 min ops window,backend `.venv` 一次過 install 完整 deps |
-| **P2 long-term** | Open Ricoh IT ticket whitelist `pypi.org` + `files.pythonhosted.org`(同 R9 MCR 一齊 escalate) |
-| **Active blockers** | F2 pytest verification、F7 unit tests、未來任何 W2+ pip install(Docling、RAGAs、Cohere SDK、Voyage SDK)|
-| **Decay date / review** | P1 完成即 close;P2 IT response timeline TBD |
+| **Root cause refined 2026-05-03** | 真 root cause **不是 corp proxy 本身**,而係 **corp VPN(GlobalProtect)tunnel SSL inspection layer** — disconnect VPN + 走 home network(HKBN ISP)直接 = R8 完全 disappear。Network diagnostics 確認:home network default gateway `192.168.50.1`、public IP `119.247.237.123`(HKBN consumer range)、mypy 10.9MB download @ 15.5 MB/s success first-try。**Hypothesis update**:corp VPN endpoint security做 stream-level interception(可能 CrowdStrike / Defender for Endpoint / Zscaler-style SSL re-encrypt)stream timeout limit 對 large wheel 嘅 chunked HTTP response 唔友好 |
+| **Mitigation in place** | 🟢 **P1 home network direct(applied 2026-05-03)** — Chris home WiFi(HKBN)+ GlobalProtect disconnect → batch installed:`pip install -e backend[dev]`(mypy + pytest + ruff + 其他 dev deps)+ `pip install docling`(~100MB Docling parser)+ `pip install azure-search-documents azure-identity openai`(W2/W3 cloud SDK)。Wheels cached locally,corp 網絡 future re-install 用 `--no-index --find-links` from cache 可 bypass |
+| **Active blockers** | ✅ Cleared:F2 pytest verification done(commit `0a2673d`);F7 unit tests still pending implementation(W2 D2-D3 implementation 期間補,non R8 blocker);future W2+ pip install 用 home network 或 P1 same approach|
+| **P3 long-term(deferred)** | Open Ricoh IT ticket whitelist `pypi.org` + `files.pythonhosted.org`(同 R9 MCR 一齊 escalate)— W2+ batch install workflow 唔 trigger 緊急,desirable but non-blocking |
+| **Side-effect findings(2026-05-03 R8 unblock)** | (1)Pydantic v2.13.3 strict naming rule rejects `_<name>` body model parameters(W1 D1 stub pattern)→ 5 routes patched commit `c38710f`(rename `_request` / `_file` / `_patch` → `payload` / `file`);(2)W1 D2 F7 KB CRUD impl 將 `/kb` 由 501 stub upgrade 做 200 in-memory backend 但 W1 D1 寫嘅 test 仍 expect 501 → updated commit `0a2673d`;(3)8/8 smoke tests pass post-fix |
+| **Decay date / review** | ✅ Mitigated 2026-05-03;P3 IT ticket TBD(non-blocking)|
 
 ### R9 ★ — MCR DNS Intercept on Docker Image Pull
 

@@ -101,12 +101,12 @@ last_updated: 2026-05-02
 
 ## F10 — F2 + F7 unit tests retry(carry-over from W1,depends R8)
 
-- [ ] **Pre-condition**:R8 mitigated(P1 VPN/hotspot OR P2 IT whitelist)
-- [ ] `pip install -e backend[dev]` success
-- [ ] `pytest tests/test_api_skeleton.py` → 8 smoke tests pass(unblock W1 F2 verification)
-- [ ] `pytest tests/kb_management/` → CRUD unit tests pass(unblock W1 F7 unit tests)
-- [ ] Coverage ≥ 80% on F2/F7 modules per CLAUDE.md H6
-- [ ] Update C02 + C08 design notes status to `v2-stable`
+- [x] **Pre-condition**:R8 mitigated 2026-05-03(Path P1 home network direct;corp proxy SSL inspection / VPN tunnel was the actual interception layer,non corp proxy itself)
+- [x] `pip install -e backend[dev]` success(home network ~5min,mypy 10.9MB @ 15.5 MB/s + 其他 dev deps + Docling + Azure SDK + OpenAI SDK 全部 installed)
+- [x] `pytest tests/test_api_skeleton.py` → **8/8 pass**(commit `0a2673d`,unblock W1 F2 verification)— surfaced + fixed Pydantic v2.13 compat issue across 5 stub routes(commit `c38710f`)
+- [ ] `pytest tests/kb_management/` → CRUD unit tests pass(unblock W1 F7 unit tests)— **tests not yet written** per W1 F7 deferred,W2 D2-D3 implementation 期間補
+- [ ] Coverage ≥ 80% on F2/F7 modules per CLAUDE.md H6 — pending F7 unit tests written
+- [ ] Update C02 + C08 design notes status to `v2-stable` — pending F7 unit tests + W2 implementation completion
 
 ## F11 — W2 末 retro + W3 kickoff prep
 

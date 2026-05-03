@@ -87,6 +87,66 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 
 ---
 
+### Day 0 evening update — 2026-05-03 (R8 mitigation via home network)
+
+#### Done
+
+**R8 unblock investigation + execution**(home network 2026-05-03):
+- Chris pivot home network(disconnect GlobalProtect VPN + connect HKBN home WiFi)
+- Network diagnostics confirm:default gateway `192.168.50.1` + public IP `119.247.237.123`(HKBN consumer range)+ no GlobalProtect tunnel in route table
+- Test pip download mypy 1.20.2 (10.9MB) → ✅ **15.5 MB/s success first-try**(同 W1 D1/D2/D5 期間 corp 網絡 0 bytes read 完全相反)
+- **Root cause refined**:R8 真 root cause 唔係 corp proxy 本身,而係 corp VPN(GlobalProtect)SSL inspection / stream-level interception layer。Disconnect VPN + home ISP direct → R8 disappear
+- Batch installed all W2 deps:`pip install -e backend[dev]`(dev tools mypy + pytest + ruff)+ `pip install docling`(W2 F1 Docling parser ~100MB)+ `pip install azure-search-documents azure-identity openai`(W2/W3 Azure cloud SDK)
+- **All wheels cached locally** — future corp 網絡 install 可用 `--no-index --find-links` from `.venv\Lib\site-packages` cache bypass
+
+**F2 W1 D1 deferred verification unblocked**(commit batch this session):
+- `pytest tests/test_api_skeleton.py` first run → **1 collection error**:`NameError: Fields must not use names with leading underscores`(Pydantic v2.13.3 strict naming on `documents.py:19 _file: UploadFile`)
+- Investigated:5 stub routes 同樣 pattern — chunks/documents/eval/feedback/query 全部用 `_<name>` prefix suppress unused-arg linter,W1 D1 寫 stub 時 Pydantic v2.x 未 enforce strict 至 instantiation level
+- Fix:rename to `payload` / `file`(match kb.py:22 既有 convention)+ 加 `_ = payload` suppress unused-arg → commit `c38710f`
+- Re-run pytest → 1 fail:`test_kb_list_route_registered_returns_501` 預期 501 但 returns 200(W1 D2 F7 commit `c6ca6e3` upgrade `/kb` 做 in-memory CRUD;test 寫 W1 D1 stale)
+- Fix:update test 為 `test_kb_list_route_returns_empty_in_memory` 預期 200 + empty list → commit `0a2673d`
+- Final verify:**8/8 pass**(F2 W1 D1 deferred 完全 closed)
+
+**Risk + Plan artifact updates this session**:
+- RISK_REGISTER R8 status:🔴 Open → 🟢 **Mitigated 2026-05-03**(P1 home network)+ root cause refined entry + side-effect findings logged
+- W02 checklist F10:`pre-condition R8 mitigated` ✅ + `pip install` ✅ + `pytest 8/8 pass` ✅;F7 unit tests仲 pending(implementation 期間補,non R8 blocker)
+- W02 progress.md Day 0 evening cont entry(this entry)
+
+#### Decisions / OQ Resolved
+
+- **Decision** — R8 root cause refined to corp VPN SSL inspection(non corp proxy itself);home network direct = mitigation path verified。RISK_REGISTER R8 status flipped 🔴 → 🟢 mitigated
+- **Decision** — Pydantic v2.13.3 strict naming compat fix 屬 trivial bug fix(< 30min,5 routes 一致 pattern,behavior unchanged 仍 raise 501)— per PROCESS.md §1.4 trivial workflow,non BUG-NNN instance(R1.bugfix exception condition met)
+- **Decision** — Stale `test_kb_list` 屬 forgotten test sync after F7 implementation,fix in same commit batch(test/api scope)
+- **Decision** — F7 unit tests(`tests/kb_management/`)defer 到 W2 D2-D3 KB Manager Azure backend swap 期間一併寫(per W02 checklist F10 partial close)
+- **No new OQ resolved**(R8 status update non-OQ)
+
+#### Blockers
+
+- ✅ R8 cleared(P1 mitigated)
+- 🟡 F7 unit tests pending W2 implementation 一併寫(non-blocking,W02 plan §6 carry-over轉化為 W02 F10 partial close)
+- 🟡 R10 + Q5 + Q11 + Q15-21 仍 unchanged
+
+#### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| R8 P1 home network attempt + diagnostics | 0.3 | 0.5 | +0.2h | PowerShell `curl` alias confusion + line-wrap retry |
+| Batch pip install(dev + Docling + Azure SDK) | 0.5 | 0.3 | -0.2h | Home network fast 15.5 MB/s,5min total |
+| Pydantic v2.13 compat fix(5 routes) | 0.5 | 0.4 | -0.1h | grep pattern + 5 parallel Edit batched |
+| Stale kb test fix | 0.1 | 0.1 | 0 | 1-line update + docstring |
+| RISK_REGISTER + W02 checklist + W02 progress update | 0.3 | 0.3 | 0 | Standard documentation |
+| **Total D0 evening 2026-05-03** | **1.7** | **1.6** | **-0.1h** | Surface 2 side-effect bugs but trivial scope |
+
+#### Commits
+
+| Hash | Subject |
+|---|---|
+| `c38710f` | fix(api): rename _<name> → payload in 5 stub routes (Pydantic v2.13 compat) |
+| `0a2673d` | test(api): update kb list test for W1 D2 F7 in-memory impl (no longer 501) |
+| `(this commit pending)` | chore(infra): R8 mitigated via home network — F2 W1 deferred unblocked |
+
+---
+
 ## Day 1 — 2026-05-05 (Mon)
 
 _(待 W2 D1 起填)_
