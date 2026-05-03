@@ -221,7 +221,101 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 
 ## Day 2 — 2026-05-04 (Mon)
 
-_(同上)_
+> Note:呢個 entry 喺 2026-05-03 Sun 晚 D1 完工後 same-session 完成 D2 work。D2 calendar date 仍 2026-05-04 per Option A shifted plan;但 implementation effort 喺 D1 evening 一氣呵成。
+
+### Done
+
+**F2 Layout-aware chunker delivered(F2.a–F2.g all closed)**:
+
+- F2.a — `backend/pyproject.toml` hygiene update:
+  - Added `docling>=2.0` + `tiktoken>=0.7` to direct dependencies(both 已 install via R8 mitigation;只係 declare to make explicit)
+  - Added `ingestion*` to `[tool.setuptools.packages.find]` include list(F1 oversight fix:F1 commit 漏咗 register ingestion package for editable install)
+- F2.b — `backend/ingestion/chunker/{__init__.py, base.py}`:
+  - `ChunkSpec` dataclass intermediate type(F4 embedder + F5 orchestrator augment to emit final `ChunkRecord` per architecture.md §3.5)
+  - Fields:`section_path` / `chunk_title` / `chunk_text` / `chunk_token_count` / `chunk_kind ('text'/'table')` / `chunk_index` / `low_value_flag` / `embedded_image_positions` / `heading_anchor`
+  - `Chunker` Protocol contract(deterministic per input,`parse_failed=True` returns `[]`)
+- F2.c — `backend/ingestion/chunker/layout_aware.py`:
+  - Walks `ParserResult.paragraphs` + `tables` + `embedded_images` merged event stream sorted by `doc_order`
+  - Heading-level stack maintained for `section_path` hierarchical traversal
+  - Soft target 500 tokens / hard cap 1500 tokens(per architecture.md §3.3)
+  - Tables = 1 chunk each(per architecture.md §3.3 「table 獨立 chunk」)+ section_path inheritance from current heading stack
+  - Embedded images attached to open section accumulator by doc_order
+  - `low_value_flag` heuristic:< 100 tokens(soft floor per spec)OR TOC pattern(en/ZH-Hant/JP)OR version/revision statement
+  - tiktoken `cl100k_base` encoding(matches text-embedding-3-large)
+- F2.d — `backend/ingestion/chunker/strategies.py`:
+  - `select_chunker(doc_format, strategy)` returns Chunker instance
+  - `auto` routing:docx/pdf → layout_aware,pptx → slide_based(W3 D1 scope,raises NotImplementedError until then)
+  - `heading_aware` standalone strategy stub W3+(layout_aware already covers heading-bounded splitting for W2 baseline)
+- F2.e — `scripts/run_chunker_sanity.py` + `reports/w02_d2_chunker_sanity.yaml`:
+  - 6/6 docs chunked clean(0 failures)
+  - **329 chunks total**(text=173,table=156)
+  - low_value_rate 67.2%(221/329)— see Decisions §
+  - Token dist:median=67,mean=102.8,p95=297,p99=536,max=813(全部 chunks 落 hard_cap 1500 內,**no chunks hit hard cap**)
+  - section_path depth distribution:depth 1 = 14,depth 2 = 315(無 depth 3+,因為 6 sample doc 大多 H2 → H4 跳過 H3,leaf section 主要 H3 或 H4 直接接 H2 父)
+  - Per-doc breakdown:0601(78)/ 0602(72)/ 0603(65)/ 0604(28)/ 0605(70)/ 0606(16)
+- F2.f — `backend/tests/test_chunker.py` 12 tests all pass(synthetic ParserResult fixtures cover):
+  - Three-section H2/H3/H3/H3 doc → 3 text chunks with correct section_path depth
+  - Section < 100 tokens → low_value_flag=True
+  - Section > target_tokens with multiple paragraphs → splits at paragraph boundaries respecting hard cap
+  - Table → 1 chunk with chunk_kind='table' + section_path inheritance + pipe-delimited body format
+  - Image at doc_order under section → recorded in `embedded_image_positions` as `img@{doc_order}`
+  - parse_failed=True → empty chunk list
+  - chunk_text format:title + "\n\n" + content per architecture.md §3.3
+  - Strategy selector:auto+docx/pdf → layout_aware;auto+pptx → NotImplementedError;explicit `layout_aware` → LayoutAwareChunker
+  - ChunkSpec has all fields F5 orchestrator needs to build ChunkRecord
+  - Full test suite **20/20 pass**(8 API skeleton + 12 chunker)
+- F2.g(this entry + commit)
+
+**Parser refactor required by F2(side-effect of F1 design)**:
+- F1 docx_parser.py originally emitted `raw_text + heading_tree + tables + images` — but `raw_text` lossy joined paragraphs lost heading-paragraph alignment
+- F2 chunker needs to interleave tables/images with paragraph stream by document order
+- **Solution**:Refactored `parsers/base.py` to emit `paragraphs: list[ParagraphItem]`(with `kind / heading_level / doc_order` per item)+ `tables` + `embedded_images`(each with `doc_order`)
+- `ParserResult.raw_text` / `heading_tree` / `paragraphs_total` 變成 `@property` derivations(single source of truth)
+- F1 sanity report re-run:still 217 headings / 1018 images / 156 tables;coverage adjusted from 6.3% → 8.9% because empty-text items 唔再算(non-meaningful paragraphs)— 更 meaningful denominator
+- This is **F1 internal contract evolution within ingestion package boundary**,non plan deviation(non-public API,no consumer outside ingestion package as of W2 D2)
+
+**Import path standardization**:
+- Initial chunker code used `from backend.ingestion.<X>` — work for scripts(run from project root)but break test isinstance checks(test imports `from ingestion.<X>` so 2 different module objects loaded)
+- Resolved:standardized chunker module imports to bare-prefix `from ingestion.<X>`(matches existing test convention `from api.server import app`,absolute import per ruff TID252)
+- Scripts added sys.path bootstrap inserting `backend/` at front of `sys.path`(noqa E402 for post-bootstrap imports)
+- All 20 tests pass + both sanity scripts work
+
+### Decisions / OQ Resolved
+
+- **Decision** — **Tables = 1 chunk per table**,non per-row。Architecture §3.3 explicitly mandates「table 獨立 chunk」。Plan §2 F2 estimate 2000-3000 chunks 隱含 per-row chunking,呢個 estimate **revised downward to ~300-500** for 6 docs(actual 329)。Non plan deviation:architecture spec authoritative per CLAUDE.md §13 "Spec wins"
+- **Decision** — `low_value_flag` 用 architecture.md §3.3 spec 嘅 100-token soft floor(non checklist 提及嘅 50-token)。理由:spec wins(同 §13);Gate 1 retrieval 用 default filter `enabled eq true and low_value_flag eq false` 將排除 67.2% chunks ★ **W2 D5 F7 Gate 1 risk**:若 R@5 < 80% 因為 too few "valuable" chunks visible to retrieval,W3 retro 考慮:(a)lower threshold to 50-tokens,(b)disable filter for low_value_flag in retrieval baseline,(c)keep filter + augment short table chunks with surrounding section text。今日 W2 baseline 跟 spec
+- **Decision** — `ChunkSpec` 用 `@dataclass(slots=True)` consistent with `ParagraphItem` / `Heading` / `EmbeddedImage` / `Table`。`ChunkRecord`(F5 emit boundary)會用 Pydantic
+- **Decision** — Section path depth 平面化(全 doc depth ≤ 2)係文檔結構特性而非 chunker bug。6 sample 大多 H2→H4 跳過 H3 leaf,non bug
+- **Decision** — Import path canonical:`from ingestion.<X>`(short prefix),consistent with existing tests + ruff TID252 satisfied;scripts use sys.path bootstrap
+- **Decision** — `ParserResult` 結構演化(paragraphs 為 primary source)在 F1+F2 same-package boundary 內,non plan deviation。Internal contract evolution per Karpathy §1.3(F1 lossy raw_text 係 F2 之前嘅 design oversight,fix 係 surgical 而非 unrelated refactor)
+- **No new OQ resolved**(Q19 embedding dim still W2 D3 decide)
+
+### Blockers
+
+- 🟡 **Gate 1 retrieval risk**(low_value 67.2% rate)— W2 D5 F7 verify if R@5 ≥ 80% achievable;若 fail,W3 retro adjust。Not blocking F3-F6 work
+- 🟡 **R7 DrawingML / SmartArt edge case** — 無 LibreOffice → 部分 chart / SmartArt 不 extract。W2 baseline 暫不處理;同 W2 D1 carry-over,unchanged
+- ✅ R8 cleared / R10 cleared / F1 + F2 prerequisites all clear
+- 🟡 R10/Q5/Q11/Q15-21 unchanged(unrelated to F1/F2)
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F2.a pyproject hygiene | 0.2 | 0.2 | 0 | Clean |
+| F2.b chunker base.py | 0.5 | 0.4 | -0.1h | Clean |
+| F2.c layout_aware.py impl | 3.0 | 2.0 | -1.0h | Single-pass merged event stream design clean;Docling iterate_items API maturity helps |
+| F2.d strategies.py | 0.5 | 0.3 | -0.2h | Minimal stub for W3+ |
+| F2.e Sanity script + 6-sample run | 1.0 | 0.8 | -0.2h | Clean |
+| F2.f Unit tests + import path debug | 1.0 | 1.5 | +0.5h | Surfaced + fixed dual-import isinstance issue;script bootstrap noqa需要 |
+| F2.g This entry + commit | 0 | 0.5 | +0.5h | Plan'd as part of D2 close |
+| Parser refactor(side-effect of F1 lossy raw_text)| 0(unplanned)| 0.7 | +0.7h | Required for F2 to interleave tables/images with text correctly |
+| **Total D2** | **6.2** | **6.4** | **+0.2h** | Largely on-plan;parser refactor balanced by Docling API maturity savings |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| TBD this session | feat(c01): F2 layout-aware chunker + parser doc_order refactor (W2 D2) |
 
 ---
 

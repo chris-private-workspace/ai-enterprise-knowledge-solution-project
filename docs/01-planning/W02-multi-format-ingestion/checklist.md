@@ -25,12 +25,13 @@ last_updated: 2026-05-03
 
 ## F2 — Layout-aware chunker
 
-- [ ] `backend/ingestion/chunker/__init__.py`
-- [ ] `backend/ingestion/chunker/layout_aware.py` heading-aware section split + token budget
-- [ ] `backend/ingestion/chunker/strategies.py` strategy selector per `KbConfig.chunk_strategy`
-- [ ] `low_value_flag` heuristic(< 50 token / TOC / version statement detect)
-- [ ] Run on 6 sample → estimated 2000-3000 chunks total
-- [ ] Unit test:known input → expected chunk count + boundaries
+- [x] `backend/ingestion/chunker/__init__.py`
+- [x] `backend/ingestion/chunker/base.py`(NEW)— `ChunkSpec` dataclass + `Chunker` Protocol
+- [x] `backend/ingestion/chunker/layout_aware.py` heading-aware section split + token budget(`LayoutAwareChunker`)
+- [x] `backend/ingestion/chunker/strategies.py` strategy selector per `KbConfig.chunk_strategy`(`auto`/`layout_aware` impl;`slide_based`/`heading_aware` raise NotImplementedError per W3+ scope)
+- [x] `low_value_flag` heuristic(< 100 token per architecture.md §3.3 + TOC + version + revision statement detect)
+- [x] Run on 6 sample → **329 chunks total**(text=173 + table=156)— see W2 D2 progress decision §:plan §2 estimate 2000-3000 was based on per-row table chunking,architecture spec §3.3 mandates per-table → revised expectation
+- [x] Unit test:`backend/tests/test_chunker.py` 12 tests pass(synthetic ParserResult fixtures cover heading hierarchy / hard cap split / low_value flag / table chunk / image attachment / parse_failed / format / strategy selector branches / ChunkSpec required fields)
 
 ## F3 — Screenshot extractor + Blob upload
 

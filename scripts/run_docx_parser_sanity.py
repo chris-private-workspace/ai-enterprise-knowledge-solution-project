@@ -17,9 +17,17 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import yaml
+# sys.path bootstrap: scripts run from project root, but backend/ ingestion
+# package uses bare-prefix imports (e.g. `from ingestion.parsers.base ...`)
+# matching the pytest pythonpath convention. Add backend/ to path so the
+# inner imports resolve under both contexts.
+_BACKEND_DIR = Path(__file__).resolve().parent.parent / "backend"
+if str(_BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_DIR))
 
-from backend.ingestion.parsers.docx_parser import DoclingDocxParser
+import yaml  # noqa: E402  — after sys.path bootstrap
+
+from ingestion.parsers.docx_parser import DoclingDocxParser  # noqa: E402  — after sys.path bootstrap
 
 SAMPLE_DIR = Path("docs/06-reference/01-sample-doc")
 REPORT_PATH = Path("reports/w02_d1_docx_parser_sanity.yaml")
