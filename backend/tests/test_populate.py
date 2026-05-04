@@ -205,3 +205,19 @@ async def test_upload_retries_on_5xx_then_succeeds() -> None:
 
     assert result.succeeded == 1
     assert instance.post.await_count == 2
+
+
+def test_make_chunk_id_sanitizes_forbidden_chars() -> None:
+    """Azure AI Search keys: [A-Za-z0-9_=-] only. Spaces / parens / dots → `_`."""
+    cid = make_chunk_id(
+        kb_id="drive_user_manuals",
+        doc_id="DRIVE_User Manual_0601(AR)_FNA-AR Management_v0.03",
+        chunk_index=7,
+    )
+    assert " " not in cid
+    assert "(" not in cid
+    assert ")" not in cid
+    assert "." not in cid
+    assert cid.endswith("_chunk-0007")
+    # plain ascii doc_id passes through unchanged
+    assert make_chunk_id("kb", "doc-A", 0) == "kb-kb_doc-doc-A_chunk-0000"

@@ -14,10 +14,15 @@ Why Pydantic (not @dataclass like ChunkSpec):
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
+
+# Azure AI Search key constraint: [A-Za-z0-9_=-] only. Doc filenames often
+# contain spaces / parens / dots, so we substitute non-conforming chars with `_`.
+_KEY_SAFE_RE = re.compile(r"[^A-Za-z0-9_=-]")
 
 
 class ImageRef(BaseModel):
@@ -34,9 +39,11 @@ def make_chunk_id(kb_id: str, doc_id: str, chunk_index: int) -> str:
     """Stable chunk_id factory per architecture.md §3.5 example.
 
     Format: kb-{kb_id}_doc-{doc_id}_chunk-{idx:04d}
-    Reserved characters in kb_id/doc_id (e.g. underscore in kb_id) preserved.
+    doc_id is sanitized to satisfy Azure AI Search key constraint
+    [A-Za-z0-9_=-]; non-conforming chars replaced with `_`.
     """
-    return f"kb-{kb_id}_doc-{doc_id}_chunk-{chunk_index:04d}"
+    safe_doc_id = _KEY_SAFE_RE.sub("_", doc_id)
+    return f"kb-{kb_id}_doc-{safe_doc_id}_chunk-{chunk_index:04d}"
 
 
 class ChunkRecord(BaseModel):

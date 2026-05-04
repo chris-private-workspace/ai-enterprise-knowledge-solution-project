@@ -133,7 +133,14 @@ class IndexPopulator:
             response.raise_for_status()  # let tenacity retry
 
         if response.status_code not in (200, 207):
-            # 4xx (other than 429) = caller error; do not retry, surface immediately
+            # 4xx (other than 429) = caller error; do not retry, surface immediately.
+            logger.error(
+                "index_upload_4xx",
+                status_code=response.status_code,
+                body=response.text[:2000],
+                batch_size=len(batch),
+                first_chunk_id=batch[0].chunk_id if batch else None,
+            )
             response.raise_for_status()
 
         body = response.json()
