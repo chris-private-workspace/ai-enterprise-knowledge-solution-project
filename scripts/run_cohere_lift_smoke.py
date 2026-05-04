@@ -185,9 +185,13 @@ def _aggregate(per_query: list[PerQueryLift]) -> tuple[float, float, float, int,
 
 
 async def _run_engine(
-    settings: Settings, eval_set: Path, with_cohere: bool,
+    settings: Settings, eval_set: Path, with_cohere: bool, max_main_queries: int | None,
 ) -> list[QueryEvalResult]:
-    """Run the eval-set through one engine (hybrid-only or hybrid+Cohere) and return per-query results."""
+    """Run the eval-set through one engine (hybrid-only or hybrid+Cohere) and return per-query results.
+
+    `max_main_queries` caps actual API calls(W5 D1 cost containment fix per Bug B —
+    prior version capped only final aggregation but ran full eval).
+    """
     embedder = AzureOpenAIEmbedder(
         endpoint=settings.azure_openai_endpoint,
         api_key=settings.azure_openai_api_key,
@@ -219,7 +223,7 @@ async def _run_engine(
                 hybrid_overfetch_for_rerank=settings.hybrid_top_k_retrieval,
             )
             runner = EvalRunner(engine=engine, top_k=settings.rerank_top_k)
-            report = await runner.run(eval_set)
+            report = await runner.run(eval_set, max_main_queries=max_main_queries)
         finally:
             if reranker is not None:
                 await reranker.__aexit__(None, None, None)  # type: ignore[attr-defined]
@@ -252,14 +256,15 @@ async def _amain() -> int:
         return 1
 
     started_at = datetime.now(UTC).isoformat()
+    cap = subset if subset > 0 else None
 
     print("=== Pass 1: Hybrid-only baseline ===")
-    hybrid_results = await _run_engine(settings, eval_set, with_cohere=False)
-    print(f"  evaluated {len(hybrid_results)} queries")
+    hybrid_results = await _run_engine(settings, eval_set, with_cohere=False, max_main_queries=cap)
+    print(f"  evaluated {len(hybrid_results)} queries (cap={cap})")
 
-    print("\n=== Pass 2: Hybrid + Cohere Rerank v3.5 ===")
-    cohere_results = await _run_engine(settings, eval_set, with_cohere=True)
-    print(f"  evaluated {len(cohere_results)} queries")
+    print("\n=== Pass 2: Hybrid + Cohere Rerank ===")
+    cohere_results = await _run_engine(settings, eval_set, with_cohere=True, max_main_queries=cap)
+    print(f"  evaluated {len(cohere_results)} queries (cap={cap})")
 
     finished_at = datetime.now(UTC).isoformat()
 
@@ -291,7 +296,8 @@ async def _amain() -> int:
         encoding="utf-8",
     )
 
-    print("\n📊 Cohere lift smoke results:")
+    # ASCII labels(W5 D1 Bug A fix:Windows charmap codec cannot encode 📊 / 📁 / ✅ / ⚠️ / ❌ — drop emoji for cross-shell stdout compatibility)
+    print("\n[results] Cohere lift smoke:")
     print(f"  {'query_id':<10}{'hybrid':>8}{'cohere':>8}{'delta':>8}  verdict")
     print("  " + "-" * 50)
     for p in per_query:
@@ -309,14 +315,14 @@ async def _amain() -> int:
     print(
         f"\n  rerank overhead: +{summary.rerank_overhead_ms:.1f}ms avg search latency",
     )
-    print(f"\n📁 Full JSON → {output}")
+    print(f"\n[output] Full JSON -> {output}")
 
     if lift > 0:
-        print("\n✅ Cohere PASS: aggregate lift > 0")
+        print("\n[PASS] Cohere aggregate lift > 0")
     elif lift == 0:
-        print("\n⚠️  Cohere NEUTRAL: aggregate lift == 0 (revisit thresholds + sample)")
+        print("\n[NEUTRAL] Cohere aggregate lift == 0 (revisit thresholds + sample)")
     else:
-        print("\n❌ Cohere REGRESSION: aggregate lift < 0 (escalate to Q21 reranker re-pick)")
+        print("\n[FAIL] Cohere REGRESSION: aggregate lift < 0 (escalate to Q21 reranker re-pick)")
     return 0
 
 

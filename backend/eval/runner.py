@@ -73,7 +73,20 @@ class EvalRunner:
         self._engine = engine
         self._top_k = top_k
 
-    async def run(self, eval_set_path: Path) -> EvalReport:
+    async def run(
+        self,
+        eval_set_path: Path,
+        max_main_queries: int | None = None,
+    ) -> EvalReport:
+        """Run eval-set against engine, optionally capped at first N main(non-OOS)queries.
+
+        max_main_queries=None(default)→ run all queries(W2 baseline behaviour preserved).
+        max_main_queries=N → run first N non-OOS queries + ALL OOS queries(OOS not counted
+        toward N since they're tracked separately for refusal accuracy per `is_oos` flag).
+        Cost-containment knob for partial-eval cost discovery(W4 plan §4 R4)— W5 D1 fixed
+        prior driver-side bug where `--subset` only capped final aggregation but actual API
+        calls still ran the full eval-set.
+        """
         eval_set = yaml.safe_load(eval_set_path.read_text(encoding="utf-8"))
         version = str(eval_set.get("metadata", {}).get("version", "unknown"))
         queries = eval_set.get("queries", [])
@@ -81,9 +94,15 @@ class EvalRunner:
         started_at = datetime.now(UTC).isoformat()
         per_query: list[QueryEvalResult] = []
 
+        main_evaluated = 0
         for q in queries:
+            is_oos = bool(q.get("ground_truth", {}).get("expected_refusal", False))
+            if max_main_queries is not None and not is_oos and main_evaluated >= max_main_queries:
+                continue  # cap reached on main queries; skip remaining (OOS still pass-through)
             result = await self._evaluate_query(q)
             per_query.append(result)
+            if not is_oos:
+                main_evaluated += 1
 
         finished_at = datetime.now(UTC).isoformat()
         return _aggregate(eval_set_path.name, version, started_at, finished_at, per_query)

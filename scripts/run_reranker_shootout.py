@@ -135,7 +135,12 @@ async def _run_one_kind(
     eval_set: Path,
     subset: int,
 ) -> RerankerRunSummary:
-    """Build a fresh RetrievalEngine for `kind` and run the eval-set."""
+    """Build a fresh RetrievalEngine for `kind` and run the eval-set.
+
+    `subset > 0` caps actual API calls via EvalRunner.run(max_main_queries=subset)
+    (W5 D1 cost containment fix per Bug B — prior version capped only final
+    aggregation but ran full eval-set).
+    """
     skip = _skip_reason(kind, base_settings)
     if skip:
         return RerankerRunSummary(
@@ -169,30 +174,15 @@ async def _run_one_kind(
                 hybrid_overfetch_for_rerank=settings.hybrid_top_k_retrieval,
             )
             runner = EvalRunner(engine, top_k=settings.rerank_top_k)
-            report = await runner.run(eval_set)
+            cap = subset if subset > 0 else None
+            report = await runner.run(eval_set, max_main_queries=cap)
         finally:
             if reranker is not None:
                 await reranker.__aexit__(None, None, None)  # type: ignore[attr-defined]
 
-    if subset > 0:
-        # When subset requested, scale aggregates to first-N main queries by
-        # recomputing on the prefix (cheaper than re-running the eval).
-        prefix = [r for r in report.per_query if not r.is_oos][:subset]
-        if prefix:
-            recall = sum(r.recall_at_5 for r in prefix if r.error is None) / max(
-                1, len([r for r in prefix if r.error is None]),
-            )
-            avg_embed = sum(r.embed_latency_ms for r in prefix) / max(1, len(prefix))
-            avg_search = sum(r.search_latency_ms for r in prefix) / max(1, len(prefix))
-            return RerankerRunSummary(
-                kind=kind, skipped=False, skip_reason="",
-                aggregate_recall_at_5=round(recall, 4),
-                queries_evaluated=len([r for r in prefix if r.error is None]),
-                queries_errored=len([r for r in prefix if r.error is not None]),
-                avg_embed_latency_ms=round(avg_embed, 1),
-                avg_search_latency_ms=round(avg_search, 1),
-            )
-
+    # W5 D1 cost containment:report.per_query already capped by EvalRunner's
+    # max_main_queries → no need for prior post-eval prefix slicing(was a no-op
+    # in correctness terms but masked the underlying full-eval API cost)。
     return RerankerRunSummary(
         kind=kind, skipped=False, skip_reason="",
         aggregate_recall_at_5=report.aggregate_recall_at_5,
@@ -247,8 +237,8 @@ async def _amain() -> int:
         encoding="utf-8",
     )
 
-    # Comparison table to stdout
-    print("\n📊 Reranker shootout results:")
+    # ASCII labels (W5 D1 Bug A fix:Windows charmap codec compatibility)
+    print("\n[results] Reranker shootout:")
     print(f"  {'reranker':<14}{'R@5':>8}{'search_ms':>12}{'embed_ms':>12}  status")
     print("  " + "-" * 60)
     for r in runs:
@@ -260,7 +250,7 @@ async def _amain() -> int:
                 f"{r.avg_search_latency_ms:>12.1f}{r.avg_embed_latency_ms:>12.1f}"
                 f"  evaluated={r.queries_evaluated}",
             )
-    print(f"\n📁 Full JSON → {output}")
+    print(f"\n[output] Full JSON -> {output}")
 
     if not any(not r.skipped for r in runs):
         print("\nFAIL: no reranker evaluable; check .env keys", file=sys.stderr)
