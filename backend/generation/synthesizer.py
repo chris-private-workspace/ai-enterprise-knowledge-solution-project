@@ -68,8 +68,14 @@ class Synthesizer:
         api_version: str,
         deployment: str,
         timeout_s: float = 30.0,
-        temperature: float = 0.1,
+        temperature: float | None = None,
     ) -> None:
+        # W5 D1 F1.7 fix: GPT-5 reasoning-style deployments(GPT-5.5 / GPT-5.4-mini /
+        # GPT-5.5-pro)reject any `temperature` value other than the default 1 with
+        # 400 "Unsupported value:'temperature' does not support 0.1 with this
+        # model"。Default to None → omit the parameter entirely so OpenAI uses
+        # model default。Older non-reasoning deployments(GPT-4 family)can still
+        # pass an explicit value via the constructor for sampling control。
         self._client_kwargs = {
             "azure_endpoint": endpoint,
             "api_key": api_key,
@@ -79,6 +85,13 @@ class Synthesizer:
         self.deployment = deployment
         self.temperature = temperature
         self._client: AsyncAzureOpenAI | None = None
+
+    def _completion_kwargs(self, **base: object) -> dict[str, object]:
+        """Inject temperature only when the constructor received a non-None value."""
+        kwargs = dict(base)
+        if self.temperature is not None:
+            kwargs["temperature"] = self.temperature
+        return kwargs
 
     async def __aenter__(self) -> Synthesizer:
         self._client = AsyncAzureOpenAI(**self._client_kwargs)
@@ -105,9 +118,10 @@ class Synthesizer:
         prompt = build_prompt(query, chunks)
         start = time.perf_counter()
         completion = await self._client.chat.completions.create(
-            model=self.deployment,
-            messages=prompt.messages,
-            temperature=self.temperature,
+            **self._completion_kwargs(
+                model=self.deployment,
+                messages=prompt.messages,
+            ),
         )
         latency_ms = int((time.perf_counter() - start) * 1000)
 
@@ -172,11 +186,12 @@ class Synthesizer:
         output_tokens = 0
 
         stream = await self._client.chat.completions.create(
-            model=self.deployment,
-            messages=prompt.messages,
-            temperature=self.temperature,
-            stream=True,
-            stream_options={"include_usage": True},
+            **self._completion_kwargs(
+                model=self.deployment,
+                messages=prompt.messages,
+                stream=True,
+                stream_options={"include_usage": True},
+            ),
         )
         try:
             async for chunk in stream:

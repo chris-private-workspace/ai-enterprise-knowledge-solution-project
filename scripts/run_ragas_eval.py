@@ -152,80 +152,118 @@ def _build_samples_via_cache(
 
 
 def _make_real_evaluator(judge_deployment: str):
-    """Build a per-sample callable wrapping ragas v0.4 collections metrics.
+    """Build a per-sample callable wrapping ragas v0.4.3 collections metrics.
 
     Returns a callable that takes RagasQuerySample and returns:
         {"faithfulness": float, "answer_relevancy": float,
          "context_precision": float, "context_recall": float,
          "input_tokens": int, "output_tokens": int}
 
-    The judge LLM client is wired by ragas's ChatOpenAI wrapper; we configure
-    it to point at Azure OpenAI per Settings.azure_openai_deployment_llm_judge.
+    W5 D1 F1.7 refactor (per ragas 0.4.3 deprecation):
+    - LangchainLLMWrapper / LangchainEmbeddingsWrapper RETIRED → use llm_factory
+      + RagasOpenAIEmbeddings with sync openai.AzureOpenAI client
+    - `from ragas.metrics.collections import faithfulness` 而家 imports MODULE
+      not class → import classes(Faithfulness/AnswerRelevancy/...)directly
+    - Per-metric ascore signatures diverge:Faithfulness(user_input, response,
+      retrieved_contexts);AnswerRelevancy(user_input, response);
+      ContextPrecision(user_input, reference, retrieved_contexts);
+      ContextRecall(user_input, retrieved_contexts, reference)
     """
-    # Defer import so unit tests don't need ragas installed.
-    from langchain_openai import AzureChatOpenAI  # noqa: PLC0415
-    from ragas.embeddings import LangchainEmbeddingsWrapper  # noqa: PLC0415
-    from ragas.llms import LangchainLLMWrapper  # noqa: PLC0415
-    from ragas.metrics.collections import (  # noqa: PLC0415
-        answer_relevancy,
-        context_precision,
-        context_recall,
-        faithfulness,
-    )
+    # Defer ragas import so unit tests don't need ragas installed.
+    # W5 D1 F1.7 Bug G fix:ragas metric.ascore() internally calls agenerate()
+    # which requires AsyncAzureOpenAI(sync AzureOpenAI client raises "Cannot
+    # use agenerate() with a synchronous client")。
+    from openai import AsyncAzureOpenAI  # noqa: PLC0415
+    from ragas.embeddings import OpenAIEmbeddings as RagasOpenAIEmbeddings  # noqa: PLC0415
+    from ragas.llms import llm_factory  # noqa: PLC0415
+    from ragas.metrics.collections.answer_relevancy import AnswerRelevancy  # noqa: PLC0415
+    from ragas.metrics.collections.context_precision import ContextPrecision  # noqa: PLC0415
+    from ragas.metrics.collections.context_recall import ContextRecall  # noqa: PLC0415
+    from ragas.metrics.collections.faithfulness import Faithfulness  # noqa: PLC0415
 
     settings = get_settings()
-    judge_llm = AzureChatOpenAI(
+    # W5 D1 F1.7 fix: GPT-5 reasoning judge rejects non-default temperature
+    # → 唔 pass(model default 1)。RAGAs judge precision relies on prompt
+    # engineering + JSON-schema-bound output, not sampling determinism。
+    judge_client = AsyncAzureOpenAI(
         azure_endpoint=settings.azure_openai_endpoint,
         api_key=settings.azure_openai_api_key,
         api_version=settings.azure_openai_api_version,
-        azure_deployment=judge_deployment,
-        temperature=0.0,
     )
-    wrapped_llm = LangchainLLMWrapper(judge_llm)
+    wrapped_llm = llm_factory(judge_deployment, client=judge_client)
 
-    # Embeddings used by answer_relevancy + context_precision (needs cosine sim);
-    # reuse text-embedding-3-large per Q19 baseline.
-    from langchain_openai import AzureOpenAIEmbeddings  # noqa: PLC0415
-    embed_client = AzureOpenAIEmbeddings(
+    # Embeddings reuse Q19 text-embedding-3-large baseline for cosine sim
+    # in AnswerRelevancy。Same AzureOpenAI sync client.
+    embed_client = AsyncAzureOpenAI(
         azure_endpoint=settings.azure_openai_endpoint,
         api_key=settings.azure_openai_api_key,
         api_version=settings.azure_openai_api_version,
-        azure_deployment=settings.azure_openai_deployment_embedding,
     )
-    wrapped_embed = LangchainEmbeddingsWrapper(embed_client)
+    wrapped_embed = RagasOpenAIEmbeddings(
+        client=embed_client,
+        model=settings.azure_openai_deployment_embedding,
+    )
 
-    metric_objs = {
-        "faithfulness": faithfulness(llm=wrapped_llm),
-        "answer_relevancy": answer_relevancy(llm=wrapped_llm, embeddings=wrapped_embed),
-        "context_precision": context_precision(llm=wrapped_llm),
-        "context_recall": context_recall(llm=wrapped_llm),
-    }
+    faithfulness_m = Faithfulness(llm=wrapped_llm)
+    answer_relevancy_m = AnswerRelevancy(llm=wrapped_llm, embeddings=wrapped_embed)
+    context_precision_m = ContextPrecision(llm=wrapped_llm)
+    context_recall_m = ContextRecall(llm=wrapped_llm)
 
-    def _eval(sample: RagasQuerySample) -> dict:
-        from ragas.dataset_schema import SingleTurnSample  # noqa: PLC0415
-
-        single = SingleTurnSample(
-            user_input=sample.question,
-            response=sample.answer,
-            retrieved_contexts=sample.contexts,
-            reference=sample.reference or " ".join(sample.expected_keywords),
-        )
+    async def _ascore_all(sample: RagasQuerySample) -> dict:
+        reference = sample.reference or " ".join(sample.expected_keywords) or sample.answer
         scores: dict[str, float] = {}
-        for name, metric in metric_objs.items():
-            try:
-                scores[name] = float(metric.single_turn_score(single))
-            except Exception as exc:  # noqa: BLE001
-                # Surface metric error per-row but continue;
-                # caller's RagasRunner._evaluate_one wraps exceptions.
-                raise RuntimeError(f"{name} failed: {exc}") from exc
-        # Token usage tracking is a TODO at ragas v0.4 — they recently moved
-        # to LangChain callbacks. For now we record latency only; token cost
-        # arrives via Langfuse trace correlation per architecture.md §7.
-        scores["input_tokens"] = 0
-        scores["output_tokens"] = 0
+        try:
+            r = await faithfulness_m.ascore(
+                user_input=sample.question,
+                response=sample.answer,
+                retrieved_contexts=sample.contexts,
+            )
+            scores["faithfulness"] = float(r.value)
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(f"faithfulness failed: {exc}") from exc
+        try:
+            r = await answer_relevancy_m.ascore(
+                user_input=sample.question,
+                response=sample.answer,
+            )
+            scores["answer_relevancy"] = float(r.value)
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(f"answer_relevancy failed: {exc}") from exc
+        try:
+            r = await context_precision_m.ascore(
+                user_input=sample.question,
+                reference=reference,
+                retrieved_contexts=sample.contexts,
+            )
+            scores["context_precision"] = float(r.value)
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(f"context_precision failed: {exc}") from exc
+        try:
+            r = await context_recall_m.ascore(
+                user_input=sample.question,
+                retrieved_contexts=sample.contexts,
+                reference=reference,
+            )
+            scores["context_recall"] = float(r.value)
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(f"context_recall failed: {exc}") from exc
+        scores["input_tokens"] = 0  # ragas 0.4.3 doesn't expose per-metric tokens;
+        scores["output_tokens"] = 0  # cost via Langfuse trace correlation per arch §7
         return scores
 
-    return _eval
+    # W5 D1 F1.7: ragas 0.4.3 metric.score() raises when called from async
+    # context. RagasRunner.evaluate is sync and tests rely on sync interface
+    # (13 unit tests with sync stub evaluators)— so wrap async ascore via
+    # asyncio.run in a separate thread to avoid loop-already-running error
+    # without breaking the sync RagasRunner contract.
+    import asyncio  # noqa: PLC0415
+    import concurrent.futures  # noqa: PLC0415
+
+    def _sync_eval(sample: RagasQuerySample) -> dict:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, _ascore_all(sample)).result()
+
+    return _sync_eval
 
 
 async def _amain() -> int:
@@ -262,7 +300,7 @@ async def _amain() -> int:
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(report_to_json(report), encoding="utf-8")
-    print(f"\n📊 RAGAs report → {output_path}")
+    print(f"\n[output] RAGAs report -> {output_path}")
     for metric in ("faithfulness", "answer_relevancy", "context_precision", "context_recall"):
         agg = report.aggregates[metric]
         print(f"  {metric}: mean={agg.mean:.3f}  p95={agg.p95:.3f}  n={agg.n}")

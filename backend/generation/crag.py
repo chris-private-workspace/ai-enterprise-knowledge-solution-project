@@ -123,8 +123,12 @@ class CragGrader:
         api_version: str,
         deployment: str,
         timeout_s: float = 15.0,
-        temperature: float = 0.0,
+        temperature: float | None = None,
     ) -> None:
+        # W5 D1 F1.7 fix: GPT-5.4-mini reasoning judge rejects non-default
+        # temperature(same constraint as GPT-5.5 synthesizer);default to None
+        # → omit parameter so OpenAI uses model default。Older deployments can
+        # still pass an explicit value via the constructor.
         self._client_kwargs = {
             "azure_endpoint": endpoint,
             "api_key": api_key,
@@ -134,6 +138,12 @@ class CragGrader:
         self.deployment = deployment
         self.temperature = temperature
         self._client: AsyncAzureOpenAI | None = None
+
+    def _completion_kwargs(self, **base: object) -> dict[str, object]:
+        kwargs = dict(base)
+        if self.temperature is not None:
+            kwargs["temperature"] = self.temperature
+        return kwargs
 
     async def __aenter__(self) -> CragGrader:
         self._client = AsyncAzureOpenAI(**self._client_kwargs)
@@ -160,12 +170,13 @@ class CragGrader:
         user_msg = _build_grader_user_message(query, chunks)
         start = time.perf_counter()
         completion = await self._client.chat.completions.create(
-            model=self.deployment,
-            messages=[
-                {"role": "system", "content": GRADER_SYSTEM_PROMPT},
-                {"role": "user", "content": user_msg},
-            ],
-            temperature=self.temperature,
+            **self._completion_kwargs(
+                model=self.deployment,
+                messages=[
+                    {"role": "system", "content": GRADER_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_msg},
+                ],
+            ),
         )
         latency_ms = int((time.perf_counter() - start) * 1000)
 
@@ -198,12 +209,13 @@ class CragGrader:
         user_msg = _build_rewrite_user_message(query, chunks)
         start = time.perf_counter()
         completion = await self._client.chat.completions.create(
-            model=self.deployment,
-            messages=[
-                {"role": "system", "content": REWRITE_SYSTEM_PROMPT},
-                {"role": "user", "content": user_msg},
-            ],
-            temperature=self.temperature,
+            **self._completion_kwargs(
+                model=self.deployment,
+                messages=[
+                    {"role": "system", "content": REWRITE_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_msg},
+                ],
+            ),
         )
         latency_ms = int((time.perf_counter() - start) * 1000)
 
