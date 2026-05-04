@@ -456,8 +456,8 @@ status: closed     # flipped 2026-05-04 W4 D5 末 closeout — Phase Gate G1+G3(
 
 | Hash | Subject |
 |---|---|
-| _pending_ | `docs(planning): W4 D5 closeout — Gate 2 verdict DEFERRED + W4 retro + W5 kickoff (status active→closed)` |
-| _pending_ | `docs(planning): W05-optimization phase folder kickoff (plan/checklist/progress draft)` |
+| `c25106e` | `docs(planning): W4 D5 closeout — Gate 2 verdict DEFERRED + W4 retro + status active→closed` |
+| `ff2d2aa` | `docs(planning): W05-optimization phase folder kickoff (plan/checklist/progress draft)` |
 
 ---
 
