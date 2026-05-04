@@ -782,10 +782,10 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 
 | Hash | Subject | Scope |
 |---|---|---|
-| _pending_ | `chore(infra): truststore for corp proxy SSL inspection compatibility` | C12 — pyproject deps + 2 entry-point inject(populate sanity + gate1 driver) |
-| _pending_ | `fix(c03): chunk_id key sanitize + index schema add chunk_total/chunk_token_count + 4xx body logging (BUG-002 closeout)` | C03 — schema.json + schemas.py + populate.py + tests +1 |
-| _pending_ | `feat(c06): Gate 1 reproducible eval driver scripts/run_gate1_eval.py` | C06 — 1 new file |
-| _pending_ | `docs(planning): W02 Gate 1 verdict — R@5 = 0.2278 (FAIL — eval-set / corpus structural mismatch, HALT not triggered)` | docs — progress.md update |
+| `918f007` | `chore(infra): truststore for corp proxy SSL inspection compatibility` | C12 — pyproject deps + 2 entry-point inject(populate sanity + gate1 driver) |
+| `37915be` | `fix(c03): chunk_id key sanitize + 2 schema fields + 4xx body logging (BUG-002 closeout)` | C03 — schema.json + schemas.py + populate.py + tests +1 |
+| `d0a7aed` | `feat(c06): Gate 1 reproducible eval driver scripts/run_gate1_eval.py` | C06 — 1 new file |
+| `a064946` | `docs(planning): W02 Gate 1 verdict — R@5 = 0.2278 (FAIL — eval-set / corpus structural mismatch, HALT not triggered)` | docs — progress.md + checklist update |
 
 ---
 
