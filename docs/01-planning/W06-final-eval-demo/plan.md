@@ -2,9 +2,9 @@
 phase: W06-final-eval-demo
 name: "Azure 2-way Verify + Final Eval + Demo Prep + Beta Plan"
 sprint_week: W6
-start_date: 2026-05-29          # tentative — same Option-A 2-day-shift heuristic
-end_date: 2026-06-04            # tentative,5 working days
-status: draft                   # flipped to active when Chris W6 D1 sign-off + W5 D5 closeout PASS
+start_date: 2026-05-05          # W6 D1 kickoff — Chris approved; W5 closed 2026-05-04
+end_date: 2026-05-09            # 5 working days
+status: active                  # flipped from draft 2026-05-05 W6 D1 per Chris kickoff sign-off
 spec_refs:
   - architecture.md §6.1 W6 row     # final eval + demo prep + Beta plan
   - architecture.md §6.3            # Gate 2 STRONG PASS upgrade path
@@ -156,11 +156,11 @@ W6 D2-D5 並行:**final eval full 55-query**(post Q14 SME chunk_id labeling casc
 
 | Day | Date | Focus | Deliverables targeted |
 |---|---|---|---|
-| D1 | 2026-05-29 | F1 Azure 2-way LIVE verify + Gate 2 verdict | F1 |
-| D2 | 2026-05-30 | F2 Chris labeling cascade kickoff + F3 prompt tuning A/B(if F1 PASS)| F2, F3 |
-| D3 | 2026-05-31 | F2 strict-mode RAGAs full + F4 carry-overs LIVE smoke(Chris)| F2, F4 |
-| D4 | 2026-06-01 | F5 demo prep + Beta plan draft + F4 documentation | F5, F4 |
-| D5 | 2026-06-02 | F6 Gate 2 closeout + W6 retro + W7 kickoff prep | F6 |
+| D1 | 2026-05-05 | F1 Azure 2-way LIVE verify + Gate 2 verdict | F1 |
+| D2 | 2026-05-06 | F2 Chris labeling cascade kickoff + F3 prompt tuning A/B(if F1 PASS)| F2, F3 |
+| D3 | 2026-05-07 | F2 strict-mode RAGAs full + F4 carry-overs LIVE smoke(Chris)| F2, F4 |
+| D4 | 2026-05-08 | F5 demo prep + Beta plan draft + F4 documentation | F5, F4 |
+| D5 | 2026-05-09 | F6 Gate 2 closeout + W6 retro + W7 kickoff prep | F6 |
 
 ## 6. Dependencies on Prior Phase
 
@@ -181,6 +181,7 @@ Carry-overs from `W05-optimization/progress.md` retro:
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-05-04 | Initial draft(W5 D5 末 closeout batch)| Per PROCESS.md §2.3 rolling-JIT kickoff;status=draft pending Chris W5 D5 closeout sign-off + W6 kickoff approval | Chris(pending approve to flip active) |
+| 2026-05-05 | Status flip `draft → active` + dates re-anchor(2026-05-05 → 2026-05-09)| Chris W6 D1 kickoff sign-off;原 tentative dates 2026-05-29 起源 Option-A 2-day-shift heuristic 已 obsolete(W5 closed 2026-05-04 actual,W6 D1 = today)| Chris approve via "執行 (a) W6 D1 kickoff" |
 
 ---
 
