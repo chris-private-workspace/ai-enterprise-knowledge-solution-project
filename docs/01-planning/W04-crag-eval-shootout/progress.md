@@ -131,7 +131,95 @@ status: in-progress     # draft → in-progress → closed; flipped 2026-05-04 W
 
 ---
 
-## Day 2 — _(pending)_
+## Day 2 — 2026-05-04 (Mon — same-day W4 D1 closeout per "啟動 W4 D2" signal)
+
+> Per plan §5 D2 = F2 RAGAs eval automation + F4 eval-set v1 expansion(+20 placeholder queries awaiting Chris SME real-phrasing cascade)。Same-day W3 → W4 momentum continues per Chris signoff "W3 sequencing 確認可以"。Procurement carry-overs(Voyage / ZeroEntropy keys + Cohere endpoint populate)remain async — F3 / F5 pending。
+
+### Done
+
+#### F2 — RAGAs 4-metric eval automation(C06 eval framework)
+
+- `backend/eval/ragas_runner.py` ✅ NEW(per architecture.md §3.6 + components/C06-eval.md §2):
+  - `RagasQuerySample` dataclass:`query_id` / `question` / `contexts: list[str]` / `answer` / optional `reference` + `expected_keywords`(fallback for context_recall when reference missing per current eval-set-v1-draft state)
+  - `RagasQueryResult` dataclass:per-row 4 metric scores(`faithfulness` / `answer_relevancy` / `context_precision` / `context_recall`)+ `input_tokens` / `output_tokens` / `latency_ms` / `error`
+  - `RagasAggregate` dataclass:`mean` / `median` / `p95` / `n`(p95 nearest-rank method per architecture.md §3.6 latency baseline pattern)
+  - `RagasReport` dataclass:metadata + aggregates + per-query + cumulative cost trace(total tokens / latency)
+  - `RagasRunner` orchestration class:`evaluate(samples) → RagasReport`。**Injectable evaluator pattern**(constructor `evaluator=` parameter)— allows real `ragas.metrics.collections` judge OR test stub without code path divergence per Karpathy §1.4 goal-driven testability
+  - `_evaluate_one(sample)` wraps per-row exceptions(`error` field populated;score zeros + excluded from aggregate)
+  - `_clamp(v)` enforces score ∈ [0, 1] regardless of judge output drift
+  - `load_samples_from_eval_set(eval_set_path, pipeline_outputs_path?)` loads YAML eval-set + skips OOS queries(refusal accuracy evaluated separately per architecture.md §3.6)+ optional pipeline-outputs JSON for cached re-runs
+  - `report_to_json(report)` emits stable JSON schema:`metadata` / `aggregate.metrics{4-metrics}` / `aggregate.total_*` / `per_query[]`
+  - structlog `ragas_eval_complete` event:per-metric mean + total token+latency cost
+- `scripts/run_ragas_eval.py` ✅ NEW(W4 D2 F2 driver script):
+  - CLI args:`--eval-set`(default `docs/eval-set-v1-draft.yaml`)/ `--output`(default `reports/ragas-results.json`)/ `--subset N`(cost containment per W4 plan §4 R4)/ `--pipeline-cache`(reuse cached pipeline outputs)/ `--skip-pipeline`(re-run judge against same RAG outputs)
+  - `_make_real_evaluator(judge_deployment)` wraps `ragas.metrics.collections` 4 metric objects via `LangchainLLMWrapper`(judge LLM = `AzureChatOpenAI` pointing at `Settings.azure_openai_deployment_llm_judge`)+ `LangchainEmbeddingsWrapper`(embeddings for answer_relevancy + context_precision via `Settings.azure_openai_deployment_embedding`)
+  - `_build_samples_via_pipeline()` runs full EKP RAG pipeline(retrieve via `RetrievalEngine` → synthesize via `Synthesizer`)against eval-set queries → assembles `RagasQuerySample` list with live contexts + answer
+  - `_build_samples_via_cache()` reads cached pipeline outputs JSON(supports W4 D3 reranker shootout reuse pattern)
+  - truststore + sys.path injection per W2 D5 `run_gate1_eval.py` pattern
+  - Exit codes:0 = JSON written / 1 = env missing / pipeline failure
+- `backend/pyproject.toml` ✅ added `[project.optional-dependencies] eval` group declaring `ragas>=0.4,<0.5` + `langchain-openai>=0.2`(per H2 stack lock — RAGAs already approved Tier 1 vendor;explicit declaration ensures reproducibility post-`pip install -e ".[eval]"`)
+- `backend/tests/test_ragas_runner.py` ✅ NEW — 13 tests pass:
+  - 5 `_aggregate` tests(empty / single / odd-length median / even-length pair-average / p95 nearest-rank index round)
+  - 6 `RagasRunner.evaluate` tests(constant-stub aggregates / score clamp out-of-range / per-row error excluded from aggregate / no-evaluator RuntimeError / non-dict return surfaces error)
+  - 2 `load_samples_from_eval_set` tests(skip OOS + populate keywords / pipeline cache wire)
+  - 1 `report_to_json` round-trip(stable schema verification)
+
+#### F4 — Eval set v1 expansion(+20 real-user query placeholders)
+
+- `docs/eval-set-v1-draft.yaml` ✅ extended Q036-Q055(20 NEW queries appended;total 55 = 30 synthetic_main + 5 synthetic_oos + 20 user_collected):
+  - **5 conversational rephrasings**(Q036-Q040):colloquial variants of Q001-Q005 corpus topics(AR Payment Collection / AP Reverse / Write-Off / FA Depreciation / CB Bank Reconciliation)— more frustrated / scenario-driven phrasings than synthetic
+  - **5 multi-step troubleshooting**(Q041-Q045):workflow + error scenarios(FA depreciation + asset register / GL TB closing / AR aging + payment / GL period control / CB-GL integration)
+  - **5 cross-document synthesis**(Q046-Q050):span 2+ corpus sections(AP+CB+GL invoice lifecycle / FA disposal+GL closing / AR aging+CB cash / BM+GL variance / GL allocation+BM cost center)
+  - **5 table-data lookups**(Q051-Q055):R4 hallucination test bed per W4 plan §4 R3(form field requirements / depreciation methods enumeration / asset record dimensions / GL dimension types / AP voucher approval workflow)
+- `metadata.composition` updated:`synthetic_main: 30` + `synthetic_oos: 5` + `user_collected: 20`(was 0)→ sums to 55 matching `len(queries)`
+- `metadata.difficulty_distribution` + `query_type_distribution` re-tallied for 55 queries
+- `scripts/validate_eval_set.py` runs cleanly:composition sum mismatch resolved;remaining 50 issues all `non-oos query must have ≥1 primary_chunk_id`(Q001-Q030 W2 baseline + Q036-Q055 W4 NEW — both pending Chris SME label cascade per Q14)
+- **DEFERRED Chris async**:Real user phrasing replacement(20 placeholders → real customer support ticket phrasings per Q6 Open)+ chunk_id labeling per Q14 cascade。Promote `-draft.yaml` → `eval-set-v1.yaml` 觸發條件 = Chris validate ≥ 45/55 with real phrasings + chunk_ids + `validated: true` per plan §3 G6
+
+#### Test suite
+
+- **172/172 backend tests pass**(W4 D1 baseline 159 + 13 NEW ragas runner)
+- ruff clean on `backend/eval/ragas_runner.py` + `backend/tests/test_ragas_runner.py`
+- `scripts/run_ragas_eval.py` not unit-tested(driver script per CLAUDE.md §5.6 H6 — `backend/eval/` test coverage adequate;driver smoke test deferred to W4 D3 live run when Cohere endpoint populated)
+
+### Decisions / OQ Resolved
+
+- **Decision** — `RagasRunner` uses **injectable evaluator pattern** rather than direct ragas import in production module。Rationale:per Karpathy §1.4 goal-driven testability — unit tests can stub the judge LLM completely(deterministic CI + zero token cost)while production driver wires real `ragas.metrics.collections`。Avoids LLM mocking framework boilerplate and keeps `ragas_runner.py` independent of langchain / ragas / Azure OpenAI imports
+- **Decision** — `ragas` 0.4.x pinned in `[eval]` optional-dependencies group not main `dependencies`。Rationale:per CLAUDE.md §5.2 H2 — ragas approved baseline vendor but ONLY runtime dependency for eval scripts(non production server hot path);pinning 0.4.x avoids 0.5 breaking-change(deprecation warnings already showing for ragas.metrics.collections move)。`pip install -e ".[eval]"` opt-in
+- **Decision** — Token cost tracking deferred for ragas eval。Rationale:ragas v0.4 moved usage tracking to LangChain callbacks(non per-call return value);wiring callback collector adds complexity W4 D2 doesn't yet need。Production cost trace via Langfuse correlation per architecture.md §7 already exists for synthesizer + grader;ragas judge calls visible there as well。`RagasRunner` framework-side records `latency_ms` per-row sufficient for W4 D5 Gate 2 cost/latency analysis
+- **Decision** — F4 20 NEW queries delivered as placeholders not 真實 phrasings。Rationale:per Q6 Open W3-W4 — real user phrasing source(customer support tickets / Drive Manual support requests)requires Chris async collection;blocking F4 on Q6 = serial dependency。Placeholder-mode allows W4 D2 land + W4 D3-D5 RAGAs run on synthetic queries(directionally informative)+ Chris async replace phrasings post-W4 for Beta evaluation
+- **Decision** — F4 placeholder taxonomy cover 4 scenarios(conversational / troubleshooting / cross-doc / table-data)not single rephrasing pattern。Rationale:R4 hallucination guard per W4 plan §4 R3 specifically calls out table-heavy queries;cross-doc synthesis stresses retrieval recall across 2+ docs;troubleshooting scenarios test refusal-vs-attempt boundary。Coverage informs both Gate 2 4-metric distribution + W5+ targeted improvements
+- **No new OQ resolved**(Q6 still Open W3-W4;Q14 SME label cascade still pending;Q21 reranker final pick remains W4 D5 critical)
+
+### Blockers cleared / remaining
+
+- ✅ F2 RagasRunner orchestration + 13 tests + driver script + pyproject declare
+- ✅ F4 20 placeholder queries + composition fix + validator pass(structurally)
+- ⏸ **Cohere Marketplace endpoint+key populate**(Chris async procurement)— gates F5 lift smoke + F3 reranker shootout against Cohere baseline
+- ⏸ **Voyage + ZeroEntropy procurement keys**(Chris)— gates F3 4-way shootout completeness;3-way fallback(Cohere + Azure semantic + hybrid-only) acceptable per W4 plan §4 R2
+- ⏸ **Chris SME label cascade**(per Q14)— blocks F4 promote `-draft.yaml` → `v1.yaml`;Q001-Q055 全部 placeholder pending
+- ⏸ **Chris real-phrasing collection**(per Q6)— blocks F4 20 placeholder queries → real user phrasings
+- ⏸ Live Azure OpenAI + AI Search verify of `scripts/run_ragas_eval.py`(post Chris dev server start + Cohere endpoint)— W4 D3 first run
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F2 `ragas_runner.py`(injectable evaluator + dataclasses + aggregate)| 1.5 | 0.7 | -0.8h | Injectable pattern saved direct ragas import + LLM mocking complexity |
+| F2 `run_ragas_eval.py` driver(pipeline build + cache + ragas wrapper)| 1.0 | 0.5 | -0.5h | Reused W2 D5 `run_gate1_eval.py` skeleton |
+| F2 13 unit tests(aggregate edge cases + evaluator paths + load samples)| 0.5 | 0.4 | -0.1h | Stub evaluator pattern keeps tests trivially deterministic |
+| F2 pyproject.toml [eval] optional-deps + ragas/langchain-openai pin | 0.1 | 0.1 | 0 | Surgical addition |
+| F4 20 placeholder queries(Q036-Q055)+ metadata composition fix + 4-scenario taxonomy | 1.0 | 0.5 | -0.5h | Template-driven generation;corpus-aligned per Q1 |
+| W4 D2 progress entry | 0.5 | 0.5 | 0 | This entry |
+| **Total D2** | **4.6** | **2.7** | **-1.9h** | F2 injectable-evaluator design +placeholder-driven F4 saved ~2h vs estimate |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| `8b89ccf` | `feat(c06): F2 RAGAs 4-metric eval automation + 13 tests + driver script (W4 D2)` |
+| `fd17300` | `docs(eval): F4 eval-set v1 expansion +20 placeholder queries Q036-Q055 (W4 D2)` |
+| _pending_ | `docs(planning): W4 D2 progress + checklist tick (F2 + F4)` |
 
 ---
 

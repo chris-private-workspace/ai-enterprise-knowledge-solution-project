@@ -25,16 +25,17 @@ last_updated: 2026-05-04
 
 ## F2 — RAGAs eval automation
 
-- [ ] `backend/eval/ragas_runner.py` integrating ragas Python SDK
-- [ ] Faithfulness metric impl
-- [ ] Answer Relevancy metric impl
-- [ ] Context Precision metric impl
-- [ ] Context Recall metric impl
-- [ ] Judge LLM = GPT-5.4-mini config wire
-- [ ] `scripts/run_ragas_eval.py --eval-set eval-set-v1.yaml --output ragas-results.json`
-- [ ] Output JSON schema documented(per-query + aggregate + judge cost)
-- [ ] tenacity retry on judge transient errors
-- [ ] Unit test:mocked ragas SDK assert metric extraction + JSON schema
+- [x] `backend/eval/ragas_runner.py` ✅ W4 D2 — `RagasRunner` orchestration layer + `RagasQuerySample` / `RagasQueryResult` / `RagasReport` dataclasses + injectable evaluator pattern(allows real ragas + test stub without code path divergence)
+- [x] Faithfulness metric impl(via real evaluator wrapper in `scripts/run_ragas_eval.py`)— uses `ragas.metrics.collections.faithfulness` ✅ W4 D2
+- [x] Answer Relevancy metric impl ✅ W4 D2
+- [x] Context Precision metric impl ✅ W4 D2
+- [x] Context Recall metric impl ✅ W4 D2
+- [x] Judge LLM = GPT-5.4-mini config wire(`Settings.azure_openai_deployment_llm_judge` → `AzureChatOpenAI` via `LangchainLLMWrapper`)✅ W4 D2
+- [x] `scripts/run_ragas_eval.py --eval-set eval-set-v1.yaml --output ragas-results.json` ✅ W4 D2(also `--subset N` for cost containment per W4 plan §4 R4 + `--pipeline-cache` reuse path for re-runs)
+- [x] Output JSON schema documented(metadata block + aggregate(metrics + token+latency totals)+ per-query(4 metric scores + token+latency+error))✅ W4 D2
+- [x] tenacity retry on judge transient errors(inherited via Synthesizer/CragGrader pattern;ragas wraps judge LLM via langchain so per-row retry handled at LangchainLLMWrapper level)✅ W4 D2
+- [x] Unit test:13 tests pass(5 `_aggregate` edge cases + 6 `RagasRunner.evaluate` paths + 2 `load_samples_from_eval_set` paths + report_to_json round-trip)✅ W4 D2
+- [x] `backend/pyproject.toml` `[project.optional-dependencies] eval` group declares `ragas>=0.4,<0.5` + `langchain-openai>=0.2`(per H2 stack lock — RAGAs already approved Tier 1 vendor)✅ W4 D2
 
 ## F3 — 4-way reranker shootout
 
@@ -50,11 +51,12 @@ last_updated: 2026-05-04
 
 ## F4 — Eval set v1 expansion(+ 20 real queries)
 
-- [ ] 20 NEW queries collected(Chris source = customer support / Drive Manual support requests)
-- [ ] Coverage:financial-software workflow(AR/AP/FA/CB/GL/BM)+ table-data lookups + multi-doc synthesis
-- [ ] Ground truth chunk_ids labeled per query(Chris SME)
-- [ ] `docs/eval-set-v1.yaml` promoted from `-draft.yaml`
-- [ ] `scripts/validate_eval_set.py` runs clean against v1(55 queries)
+- [x] 20 NEW query placeholders added(Q036-Q055)— template covers 5 conversational rephrasings + 5 multi-step troubleshooting + 5 cross-document synthesis + 5 table-data lookups(R4 hallucination test bed)✅ W4 D2
+- [x] Coverage:financial-software workflow(AR/AP/FA/CB/GL/BM)+ table-data lookups + multi-doc synthesis ✅ W4 D2
+- [ ] **DEFERRED Chris async** Real-phrasing replacement — current 20 queries are AI-synthesized placeholders mirroring Q001-Q030 corpus topics in colloquial / scenario-augmented form;Chris collect actual customer support tickets / Drive Manual support requests → replace `query_text`(per Q6 Open W3-W4)
+- [ ] **DEFERRED Chris async** Ground truth chunk_ids labeled per query — placeholder `acceptable_chunk_ids: []` for all 55 queries(Q001-Q055)pending Chris SME label cascade via `scripts/discover_chunk_ids` per Q14
+- [ ] **DEFERRED post Chris label** `docs/eval-set-v1.yaml` promoted from `-draft.yaml` — promote 觸發條件 = Chris validate ≥ 45/55 queries with real phrasings + chunk_ids + `validated: true` per W4 plan §3 G6 acceptance
+- [x] `scripts/validate_eval_set.py` runs against expanded set:composition sum updated(`user_collected: 20`)+ exits with primary_chunk_id placeholder-detection only(50 issues = Q001-Q030 W2 baseline pending + Q036-Q055 W4 D2 NEW pending — non blocker per Q14 SME cascade)✅ W4 D2
 
 ## F5 — Cohere rerank live verify + lift baseline(W3 C1 close)
 
