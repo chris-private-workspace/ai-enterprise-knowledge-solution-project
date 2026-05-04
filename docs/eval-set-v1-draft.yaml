@@ -1,0 +1,775 @@
+# EKP Tier 1 — Eval Set v1 DRAFT(AI corpus-aligned,2026-05-04)
+#
+# ⚠️ DRAFT WARNING — READ BEFORE USE ⚠️
+# ============================================================================
+# 此檔由 AI 於 2026-05-04 W2 D5 cont 基於 actual indexed corpus survey
+# (`ekp-kb-drive-v1` 6 docs / 329 chunks)synthesize 30 main + 5 OOS query。
+#
+# 與 `eval-set-v0.yaml` 嘅差異:
+#   - v0 假設 source corpus 係 Ricoh MFP printer manual(paper jam / toner) —
+#     完全不對齊 indexed corpus(actual = Ricoh financial software:
+#     FNA-AR / AP / FA / CB / GL / BM)→ Gate 1 R@5 = 0.2278 fail
+#   - v1-draft 30 main query topic 直接對應 corpus section titles
+#     (AR01-08 Payment Collection / Reverse / Write-Off ...
+#      AP01-07 / FA01-08 / CB01-03 / GL01-09 / BU.01)
+#
+# 仍未完成(awaits SME owner Chris,per Q14):
+#   1. `annotation.validated: true` 標 → 仍全部 false
+#   2. `acceptable_chunk_ids` real chunk_id 填寫 → 仍 empty list
+#   3. `expected_screenshot_chunks` 識別 → 仍 empty
+#   4. SME confirm query phrasing 反映實際 user 問法,而非 AI synthesize
+#
+# Cascade to true `eval-set-v1.yaml`:
+#   a. SME(Chris)review 30 main + 5 OOS query make-sense check
+#   b. 跑 `python -m scripts.discover_chunk_ids --eval-set docs/eval-set-v1-draft.yaml`
+#      → `reports/chunk_id_candidates_v1draft.yaml`
+#   c. SME pick acceptable_chunk_ids per query
+#   d. Set `validated: true` + 填 annotator + date
+#   e. 跑 `python -m scripts.validate_eval_set docs/eval-set-v1-draft.yaml` → exit 0
+#   f. Rename `eval-set-v1-draft.yaml` → `eval-set-v1.yaml`(SME-validated)
+#   g. POC W4 加 20 條 real user query → eval-set-v2.yaml
+#
+# Reference:annotation guideline 詳見 `docs/eval-methodology.md` §4
+# ============================================================================
+
+metadata:
+  version: "1.0-draft-ai-corpus-aligned"
+  created_at: "2026-05-04"
+  created_by: "AI(Claude Opus 4.7) based on corpus survey of ekp-kb-drive-v1"
+  intended_use: "W2 D5 cont — replace v0 placeholder MFP queries with corpus-aligned queries; awaits SME validation cascade for true v1"
+
+  total_queries: 35
+  composition:
+    synthetic_main: 30
+    synthetic_oos: 5
+    user_collected: 0      # to be added W4 (target +20)
+
+  difficulty_distribution:
+    easy: 14
+    medium: 13
+    hard: 3
+    n_a_oos: 5             # OOS queries don't have difficulty
+
+  query_type_distribution:
+    single_step_lookup: 18
+    multi_step_synthesis: 9
+    troubleshooting: 3
+    oos: 5
+
+  domain:
+    primary: "Ricoh internal financial-software user manuals"
+    coverage:
+      - "Accounts Receivable (AR) — payment collection / reverse / write-off / aging / collection letter"
+      - "Accounts Payable (AP) — invoicing / payment journal / settlement / reversal / aging"
+      - "Fixed Asset (FA) — registration / purchase / depreciation / disposal / inventory conversion"
+      - "Cash and Bank (CB) — check creation / void / bank reconciliation"
+      - "General Ledger (GL) — allocation rule / journal voucher / trial balance / closing / sub-consolidation"
+      - "Budget Management (BM) — budget registration / process flow"
+
+  validation_status: "AI-DRAFT — all 30 main queries are AI-synthesized from corpus topics; SME validation cascade pending"
+
+# ============================================================================
+# AR — Accounts Receivable (6 queries: Q001-Q006)
+# ============================================================================
+
+queries:
+
+  - query_id: Q001
+    query_text: "How do I record a payment collection from a customer?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "payment collection"
+        - "customer"
+        - "AR"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus AR01 Payment Collection section"
+
+  - query_id: Q002
+    query_text: "How to reverse a customer payment journal?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "reverse"
+        - "customer payment"
+        - "journal"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus AR02 Reverse Customer Payment Journal section"
+
+  - query_id: Q003
+    query_text: "What is the procedure to write off a receivable?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "write-off"
+        - "receivable"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus AR03 Write-Off Receivables section"
+
+  - query_id: Q004
+    query_text: "How to generate a customer account statement?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "customer account"
+        - "statement"
+        - "generate"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus AR04 Generate customer account Statement section"
+
+  - query_id: Q005
+    query_text: "How do I set up a collection letter and then generate it?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "collection letter"
+        - "setup"
+        - "generate"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus AR06 Collection Letter Setup + AR07 Collection Letter Generation"
+
+  - query_id: Q006
+    query_text: "How to create an aging period definition for receivables?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "aging period"
+        - "definition"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus AR05 Create Aging Period Definition section"
+
+# ============================================================================
+# AP — Accounts Payable (5 queries: Q007-Q011)
+# ============================================================================
+
+  - query_id: Q007
+    query_text: "How to create AP invoicing without a PO?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "AP"
+        - "invoicing"
+        - "without PO"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus AP01 Create AP Invoicing without PO section"
+
+  - query_id: Q008
+    query_text: "How to create a payment journal and settle it?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "payment journal"
+        - "settlement"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus AP03 Create Payment Journal & Settlement section"
+
+  - query_id: Q009
+    query_text: "How to perform a payment reversal in AP?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "payment reversal"
+        - "AP"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus AP05 Payment Reversal section"
+
+  - query_id: Q010
+    query_text: "How to set up AP aging and generate the report?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "AP aging"
+        - "setup"
+        - "generation"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus AP07 AP Aging Setup and Generation section"
+
+  - query_id: Q011
+    query_text: "What are the system instructions for processing an AP invoice?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "AP"
+        - "invoice"
+        - "system instruction"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus AP01.x.1.3 System Instruction subsections"
+
+# ============================================================================
+# FA — Fixed Asset (6 queries: Q012-Q017)
+# ============================================================================
+
+  - query_id: Q012
+    query_text: "How to register a new fixed asset in the system?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "fixed asset"
+        - "registration"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus FA01 Fixed Asset Registration section"
+
+  - query_id: Q013
+    query_text: "How to purchase a fixed asset with or without a PO?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "fixed asset"
+        - "purchase"
+        - "PO"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus FA02 Fixed Asset Purchase with or without PO section"
+
+  - query_id: Q014
+    query_text: "How to update a fixed asset group?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "fixed asset"
+        - "group"
+        - "update"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus FA03 Fixed Asset Group Update section"
+
+  - query_id: Q015
+    query_text: "How do I run fixed asset depreciation?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "depreciation"
+        - "fixed asset"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus FA06 Fixed Asset Depreciation section"
+
+  - query_id: Q016
+    query_text: "How to dispose of a fixed asset?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "fixed asset"
+        - "disposal"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus FA07 Fixed Asset Disposal section"
+
+  - query_id: Q017
+    query_text: "How to convert inventory to a fixed asset?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "convert"
+        - "inventory"
+        - "fixed asset"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus FA05 Convert Inventory to Fixed Asset section"
+
+# ============================================================================
+# CB — Cash and Bank (4 queries: Q018-Q021)
+# ============================================================================
+
+  - query_id: Q018
+    query_text: "How to create a check in Cash and Bank?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "create"
+        - "check"
+        - "Cash and Bank"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus CB01 Create and Delete Checks section"
+
+  - query_id: Q019
+    query_text: "How to void a check?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "void"
+        - "check"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus CB02 Void Checks section"
+
+  - query_id: Q020
+    query_text: "What is the procedure for bank reconciliation?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "bank reconciliation"
+        - "reconciliation"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus CB03 Bank Reconciliation section"
+
+  - query_id: Q021
+    query_text: "How to delete a check that was created by mistake?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: troubleshooting
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "delete"
+        - "check"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus CB01 Create and Delete Checks section (delete sub-procedure)"
+
+# ============================================================================
+# GL — General Ledger (6 queries: Q022-Q027)
+# ============================================================================
+
+  - query_id: Q022
+    query_text: "How to set up a ledger allocation rule?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "ledger allocation"
+        - "allocation rule"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus GL01 Ledger Allocation Rule Setting section"
+
+  - query_id: Q023
+    query_text: "How to process journal vouchers in GL?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "journal voucher"
+        - "process"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus GL03 Processing Journal Vouchers section"
+
+  - query_id: Q024
+    query_text: "How to generate a trial balance?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "trial balance"
+        - "generation"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus GL04 Trial Balance Generation section"
+
+  - query_id: Q025
+    query_text: "What is the procedure for periodic ledger closing?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "periodic ledger"
+        - "closing"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus GL07 Periodic Ledger Closing section"
+
+  - query_id: Q026
+    query_text: "How to perform sub-consolidation in General Ledger?"
+    query_phrasing_source: synthetic
+    difficulty: hard
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "sub-consolidation"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus GL08 Sub-consolidation section"
+
+  - query_id: Q027
+    query_text: "How to do an inventory check for physical stock in GL?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: troubleshooting
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "inventory check"
+        - "physical stock"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus GL09 Inventory Check for Physical Stock section"
+
+# ============================================================================
+# BM — Budget Management (3 queries: Q028-Q030)
+# ============================================================================
+
+  - query_id: Q028
+    query_text: "How to register a budget?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "budget"
+        - "registration"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus BU.01 Budget Registration section"
+
+  - query_id: Q029
+    query_text: "What is the business process flow for budget registration?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "budget registration"
+        - "business process"
+        - "flow"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus BU.01.x.1.2 Business Process Flow subsection"
+
+  - query_id: Q030
+    query_text: "What are the system instruction steps for budget setup?"
+    query_phrasing_source: synthetic
+    difficulty: hard
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "budget"
+        - "system instruction"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — corpus BU.01.x.1.3-2.1.5 System Instruction subsections"
+
+# ============================================================================
+# OOS — Out-of-Scope (5 queries: Q031-Q035)
+# Should be refused by C05 generation; W2 retrieval still ranked but C05 reject
+# ============================================================================
+
+  - query_id: Q031
+    query_text: "How do I clear a paper jam in the printer?"
+    query_phrasing_source: synthetic
+    difficulty: null
+    query_type: oos
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "paper jam"
+      expected_refusal: true
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — OOS: corpus has no printer/MFP content"
+
+  - query_id: Q032
+    query_text: "What was the company's annual revenue last fiscal year?"
+    query_phrasing_source: synthetic
+    difficulty: null
+    query_type: oos
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "annual revenue"
+        - "fiscal year"
+      expected_refusal: true
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — OOS: corpus contains no financial reports / actuals"
+
+  - query_id: Q033
+    query_text: "How do I use Microsoft Excel pivot tables?"
+    query_phrasing_source: synthetic
+    difficulty: null
+    query_type: oos
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "Excel"
+        - "pivot tables"
+      expected_refusal: true
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — OOS: external software topic"
+
+  - query_id: Q034
+    query_text: "What is the WiFi password for the Hong Kong office?"
+    query_phrasing_source: synthetic
+    difficulty: null
+    query_type: oos
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "WiFi password"
+        - "Hong Kong"
+      expected_refusal: true
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — OOS + sensitive: facilities info should never be in KB"
+
+  - query_id: Q035
+    query_text: "Tell me a joke about accountants."
+    query_phrasing_source: synthetic
+    difficulty: null
+    query_type: oos
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "joke"
+        - "accountants"
+      expected_refusal: true
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "AI-DRAFT — OOS: chitchat / off-task"

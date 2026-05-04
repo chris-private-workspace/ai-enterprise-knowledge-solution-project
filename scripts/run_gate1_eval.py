@@ -1,7 +1,12 @@
-"""W2 Gate 1 live eval driver: eval-set-v0.yaml → RetrievalEngine → R@5 verdict.
+"""W2 Gate 1 live eval driver: eval-set YAML → RetrievalEngine → R@5 verdict.
 
 Usage (from project root, post populate sanity success):
     backend/.venv/Scripts/python.exe -m scripts.run_gate1_eval
+    backend/.venv/Scripts/python.exe -m scripts.run_gate1_eval --eval-set docs/eval-set-v0.yaml
+
+Default eval-set: docs/eval-set-v1-draft.yaml (AI corpus-aligned 2026-05-04;
+post-W2-D5-cont rebuild). Override with --eval-set for archive runs against
+v0 or future v1/v2.
 
 Exit codes:
     0 — eval ran end-to-end, report written; verdict (pass/fail) printed
@@ -16,6 +21,7 @@ import truststore
 
 truststore.inject_into_ssl()
 
+import argparse
 import asyncio
 import sys
 from pathlib import Path
@@ -30,13 +36,13 @@ from retrieval.hybrid import HybridSearcher  # noqa: E402
 from retrieval.retrieval_engine import RetrievalEngine  # noqa: E402
 from storage.settings import get_settings  # noqa: E402
 
-EVAL_SET = Path("docs/eval-set-v0.yaml")
+DEFAULT_EVAL_SET = Path("docs/eval-set-v1-draft.yaml")
 INDEX_NAME = "ekp-kb-drive-v1"
 GATE1_THRESHOLD = 0.80
-REPORT_PATH = Path("reports/gate1_w2.yaml")
+DEFAULT_REPORT_PATH = Path("reports/gate1_w2.yaml")
 
 
-async def _amain() -> int:
+async def _amain(eval_set: Path, report_path: Path) -> int:
     settings = get_settings()
     if not (settings.azure_openai_api_key and settings.azure_search_admin_key):
         print("ERROR: AZURE_OPENAI_API_KEY / AZURE_SEARCH_ADMIN_KEY missing", file=sys.stderr)
@@ -58,14 +64,15 @@ async def _amain() -> int:
     async with embedder, searcher:
         engine = RetrievalEngine(embedder=embedder, searcher=searcher)
         runner = EvalRunner(engine=engine, top_k=5)
-        report = await runner.run(EVAL_SET)
+        report = await runner.run(eval_set)
 
-    REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    REPORT_PATH.write_text(report_to_yaml(report), encoding="utf-8")
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(report_to_yaml(report), encoding="utf-8")
 
     verdict = "PASS" if report.aggregate_recall_at_5 >= GATE1_THRESHOLD else "FAIL"
     print(f"\n{'=' * 60}")
     print(f"W2 Gate 1 verdict: {verdict}")
+    print(f"  Eval set:                        {eval_set}")
     print(f"  R@5 (aggregate, main queries):  {report.aggregate_recall_at_5:.4f}")
     print(f"  Threshold:                       {GATE1_THRESHOLD:.2f}")
     print(f"  Total queries:                   {report.total_queries}")
@@ -76,13 +83,27 @@ async def _amain() -> int:
     print(f"  Mode breakdown:                  {report.mode_breakdown}")
     print(f"  Avg embed latency (ms):          {report.avg_embed_latency_ms}")
     print(f"  Avg search latency (ms):         {report.avg_search_latency_ms}")
-    print(f"  Report path:                     {REPORT_PATH}")
+    print(f"  Report path:                     {report_path}")
     print(f"{'=' * 60}\n")
     return 0
 
 
 def main() -> int:
-    return asyncio.run(_amain())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--eval-set",
+        type=Path,
+        default=DEFAULT_EVAL_SET,
+        help=f"Eval set YAML path (default: {DEFAULT_EVAL_SET})",
+    )
+    parser.add_argument(
+        "--report",
+        type=Path,
+        default=DEFAULT_REPORT_PATH,
+        help=f"Output report YAML path (default: {DEFAULT_REPORT_PATH})",
+    )
+    args = parser.parse_args()
+    return asyncio.run(_amain(args.eval_set, args.report))
 
 
 if __name__ == "__main__":
