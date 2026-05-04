@@ -32,6 +32,12 @@ dev = [
     "ruff>=0.7",
     "mypy>=1.13",
 ]
+eval = [
+    # RAGAs 4-metric judge per architecture.md §3.2 stack lock + W4 D2 F2.
+    # langchain-openai bridges Azure OpenAI judge via ragas LangchainLLMWrapper.
+    "ragas>=0.4,<0.5",
+    "langchain-openai>=0.2",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
