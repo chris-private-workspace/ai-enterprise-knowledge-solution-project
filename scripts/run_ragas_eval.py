@@ -151,6 +151,36 @@ def _build_samples_via_cache(
     return samples
 
 
+def _patch_for_gpt5(client) -> None:
+    """Monkey-patch chat.completions.create on a live AsyncAzureOpenAI client to
+    translate GPT-5-incompatible params before forwarding。
+
+    GPT-5 reasoning models(GPT-5.5 / GPT-5.4-mini / GPT-5.5-pro)reject:
+    - `max_tokens` → must use `max_completion_tokens` instead(rename)
+    - `temperature` ≠ default 1 → drop the param entirely
+    - `logprobs` / `top_logprobs` → not supported on reasoning models(defensive)
+
+    Why monkey-patch and not subclass / proxy:`instructor.from_openai`(used by
+    ragas 0.4.3 LLM factory)does `isinstance(client, openai.AsyncOpenAI)` check
+    and falls back to sync path on non-matching types。Patching the live instance's
+    `chat.completions.create` preserves type identity while intercepting kwargs。
+
+    This is the W5 D1 Path A surgical fix per Bug F+H — keeps ragas 0.4.3 working
+    with GPT-5 deployments without forking ragas or swapping judge model。
+    """
+    drop_params = ("temperature", "logprobs", "top_logprobs")
+    inner_create = client.chat.completions.create
+
+    async def patched_create(**kwargs):
+        if "max_tokens" in kwargs:
+            kwargs["max_completion_tokens"] = kwargs.pop("max_tokens")
+        for p in drop_params:
+            kwargs.pop(p, None)
+        return await inner_create(**kwargs)
+
+    client.chat.completions.create = patched_create
+
+
 def _make_real_evaluator(judge_deployment: str):
     """Build a per-sample callable wrapping ragas v0.4.3 collections metrics.
 
@@ -190,6 +220,11 @@ def _make_real_evaluator(judge_deployment: str):
         api_key=settings.azure_openai_api_key,
         api_version=settings.azure_openai_api_version,
     )
+    # W5 D1 Path A: monkey-patch chat.completions.create to translate ragas's
+    # hardcoded max_tokens → max_completion_tokens + drop temperature(GPT-5
+    # reasoning model compat per Bug F+H)。Preserves AsyncAzureOpenAI type
+    # identity so instructor.from_openai isinstance check passes。
+    _patch_for_gpt5(judge_client)
     wrapped_llm = llm_factory(judge_deployment, client=judge_client)
 
     # Embeddings reuse Q19 text-embedding-3-large baseline for cosine sim
