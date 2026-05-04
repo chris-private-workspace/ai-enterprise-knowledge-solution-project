@@ -249,7 +249,7 @@ Chris uploaded 3 .pptx samples to `docs/06-reference/01-sample-doc/`:`FY26 BP - 
 
 | Hash | Subject |
 |---|---|
-| _pending_ | `feat(c04,c05): F1.7 wire Reranker into RetrievalEngine + F2 Synthesizer + F3 citation_enrichment + /query end-to-end (W3 D2;129/129 tests)` |
+| `26ed45d` | `feat(c04,c05): W3 D2 — F1.7 wire reranker + F2 GPT-5.5 Synthesizer + F3 citation enrichment + /query end-to-end (129/129 tests)` |
 
 ---
 
