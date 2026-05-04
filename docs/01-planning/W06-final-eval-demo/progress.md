@@ -147,7 +147,79 @@ Official aggregates(Cohere n=18 / Azure n=20)show similar pattern with Δ -14.44
 
 ---
 
-## Day 2 — _(pending)_
+## Day 2 — 2026-05-05: F3 synthesizer prompt tuning A/B(answer_relevancy borderline mitigation)
+
+**Action**:F3 W5 retro carry-over C4(answer_relevancy 0.841 borderline mitigation)— prompt tweak A/B subset=10 on Cohere v4.0-pro pipeline。
+
+### F3.1 — Per-query answer_relevancy distribution analysis
+
+W5 D2 Cohere baseline(n=18,exclude Q014 OOS):11/17 BORDERLINE 0.7-0.85 / 6/17 ≥ 0.85 / mean 0.841
+W6 D1 Azure(n=17 fair):4 BAD < 0.7 / 10 BORDERLINE / 5 ≥ 0.85 / mean 0.743(W5 D2 reaffirmed Cohere baseline)
+**Pattern**:**systematic verbose tendency**,not outlier。Output_tokens evidence(W6 D1 Azure log Q002-Q005):528/760/558/1103 tokens per non-refused answer — **2-4x verbose vs typical concise 100-300 tokens**。
+
+### F3.2 — Prompt tweak design(single surgical Rule 3 change per Karpathy §1.3)
+
+`backend/generation/prompt_builder.py:25` Rule 3:
+- **Before**:`Be concise and well-structured. Use ordered lists / steps when answering procedural questions.`
+- **After**:`Lead with a direct one-sentence answer to the user's question; then provide supporting details only as needed (target <= 150 words total). Use ordered lists / steps when answering procedural questions.`
+
+Tweak rationale:RAGAs answer_relevancy LLM judge mechanism uses LLM to reverse-generate hypothetical questions from the answer + measure cosine similarity vs original question;verbose answers produce hypothetical questions that drift from original → similarity drops。"Lead with direct answer" + soft length cap directly targets the metric mechanism。Existing structure preservation("ordered lists / steps when procedural")unchanged 唔 break multi-step instructions。
+
+Pre-flight:`backend/tests/` synthesizer 14/14 pass(non-regression structural confirm)。
+
+### F3.3 — A/B subset=10 LIVE run
+
+- Driver:`backend/.venv/Scripts/python.exe -m scripts.run_ragas_eval --eval-set docs/eval-set-v1-draft.yaml --output reports/ragas-cohere-tweaked-subset10.json --subset 10`
+- Wall clock 8m 02s;LIVE log signature:Cohere v4.0-pro reranker firing per query(`reranker_call_path=cohere`)
+- Output:`reports/ragas-cohere-tweaked-subset10.json`(10/10 evaluated,0 errored)
+- Tweaked output_tokens raw:Q001=580 / Q002=439 / Q003=460 / Q004=376 / Q005=495 / Q006=476 / Q007=420 / Q008=917 / Q009=523 / Q010=466 → **mean 515 tokens**
+- Indirect reference(W6 D1 Azure log Q002-Q005 baseline subset):mean ~737 tokens → **tweak ~30% verbosity reduction**(cross-pipeline reference;not apples-to-apples but directional signal aligned)
+
+### F3.4 — Decision: LAND tweak ✅
+
+| Metric | First-10 baseline(W5 D2 extracted)| Tweaked subset=10 | Δ pp | Within-5pp? | Direction |
+|---|---|---|---|---|---|
+| faithfulness | 1.000 | 0.978 | -2.20pp | ✅ | mild regress |
+| **answer_relevancy** | **0.8528** | **0.8719** | **+1.92pp** | ✅ | **BETTER** |
+| context_precision | 0.9837 | 0.964 | -1.97pp | ✅ | mild regress |
+| context_recall | 1.000 | 1.000 | 0pp | ✅ | tied |
+| errored | 0 | 0 | tied | ✅ | tied(Bug I floor 仍 active)|
+
+**Per W6 plan F3.4 acceptance ladder**:
+- ✅ **Tier 1 met**:`tweaked rel ≥ 0.85`(0.8719)→ **LAND tweak**
+- ✅ faith / prec mild regression all within-5pp(non-blocking)
+- ✅ recall + errored tied
+
+**Per-query tweaked rel distribution**(ascending):
+- Q010: 0.7317 BORDERLINE(was W5 D2 0.8538 — single clear regression in tweak)
+- Q003: 0.8041 / Q004: 0.8271 / Q005: 0.8770 / Q008: 0.8776 / Q007: 0.8892 / Q006: 0.8896 / Q009: 0.9155 / Q001: 0.9269 / Q002: 0.9799
+- 6/10 queries ≥ 0.85(was 4/10 baseline)+ mean lift +1.92pp despite Q010 single outlier regression
+- Net positive lever signal — mean shifted up despite ceiling effect on first-10(Q001 baseline 0.8058 → tweaked 0.9269 = +12pp single-query lift)
+
+**Verdict** = **LAND tweaked SYSTEM_PROMPT**;`backend/generation/prompt_builder.py` retains tweak(no rollback)。
+
+**Caveats**:
+- First-10 baseline already 0.8528 above 0.85 threshold(ceiling area);tweaked impact stronger on borderline cluster(Q011-Q020)is plausible but **not directly verified**(W6 D2 budget 限 subset=10 per W6 plan)
+- W6 D3 carry-over candidate(optional,if stakeholder review wants stronger evidence):rerun subset=20 tweaked vs W5 D2 baseline → confirm borderline cluster lift同 first-10 一致
+- Tier 1 acceptance criteria already met by F3.4 — caveat 唔 block W6 closeout
+
+### Decisions / OQ
+
+- F3 W5 carry-over C4 → **closed**(LAND verdict)
+- No OQ status change(no OQ directly tied to F3 prompt tuning;C04 Generation component design refinement 屬 architectural-adjacent inline-documented per CLAUDE.md §10 R5 boundary)
+- ADR boundary check:**non-ADR**(prompt content tweak 屬 implementation detail of `backend/generation/prompt_builder.py`,not §3+§4 component change;Karpathy §1.3 surgical change preserves existing component interface)
+
+### Open / blocked
+
+- ⏸ F2 final eval full-corpus(Chris SME chunk_id labeling cascade async)
+- ⏸ F4 W4/W5 carry-overs LIVE smoke remainder(Chris dev server)
+- ⏸ F5 Demo prep + Beta plan stakeholder cycle
+- ⏸ F3 subset=20 tweaked confirmation(optional W6 D3 carry-over)
+- ⏸ architecture.md §3.2 + §6.3 amendment ticket(F1.7 narrative ready;stakeholder approval cycle)
+
+### Commit reference
+
+- _(W6 D2 closeout commit pending — will reference F3.1-F3.4 ticked + prompt_builder.py:25 tweak + reports/ragas-cohere-tweaked-subset10.json comparison data gitignored)_
 
 ---
 

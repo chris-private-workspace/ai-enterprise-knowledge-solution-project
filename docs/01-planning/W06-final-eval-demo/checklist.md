@@ -29,10 +29,10 @@ last_updated: 2026-05-05
 
 ## F3 — Synthesizer prompt tuning(answer_relevancy 0.841 borderline mitigation,W5 C4 close)
 
-- [ ] F3.1 Analyse F1.7(W5 D2)+ F1(W6)answer_relevancy distribution per query → identify systematic verbose pattern source
-- [ ] F3.2 Prompt tweak candidates:answer length cap / question-direct format / structure constraint
-- [ ] F3.3 A/B subset=10 RAGAs run baseline vs tweaked prompt → delta evaluation
-- [ ] F3.4 Decision land tweaked prompt(if rel ≥ 0.85)/ keep marginal(if 0.83-0.85 + faith/prec/recall hold)/ revert if regression
+- [x] F3.1 Analyse W5 D2 + W6 D1 answer_relevancy distribution ✅ W6 D2 — systematic verbose pattern confirmed(11/17 BORDERLINE in W5 D2 Cohere baseline + 4 BAD in Azure run);output_tokens evidence 528-1103 per non-refused answer(2-4x verbose vs typical concise 100-300)
+- [x] F3.2 Prompt tweak candidate identification ✅ W6 D2 — single surgical Rule 3 change `backend/generation/prompt_builder.py:25`:add "Lead with a direct one-sentence answer" + soft length cap "<= 150 words";preserve "ordered lists / steps when procedural";14/14 synthesizer tests pass non-regression
+- [x] F3.3 A/B subset=10 RAGAs run ✅ W6 D2 — Tweaked Cohere subset=10 LIVE 8m 02s wall clock;`reports/ragas-cohere-tweaked-subset10.json`(10/10 evaluated 0 errored);mean output_tokens 515(reduced from indirect ~737 reference Azure baseline)
+- [x] F3.4 Decision: LAND tweak ✅ W6 D2 — **rel 0.8719 ≥ 0.85 Tier 1 acceptance met**;faith Δ -2.20pp + prec Δ -1.97pp within-5pp tolerance(non-blocking);recall + errored tied;`backend/generation/prompt_builder.py` retains tweak(no rollback)。Caveat:first-10 ceiling area;subset=20 tweaked confirmation 屬 W6 D3+ optional carry-over,not blocking
 
 ## F4 — W4/W5 carry-overs LIVE smoke remainder(C5+C6)
 
