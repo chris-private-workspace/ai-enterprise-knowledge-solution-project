@@ -326,7 +326,93 @@ status: in-progress     # draft → in-progress → closed; flipped 2026-05-04 W
 
 ---
 
-## Day 4 — _(pending)_
+## Day 4 — 2026-05-04 (Mon — same-session continuation, AI-side static prep batch)
+
+> Per plan §5 D4 = F5 Cohere live verify + F6 GPT-5.5 latency baseline + F7 SSE live verify。**全部 Chris-side dev-server / .env / browser smoke gated** per CLAUDE.md "if you can't test the UI, say so explicitly"。AI-side D4 路徑 = **prep + static audit only**:F5 lift smoke driver script ready-to-run + F6 cost-trace field surface verified + F7 SSE event-ordering static audit。Live verdict 等 Chris dev server smoke + Marketplace key populate(target W4 D5 / W5 / W6 sliding window per plan §4 R1)。
+
+### Done (AI-side static prep)
+
+#### F5.2 — `scripts/run_cohere_lift_smoke.py` driver(C04 retrieval + C06 eval — W3 carry-over C1 close)
+
+- `scripts/run_cohere_lift_smoke.py` ✅ NEW — 2-pass driver(hybrid-only baseline → hybrid+Cohere comparison)using same `EvalRunner` infrastructure as Gate 1 (W2 D5) + reranker shootout (W4 D3):
+  - **Procurement gate**:exits 1 with explicit `DEFERRED: Cohere procurement pending` when `cohere_endpoint` or `cohere_api_key` unset(per W4 plan §F5 fallback)— Chris re-runs after `.env` populate
+  - **Per-query lift table**:`PerQueryLift` dataclass(query_id / hybrid_R@5 / cohere_R@5 / delta / verdict ∈ {helped / unchanged / hurt} / 2 latency_ms)
+  - **Aggregate metrics**:`LiftSummary` exposes hybrid_aggregate_R@5 + cohere_aggregate_R@5 + lift + helped/unchanged/hurt counts + rerank_overhead_ms(avg search latency delta)
+  - **Subset cap**:default `--subset 10`(cost containment per W4 plan §4 R4)— first 10 main(non-OOS)queries from eval-set-v1-draft;`--subset 0` = take all
+  - **Reuses** `EvalRunner._evaluate_query` keyword-mode recall semantics(consistent with Gate 1 verdict)— no separate scoring logic
+  - **Output**:`reports/cohere-lift-smoke.json` JSON + stdout markdown table + verdict line(`✅ Cohere PASS: aggregate lift > 0` / `⚠️ NEUTRAL` / `❌ REGRESSION → escalate to Q21 reranker re-pick`)
+  - **Karpathy §1.2 simplicity**:reuses Settings + AzureOpenAIEmbedder + HybridSearcher + CohereReranker + EvalRunner — adds only diff/verdict aggregation,no new domain models
+- `backend/tests/test_cohere_lift_smoke.py` ✅ NEW — **14 tests pass**:
+  - 4 `_verdict` threshold tests(positive / negative / zero / micro-noise epsilon-clamped)
+  - 6 `_build_lift` pairing tests(skips OOS / caps at subset / subset=0 takes all / drops queries with missing cohere result / preserves error_hybrid+error_cohere trace / marks "hurt" when cohere lower)
+  - 4 `_aggregate` aggregate tests(empty zeros / all-helped positive lift / mixed verdicts counted correctly / negative lift on regression)
+  - **Live driver flow intentionally unmocked** — F5 LIVE smoke is the explicit purpose;mocking would only test fakes against fakes
+- ruff:**clean(scripts/ E402 baseline parity with W4 D3 shootout — same truststore.inject_into_ssl() early-init pattern accepted across reranker drivers)** + I001 import-block sort auto-fixed in test file
+
+#### F6 audit — Langfuse cost-trace field surface(C05 generation + C07 observability)
+
+> AI-side static audit only(per plan §F6 — live smoke needs Chris dev server + 5 real query × Langfuse instance running)。**Verdict**:5-field cost-trace surface ✅ **fully wired** for Gate 2 cost-per-query analysis(non-blocking Gate 2 PASS gate)。
+
+- `backend/generation/synthesizer.py` ✅ verified:
+  - `synthesizer_call` event(non-stream `synthesize()`,L123-132):**5 cost-trace fields all present** — `input_tokens` / `output_tokens` / `latency_ms` / `refused` / `citations_count` + `deployment` + `chunks_in`
+  - `synthesizer_stream_complete` event(stream `synthesize_stream()`,L206-215):**same 5 cost-trace fields** + `deployment` + `chunks_in`
+- `backend/generation/crag.py` ✅ verified:
+  - `crag_loop` event(`_log_outcome` L463-480):**14 fields** — threshold + triggered + iterations + confidence_before+after + fallback_used + 6 token counts(grader/rewrite/extra_synth × in/out)+ crag_latency_ms + errors。Provides full L2 correction-loop cost trace for tuning + Gate 2 lift analysis
+- `backend/observability/langfuse_tracer.py` ✅ verified:
+  - W1 stub remains(structlog JSON renderer + Langfuse host + environment + feature_auth_enabled init log)
+  - **Note**:Langfuse SDK actual init still pending W3 carry — structlog JSON output already feeds correlation pipeline correctly via `synthesizer_call` / `synthesizer_stream_complete` / `crag_loop` events
+- **Minor gap (non-blocking)**:`/query` route lacks top-level structlog event for total trace correlation(only sub-events synthesizer_call + crag_loop emitted)。Live Langfuse SDK wire(W3 D2 deferred per W3 retro)would consume sub-events into spans;adding top-level event = future W5/W6 polish item
+
+#### F7 audit — SSE event-ordering static review(C08 api-gateway + C10 chat-ui)
+
+> AI-side static audit only(per plan §F7 — live smoke needs Chris dev server + browser interaction + 1-2 screenshots)。**Verdict**:SSE event ordering ✅ **matches Vercel AI SDK v1 protocol** + `asyncio.CancelledError` propagation **dual-layer safe**(ready for live smoke)。
+
+- `backend/generation/stream_composer.py` ✅ verified event sequence:
+  - `text-delta*` pass-through from synthesize_stream(L33-36)
+  - `citation*` after stream complete(L43-44 — `build_citations()` from accumulated citation_ids vs retrieved chunks,hallucinated id silently skipped per F3 design)
+  - `done` terminal(L46-56 — `model` / `input_tokens` / `output_tokens` / `latency_ms` / `refused` / `reranker_used`)
+- OpenAI delta → Vercel text-delta translation correct:
+  - `synthesizer.synthesize_stream` L187-193:`chunk.choices[0].delta.content` → `{"type": "text-delta", "content": str}` empty-content filter included
+- **Cancellation propagation dual-layer safe**:
+  - `query.py` event_serializer L174-181:try/except `asyncio.CancelledError` → log `query_stream_cancelled` → `raise`
+  - `synthesizer.synthesize_stream` finally block L194-200:calls underlying OpenAI `stream.close()` (best-effort,exception-tolerant)→ guarantees no leaked OpenAI stream on client abort
+- 5 W3 D3 F4 `test_stream_composer.py` tests already cover:
+  - text-delta → citation → done order verification
+  - reranker_used="cohere-v3.5" / "off" propagation
+  - citation per unique cited chunk (dedup)
+  - refused flag through done
+  - hallucinated chunk_id silently skipped
+
+### Deferred(Chris-side live smoke;remain 🚧 unchecked per CLAUDE.md sacred rule)
+
+- 🚧 **F5.1** `.env` `cohere_endpoint` + `cohere_api_key` populate — Marketplace procurement Chris async
+- 🚧 **F5.3-5.5** Live 10 queries × hybrid-only vs hybrid+Cohere R@5 lift run — gates on F5.1
+- 🚧 **F6** Manual `/query` smoke against 5 real queries(Chris dev server)+ p50 / p95 latency / per-query cost USD baseline + Langfuse trace verify
+- 🚧 **F7** End-to-end manual smoke Chat UI `/` → submit → token render + citation card + reranker label + stop button + 1-2 screenshots in W4 progress
+
+### Surprises / Notes
+
+- **F5 driver intentionally separate from W4 D3 reranker shootout** despite ~50% code overlap:lift driver focuses on **per-query delta + verdict per query**(diagnostic detail — which queries Cohere helps/hurts);shootout focuses on **5-way aggregate comparison**。Different output schemas + different intended audiences(F5 = Q5 follow-up,shootout = Q21 final pick)。Karpathy §1.2 considered:abstracting common base would force shootout to fit lift's per-query verbose schema = harder to read for 5-way comparison. Surgical separation wins
+- **Gate 2 cost-per-query analysis is non-blocking for Gate 2 G2 PASS gate** but informs **architecture.md §6.3 Tier 1 economics** verdict — F6 baseline numbers feed Tier 1 economics row at W6 demo prep
+- **F7 cancellation logic is robust at static analysis** — both `event_serializer` (HTTP layer) and `synthesize_stream` (SDK layer) honour CancelledError;the `finally` block in synthesize_stream wraps `stream.close()` in `try/except` per best-effort cleanup pattern。Live behaviour can only be smoked via browser (front-end Stop button → AbortController.abort() → fetch cancellation → uvicorn cancels request task → CancelledError propagates)— pure unit test cannot replicate this multi-layer dance
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F5.2 lift smoke driver(2-pass + per-query verdict + aggregate)| 0.5 | 0.4 | -0.1h | EvalRunner reuse + shootout pattern reuse |
+| F5 lift smoke unit tests(14 tests:_verdict + _build_lift + _aggregate)| 0.3 | 0.3 | 0 | Pure-aggregation tests — fast; live flow deferred to F5 LIVE smoke |
+| F6 Langfuse cost-trace field audit(synthesizer + crag + tracer reads)| 0.3 | 0.2 | -0.1h | All 5 fields already wired W3 D2 + W4 D1;audit confirmed parity |
+| F7 SSE event-ordering static audit(stream_composer + query stream + cancellation propagation review)| 0.3 | 0.2 | -0.1h | All static review;test_stream_composer.py W3 D3 already covers ordering |
+| W4 D4 progress entry + checklist tick + commits | 0.5 | 0.5 | 0 | This entry + 3 commits |
+| **Total D4 (AI-side)** | **1.9** | **1.6** | **-0.3h** | Static audit pattern + scaffold reuse dominated;all live verdict gated on Chris-side smoke |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| `b9c2b10` | `feat(eval): F5.2 Cohere lift smoke driver — 2-pass hybrid-only vs hybrid+Cohere comparison + 14 tests (W4 D4)` |
+| _pending_ | `docs(planning): W4 D4 progress + checklist tick (F5.2 + F6 audit + F7 audit)` |
 
 ---
 

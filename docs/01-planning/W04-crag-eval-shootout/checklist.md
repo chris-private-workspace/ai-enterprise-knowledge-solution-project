@@ -62,25 +62,26 @@ last_updated: 2026-05-04
 
 ## F5 — Cohere rerank live verify + lift baseline(W3 C1 close)
 
-- [ ] `.env` `cohere_endpoint` + `cohere_api_key` populated(Chris signoff post Marketplace deploy)
-- [ ] `scripts/run_cohere_lift_smoke.py` impl
-- [ ] 10 representative eval queries × hybrid-only vs hybrid+Cohere R@5 compare
-- [ ] Lift summary logged in W4 progress.md + decision-form Q5 follow-up note
-- [ ] **DEFERRED W5/W6 if procurement still pending** — Gate 2 verdict adjusts
+- [ ] **DEFERRED Chris async** `.env` `cohere_endpoint` + `cohere_api_key` populated — Marketplace procurement signoff post-deploy
+- [x] `scripts/run_cohere_lift_smoke.py` impl ✅ W4 D4 — 2-pass driver(hybrid-only baseline → hybrid+Cohere)+ per-query lift verdict + DEFERRED procurement gate exits 1 with explicit message until `.env` populated
+- [x] Driver covers 10 representative eval queries × hybrid-only vs hybrid+Cohere R@5 compare(default `--subset 10` cost containment per W4 plan §4 R4;`--subset 0` for full eval-set)✅ W4 D4(LIVE run gated on F5 procurement)
+- [ ] **DEFERRED post F5.1** Lift summary logged in W4 progress.md + decision-form Q5 follow-up note(needs LIVE run output)
+- [x] Unit tests:14 tests pass(`_verdict` 4 + `_build_lift` 6 + `_aggregate` 4) — live driver flow intentionally unmocked per F5 LIVE smoke purpose ✅ W4 D4
+- [ ] **DEFERRED W5/W6 if procurement still pending** — Gate 2 verdict adjusts(per plan §3 G2 fallback row)
 
 ## F6 — GPT-5.5 live latency baseline + cost trace(W3 C2 close)
 
-- [ ] Manual `/query` smoke against 5 real queries(Chris dev server)
-- [ ] Langfuse cost trace per call:input_tokens / output_tokens / latency_ms / refused / citations_count
-- [ ] Baseline numbers documented:p50 / p95 latency / per-query cost USD
-- [ ] Feed Gate 2 cost-per-query analysis(non-blocking)
+- [ ] **DEFERRED Chris async** Manual `/query` smoke against 5 real queries(Chris dev server)
+- [x] AI-side audit:Langfuse cost trace surface verified per call ✅ W4 D4 — `synthesizer_call`(non-stream)+ `synthesizer_stream_complete`(stream)structlog event 兩條都 wire 5 fields(input_tokens / output_tokens / latency_ms / refused / citations_count)+ deployment + chunks_in;`crag_loop` event adds 14 fields(grader/rewrite/extra_synth × in/out + threshold + triggered + iterations + confidence + fallback + crag_latency_ms + errors)
+- [ ] **DEFERRED post Chris smoke** Baseline numbers documented:p50 / p95 latency / per-query cost USD(needs LIVE run output)
+- [ ] **DEFERRED post Chris smoke** Feed Gate 2 cost-per-query analysis(non-blocking — Tier 1 economics row W6 demo prep)
 
 ## F7 — SSE live verify(W3 C3 close)
 
-- [ ] End-to-end manual smoke Chat UI `/` → submit → token render + citation card + reranker label + stop
-- [ ] Verify text-delta event ordering matches OpenAI stream
-- [ ] Verify Stop button cancels backend stream(asyncio.CancelledError logged)
-- [ ] 1-2 screenshots logged in W4 progress(visual evidence)
+- [ ] **DEFERRED Chris async** End-to-end manual smoke Chat UI `/` → submit → token render + citation card + reranker label + stop button + 1-2 screenshots
+- [x] AI-side audit:text-delta event ordering matches Vercel AI SDK v1 protocol ✅ W4 D4 — `stream_composer.compose_query_stream` emits `text-delta* → citation* → done` sequence;`synthesizer.synthesize_stream` correctly translates OpenAI `chunk.choices[0].delta.content` → Vercel `{"type":"text-delta","content":str}` with empty-content filter;5 W3 D3 F4 `test_stream_composer.py` tests already cover order + reranker_used + refusal + dedup + hallucination skip
+- [x] AI-side audit:Stop button → `asyncio.CancelledError` propagation dual-layer safe ✅ W4 D4 — `query.py event_serializer` L174-181 try/except CancelledError + log + re-raise;`synthesize_stream` finally block L194-200 calls underlying OpenAI `stream.close()` best-effort
+- [ ] **DEFERRED post Chris smoke** Live cancellation verification(stop button → AbortController.abort() → fetch cancellation → uvicorn cancels request task → CancelledError chain — only smokeable via browser)+ `query_stream_cancelled` log presence in actual run
 
 ## F8 — Component design note status bumps(W3 G4 close)
 
