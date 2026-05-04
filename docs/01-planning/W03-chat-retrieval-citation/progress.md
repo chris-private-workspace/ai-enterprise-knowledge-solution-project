@@ -2,7 +2,7 @@
 phase: W03-chat-retrieval-citation
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: draft     # draft → in-progress → closed
+status: closed     # flipped 2026-05-04 W3 D5 末 closeout — Phase Gate G1+G3 PASS; G2/G4/G5 explicitly deferred to W4 carry-overs
 ---
 
 # Phase W03 — Progress

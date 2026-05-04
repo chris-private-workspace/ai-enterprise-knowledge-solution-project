@@ -2,9 +2,9 @@
 phase: W03-chat-retrieval-citation
 name: "Chat + Hybrid Retrieval + Citations"
 sprint_week: W3
-start_date: 2026-05-08          # tentative — see §7 changelog;Option A continues 2-day-earlier shift if approved at W2 closeout
-end_date: 2026-05-14            # tentative,5 working days
-status: active                  # flipped 2026-05-04 W2 D5 cont — Gate 1 PASS R@5=0.9722 against eval-set-v1-draft
+start_date: 2026-05-04          # actual — same-day execution after W2 closeout per Chris signoff
+end_date: 2026-05-04            # actual — 5 phase days collapsed to 1 calendar day
+status: closed                  # flipped 2026-05-04 W3 D5 末 closeout — Phase Gate G1+G3 PASS; G2/G4/G5 explicitly deferred to W4 carry-overs
 spec_refs:
   - architecture.md §6.1 W3 row
   - architecture.md §3.1       # query pipeline (CRAG loop deferred to W4)
@@ -206,6 +206,7 @@ Carry-over from `W02-multi-format-ingestion/progress.md` retro(D5 draft pending 
 |---|---|---|---|
 | 2026-05-07 | Initial draft(W2 D5 末 retro prep)| Per PROCESS.md §2.3 rolling-JIT kickoff;status=draft pending Chris W2 D5 closeout sign-off + Gate 1 verdict | Chris(pending approve to flip active) |
 | 2026-05-04 | Status `draft → active`(W2 D5 cont 後段)| Gate 1 PASS R@5=0.9722 against eval-set-v1-draft;W02 closed same day。Caveat:current PASS mode=keyword + validated=False;true SME-strict PASS pending Chris cascade(C9 → C2 — non blocking for W3 forward but informs Gate 2 / production wording)| AI-flipped per W2 closeout decision |
+| 2026-05-04 | Status `active → closed`(W3 D5 末 closeout 同 calendar day per Chris signoff "5. W3 sequencing 確認可以")| Phase Gate G1(10/10 deliverables)+ G3(backend ruff + frontend lint + type-check 0 errors)hard gates PASS;G2 end-to-end /query live verify deferred to W4 C2(Chris dev server smoke);G4 component design note bumps deferred to W4 F8 governance batch;G5 Cohere lift smoke deferred to W4 F5(post Marketplace endpoint procurement)。10 deliverables F1-F10 全部 landed same calendar day(scaffold-first design + W2 pattern reuse + Karpathy §1.2 deferrals)| AI-flipped per W3 retro Phase Gate verdict + Chris signoff |
 
 ---
 

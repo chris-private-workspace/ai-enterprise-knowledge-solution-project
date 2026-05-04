@@ -1,8 +1,8 @@
 ---
 phase: W03-chat-retrieval-citation
 plan_ref: ./plan.md
-status: draft
-last_updated: 2026-05-07
+status: closed
+last_updated: 2026-05-04
 ---
 
 # Phase W03 — Checklist
