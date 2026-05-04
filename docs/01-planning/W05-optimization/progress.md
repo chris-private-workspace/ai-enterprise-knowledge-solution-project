@@ -354,7 +354,7 @@ Rationale per Karpathy §1.2 simplicity-first:
 
 | Hash | Subject |
 |---|---|
-| _pending_ | `feat(eval): F2.1 CRAG grader smoke driver + W5 D3 LIVE distribution analysis (KEEP 0.70 threshold)` |
+| `163703f` | `feat(eval): F2.1 CRAG grader smoke driver + W5 D3 LIVE distribution analysis (KEEP 0.70 threshold)` |
 
 ---
 
