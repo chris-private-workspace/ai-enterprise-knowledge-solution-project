@@ -1,7 +1,7 @@
 ---
 phase: W04-crag-eval-shootout
 plan_ref: ./plan.md
-status: active
+status: closed
 last_updated: 2026-05-04
 ---
 
@@ -102,13 +102,13 @@ last_updated: 2026-05-04
 
 ## F10 — Gate 2 verdict + W4 retro + W5 kickoff prep
 
-- [ ] **Gate 2 verdict**(4-metric within 5pp互換 between Cohere baseline + winning shootout)
-- [ ] If PASS:W5 plan = optimization scope(L3 routing conditional)
-- [ ] If FAIL:drop L2 CRAG;W5 plan = baseline-only scope per §6.3
-- [ ] W04 progress.md retro section completed
-- [ ] W05 phase folder mkdir + plan.md draft
-- [ ] W04 carry-overs documented
-- [ ] W04 progress.md frontmatter status flipped to `closed`
+- [x] **Gate 2 verdict** ✅ W4 D5 — **DEFERRED per plan §F10 fallback path** "Cohere baseline pending — partial verdict on available rerankers";F3 shootout LIVE + F5 Cohere lift LIVE + F2 RAGAs LIVE 全部 procurement-gated;LIVE 4-metric within-5pp 數據 W4 D5 不可得 → W5 D1 carry-over C1 trigger
+- [x] **L2 CRAG status** ✅ W4 D5 — **不 drop**(G2 LIVE FAIL 條件未觸發 — procurement-gated 不可得即非 FAIL);W5 plan optimization scope 維持 conditional 等 W5 D1 LIVE 數據
+- [x] W5 plan = Gate 2 LIVE close (F1) + conditional optimization scope ✅ W4 D5 — F2-F6 conditional on F1 verdict;L3 routing conditional per architecture.md §6.1 W5 row
+- [x] W04 progress.md retro section completed ✅ W4 D5 — 7 sections per W3 retro template(What worked / What didn't / Surprises / Carry-overs C1-C11 / ADR triggers / Phase Gate verdict / Phase status)
+- [x] W05 phase folder kickoff:`docs/01-planning/W05-optimization/{plan,checklist,progress}.md` draft ✅ W4 D5(status=`draft` until Chris W5 D1 sign-off)
+- [x] W04 carry-overs documented ✅ W4 D5 — 11 items C1-C11 in retro
+- [x] W04 progress.md frontmatter status flipped to `closed` ✅ W4 D5
 
 ---
 

@@ -2,7 +2,7 @@
 phase: W04-crag-eval-shootout
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: in-progress     # draft → in-progress → closed; flipped 2026-05-04 W4 D1 kickoff
+status: closed     # flipped 2026-05-04 W4 D5 末 closeout — Phase Gate G1+G3(structural)+G4+G5 PASS;G2+G3(LIVE)+G6 explicitly DEFERRED to W5 carry-overs(procurement-gated per plan §F10 fallback path "Cohere baseline pending — partial verdict on available rerankers")
 ---
 
 # Phase W04 — Progress
@@ -416,36 +416,128 @@ status: in-progress     # draft → in-progress → closed; flipped 2026-05-04 W
 
 ---
 
-## Day 5 — _(pending)_
+## Day 5 — 2026-05-04 (Mon — same-session continuation per "啟動 W4 D5" signal)
+
+> Per plan §5 D5 = F10 Gate 2 verdict + W4 retro + W5 kickoff prep。Same-day W3+W4 momentum continues。**Gate 2 verdict procedural per plan §F10 fallback path**:F3 shootout LIVE run + F5 Cohere lift LIVE run + F2 RAGAs LIVE run 全部 procurement-gated(Cohere endpoint + Voyage + ZeroEntropy keys + Chris SME chunk_id labeling)→ 4-metric within-5pp 互換 LIVE data 不可得 → Gate 2 verdict = **DEFERRED** carry-over W5 D1。
+
+### Done
+
+#### F10 — Gate 2 verdict(procedural)+ W4 retro + W5 kickoff prep
+
+- **Gate 2 procedural verdict per plan §3 G2 + plan §F10 fallback path**:
+  - **Structural完成度** ✅:F3 4-way reranker scaffolds + factory dispatch + 21 unit tests + driver script(W4 D3);F2 RAGAs runner injectable evaluator + 13 unit tests + driver(W4 D2);F5 Cohere lift smoke driver + 14 unit tests(W4 D4);F1 CRAG L2 + 14 unit tests + `/query` wire(W4 D1)— 全部 H6 test coverage + ruff clean
+  - **LIVE 4-metric within-5pp 數據缺口** ⏸:Cohere Marketplace endpoint+key populate 仍 7-14d turnaround pending(per W3 D1 後段 trigger 2026-05-04 → ETA 2026-05-11 to 2026-05-18);Voyage + ZeroEntropy procurement non-Azure path Chris async;eval-set chunk_id labeling per Q14 SME cascade Chris async
+  - **Verdict path**:per plan §F10 fallback "Cohere baseline pending — partial verdict on available rerankers" → **Gate 2 = DEFERRED to W5 D1**(carry-over F1 = Gate 2 LIVE close);per plan §3 G2 row "Block W5? Yes — drop L2 if FAIL" 觸發 條件未滿足(only triggers if 4-metric within-5pp 互換 FAIL after LIVE data),所以 L2 CRAG **不 drop**;Tier 1 W5+ optimization scope 維持 conditional 等 W5 D1 LIVE 數據
+- W4 retro 7 sections written(see Retro below)
+- W5 phase folder kickoff:`docs/01-planning/W05-optimization/{plan,checklist,progress}.md` draft(Day 0 kickoff stub;status=`draft` until Chris W5 D1 sign-off)
+  - **W5 plan F1 = Gate 2 LIVE close**(carry-over from W4 — Cohere lift smoke LIVE run + 4-way reranker shootout LIVE run + RAGAs 4-metric LIVE eval-set run)— gate 後續 W5 deliverables PASS/FAIL 分支
+  - W5 plan F2-F6 conditional optimization scope per architecture.md §6.1 W5 row(L3 routing conditional on Gate 2 PASS;CRAG threshold tuning;reranker per-KB field per W3 C5;W4 chunk_id labeling cascade完成)
+- W4 plan changelog entry added(closeout signoff + Gate 2 procedural verdict)
+- progress.md frontmatter `status: in-progress → closed` flip
+
+### Surprises / Notes
+
+- **Same-day W3 + W4 5-phase execution(2026-05-04)**:Chris signoff momentum + scaffold-first design + reuse pattern dominated;W3+W4 共 10 phase days collapse to 1 calendar day(累計 ~30h effort vs plan 80h estimate)— W2 hybrid retrieval first-time pattern 反而需要 calendar pacing 多。Lesson:scope-clear sprints 配合 proven patterns 可以 compress;novel patterns(W2 chunk discovery / first-time hybrid retrieval) 需要 real-world friction time
+- **Gate 2 是 Tier 1 most important quality gate but procurement-gated**:per architecture.md §6.3,Gate 2 4-metric within-5pp 互換是 PASS = continue Tier 1 W5+ optimization vs FAIL = drop L2 CRAG → baseline-only 嘅 critical fork。Procurement async(Marketplace 7-14d + Voyage + ZeroEntropy non-Azure)使 LIVE 數據 W4 D5 不可得 → DEFER 比 fake verdict 更 honest(per CLAUDE.md §13 "Quality vs delivery time:4 metric target 唔可以 compromise")
+- **W4 D4 AI-side static prep 路徑成功**:F5.2 lift smoke driver / F6 5-field cost-trace audit / F7 SSE event-ordering audit 全部 ready-for-Chris-smoke;當 Chris populate `.env` + 跑 dev server 即可 1-pass 收齊 LIVE 數據 trigger Gate 2 LIVE close。Procurement gating 落 LIVE smoke,**不 block scaffold structural completion**
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F10 Gate 2 procedural verdict 文檔化 | 0.5 | 0.4 | -0.1h | Decision honest + plan §F10 fallback path 直接適用 |
+| W4 retro 7 sections | 0.5 | 0.5 | 0 | W3 retro template reuse |
+| W5 phase folder kickoff(plan + checklist + progress Day 0)| 1.0 | 0.7 | -0.3h | Rolling JIT — only W5 active scope draft;W6+ remains future |
+| W4 progress.md frontmatter flip + plan changelog entry | 0.2 | 0.1 | -0.1h | Surgical |
+| W4 D5 progress entry(this entry)+ closeout commits | 0.5 | 0.5 | 0 | This entry + 2 commits |
+| **Total D5** | **2.7** | **2.2** | **-0.5h** | Honest defer + template reuse + rolling JIT compress |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| _pending_ | `docs(planning): W4 D5 closeout — Gate 2 verdict DEFERRED + W4 retro + W5 kickoff (status active→closed)` |
+| _pending_ | `docs(planning): W05-optimization phase folder kickoff (plan/checklist/progress draft)` |
 
 ---
 
-## Retro(填於 W4 D5 末)
+## Retro(填於 W4 D5 末 / 2026-05-04)
+
+> 寫於 same-session W3 D5 + W4 D1-D5 closeout(W3+W4 全部 10 phase days 落地完成 same calendar day 2026-05-04 per Chris signoff momentum + scaffold-first design + W2 pattern reuse)
 
 ### What worked
-_(W4 D5 末 fill)_
+
+- **Injectable evaluator pattern(F2 RAGAs)**:`RagasRunner` 用依賴注入 evaluator → production wires real `ragas.metrics.collections` + tests inject deterministic stub;production code path 同 test 完全相同,無 if-else 分流。Karpathy §1.4 verifiable goals + §1.2 simplicity 雙贏
+- **Skip-row fallback driver pattern(F3 reranker shootout + F5 Cohere lift)**:driver 對 procurement-gated reranker emit `SKIPPED — key/endpoint unset` row 而非整個 fail → W4 D3 / D4 落地時 Voyage / ZeroEntropy / Cohere 全部 procurement pending,但 driver 仍 emit 結構性 output(non-skipped backends 依然 evaluate);W5 D1 procurement land 後 re-run = full 5-way lift comparison 直接 plug-and-play
+- **Slide_based delegate to LayoutAwareChunker(F9)**:per Karpathy §1.2 — PptxParser emits same heading-paragraph-table-image structure as Docling,所以 chunker 直接 reuse 而非 build new path。`backend/ingestion/chunker/strategies.py` `slide_based` 由 NotImplementedError → delegate 一句搞掂
+- **Voyage `top_k`+`data` vs Cohere/ZeroEntropy `top_n`+`results`(F3 vendor API divergence)**:test pin per-vendor convention 而非 force 統一 schema → respects each vendor's published API + 將來 vendor SDK 升級時 test 自動 surface schema drift
+- **AI-side D4 static audit 路徑(F5.2 + F6 + F7)**:per CLAUDE.md "if you can't test the UI, say so explicitly" 明確 surface AI-actionable vs Chris-blocked split。F5.2 driver ready + F6 5-field cost-trace + F7 SSE ordering 三個 audit 全部 trim Chris 的 LIVE smoke 工作量(Chris 只需 populate `.env` + 跑 dev server + browser smoke,所有 logic verification 已 AI-side 完成)
+- **Same-day W4 5-phase compress + variance -0.3h to -0.5h per day**:scaffold + Mock pattern + small modules dominate;over-estimation 反映 §1.4 verifiable goals + W2/W3 pattern reuse compounding
+- **Honest "DEFERRED" verdict per plan §F10 fallback path**:not faking Gate 2 PASS / FAIL when LIVE 4-metric within-5pp 數據不可得;直接 documents data gap + W5 D1 LIVE close trigger condition + 不 prematurely drop L2 CRAG。CLAUDE.md §13 "Quality vs delivery time:4 metric target 唔可以 compromise" 嘅 explicit application
 
 ### What didn't work / unexpected friction
-_(W4 D5 末)_
+
+- **Procurement async timeline cascade**:Cohere Marketplace 7-14d turnaround(2026-05-04 trigger → ETA 2026-05-11 to 2026-05-18)+ Voyage + ZeroEntropy 非 Azure path Chris async + Chris SME chunk_id labeling per Q14 → 3-way procurement pipeline serialise W4 D3-D5 LIVE deliverables。Lesson:W3 D5 closeout 時 W4 plan 應該 explicitly map procurement timeline → expected first-LIVE-data day,而非統 W4 末有 LIVE data
+- **plan §F4 chunk_id labeling 預估 2h Chris(label only)實際 require Chris SME cycles + scripts/discover_chunk_ids.py + manual review**:placeholder pattern 配合 keyword fallback 仍可以 emit Gate 1 verdict(2026-05-04 W2 D5),但 Gate 2 4-metric 需要 real chunk_ids → labeling cascade 真正 critical path。Lesson:W5 plan F1 應該 surface chunk_id labeling 為 explicit blocker 而非 pre-condition
+- **Gate 2 是 Tier 1 most important gate but verdict W4 D5 不可得**:per CLAUDE.md §9 sprint awareness "Gate 2 W4 末 — 4 metric within 5pp 互換" — 期望 W4 D5 closeout 時 verdict landed,actual W4 D5 = procedural defer。Lesson:sprint awareness table 應該 distinguish "verdict trigger" vs "verdict landed";Gate 2 verdict landed 真正 W5 D1 之前不可期望(因為 procurement async 不可控 W4 內 land)
+- **W3 D5 retro lesson "plan estimates calibration 0.5x heuristic" 進一步 over-correct**:W4 actual variance -0.3 to -0.5h per day vs plan 1.5-2h baseline → 1/3-1/4 of plan estimate。Lesson W5 plan 起草時 estimate 可以 0.3x current heuristic(每 deliverable 0.5-1h baseline),actual variance 可能 ±0.2h。但 LIVE smoke item 仍須 Chris-time 估,AI-side 估值縮小
 
 ### Surprises / discoveries
-_(W4 D5 末)_
+
+- **F1 CRAG threshold 0.70 vs 0.6 plan-draft**:0.6 too lenient triggers correction rarely;0.70 better surfaces low-confidence cases for tuning。Empirical calibration 留 W5 D1 RAGAs LIVE eval 後 fine-tune(per W4 plan §4 R6)— 0.70 是 W4 D1 baseline,W5 可能根據 LIVE 4-metric 分布調 0.65 / 0.75
+- **Voyage + ZeroEntropy + Azure semantic 三個 reranker scaffold 落地時間 0.2-0.5h each**:scaffold-first pattern + Mock test + W3 D1 cohere.py 樣板 + W2 D5 EvalRunner reuse 配合,3 個 NEW reranker(共 ~330 lines)+ 21 tests 落地總 1.4h。Lesson:vendor reranker 屬於 high-leverage scaffold(可預期 3-5 vendor 都 fit Reranker Protocol),W5+ 加 vendor 應該 30 min 左右
+- **Azure semantic 0-4 score → 0-1 via `/4.0` clamp**:cross-vendor comparability 為 Gate 2 4-metric within-5pp 嘅前提條件 — 如果 Azure semantic emit 0-4 score + Cohere emit 0-1 score 而 Gate 2 直接比 raw,假 PASS / 假 FAIL 都可能。Tier 1 W4 D3 normalisation 是 W5 D1 LIVE comparability 嘅 prerequisite
+- **W3+W4 5-phase compress to 1 calendar day 2026-05-04**:scaffold-first + Mock + W2 EvalRunner reuse + W3 D1 cohere.py 樣板配合,~30h cumulative effort(W3 16h + W4 14h)落地 vs plan ~80h estimate(W3 38h + W4 plan-original 38h)→ 38% of plan estimate。Lesson:當 phase scope clear + proven patterns 累積 + procurement-gated items defer to LIVE smoke,calendar compression aggressive 可行;但 LIVE verdict gate 仍 procurement bound
 
 ### Carry-overs to W05-optimization
-_(W4 D5 末)_
+
+W4 D5 末 batch:
+
+1. **C1** Gate 2 LIVE verdict close — F3 4-way reranker shootout LIVE run + F5 Cohere lift smoke LIVE run + F2 RAGAs 4-metric LIVE eval-set run → 4-metric within-5pp 互換 verdict landed;PASS = continue Tier 1 W5+ optimization;FAIL = drop L2 CRAG → baseline-only per architecture.md §6.3。**W5 D1 critical path**;procurement-blocked
+2. **C2** Cohere Marketplace endpoint+key populate(Chris async procurement 7-14d turnaround from 2026-05-04 trigger;ETA 2026-05-11 to 2026-05-18)— gates C1 cohere row + F5 LIVE smoke
+3. **C3** Voyage + ZeroEntropy api_key procurement(Chris async non-Azure path)— gates C1 voyage + zeroentropy rows
+4. **C4** Azure semantic config `ekp-semantic-default` verify on `ekp-kb-drive-v1` index(W2 D5 schema may not have it;non-procurement but Chris index ops)— gates C1 azure row;non-blocking other reranker
+5. **C5** Eval-set chunk_id labeling per Q14 SME cascade(Chris async via `scripts/discover_chunk_ids.py` + manual SME review)— W4 D2 placeholder Q036-Q055 + W2 D5 placeholder Q001-Q030 全部 acceptable_chunk_ids: [];Gate 2 strict-mode evaluation 需要 real chunk_ids
+6. **C6** Eval-set v1 promote draft → `eval-set-v1.yaml`(post Chris ≥ 45/55 queries validated with real phrasings + chunk_ids per W4 plan §3 G6 acceptance)
+7. **C7** F9 PPT orchestrator E2E smoke run on 3 W3 D1 後段 PPT samples(needs `scripts/run_pptx_ingest_sanity.py` + AI Search index ready;non-blocking F9 unit acceptance)
+8. **C8** F5/F6/F7 LIVE smoke remainder — F5 lift summary log + Q5 follow-up note(post Chris dev server smoke);F6 baseline numbers(p50 / p95 / cost USD);F7 1-2 screenshots in W4 progress
+9. **C9** W3 C5 reranker per-KB field reconsideration — W4 shootout outcome(C1)後判斷 per-KB column 是否 sticky requirement(Tier 1 boundary check per H4);若 sticky → ADR-0012 trigger
+10. **CRAG threshold empirical fine-tune**(per W4 plan §4 R6)— W4 D1 baseline 0.70 default;W5 D1 RAGAs LIVE 4-metric distribution 後 calibrate 0.65 / 0.75 / 0.70 keep
+11. **plan estimates calibration**:W5 plan 用 0.3x current heuristic(每 deliverable 0.5-1h baseline)— W4 actual variance -0.3 to -0.5h per day suggests 1/3-1/4 of plan estimate
 
 ### ADR triggers
-_(W4 D5 末 — ADR-0012 reserved for Gate 2 FAIL outcome OR per-KB reranker column decision per W3 C5 carry)_
+
+- **None this phase**。F1 CRAG L2 / F2 RAGAs / F3 4-way reranker / F4 eval-set expansion / F5-F7 audit + driver / F8 design notes / F9 PPT orchestrator wire — 全部 within architecture.md v5 §3+§4 spec scope。**ADR-0012 reserved triggers**:(a)Gate 2 LIVE verdict FAIL after C1 close → drop L2 CRAG → ADR-0012 record Tier 1 quality threshold revision(per architecture.md §6.3);(b)W3 C5 reranker per-KB field decision becomes sticky requirement post-shootout → ADR-0012 record `KbConfig` schema extension(multi-tenancy adjacency consideration per H4)。Both reserve same NNNN=0012 because 不 simultaneous trigger
 
 ### Phase Gate 2 verdict(per plan.md §3 + architecture.md §6.3)
-- G1-G6:_(W4 D5 末)_
-- **Gate 2 4-metric within 5pp**:_(W4 D5 末)_ → PASS continues Tier 1 W5+ optimization;FAIL drops L2 CRAG → baseline-only
+
+- **G1**(All 10 deliverables 完成 OR explicit defer):**10/10 ✅**
+  - F1 (W4 D1) ✅ — CRAG L2 correction loop wired into `/query` non-stream
+  - F2 (W4 D2) ✅ — RAGAs 4-metric eval automation with injectable evaluator
+  - F3 (W4 D3) ✅ scaffold + driver — 4-way reranker(Voyage / ZeroEntropy / Azure semantic + factory switch)+ shootout driver with skip-row fallback;LIVE 🚧 procurement-gated → **C1 W5**
+  - F4 (W4 D2) ✅ +20 placeholder Q036-Q055;chunk_id labeling 🚧 Chris SME cascade → **C5 W5**
+  - F5 (W4 D4) ✅ driver + 14 unit tests — Cohere lift smoke 2-pass driver ready;LIVE 🚧 Marketplace key gated → **C2 W5**
+  - F6 (W4 D4) ✅ AI audit — Langfuse 5-field cost-trace surface verified;LIVE smoke 🚧 Chris dev server → **C8 W5**
+  - F7 (W4 D4) ✅ AI audit — SSE event ordering + asyncio.CancelledError dual-layer propagation verified;LIVE smoke 🚧 Chris dev server browser → **C8 W5**
+  - F8 (W4 D1) ✅ — 5 component design notes status bumps + COMPONENT_CATALOG sync
+  - F9 (W4 D1) ✅ orchestrator + chunker delegate;3-sample E2E smoke 🚧 → **C7 W5**
+  - F10 (W4 D5) ✅ — Gate 2 procedural verdict + W4 retro + W5 kickoff(this section)
+- **G2**(Gate 2 4-metric within 5pp 互換 between Cohere baseline + winning shootout reranker):⏸ **DEFERRED to W5 D1 LIVE close** — F3 / F5 / F2 LIVE data 全部 procurement-gated;not faking verdict per plan §F10 fallback path "Cohere baseline pending — partial verdict on available rerankers"
+- **G3**(RAGAs eval automation runs end-to-end on eval-set-v1):**✅ structurally** — driver ready + 13 unit tests + injectable evaluator;LIVE eval-set-v1 run 🚧 procurement-gated(judge LLM RateLimitError + chunk_id labeling)→ **C1 + C5 W5**
+- **G4**(Backend ruff + frontend lint + type-check 0 errors):**✅ All clean** — 208/208 backend tests + ruff clean(scripts/ E402 baseline parity)
+- **G5**(Component design notes C04/C05/C08/C09/C10 status bumped):**✅ done W4 D1 F8** — v0/v1 → v1/v2 + COMPONENT_CATALOG.md status table sync
+- **G6**(eval-set-v1 promoted from draft + 55 queries labeled):⏸ **deferred to W5 D1 → C5 + C6** — placeholder Q001-Q055 全部 acceptable_chunk_ids: [];Chris SME labeling cascade。Plan §3 G6 explicitly marks "Block W5? No(45+ acceptable)"
+
+**Phase Gate verdict**:**PASS(structural) + DEFERRED(LIVE)** — G1+G3(structural)+G4+G5 hard gates green;G2+G3(LIVE)+G6 explicitly deferred per plan §3 G2 fallback path "Cohere baseline pending — partial verdict on available rerankers" + W5 carry-overs documented(C1-C11 above)。L2 CRAG **不 drop**(G2 LIVE FAIL 條件未觸發)。Phase status flip `in-progress → closed`
 
 ### Phase status
-- Closeout commit:_(W4 D5 末)_
-- Frontmatter status flipped to `closed`:_(W4 D5 末)_
-- Phase W05 kickoff trigger:_(W4 D5 末 — W5 plan scope contingent on Gate 2 verdict)_
+
+- Closeout commit:_pending W4 D5 closeout commit(this Day-5 entry + retro + plan changelog + progress.md frontmatter flip)_
+- Frontmatter status flipped to `closed`:_pending closeout commit_
+- Phase W05 kickoff trigger:`docs/01-planning/W05-optimization/{plan,checklist,progress}.md` 落地 same closeout batch(per PROCESS.md §2.3 lifecycle + CLAUDE.md §10 rolling JIT)— scope F1 = Gate 2 LIVE close + F2-F6 conditional optimization
 
 ---
+
+**End of W04 progress**(W4 5-day execution closed 2026-05-04 same calendar day per Chris signoff + scaffold-first design + W2/W3 pattern reuse compounding)
 
 **End of W04 progress**(Day 0 prep stage,daily entries to follow W4 D1 onwards pending W3 D5 closeout sign-off + Chris W4 kickoff approval)
