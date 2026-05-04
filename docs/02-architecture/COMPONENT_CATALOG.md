@@ -29,13 +29,13 @@ process_anchor: docs/01-planning/PROCESS.md (v1.0)
 | **[C01](#c01--ingestion-pipeline)** | Ingestion Pipeline | `§3.3` `§3.5` | Docling + python-pptx + Azure OpenAI embedding | W2 | 🚫 Pending Q2 sample |
 | **[C02](#c02--knowledge-base-manager)** | Knowledge Base Manager | `§3.4` `§4.4 #4-8` | FastAPI + Pydantic + Storage Protocol | W1 D2 | ✅ Implemented (in-memory) |
 | **[C03](#c03--indexing-service)** | Indexing Service | `§3.6` `§3.4` | Azure AI Search Standard S1 + HNSW | W2 D1 | 🟡 Pending tier+region confirm |
-| **[C04](#c04--retrieval-engine)** | Retrieval Engine | `§3.1` `§3.2` | Hybrid BM25+vector + Cohere Rerank v3.5 | W2 D5 | ⏳ Pending C03 |
-| **[C05](#c05--generation-pipeline)** | Generation Pipeline | `§3.1` `§3.2` | Azure OpenAI GPT-5.5 + custom CRAG (non-LangGraph) | W3 D1 | ⏳ Pending C04 |
+| **[C04](#c04--retrieval-engine)** | Retrieval Engine | `§3.1` `§3.2` | Hybrid BM25+vector + Cohere Rerank v3.5 | W2 D5 | 🟢 v2-stable(hybrid + Cohere wired W3 D1-D2;4-way shootout surface ready W4)|
+| **[C05](#c05--generation-pipeline)** | Generation Pipeline | `§3.1` `§3.2` | Azure OpenAI GPT-5.5 + custom CRAG (non-LangGraph) | W3 D1 | 🟢 v1-active(Synthesizer + SSE + CRAG L2 W3-W4 D1)|
 | **[C06](#c06--eval-framework)** | Eval Framework | `eval-methodology.md` | RAGAs + GPT-5.4-mini judge + custom gate | W1 D1 | 🟢 Validator + scaffold ✅ |
 | **[C07](#c07--observability-stack)** | Observability Stack | `§3.2` `§4.3` | Langfuse v2 self-host + structlog | W1 D1 | 🟢 Init ✅ |
-| **[C08](#c08--api-gateway)** | API Gateway | `§4.1` `§4.4` `§4.5` | FastAPI + uvicorn + Pydantic v2 | W1 D1 | 🟢 18 stubs scaffold ✅ |
-| **[C09](#c09--admin-console-ui)** | Admin Console UI | `§5.1-§5.7` | Next.js 14 + shadcn/ui + Tailwind + TanStack Query | W1 D1 | 🟢 6 routes scaffold ✅ |
-| **[C10](#c10--chat-interface-ui)** | Chat Interface UI | `§5` | Next.js + Vercel AI SDK `useChat` | W3 D2 | ⏳ Not started |
+| **[C08](#c08--api-gateway)** | API Gateway | `§4.1` `§4.4` `§4.5` | FastAPI + uvicorn + Pydantic v2 | W1 D1 | 🟢 v2-stable(18 stubs + KB CRUD + /query full RAG + /query/stream SSE W3-W4)|
+| **[C09](#c09--admin-console-ui)** | Admin Console UI | `§5.1-§5.7` | Next.js 14 + shadcn/ui + Tailwind + TanStack Query | W1 D1 | 🟢 v1-active(6 routes + admin views W2 + wizard W3 D5)|
+| **[C10](#c10--chat-interface-ui)** | Chat Interface UI | `§5` | Next.js + native fetch SSE | W3 D2 | 🟢 v1-active(streaming chat + citation card + screenshot modal W3 D4)|
 | **[C11](#c11--identity--access)** | Identity & Access (Beta+) | `§9` | MSAL middleware + Entra ID | W7 D1 | ⏳ Beta+ scope |
 | **[C12](#c12--devops--infra)** | DevOps & Infra | `§4.3` `§9` | Docker + Azurite + Azure Container Apps + GitHub Actions | W1 D1 | 🟢 Local stack ✅ |
 

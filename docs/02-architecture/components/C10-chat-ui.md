@@ -3,13 +3,19 @@ component: C10
 name: Chat Interface UI
 catalog_ref: ../COMPONENT_CATALOG.md#c10--chat-interface-ui
 spec_refs: [architecture.md §5 (chat-related views)]
-status: v0-draft
-last_invalidated: 2026-05-01
+status: v1-active
+last_updated: 2026-05-04
 ---
 
 # C10 — Chat Interface UI Design Note
 
-> **Status**:`v0-draft`(W1 D1 minimal scaffold via F3 `/page.tsx` placeholder;heavy work W3 D2 first touch)
+> **Status**:`v1-active`(W4 D1 2026-05-04 bump from v0-draft):
+> - W3 D4 F6 chat UI streaming(`/page.tsx` Client Component;message state + `AbortController` + Stop button)+ `streamQuery` async generator using **native fetch + TextDecoder + SSE-frame split**(non Vercel AI SDK `useChat` per Karpathy §1.2 — backend SSE uses custom JSON event protocol so wrap = indirection 0 benefit)
+> - W3 D4 F6 inline `MessageBubble` + `CitationCard`(`embedded_images[0]` thumbnail click → ScreenshotModal)
+> - W3 D4 F7 inline `ScreenshotModal`(fixed inset-0 + `max-h-[85vh]` image + Esc key handler + click-backdrop close + click-image propagation stop)
+> - W3 D4 `frontend/lib/api/query.ts` typed client(discriminated `SseEvent` union — `TextDeltaEvent` / `CitationEvent` / `DoneEvent`)
+> - EKP design tokens only(`oklch(...)` from `lib/theming/tokens.ts`)— no Dify colors / branding
+> - shadcn Card / Form / split-into-components polish deferred to W7+ Beta polish window per Karpathy §1.2
 >
 > **Owner**:AI
 

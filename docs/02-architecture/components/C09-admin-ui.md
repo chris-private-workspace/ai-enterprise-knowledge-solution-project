@@ -3,13 +3,18 @@ component: C09
 name: Admin Console UI
 catalog_ref: ../COMPONENT_CATALOG.md#c09--admin-console-ui
 spec_refs: [architecture.md §5.1-§5.7, references/dify (layout reference only per H3)]
-status: v0-draft
-last_updated: 2026-05-01
+status: v1-active
+last_updated: 2026-05-04
 ---
 
 # C09 — Admin Console UI Design Note
 
-> **Status**:`v0-draft`(W1 D1 F3 6 routes scaffold ✅;views wire-up W2-W5)
+> **Status**:`v1-active`(W4 D1 2026-05-04 bump from v0-draft):
+> - W1 D1 F3 6 routes scaffold ✅
+> - W2 D5 admin views(KB list / KB detail with KbConfig form + PATCH wire / KB upload / failed docs)— plain Tailwind + TanStack Query + `lib/api/kb.ts` typed client + `lib/api-client.ts` ApiClient ApiError class
+> - W3 D5 F8 `/admin/kb/new` 3-step Pipeline wizard(DATA SOURCE → DOCUMENT PROCESSING → EXECUTE)+ plain Tailwind step indicator + KbConfig override form + sequential POST `/kb` → POST `/kb/{id}/documents`
+> - W3 D5 F9 confirm Settings page covers acceptance(W2 D5 baseline already had KbConfig form + PATCH wire);reranker per-KB field deferred to W4+ post-shootout(H1 architectural decision)
+> - shadcn DataTable / Stepper / Form polish deferred to W7+ Beta polish window per Karpathy §1.2(plain Tailwind sufficient through W6 demo)
 >
 > **Owner**:AI
 

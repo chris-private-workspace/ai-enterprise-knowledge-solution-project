@@ -3,13 +3,18 @@ component: C04
 name: Retrieval Engine
 catalog_ref: ../COMPONENT_CATALOG.md#c04--retrieval-engine
 spec_refs: [architecture.md §3.1, architecture.md §3.2, eval-methodology.md §7]
-status: v1-active
-last_updated: 2026-05-06
+status: v2-stable
+last_updated: 2026-05-04
 ---
 
 # C04 — Retrieval Engine Design Note
 
-> **Status**:`v1-active`(W2 D4 2026-05-06:`backend/retrieval/{__init__,hybrid,retrieval_engine}.py` delivered + wired to `/query` endpoint + 10 mocked unit tests pass。Hybrid baseline ready for W2 D5 F7 Gate 1 R@5 ≥ 80% measurement post-VPN-disconnect。W3 will insert Cohere Rerank;W4 4-way shootout)
+> **Status**:`v2-stable`(W4 D1 2026-05-04 bump from v1-active):
+> - W2 D4 hybrid retrieval baseline + 10 mocked unit tests
+> - W3 D1 後段 Cohere Rerank v3.5 scaffold(Path A Marketplace per Q5 Resolved)+ `Reranker` Protocol + `RerankedChunk` dataclass + factory pattern returns None for hybrid-only fallback + 8 reranker unit tests
+> - W3 D2 F1.7 wired into `RetrievalEngine.retrieve()` post-hybrid → top-50 → Cohere → top-5;`RetrievalResult` extended with `rerank_latency_ms` + `reranked` fields
+> - W4 D1 4-way shootout extension surface ready:`reranker/{voyage,zeroentropy,azure_semantic}.py` slots reserved per W4 plan §F3;`factory.py` switch on `settings.reranker_kind` Literal["cohere"|"voyage"|"zeroentropy"|"azure"|"off"]
+> - Cohere live verify deferred to W4 F5(post Marketplace endpoint procurement;Chris async)
 >
 > **Owner**:AI
 

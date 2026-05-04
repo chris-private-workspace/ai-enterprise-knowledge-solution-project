@@ -9,7 +9,14 @@ last_updated: 2026-05-04
 
 # C08 — API Gateway Design Note
 
-> **Status**:`v2-stable`(W2 D5 cont 2026-05-04 — F10.4 carry-over closeout)— 18 stubs scaffold ✅(W1 D1)+ C02 wired W1 D2 + `/query` wired to RetrievalEngine W2 D4 + 8 api_skeleton smoke tests + 14 kb_management unit tests(76/76 backend test suite pass)。C03/C05/C06 wire W3-W4 incremental;呢個 status reflects 18-stub baseline + KB CRUD + /query 已 production-shaped。
+> **Status**:`v2-stable`(W2 D5 cont 2026-05-04 — F10.4 carry-over closeout;updated W4 D1 2026-05-04 with W3 deliverables):
+> - W1 D1 18-stub scaffold ✅
+> - W1 D2 C02 wired
+> - W2 D4 `/query` wired to RetrievalEngine
+> - W2 D5 cont 8 api_skeleton smoke tests + 14 kb_management unit tests
+> - W3 D2 `/query` wired full RAG pipeline:retrieve → (rerank) → synthesize → build_citations → QueryResponse
+> - W3 D3 F4 `/query/stream` SSE protocol(`data: {json}\n\n`)— `text-delta` + `citation` + `done` event types + `asyncio.CancelledError` propagation on client disconnect + 9 stream tests
+> - W4 D1 F1 `/query` wired CragLoop optional refinement(grade → maybe rewrite + re-fetch + re-synth)respecting `payload.enable_crag` flag + `app.state.crag_loop` set in lifespan when Azure OpenAI keys populated
 >
 > **Owner**:AI(unit-tested W2 D5 cont)
 
