@@ -288,10 +288,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | 5 份 sample manual 嘅 structure 一致?(Heading style 用 Word default H1/H2/H3?Image 數量 + 格式?Table 多寡?) |
 | **Why it matters** | Docling parser 行為依賴 OOXML structure consistency。如果每份 manual heading 用 hardcoded font size 而唔係 style,parser 推斷 section 失效。 |
 | **Resolution method** | W1 Day 1 拎 5 份 sample,跑 `python -m scripts.inspect_docx_structure`,人工 review report。 |
-| **Decision / Finding** | _(W1 Day 1 後填)_ |
-| **Decided By** | Dev(self) |
-| **Date** | _(W1 Day 1)_ |
-| **Status** | `Open` |
+| **Decision / Finding** | **6 份 sample 收到 W1 D4**(actual 6 not 5,FNA-AR/AP/FA/CB/GL/BM)。Structure consistency confirmed across docs:Word styles 用得 standard(Heading 1-5);Docling SECTION_HEADER level coverage avg ~7-9% 化 chunk count distribution(per W2 D2 sanity report)。Anomalies surfaced:(1)level=10 spurious "Table of Contents" entries(filter via `_HEADING_LEVEL_MAX = 5` per F1 parser);(2)某 docs heading level jump H2 → H4 skip H3,所有 chunk section_path depth=2(W2 D2 surprise)。Parser handles both gracefully。 |
+| **Decided By** | Dev(self,AI inferred from W2 implementation actual data)|
+| **Date** | 2026-05-04(W2 D5 cont closeout based on W2 D2 sanity report actuals)|
+| **Status** | `Resolved`(structure-aware parser handles observed variance;non blocker for downstream chunking) |
 
 ---
 
@@ -302,10 +302,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | Embedded image 格式 coverage:PNG / JPG 為主?有冇 WMF / EMF(Office vector)? SVG?HEIC? |
 | **Why it matters** | WMF / EMF 係 Office legacy vector format,Docling default 唔處理,要 fallback convert。 |
 | **Resolution method** | W1 Day 1 sample 內所有 image 列 format inventory。 |
-| **Decision / Finding** | _(W1 Day 1 後填)_ |
-| **Decided By** | Dev(self) |
-| **Date** | _(W1 Day 1)_ |
-| **Status** | `Open` |
+| **Decision / Finding** | **W2 D3 actual data inventory**(6 docs / 1018 raw images / 872 unique post-SHA256 dedup):**868 PNG dominant** + **18 SVG**(Office Web vector embedded)+ **4 EMF**(Office legacy vector)— **NO JPEG / NO HEIC / NO WMF**。PNG handling baseline;SVG / EMF 暫 stored as-is(ImageRef with mime_type set);Docling DrawingML warning observed("Found DrawingML elements... no DOCX-to-PDF converters")but non-blocking — text + structured chunk extraction unaffected。Future LibreOffice install enables EMF/SVG → PNG transcode(per architecture.md §3.3 fallback path),W3+ optional polish。 |
+| **Decided By** | Dev(self,AI inferred from W2 D3 actual orchestrator data)|
+| **Date** | 2026-05-04(W2 D5 cont closeout based on W2 D3 sanity report actuals)|
+| **Status** | `Resolved`(PNG dominant covered;SVG / EMF stored-as-is acceptable for Tier 1;LibreOffice transcode optional) |
 
 ---
 
@@ -373,8 +373,8 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | Q14 | Specific labeler | Domain Expert | 🔴 | C06 | `Resolved` (full — Chris Lai self-assigned) | 2026-05-01 |
 | Q15 | Update frequency | Domain Expert | | C01 | Open | — |
 | Q16 | Status quo baseline | Domain Expert | | C06 | Open | — |
-| Q17 | Sample structure | Dev | | C01 | Open | W1D1 |
-| Q18 | Image format | Dev | | C01 | Open | W1D1 |
+| Q17 | Sample structure | Dev | 2026-05-04 | C01 | Resolved | W1D1 → W2 D5 cont |
+| Q18 | Image format | Dev | 2026-05-04 | C01 | Resolved | W1D1 → W2 D5 cont |
 | Q19 | Embedding dim | Dev | 2026-05-05 | C01 + C03 | Resolved(1024d baseline)| W2 D3 |
 | Q20 | LLM pick | Dev | | C05 | Open | W3 |
 | Q21 | Reranker pick | Dev | | C04 | Open | W4 |

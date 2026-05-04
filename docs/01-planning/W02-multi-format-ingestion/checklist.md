@@ -112,9 +112,9 @@ last_updated: 2026-05-03
 - [x] **Pre-condition**:R8 mitigated 2026-05-03(Path P1 home network direct;corp proxy SSL inspection / VPN tunnel was the actual interception layer,non corp proxy itself)
 - [x] `pip install -e backend[dev]` success(home network ~5min,mypy 10.9MB @ 15.5 MB/s + 其他 dev deps + Docling + Azure SDK + OpenAI SDK 全部 installed)
 - [x] `pytest tests/test_api_skeleton.py` → **8/8 pass**(commit `0a2673d`,unblock W1 F2 verification)— surfaced + fixed Pydantic v2.13 compat issue across 5 stub routes(commit `c38710f`)
-- [ ] `pytest tests/kb_management/` → CRUD unit tests pass(unblock W1 F7 unit tests)— **tests not yet written** per W1 F7 deferred,W2 D2-D3 implementation 期間補
-- [ ] Coverage ≥ 80% on F2/F7 modules per CLAUDE.md H6 — pending F7 unit tests written
-- [ ] Update C02 + C08 design notes status to `v2-stable` — pending F7 unit tests + W2 implementation completion
+- [x] `pytest backend/tests/test_kb_management.py` → 14/14 pass(2026-05-04 W2 D5 cont — `InMemoryKBBackend` + `KBService` CRUD + edge cases;76/76 full backend suite pass)
+- [ ] **DEFERRED W3 D1** Coverage ≥ 80% on F2/F7 modules per CLAUDE.md H6 — `pytest-cov` install blocked by R8(corp VPN SSL inspection 仍 affect pip install layer,truststore patches Python runtime SSL not pip);retest post-W3 D1 disconnect VPN
+- [x] Update C02(v1-active → v2-stable)+ C08(v0-draft → v2-stable)design notes 2026-05-04 — F10 unit tests(14)+ W2 implementation(C02 in-memory + C08 18 stubs + KB CRUD + /query wired)complete
 
 ## F11 — W2 末 retro + W3 kickoff prep
 

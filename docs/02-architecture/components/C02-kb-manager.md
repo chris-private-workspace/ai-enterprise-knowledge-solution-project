@@ -3,13 +3,15 @@ component: C02
 name: Knowledge Base Manager
 catalog_ref: ../COMPONENT_CATALOG.md#c02--knowledge-base-manager
 spec_refs: [architecture.md §3.4, architecture.md §4.4 #4-8]
-status: v1-active
-last_updated: 2026-05-01
+status: v2-stable
+last_updated: 2026-05-04
 ---
 
 # C02 — Knowledge Base Manager Design Note
 
-> **Status**:`v1-active` — W1 D2 in-memory CRUD implemented(commit `c6ca6e3`)。W2 D1 swap to Azure-backed via FastAPI dependency override(zero call site change)。
+> **Status**:`v2-stable`(W2 D5 cont 2026-05-04 — F10.4 carry-over closeout)— W1 D2 in-memory CRUD impl(commit `c6ca6e3`)+ W2 D5 cont 14 unit tests for `InMemoryKBBackend` + `KBService`(`backend/tests/test_kb_management.py`)。Azure-backed swap via FastAPI dependency override 仍 W3+ stretch(zero call-site change),non Tier 1 critical path。
+>
+> **Owner**:AI
 >
 > **Owner**:AI
 

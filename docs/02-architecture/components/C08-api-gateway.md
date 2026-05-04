@@ -3,15 +3,15 @@ component: C08
 name: API Gateway
 catalog_ref: ../COMPONENT_CATALOG.md#c08--api-gateway
 spec_refs: [architecture.md §4.1, architecture.md §4.4, architecture.md §4.5]
-status: v0-draft
-last_updated: 2026-05-01
+status: v2-stable
+last_updated: 2026-05-04
 ---
 
 # C08 — API Gateway Design Note
 
-> **Status**:`v0-draft`(scaffold:18 stubs ✅;wiring 進行中:C02 already wired W1 D2;C03/C04/C05/C06 wire W2-W4)
+> **Status**:`v2-stable`(W2 D5 cont 2026-05-04 — F10.4 carry-over closeout)— 18 stubs scaffold ✅(W1 D1)+ C02 wired W1 D2 + `/query` wired to RetrievalEngine W2 D4 + 8 api_skeleton smoke tests + 14 kb_management unit tests(76/76 backend test suite pass)。C03/C05/C06 wire W3-W4 incremental;呢個 status reflects 18-stub baseline + KB CRUD + /query 已 production-shaped。
 >
-> **Owner**:AI
+> **Owner**:AI(unit-tested W2 D5 cont)
 
 ---
 
