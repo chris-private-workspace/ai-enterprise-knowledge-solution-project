@@ -188,6 +188,105 @@ Q005: faith=0.944 rel=0.854 prec=1.000 recall=1.000
 
 ---
 
+## Day 2 — 2026-05-04 (Mon — same-session continuation per Option 1b variant user confirm)
+
+> Per W5 D1 closeout Chris review + W5 D2 scope user decision **Option 1b variant = Phase 1 → Phase 2 conditional**:Phase 1 Cohere subset=20 LIVE first;decision-tree 觸發 Phase 2 Azure 2-way only if Phase 1 borderline / faith<0.80 / variance high。
+
+### Phase 1 trigger — RAGAs `--subset 20` Cohere v4.0-pro baseline
+
+Decision tree(per W5 D1 closeout user-AI alignment discussion):
+
+| Phase 1 outcome | Phase 2 trigger? | Gate 2 verdict path |
+|---|---|---|
+| **All 4 metric ≥ 0.85**(strong PASS) | ❌ skip | "Gate 2 PARTIAL PASS — Cohere baseline robust;Azure 2-way 互換 carry-over W6 Gate 3 demo prep"(per W4 plan §F10 fallback policy applied to Azure absence)|
+| **3-of-4 metric ≥ 0.85,1 borderline 0.75-0.85** | ❌ skip | PARTIAL PASS + document follow-up + W6 retest |
+| **Any metric < 0.75 OR ≥1 metric variance high(p95-mean > 0.20)** | ✅ trigger Phase 2 | Run Azure 2-way → full 互換 comparison |
+| **Faithfulness < 0.80**(grounded hallucination concern)| ✅ trigger Phase 2 | 同上 + 額外 W5 D3-D5 CRAG threshold tuning(F2)check |
+
+Cost containment per W4 plan §4 R4:Phase 1 ~$15-25 USD;Phase 2 conditional ~$15-25 incremental;total optimistic ~$20 / pessimistic ~$45。
+
+Output:`reports/ragas-cohere-subset20.json`
+
+### Phase 1 results — Cohere v4.0-pro baseline subset=20
+
+> Output `reports/ragas-cohere-subset20.json`;runtime ~25 min wall clock(Phase 1 trigger 22:50 → completion 23:15);judge LLM total_latency_ms 640406ms(~10.6 min)。
+
+| Metric | mean | p95 | n | Threshold check |
+|---|---|---|---|---|
+| **faithfulness** | 0.944 | 1.000 | 18 | ≥ 0.85 ✓ |
+| **answer_relevancy** | **0.795** | 0.939 | 18 | **borderline 0.75-0.85**(below 0.85 strong threshold)|
+| **context_precision** | 0.986 | 1.000 | 18 | ≥ 0.85 ✓ |
+| **context_recall** | 1.000 | 1.000 | 18 | ≥ 0.85 ✓ |
+
+**Variance check**(p95 - mean):faithfulness 0.056 / rel 0.144 / prec 0.014 / recall 0.000 — 全部 < 0.20 threshold,Cohere baseline 統計穩定。
+
+**2 errored queries(Bug I surfaced — ragas judge max_completion_tokens too small for some faithfulness statements)**:
+- Q013 + Q016:`finish_reason='length'` → instructor JSON validation fail
+- Workaround:wrapper 加 explicit larger `max_completion_tokens=4096`(or higher);留 W5 D3 follow-up fix(non-blocking Gate 2 verdict — 18/20 evaluated 仍足夠 statistical baseline)
+
+**Q014 anomaly**(faith=0 / rel=0 / prec=1.000 / recall=1.000):synthesizer answer 可能 empty / refusal,但 retrieval grounded → 留 W5 D3 investigate(non-blocking)。
+
+### Decision tree application + Phase 2 outcome
+
+- ✗ All 4 metric ≥ 0.85 strong PASS:answer_relevancy 0.795 < 0.85 → NO
+- ✅ **3-of-4 metric ≥ 0.85,1 borderline 0.75-0.85**:faith ✓ + prec ✓ + recall ✓ + rel borderline → MATCH
+- ✗ Any metric < 0.75:rel 0.795 > 0.75 → NO
+- ✗ faithfulness < 0.80:0.944 > 0.80 → NO
+- ✗ variance high:全部 p95-mean < 0.20 → NO
+
+**Phase 2 trigger?** **❌ SKIP**(decision tree match → 3-of-4 metric ≥ 0.85,1 borderline branch)
+
+**Gate 2 verdict**:**PARTIAL PASS — Cohere baseline robust;answer_relevancy 邊緣 follow-up + Azure 2-way 互換 carry-over W6 Gate 3 demo prep**(per W4 plan §F10 fallback policy applied to Azure absence — same logic as Cohere absent case)。
+
+### F1.8 — Gate 2 LIVE verdict landed(2026-05-04 W5 D2)
+
+**Outcome**:**PARTIAL PASS**
+
+**Rationale**:
+1. **Faithfulness 0.944**(p95 1.000)— RAG pipeline 高度 grounded。Cohere v4.0-pro pipeline answer claims overwhelmingly traceable to retrieved chunks;Tier 1 hallucination concern adequate
+2. **Context Precision 0.986** + **Context Recall 1.000** — retrieval quality 接近 ceiling;Cohere v4.0-pro 對 Drive Manual corpus 表現強勁
+3. **Answer Relevancy 0.795** borderline(0.75-0.85)— answer 對 question 嘅 directness 有 improvement room;不屬 Gate 2 critical-fail 但需 W5/W6 attention(possibly synthesizer prompt tuning + answer length cap)
+4. **No drop-L2 trigger**:per architecture.md §6.3 Gate 2 verdict policy,drop-L2 條件是 4-metric within-5pp 互換 FAIL between Cohere + alternative。當前 Azure 2-way 數據缺,partial verdict per W4 plan §F10 fallback。L2 CRAG **不 drop**
+5. **Q21 final pick(reranker)narrowed to Cohere v4.0-pro**(per Path 1 v3.5 → v4.0-pro spec drift accept)。Azure 2-way 若 W6 demo prep 期間 evaluate 後揭露 Azure 嚴重 outperform Cohere(unlikely per F1.6 keyword-mode parity),Q21 final pick 可 revisit
+
+### F1.9 — decision-form OQ follow-up notes
+
+- **Q5(Cohere procurement)**:Resolved 2026-05-04;Path A Marketplace + v3.5 → v4.0-pro spec drift accept(architecture.md §3.2 amendment ticket reserved W5 retro)
+- **Q21(Reranker final pick)**:Tentatively `Cohere v4.0-pro`(W5 D2 Gate 2 PARTIAL PASS);Azure 2-way 互換 verify W6 demo prep;若 Azure ≥ 5pp better any metric → revisit Q21 + ADR-0012 trigger
+- **Q14(SME labeling)**:Still pending;keyword-mode + reference fallback acceptable for current Gate 2 verdict per F1.7 evaluator default
+
+### Surprises / Notes
+
+- **Bug I(W5 D2 NEW)**:ragas judge `max_completion_tokens` 太細 → 2/20 query faithfulness 切短。Path A wrapper 仲可以 enhance 加 default max_completion_tokens=4096;但 18/20 evaluated 仍足夠 verdict
+- **Q014 anomaly**:1/20 query 出現 synthesizer answer empty / refusal-like 但 context_recall 全 1.000 → 可能係 OOS query 或 refusal trigger 但 retrieval grounded。W5 D3 investigation list
+- **answer_relevancy 0.795 < 0.85 threshold**:n=20 vs n=5(W5 D1 = 0.815)distribution 一致,並非 sample-size artifact。likely 反映 GPT-5.5 synthesizer answers tend to be verbose / multi-paragraph(per F1.7 stdout — output_tokens 經常 700-1300+)。W5 D3-D5 F2 CRAG threshold tuning 之前可考慮 prompt tuning(answer length cap / question-direct format)— 但屬 future work,non-blocking Gate 2 PARTIAL PASS
+- **Statistical robustness**:18 main queries × keyword-mode reference fallback = informative for Cohere baseline characterization;若 Chris SME chunk_id labeling W6 完成,strict-mode 重跑 RAGAs 可能 differentiate metric distributions(尤其 context_precision)。**non-blocking Gate 2 verdict 但會 inform W6 retest baseline**
+
+### Cumulative cost W5 D1+D2
+
+- W5 D1:~$5-7 USD(F1.5 + F1.6 + F1.7 sanity 5-query + multiple retry cycles)
+- W5 D2 Phase 1:~$15-25 USD(20-query × full pipeline + judge LLM 4-metric)
+- **W5 D1+D2 total ~$20-32 USD** within W4 plan §4 R4 budget;**Phase 2 NOT triggered** → 慳 ~$15-25 incremental
+
+### Actual vs Planned Effort(D2)
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F1.7-extended Phase 1 trigger + monitoring(background task)| 0.5 | 0.5 | 0 | Bash background task + auto-notify |
+| Decision tree application + Phase 2 evaluation | 0.3 | 0.2 | -0.1h | Threshold check straightforward |
+| F1.8 Gate 2 verdict articulation + rationale | 0.5 | 0.4 | -0.1h | Decision tree pre-defined per W5 D1 closeout |
+| F1.9 decision-form OQ follow-up notes | 0.3 | 0.2 | -0.1h | Q5 + Q21 + Q14 status update |
+| W5 D2 progress entry(this entry)+ commit | 0.5 | 0.5 | 0 | This entry + 1 commit |
+| **Total D2(AI-side)**| **2.1** | **1.8** | **-0.3h** | Path 1b variant compressed D2 — no Phase 2 trigger means no Azure 2-way pipeline run + comparison analysis time |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| _pending_ | `docs(planning): W5 D2 Phase 1 + Gate 2 PARTIAL PASS verdict + F1.8/F1.9 close` |
+
+---
+
 ## Day 3 — _(pending)_
 
 ---
