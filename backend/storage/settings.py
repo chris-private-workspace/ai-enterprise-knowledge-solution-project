@@ -73,9 +73,13 @@ class Settings(BaseSettings):
     zeroentropy_request_timeout_s: float = 10.0
 
     # Azure AI Search built-in semantic ranker (W4 D3 F3 — no extra procurement
-    # since semantic config baked into Standard S1 SKU). Default config name
-    # matches `architecture.md §3.6` index template; override per index variant.
-    azure_semantic_config_name: str = "ekp-semantic-default"
+    # since semantic config baked into S1+ SKU; W5 D1 verified Free tier S0 also
+    # provides 1k requests/month free). Default config name matches the actual
+    # config defined in `backend/indexing/schema.json` line 45 (W2 D5 landed
+    # config name = "ekp-semantic-config", NOT "ekp-semantic-default" which was
+    # a W4 D3 Settings typo — fixed W5 D1 F1.3 after F1.6 shootout azure row 15
+    # queries errored due to mismatch). Override per index variant via .env.
+    azure_semantic_config_name: str = "ekp-semantic-config"
     azure_semantic_request_timeout_s: float = 10.0
 
     # Langfuse

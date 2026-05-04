@@ -312,7 +312,7 @@ async def test_azure_semantic_payload_shape() -> None:
             endpoint="https://x.search.windows.net",
             admin_key="k",
             index_name="ekp-kb-drive-v1",
-            semantic_config="ekp-semantic-default",
+            semantic_config="ekp-semantic-config",
         ) as r:
             await r.rerank("hi", _hits("a", "b"), top_k=5)
 
@@ -322,7 +322,7 @@ async def test_azure_semantic_payload_shape() -> None:
     )
     payload = json.loads(captured["content"])
     assert payload["queryType"] == "semantic"
-    assert payload["semanticConfiguration"] == "ekp-semantic-default"
+    assert payload["semanticConfiguration"] == "ekp-semantic-config"
     assert "search.in(chunk_id" in payload["filter"]
     assert "c0" in payload["filter"] and "c1" in payload["filter"]
     assert payload["top"] == 2
@@ -407,11 +407,11 @@ def test_factory_azure_returns_azure_when_search_keys_set() -> None:
         azure_search_endpoint="https://x.search.windows.net",
         azure_search_admin_key="ak",
         azure_search_default_index="ekp-kb-drive-v1",
-        azure_semantic_config_name="ekp-semantic-default",
+        azure_semantic_config_name="ekp-semantic-config",
     )
     r = make_reranker(settings)
     assert isinstance(r, AzureSemanticReranker)
-    assert r.semantic_config == "ekp-semantic-default"
+    assert r.semantic_config == "ekp-semantic-config"
 
 
 def test_factory_azure_returns_none_when_search_admin_key_unset() -> None:

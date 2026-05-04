@@ -21,10 +21,10 @@ wins the shootout.
 
 Endpoint format:  POST {endpoint}/indexes/{index}/docs/search?api-version=2024-07-01
 Body adds:        {"queryType": "semantic",
-                   "semanticConfiguration": "ekp-semantic-default",
-                   "queryLanguage": "en-us",
-                   "answers": "extractive",
-                   "captions": "extractive"}
+                   "semanticConfiguration": "ekp-semantic-config"}
+                  (W5 D1:`queryLanguage` removed — api-version=2024-07-01 returns 400;
+                   `answers` + `captions` not currently used since we re-rank a
+                   pre-filtered candidate set rather than do open semantic search)
 Response:         each hit has @search.rerankerScore (0..4 scale; clamped to [0, 1] post-divide-by-4 for Reranker Protocol consistency)
 """
 
@@ -61,7 +61,7 @@ class AzureSemanticReranker:
         endpoint: str,
         admin_key: str,
         index_name: str,
-        semantic_config: str = "ekp-semantic-default",
+        semantic_config: str = "ekp-semantic-config",
         api_version: str = _API_VERSION,
         timeout_s: float = 10.0,
     ) -> None:
@@ -122,7 +122,11 @@ class AzureSemanticReranker:
             "search": query,
             "queryType": "semantic",
             "semanticConfiguration": self.semantic_config,
-            "queryLanguage": "en-us",
+            # `queryLanguage` removed W5 D1 — api-version=2024-07-01 returns 400
+            # "The parameter 'queryLanguage' is not a valid parameter for search".
+            # Default language inference from index analyzers is correct for our
+            # en-us corpus (Drive Manual);若將來支援 ZH/JP corpus(Tier 2),
+            # use api-version=2024-05-01-preview which still supports queryLanguage.
             "filter": f"search.in(chunk_id, '{id_csv}')",
             "top": min(top_k, len(candidates)),
             "select": "chunk_id",

@@ -121,9 +121,9 @@ def _skip_reason(kind: str, settings: Settings) -> str:
     if kind == "cohere" and not (settings.cohere_endpoint and settings.cohere_api_key):
         return "cohere_endpoint or cohere_api_key unset (.env Q5 procurement pending)"
     if kind == "voyage" and not settings.voyage_api_key:
-        return "voyage_api_key unset (.env Chris procurement pending per W4 plan §F3)"
+        return "voyage_api_key unset (.env Chris procurement pending per W4 plan F3)"
     if kind == "zeroentropy" and not settings.zeroentropy_api_key:
-        return "zeroentropy_api_key unset (.env Chris procurement pending per W4 plan §F3)"
+        return "zeroentropy_api_key unset (.env Chris procurement pending per W4 plan F3)"
     if kind == "azure" and not (settings.azure_search_endpoint and settings.azure_search_admin_key):
         return "azure_search_endpoint or admin_key unset"
     return ""
