@@ -318,7 +318,7 @@ Chris uploaded 3 .pptx samples to `docs/06-reference/01-sample-doc/`:`FY26 BP - 
 
 | Hash | Subject |
 |---|---|
-| _pending_ | `feat(c05,c08): F4 SSE streaming — synthesize_stream + stream_composer + /query/stream wire (W3 D3;138/138 tests)` |
+| `1267c02` | `feat(c05,c08): F4 SSE streaming — synthesize_stream + stream_composer + /query/stream wire (W3 D3; 138/138 tests)` |
 
 ---
 
