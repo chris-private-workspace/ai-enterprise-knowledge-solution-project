@@ -83,7 +83,7 @@ status: draft     # draft → in-progress → closed
 
 | Hash | Subject |
 |---|---|
-| _pending_ | `feat(c01): F5 PPT parser scaffold + 9 unit tests (W3 D1 — F1 Cohere blocked Q5)` |
+| `58690a4` | `feat(c01): F5 PPT parser scaffold + 9 unit tests (W3 D1 — F1 Cohere blocked Q5)` |
 
 ---
 
