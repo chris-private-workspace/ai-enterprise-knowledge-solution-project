@@ -470,7 +470,7 @@ GPT-5.5 synthesizer 接收 query + 5 retrieved chunks → 判斷 chunks 唔包�
 
 | Hash | Subject |
 |---|---|
-| _pending_ | `feat(eval): F4 NON-STICKY + Bug I max_completion_tokens floor + Q014 refusal investigation (W5 D4)` |
+| `7d97cf5` | `feat(eval): F4 NON-STICKY + Bug I max_completion_tokens floor + Q014 refusal investigation (W5 D4)` |
 
 ---
 
