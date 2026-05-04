@@ -169,11 +169,20 @@ def _patch_for_gpt5(client) -> None:
     with GPT-5 deployments without forking ragas or swapping judge model。
     """
     drop_params = ("temperature", "logprobs", "top_logprobs")
+    # W5 D4 Bug I fix:ragas faithfulness statement extraction can produce many
+    # JSON-bound statements per claim → default ragas max_tokens(usually 1024)
+    # too small for complex multi-statement answers,causing finish_reason=length
+    # → instructor JSON parse fail。Bump to 4096 floor(GPT-5.4-mini supports up
+    # to 16k completion tokens)。Surfaced W5 D2 Phase 1 on Q013+Q016 errored
+    # rows;fix lets caller still override with larger value if needed.
+    min_max_completion_tokens = 4096
     inner_create = client.chat.completions.create
 
     async def patched_create(**kwargs):
         if "max_tokens" in kwargs:
             kwargs["max_completion_tokens"] = kwargs.pop("max_tokens")
+        if kwargs.get("max_completion_tokens", 0) < min_max_completion_tokens:
+            kwargs["max_completion_tokens"] = min_max_completion_tokens
         for p in drop_params:
             kwargs.pop(p, None)
         return await inner_create(**kwargs)

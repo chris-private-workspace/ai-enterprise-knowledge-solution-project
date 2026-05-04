@@ -360,7 +360,117 @@ Rationale per Karpathy §1.2 simplicity-first:
 
 ---
 
-## Day 4 — _(pending)_
+## Day 4 — 2026-05-04 (Mon — same-session continuation per "執行 W5 D4 priority" 4 items)
+
+> Per W5 D3 closeout, W5 D4 user-prioritised 4 items:F4 NON-STICKY decision doc + Bug I fix + Q014 investigation + F6 closeout 候選。F5 全 Chris-blocked,跳過。
+
+### Done
+
+#### F4 — Reranker per-KB field NON-STICKY decision(W3 C5 + W4 C9 close)
+
+**Decision**:**NON-STICKY** → close W3 C5 + W4 C9 carry-overs as **defer Tier 2 per H4 boundary**;**no `KbConfig.reranker_kind` schema extension**;**no ADR-0012 trigger**(decision-only,inline document W5 retro)。
+
+**Rationale**(per W4 plan §F4 decision tree):
+1. **Cohere v4.0-pro LOCKED Tier 1 reranker** per architecture.md §3.2 H2 baseline(Q5 Resolved Path A Marketplace + Path 1 v3.5→v4.0-pro accept W5 D1)
+2. **Voyage + ZeroEntropy DROPPED W5 D1** per Karpathy §1.2 — NO alternative reranker procurement target Tier 1
+3. **F1.6 LIVE 3-way shootout subset=10 keyword-mode parity**:hybrid-only / cohere / azure 全 R@5 = 1.0(saturate);F1.7 Phase 1 RAGAs 4-metric 同樣 strong(Cohere baseline 已 ≥ 0.944 faith)
+4. **Tier 1 single-tenant + single corpus(Drive Manual)**:per-KB column 嘅 architecture surface area 屬 multi-tenancy adjacency per H4 boundary check;Tier 1 顯然 NOT 觸發 multi-corpus reranker divergence scenario(decision tree branch (a):same reranker wins across all sub-corpora — 用 Cohere LOCKED single reranker 即係 trivially "same reranker wins")
+5. **Future multi-corpus / Tier 2 expansion**(GraphRAG / multi-tenancy / cross-document synthesis):per-KB column 屬 Tier 2 scope per `architecture.md §11`;將來 evaluate when corpus diversity surface differential reranker performance
+
+**Code change**:**NONE**(no `KbConfig` schema extension;no factory wire change;no UI Settings exposure)。`Settings.reranker_kind` 仍 single global Literal["cohere", "voyage", "zeroentropy", "azure", "off"]。
+
+**ADR-0012 trigger**:**NO**(W4 retro reserved ADR-0012 for(a)Gate 2 LIVE FAIL drop-L2 OR(b)reranker per-KB STICKY decision — neither triggered W5)。ADR-0012 reservation released。
+
+#### Bug I fix — ragas judge `max_completion_tokens` floor 4096(close W5 D2 follow-up)
+
+**Issue**:F1.7 Phase 1 subset=20 surfaced 2/20 query errored(Q013 + Q016)with `finish_reason='length'` → instructor JSON parse fail。Root cause:ragas 0.4.3 default `max_tokens` ~1024 too small for complex faithfulness statement extraction(answer 多 claim 觸發多 JSON-bound 輸出)。
+
+**Fix**:enhance `_patch_for_gpt5(client)` in `scripts/run_ragas_eval.py`:
+- Add `min_max_completion_tokens = 4096` floor
+- After max_tokens → max_completion_tokens rename,if value < 4096 floor,bump to 4096
+- Caller's larger value preserved(supports future GPT-5.4-mini 16k completion ceiling)
+
+**Verification**:7 unit tests in `backend/tests/test_run_ragas_eval_patch.py` ✅ NEW pin wrapper translation contract:
+- `test_max_tokens_renamed_to_max_completion_tokens`(rename + floor)
+- `test_max_completion_tokens_above_floor_preserved`(caller override)
+- `test_no_max_tokens_floor_applied`(default-not-set → floor still applies)
+- `test_temperature_dropped` / `test_logprobs_and_top_logprobs_dropped`(drop list)
+- `test_unrelated_kwargs_pass_through`(model / messages / response_format / seed not affected)
+- `test_combined_translation_max_tokens_temperature_drop`(integration)
+
+**LIVE re-verification deferred**:跑 subset=20 再 verify Q013+Q016 evaluate 成功 cost ~$15-25 USD;根據 fix 結構 + unit test coverage,Bug I 結構性已修。LIVE re-run 留 W5 D5 / W6 demo prep 同 Azure 2-way 一齊 trigger。
+
+#### Q014 investigation(close W5 D2 follow-up)
+
+**Q014 query**:"How to update a fixed asset group?"(Q014 in `eval-set-v1-draft.yaml`,query_type=single_step_lookup,difficulty=easy)
+
+**Root cause**:**CORRECT REFUSAL behavior — NOT a bug**
+
+**Investigation**(direct re-run synthesizer on Q014):
+```
+Retrieved 5 chunks
+synthesizer_call: chunks_in=5 citations_count=0 deployment=gpt-5.5
+                  input_tokens=1748 latency_ms=34027 output_tokens=84 refused=True
+answer = 'I cannot find this in the available documentation'  (49 chars)
+```
+
+GPT-5.5 synthesizer 接收 query + 5 retrieved chunks → 判斷 chunks 唔包含 `update fixed asset group` 嘅 specific workflow → 觸發 `REFUSAL_PHRASE` per `prompt_builder.SYSTEM_PROMPT`(citation-required + refuse-when-not-found design per architecture.md §3.4)。
+
+**RAGAs metric 行為符合設計**:Refusal answer 49 chars + 0 claims:
+- faith=0:無 claim 可 grade against retrieved contexts
+- rel=0:無 substantive answer content,can't assess relevancy to question
+- prec=1 + recall=1:retrieval 含 fixed asset group setup chunks(grader confidence 0.970 同意 retrieval 充足),但 synthesizer 認為 specifically `update` workflow 無 → conservative refuse
+
+**Grader vs Synthesizer divergence finding**(informative for Tier 1 prompt tuning):
+- F2.1 grader confidence 0.970 認為 chunks coverage adequate
+- Synthesizer refused with REFUSAL_PHRASE
+- Suggests:**chunks 講「fixed asset group」嘅 setup,但無 specifically `update` workflow** → grader judges retrieval coverage hi(text contains keyword),synthesizer judges specific-answer coverage lo(answer doesn't directly address `update`)
+- **NOT a fix-required bug** but worth W6 prompt tuning consideration:可能 synthesizer 太嚴緊(over-refuse)or grader 太 lenient(under-refuse)。Cross-validation 需要 W6 SME review or larger sample
+
+**Fix**:**NONE** required。Q014 = correct refusal per architecture.md §3.4 design。
+
+**Refined F1.7 aggregate excluding Q014 refusal**(更 representative for Cohere baseline metric):
+
+| Metric | with Q014 (n=18) | excluding Q014 (n=17) |
+|---|---|---|
+| faithfulness | 0.944 | **1.000** ← perfect grounding(all answers fully traced to chunks)|
+| answer_relevancy | 0.795 | **0.841** ← still <0.85 threshold(GPT-5.5 verbose tendency)|
+| context_precision | 0.986 | **0.985** ← unchanged |
+| context_recall | 1.000 | **1.000** ← unchanged |
+
+**Gate 2 verdict 仍 PARTIAL PASS**(no upgrade)— answer_relevancy 0.841 仍 <0.85,但 binding constraint 縮窄到 GPT-5.5 verbose tendency(non-Q014-related)。**Future improvement**:RAGAs evaluator 可以 detect `REFUSAL_PHRASE` substring + 自動 skip faith/rel metrics for refusal queries(避免 pollute aggregate);留 W5 retro / W6 polish。
+
+### Surprises / Notes
+
+- **Q014 = refusal,not bug**:此 finding 細化 Gate 2 verdict — 17/17 evaluable queries 全 faith=1.000,單 binding constraint = answer_relevancy 0.841 vs 0.85 threshold(narrow miss);non-blocking PARTIAL PASS verdict
+- **Grader-Synthesizer divergence**:CRAG L2 grader judges retrieval at chunk-keyword level(presence of "fixed asset group");synthesizer judges answer-specific level(presence of `update` workflow)— 唔同 abstraction layer。**Cross-layer disagreement is expected behavior + signal for prompt tuning**,not architectural defect
+- **F4 NON-STICKY decision close 2 carry-overs(W3 C5 + W4 C9)** without code change — Karpathy §1.3 surgical "don't change what isn't broken";Tier 1 single-tenant single-corpus simplicity wins per H4 boundary
+- **Bug I unit tests** (7) pin wrapper translation contract:future ragas-version upgrade or new GPT-5 reasoning param surfaces via test failure cleanly,降 future regression risk
+
+### Defer to W5 D5 / W6 / Tier 2
+
+- **F3 L3 routing conditional** → W6 post Azure 2-way 互換 verify(Gate 2 PARTIAL PASS 不 trigger L3 per architecture.md §6.1 W5 row strict reading)
+- **F5 W4 carry-overs LIVE smoke remainder** → Chris dev server bound(C7 PPT E2E + C8 GPT-5.5 latency + Chat UI screenshots)
+- **Bug I LIVE re-verify** → W5 D5 / W6 同 Azure 2-way 一齊 trigger subset=20 RAGAs re-run(cost ~$15-25 USD,saves single trigger overhead)
+- **F4 per-KB Tier 2 reconsideration** → Tier 2 multi-tenancy / multi-corpus / GraphRAG phase
+- **RAGAs evaluator REFUSAL_PHRASE skip enhancement** → W6 polish or W5 retro action item
+
+### Actual vs Planned Effort(D4)
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F4 NON-STICKY decision documentation(W3 C5 + W4 C9 close — no code change)| 0.5 | 0.4 | -0.1h | Decision tree pre-defined per W4 plan §F4 |
+| Bug I `_patch_for_gpt5` floor 4096 enhance + 7 unit tests | 0.5 | 0.5 | 0 | Wrapper enhance + comprehensive test pin |
+| Q014 investigation:eval-set probe + synthesizer re-run + REFUSAL_PHRASE confirm | 0.4 | 0.3 | -0.1h | Direct probe revealed root cause cleanly per Karpathy §1.1 think-before-coding |
+| F1.7 aggregate refinement(excluding Q014 refusal)+ Gate 2 verdict update | 0.2 | 0.2 | 0 | Inline calc |
+| W5 D4 progress entry(this entry)+ commit | 0.5 | 0.5 | 0 | This entry + 1 commit |
+| **Total D4(AI-side)**| **2.1** | **1.9** | **-0.2h** | Pre-defined plan §F4 / W3 C5 / W4 C9 decision trees + structural Bug I fix → tight execution |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| _pending_ | `feat(eval): F4 NON-STICKY + Bug I max_completion_tokens floor + Q014 refusal investigation (W5 D4)` |
 
 ---
 

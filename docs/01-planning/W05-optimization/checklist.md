@@ -43,11 +43,11 @@ last_updated: 2026-05-04
 
 ## F4 — Reranker per-KB field reconsideration(W3 C5 + W4 C9 close)
 
-- [ ] **CONDITIONAL F1 PASS** F4.1 Analyse F1.6 shootout per-KB-type breakdown(Drive Manual technical / table-data / synthesis sub-corpora)
-- [ ] **CONDITIONAL F1 PASS** F4.2 Decision:NON-STICKY(same reranker wins across) → defer Tier 2 / STICKY(divergent winners) → ADR-0012 trigger
-- [ ] **CONDITIONAL STICKY** F4.3 ADR-0012 written + `KbConfig.reranker_kind` field added + factory wire + UI Settings exposure
-- [ ] **CONDITIONAL STICKY** F4.4 Tier 1 boundary verify per H4(per-KB ≠ multi-tenancy)+ ADR-0012 approval
-- [ ] **CONDITIONAL NON-STICKY** F4.3-alt Document defer rationale in W5 progress + close W3 C5 / W4 C9
+- [x] F4.1 Analyse F1.6 shootout breakdown ✅ W5 D4 — F1.6 keyword-mode 3-way parity(hybrid+cohere+azure 全 R@5 1.0)+ F1.7 RAGAs strong Cohere baseline → no per-corpus divergence signal in Tier 1 single-corpus + single-tenant scope
+- [x] F4.2 Decision:**NON-STICKY** ✅ W5 D4 — Cohere LOCKED + Voyage/ZeroEntropy DROPPED + Tier 1 single-tenant single-corpus → trivially "same reranker wins" branch (a) of decision tree;defer Tier 2 per H4 boundary;**no ADR-0012 trigger**
+- [x] F4.3-alt NON-STICKY rationale documented ✅ W5 D4 — inline W5 progress D4 entry;closes W3 C5 + W4 C9 carry-overs;ADR-0012 reservation released(neither Gate 2 LIVE FAIL drop-L2 nor STICKY trigger fired)
+- [ ] ~~F4.3 STICKY ADR-0012 + KbConfig schema extension~~ NOT TRIGGERED(NON-STICKY path)
+- [ ] ~~F4.4 STICKY Tier 1 boundary verify + approval~~ NOT TRIGGERED(NON-STICKY path)
 
 ## F5 — W4 carry-overs LIVE smoke remainder closure(C7 + C8)
 
