@@ -2,7 +2,7 @@
 phase: W05-optimization
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: draft     # draft → in-progress → closed; will flip to in-progress at W5 D1 kickoff trigger
+status: in-progress     # flipped 2026-05-04 W5 D1 kickoff per user "現在可以啟動 W5 D1" signal
 ---
 
 # Phase W05 — Progress
@@ -24,7 +24,7 @@ status: draft     # draft → in-progress → closed; will flip to in-progress a
 - **Carry-over candidates from W04-crag-eval-shootout**(per W4 retro § Carry-overs C1-C11):
   - C1 Gate 2 LIVE verdict close → **F1**(blocking gate)
   - C2 Cohere Marketplace endpoint+key populate → **F1.1**
-  - C3 Voyage + ZeroEntropy procurement → **F1.2**
+  - C3 ~~Voyage + ZeroEntropy procurement~~ **DROPPED W5 D1 per Karpathy §1.2** — Cohere + Azure semantic 2-way satisfies Gate 2 verdict policy;Tier 2 alternative candidates 留 future
   - C4 Azure semantic config verify → **F1.3**
   - C5 Chris SME chunk_id labeling → **F1.4**
   - C6 Eval-set v1 promote → post F1.4 cascade(non-deliverable;SME-bound)
@@ -45,11 +45,73 @@ status: draft     # draft → in-progress → closed; will flip to in-progress a
 
 ---
 
-## Day 1 — _(pending W5 kickoff trigger)_
+## Day 1 — 2026-05-04 (Mon — same-session continuation per "現在可以啟動 W5 D1" signal)
+
+> Per plan §5 D1 = F1 Gate 2 LIVE close。Same-day W3+W4+W5 momentum continues。Initial scope discovery + Voyage/ZeroEntropy drop decision + procurement state verification。
+
+### Done
+
+#### F1.0 — Procurement state discovery + scope simplification
+
+- **`.env` load verification**(F1.0 boolean-only check via `Settings`):
+  - ✅ `azure_openai_api_key`(Q3 Resolved + W3 D1 后段 populated)
+  - ✅ `azure_search_admin_key`(Q4 Resolved + W2 D5 populated)
+  - ✅ `cohere_api_key`(Q5 Path A procurement landed W3 D1 後段)
+  - ⚠️ `cohere_endpoint`(False — F1.1 仍需 Chris populate Path A Marketplace endpoint OR Path B `https://api.cohere.com` fallback)
+  - ❌ `voyage_api_key`(DROPPED W5 D1 per user decision)
+  - ❌ `zeroentropy_api_key`(DROPPED W5 D1 per user decision)
+  - ❌ `langfuse_public_key`(W3 deferred — non-critical for Gate 2)
+- **Path resolution learning**:Pydantic Settings `env_file=".env"` 路徑相對 cwd → 必須由 project root 跑(W4 driver scripts 全部已 from project root)。F1.0 initial run 由 backend/ 跑導致 false negative,corrected by re-run from project root
+
+#### Voyage + ZeroEntropy DROP decision(close W4 C3 NOT NEEDED — per Karpathy §1.2)
+
+- **User signal**:「如果唔係必須, 咁把它們先drop吧」per W5 D1 conversation 2026-05-04
+- **Rationale documented**:Cohere v3.5(H2 LOCKED W3 baseline)+ Azure built-in semantic ranker(S1 SKU bundled,no procurement)2-way comparison **already satisfies** Gate 2 4-metric within-5pp verdict policy per architecture.md §6.3。Voyage / ZeroEntropy 屬 alternative Tier 2 candidates;procurement burden(non-Azure path + monthly billing)+ low marginal value(Cohere 業界 +10-20% R@5 lift over hybrid baseline,satisfies Tier 1 quality)= drop pragmatically
+- **Code preservation**:W4 D3 落地嘅 `VoyageReranker` + `ZeroEntropyReranker` class + 21 unit tests **preserved as future-proof scaffold**(Tier 2 / Beta+ 將來 evaluate);`run_reranker_shootout.py` skip-row fallback automatically handles SKIPPED rows,driver-side無需改動;`Settings` 8 NEW fields kept for同樣 reason
+- **Q21 narrowed**:reranker final pick 由 4-way → **Cohere vs Azure semantic 2-way**;若 F1.6 LIVE shootout Cohere PASS → Q21 Resolved as `cohere-v3.5`;若 FAIL → escalate per ADR-0012(drop L2 CRAG)
+
+#### W5 plan + checklist + W4 retro carry-overs C3 + W5 progress Day 0 update
+
+- W5 plan §1 scope:Voyage + ZeroEntropy DROPPED note + Cohere endpoint Path A/B clarification + R2 marked N/A + carry-over C3 strikethrough
+- W5 plan §2 F1.2 simplified;F1.6 reduced 5-way → 3-way(hybrid-only / cohere / azure;Voyage + ZeroEntropy auto-SKIP)
+- W5 plan §4 Risk R2 marked N/A
+- W5 plan §6 Dependencies C3 strikethrough
+- W5 plan §7 changelog entry per R3
+- W5 checklist F1.2 Voyage + ZeroEntropy 兩個 row 標 [x] DROPPED + rationale;F1.1 Cohere endpoint clarification(Path A/B);F1.6 reduced 3-way
+- W4 retro carry-over C3 strikethrough + DROPPED rationale + future-proof scaffold preservation note
+- W5 progress Day 0 carry-over C3 strikethrough sync
+
+### Surprises / Notes
+
+- **Cohere endpoint missing但 api_key populated**:推測 Chris populated key 早於 endpoint(Path A Marketplace deploy 仍 7-14d turnaround)OR 用 Path B 但 endpoint URL 仍未 set 為 `https://api.cohere.com`。F1.1 acceptance criteria 已 clarify 兩個 path 嘅 endpoint format
+- **W4 D3 4-way scaffold-first decision pays off**:Voyage + ZeroEntropy 雖然 W5 drop,但 21 unit tests + Settings fields + factory branches 全部留 — driver skip-row fallback 自動處理 SKIPPED rows = zero refactor cost。Karpathy §1.2 surgical principle 反例:「scaffold first then drop」反而比「drop fully + delete code」更 surgical(因為刪除 = touch多處;skip-row fallback = touch zero 處)
+- **Voyage + ZeroEntropy 屬 Tier 2 candidates 唔等於垃圾**:Tier 1 Cohere + Azure semantic 2-way 滿足現有 quality target;Tier 2 multi-tenancy / scale phase 若 R@5 quality regression OR cost spike,W4 D3 scaffold ready-to-evaluate(只需 procure key + 跑 shootout)。Future-proof preserved without near-term burden
+
+### Next steps(等 Chris)
+
+- **F1.1**:populate `.env` `COHERE_ENDPOINT` — Path A `https://<cohere-deployment>.<region>.models.ai.azure.com` OR Path B `https://api.cohere.com` + `COHERE_PROCUREMENT_PATH=B`
+- **F1.3**:verify Azure semantic config `ekp-semantic-default` exists on `ekp-kb-drive-v1` index;create if missing
+- **F1.4**:start chunk_id labeling cascade per Q14 SME(blocking strict-mode RAGAs;keyword-mode acceptable for 1st-pass Gate 2)
+- F1.5-F1.8 LIVE drivers:once F1.1 + F1.3 land,AI runs `run_cohere_lift_smoke.py` + `run_reranker_shootout.py --subset 10`(cost containment)+ `run_ragas_eval.py --subset 20`,emit Gate 2 procedural verdict
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F1.0 procurement state discovery + path resolution learning | 0.2 | 0.1 | -0.1h | Boolean-only Settings dump |
+| Voyage + ZeroEntropy drop docs propagation(W5 plan §1+§2+§4+§6+§7;W5 checklist F1.2;W4 retro C3;W5 progress Day 0+Day 1)| 0.5 | 0.4 | -0.1h | Surgical edit pattern;multi-file but each edit narrow |
+| W5 D1 progress entry(this entry)+ commit | 0.3 | 0.3 | 0 | This entry + 1 commit |
+| **Total D1(AI-side)**| **1.0** | **0.8** | **-0.2h** | W4 calibration 0.5-1h baseline holds |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| _pending_ | `docs(planning): W5 D1 — drop Voyage + ZeroEntropy per Karpathy §1.2; F1 simplified to Cohere + Azure semantic 2-way` |
 
 ---
 
-## Day 2 — _(pending)_
+## Day 2 — _(pending Cohere endpoint populate + Azure semantic config verify)_
 
 ---
 

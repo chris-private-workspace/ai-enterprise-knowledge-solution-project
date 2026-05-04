@@ -4,7 +4,7 @@ name: "Gate 2 LIVE Close + Conditional Optimization + L3 Routing(if Gate 2 PASS)
 sprint_week: W5
 start_date: 2026-05-22          # tentative — same Option-A 2-day-shift heuristic as W2/W3/W4 if Chris confirms; otherwise 2026-05-26 per architecture.md §6.1 original schedule
 end_date: 2026-05-28            # tentative,5 working days
-status: draft                   # flipped to active when Chris W5 D1 sign-off + procurement landing trigger
+status: active                  # flipped 2026-05-04 W5 D1 kickoff per user "現在可以啟動 W5 D1" signal — F1 partial-procurement state(Cohere endpoint pending;Voyage + ZeroEntropy DROPPED;Azure semantic config verify pending)
 spec_refs:
   - architecture.md §6.1 W5 row     # L3 routing conditional + optimization scope
   - architecture.md §6.3            # Gate 2 verdict policy
@@ -24,9 +24,11 @@ prior_phase: W04-crag-eval-shootout
 
 ## 1. Scope
 
-W05 closes the **Gate 2 LIVE verdict deferred from W4 D5** then branches into conditional optimization。**F1 = Gate 2 LIVE close**(blocking gate for W5 D2-D5 scope determination)wires 3 deferred procurement chains:Cohere Marketplace endpoint+key populate(W4 C2)+ Voyage + ZeroEntropy api keys(W4 C3)+ eval-set chunk_id labeling per Q14 SME cascade(W4 C5)。Once F1 lands LIVE 4-metric within-5pp 互換 verdict,W5 D2-D5 fork:**PASS** = continue Tier 1 W5+ optimization(L3 routing conditional + CRAG threshold fine-tune + reranker per-KB field if sticky + W4 C8 LIVE smoke remainder closure)/ **FAIL** = drop L2 CRAG → baseline-only scope per architecture.md §6.3,W5 D2-D5 = ADR-0012 record + W4 carry-overs cleanup + W6 demo prep early-start。
+W05 closes the **Gate 2 LIVE verdict deferred from W4 D5** then branches into conditional optimization。**F1 = Gate 2 LIVE close**(blocking gate for W5 D2-D5 scope determination)wires 2 procurement chains(simplified per W5 D1 user decision per Karpathy §1.2):**Cohere Marketplace endpoint populate(W4 C2)** + **eval-set chunk_id labeling per Q14 SME cascade(W4 C5)**。Once F1 lands LIVE 4-metric within-5pp 互換 verdict,W5 D2-D5 fork:**PASS** = continue Tier 1 W5+ optimization(L3 routing conditional + CRAG threshold fine-tune + reranker per-KB field if sticky + W4 C8 LIVE smoke remainder closure)/ **FAIL** = drop L2 CRAG → baseline-only scope per architecture.md §6.3,W5 D2-D5 = ADR-0012 record + W4 carry-overs cleanup + W6 demo prep early-start。
 
-**Pre-condition for W5 promotion**:W4 D5 closeout PASS(structural)+ Chris kickoff sign-off + procurement landing(at least Cohere endpoint+key OR Voyage key OR Azure semantic config — partial-shootout 仍可 emit verdict per W4 plan §F10 fallback)。Fail = HALT W5,carry W4 status forward 等 procurement landing。
+**Voyage + ZeroEntropy DROPPED**(W4 C3)per W5 D1 Karpathy §1.2 simplicity-first decision:Cohere v3.5(H2 LOCKED W3 baseline)+ Azure built-in semantic ranker(S1 SKU bundled,no procurement)2-way comparison **already satisfies** Gate 2 4-metric within-5pp 互換 verdict policy per architecture.md §6.3。Voyage / ZeroEntropy 屬於 alternative candidates,procurement burden(non-Azure path + monthly billing)+ low marginal value(Cohere 通常 +10-20% R@5 lift over hybrid baseline,satisfies Tier 1 quality)= drop pragmatically。W4 D3 落地嘅 `VoyageReranker` + `ZeroEntropyReranker` class + 21 unit tests **preserved as future-proof scaffold**(Tier 2 / Beta+ 將來 evaluate;`run_reranker_shootout.py` skip-row fallback automatically handles SKIPPED rows,driver-side無需改動)。
+
+**Pre-condition for W5 promotion**:W4 D5 closeout PASS(structural)+ Chris kickoff sign-off + procurement landing(at minimum Cohere endpoint populate per Q5 Path A Marketplace OR Path B `https://api.cohere.com` direct;Azure semantic config ekp-semantic-default verify on `ekp-kb-drive-v1` index — non-procurement Chris index ops。Without Cohere endpoint AND Azure semantic config,partial-shootout reduces to hybrid-only baseline only,Gate 2 verdict cannot land per W4 plan §F10 fallback)。Fail = HALT W5,carry W4 status forward 等 procurement landing。
 
 **Sprint week origin**:[`architecture.md` §6.1 W5](../../architecture.md)
 
@@ -38,15 +40,15 @@ W05 closes the **Gate 2 LIVE verdict deferred from W4 D5** then branches into co
 - **Spec ref**:`architecture.md §6.3 Gate 2`,`W4 plan §F10 fallback path`,`W4 progress retro §Carry-overs C1-C5`
 - **OQ deps**:Q5 Resolved(Cohere Path A)+ Q14 SME labeler chain(Chris)+ Q21 reranker final pick deferred to F1 outcome
 - **Acceptance criteria**:
-  - F1.1 Cohere Marketplace endpoint+key `.env` populate(Chris signoff post Marketplace deploy)
-  - F1.2 Voyage + ZeroEntropy api keys `.env` populate(Chris async non-Azure path)— partial-shootout fallback per W4 plan §4 R2 if 1-2 of 3 keys land
+  - F1.1 Cohere `.env` endpoint populate(Chris signoff)— Path A `cohere_endpoint=https://<deployment>.<region>.models.ai.azure.com` OR Path B `cohere_endpoint=https://api.cohere.com` + `cohere_procurement_path=B`。`cohere_api_key` 已 W3 D1 後段 populated per Q5
+  - F1.2 ~~Voyage + ZeroEntropy api keys~~ **DROPPED W5 D1 per Karpathy §1.2** — Cohere + Azure semantic 2-way 已 satisfies Gate 2 4-metric within-5pp verdict policy;W4 D3 落地嘅 reranker class + 21 tests preserved as future-proof scaffold;driver skip-row fallback handles SKIPPED rows automatically
   - F1.3 Azure semantic config `ekp-semantic-default` verify on `ekp-kb-drive-v1` index(W2 D5 schema check + apply if missing — non-procurement Chris index ops)
-  - F1.4 Chris SME chunk_id labeling cascade per Q14:`scripts/discover_chunk_ids.py` + manual SME review for Q001-Q030(W2 baseline)+ Q036-Q055(W4 D2 expansion)— acceptable_chunk_ids: [] → real ids;target ≥ 45/55 queries validated per W4 plan §3 G6
+  - F1.4 Chris SME chunk_id labeling cascade per Q14:`scripts/discover_chunk_ids.py` + manual SME review for Q001-Q030(W2 baseline)+ Q036-Q055(W4 D2 expansion)— acceptable_chunk_ids: [] → real ids;target ≥ 45/55 queries validated per W4 plan §3 G6;**keyword-mode fallback acceptable for 1st-pass Gate 2 verdict** if SME cycles slip
   - F1.5 `scripts/run_cohere_lift_smoke.py` LIVE run on 10 representative queries → hybrid-only vs hybrid+Cohere R@5 lift verdict
-  - F1.6 `scripts/run_reranker_shootout.py` LIVE run on full 55-query eval-set → 5-way comparison(hybrid-only / cohere / voyage / zeroentropy / azure)+ R@5 + 4-RAGAs metric overlay
+  - F1.6 `scripts/run_reranker_shootout.py` LIVE run on full 55-query eval-set → **3-way comparison**(hybrid-only / cohere / azure)+ R@5;Voyage + ZeroEntropy rows auto-SKIPPED with reason "key/endpoint unset"
   - F1.7 `scripts/run_ragas_eval.py` LIVE run on winning reranker + Cohere baseline → 4-metric within-5pp 互換 verdict(Faithfulness / Answer Relevancy / Context Precision / Context Recall)
   - F1.8 Gate 2 verdict landed:**PASS** = 4-metric within 5pp互換 → continue F2-F6 optimization;**FAIL** = trigger ADR-0012(drop L2 CRAG)+ W5 D2-D5 fork to baseline-only + W6 demo prep early-start
-  - F1.9 Q5 + Q21 follow-up note in `decision-form.md`(Cohere baseline lift confirmed / final reranker pick / 4-metric verdict)
+  - F1.9 Q5 + Q21 follow-up note in `decision-form.md`(Cohere baseline lift confirmed / final reranker pick narrowed to Cohere vs Azure semantic 2-way / Voyage + ZeroEntropy 屬 Tier 2 candidate / 4-metric verdict)
 - **Effort estimate**:2h AI(driver runs + analysis)+ Chris async procurement + SME labeling unbounded
 - **Owner**:Chris(procurement + SME label + dev server smoke)+ AI(LIVE driver runs + 4-metric overlay analysis + verdict documentation)
 - **Blocking**:F2-F6 全部 conditional on F1 verdict
@@ -137,8 +139,8 @@ W05 closes the **Gate 2 LIVE verdict deferred from W4 D5** then branches into co
 
 | # | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
-| R1 | Cohere Marketplace procurement still pending W5 D1(blocks F1.1 → F1 全鏈)| Medium | High | Partial-shootout fallback per W4 plan §F10:F1 仍可 land verdict on available rerankers(at least Voyage / ZeroEntropy / Azure semantic);F1 verdict 標 "Cohere baseline pending" + carry to W6 |
-| R2 | Voyage + ZeroEntropy procurement pending too(2 of 3 keys missing)| Medium | High | Azure semantic + Cohere(if landed)2-way shootout 仍可 emit verdict;Voyage + ZeroEntropy carry to W6 |
+| R1 | Cohere endpoint populate still pending W5 D1(blocks F1.1 → Cohere shootout row)| Medium | High | Partial-shootout fallback per W4 plan §F10:hybrid-only + Azure semantic 2-way 仍可 emit baseline verdict;F1 verdict 標 "Cohere baseline pending — 1-way reranker only" + carry to W6 |
+| R2 | ~~Voyage + ZeroEntropy procurement pending~~ DROPPED W5 D1 per Karpathy §1.2 — N/A | — | — | Voyage + ZeroEntropy 屬 Tier 2 alternative candidates;Cohere + Azure semantic 2-way 已 satisfies Tier 1 Gate 2 verdict policy |
 | R3 | Chris SME chunk_id labeling slips(blocks F1.4 strict-mode RAGAs eval)| High | Medium | Keyword-mode RAGAs fallback acceptable for Gate 2 verdict per `eval/runner.py` mode auto-select;real chunk_id labeling for ≥ 45/55 acceptable per W4 plan §3 G6;backfill W6 |
 | R4 | F1 PASS verdict but 4-metric within 5pp 邊界 case(e.g. 4.9pp)| Medium | Medium | Document specific failing metric + per-metric variance + reranker per-KB potential mitigation;NOT trigger drop L2 CRAG unless 互換 FAIL clear |
 | R5 | F4 STICKY decision triggers ADR-0012 + KbConfig schema extension impacts C02 KB Manager + C09 Admin UI | Low | Medium | ADR-0012 written + schema migration + UI wire 屬於 1.5-day scope;若 W5 timeline 緊,defer F4 implementation to W6 + ADR-0012 record decision-only |
@@ -163,7 +165,7 @@ Carry-overs from `W04-crag-eval-shootout/progress.md` retro:
 - **W4 G2** Gate 2 verdict DEFERRED → **F1**
 - **W4 C1** Gate 2 LIVE verdict close → **F1.5-F1.8**
 - **W4 C2** Cohere Marketplace endpoint+key populate → **F1.1**
-- **W4 C3** Voyage + ZeroEntropy procurement → **F1.2**
+- **W4 C3** ~~Voyage + ZeroEntropy procurement~~ **DROPPED W5 D1** per Karpathy §1.2 simplicity-first user decision — Cohere + Azure semantic 2-way satisfies Gate 2 verdict policy;Voyage + ZeroEntropy 屬 Tier 2 alternative candidates;W4 D3 reranker class + 21 tests preserved as future-proof scaffold
 - **W4 C4** Azure semantic config verify → **F1.3**
 - **W4 C5** Chris SME chunk_id labeling → **F1.4**
 - **W4 C6** Eval-set v1 promote → post F1.4 cascade
@@ -178,6 +180,7 @@ Carry-overs from `W04-crag-eval-shootout/progress.md` retro:
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-05-04 | Initial draft(W4 D5 末 closeout batch)| Per PROCESS.md §2.3 rolling-JIT kickoff;status=draft pending Chris W4 D5 closeout sign-off + W5 kickoff approval + procurement landing trigger | Chris(pending approve to flip active) |
+| 2026-05-04 | **Voyage + ZeroEntropy DROPPED**(W4 C3 close as NOT NEEDED rather than deferred);F1.2 simplified to skip-row fallback note;F1.6 reduced 5-way → 3-way(hybrid-only / cohere / azure);R2 marked N/A;W4 retro carry-overs C3 updated;decision-form Q21 narrowed | Per Karpathy §1.2 simplicity-first user decision:Cohere(H2 LOCKED W3 baseline)+ Azure built-in semantic ranker(S1 SKU bundled,no procurement)2-way comparison already satisfies Gate 2 4-metric within-5pp verdict policy per architecture.md §6.3。W4 D3 落地嘅 VoyageReranker + ZeroEntropyReranker class + 21 unit tests preserved as future-proof Tier 2 scaffold — driver skip-row fallback handles SKIPPED rows automatically | User-approved per W5 D1 "如果唔係必須, 咁把它們先drop吧" signal |
 
 ---
 

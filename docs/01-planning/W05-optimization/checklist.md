@@ -1,7 +1,7 @@
 ---
 phase: W05-optimization
 plan_ref: ./plan.md
-status: draft
+status: active
 last_updated: 2026-05-04
 ---
 
@@ -13,16 +13,16 @@ last_updated: 2026-05-04
 
 ## F1 — Gate 2 LIVE verdict close(blocking gate)
 
-- [ ] **DEFERRED Chris async** F1.1 Cohere Marketplace endpoint+key `.env` populate(post Marketplace deploy)
-- [ ] **DEFERRED Chris async** F1.2 Voyage api_key `.env` populate(non-Azure path)
-- [ ] **DEFERRED Chris async** F1.2 ZeroEntropy api_key `.env` populate(non-Azure path)
+- [ ] **DEFERRED Chris async** F1.1 Cohere `.env` `cohere_endpoint` populate(Path A Marketplace `https://<dep>.<region>.models.ai.azure.com` OR Path B direct API `https://api.cohere.com` + `cohere_procurement_path=B`);`cohere_api_key` 已 populated W3 D1 後段
+- [x] **DROPPED W5 D1 per Karpathy §1.2** F1.2 Voyage api_key procurement — Cohere + Azure semantic 2-way 已 satisfies Gate 2 verdict policy;W4 D3 VoyageReranker class + tests preserved as future-proof scaffold;driver skip-row fallback handles SKIPPED row automatically
+- [x] **DROPPED W5 D1 per Karpathy §1.2** F1.2 ZeroEntropy api_key procurement — same rationale as Voyage drop
 - [ ] **DEFERRED Chris index ops** F1.3 Azure semantic config `ekp-semantic-default` verify on `ekp-kb-drive-v1` index(create if missing)
-- [ ] **DEFERRED Chris SME** F1.4 chunk_id labeling cascade Q001-Q030 + Q036-Q055(target ≥ 45/55 validated)
-- [ ] F1.5 `scripts/run_cohere_lift_smoke.py` LIVE run on 10 representative queries → hybrid-only vs hybrid+Cohere R@5 lift output
-- [ ] F1.6 `scripts/run_reranker_shootout.py` LIVE run on full 55-query eval-set → 5-way comparison + R@5 + 4-RAGAs metric overlay
+- [ ] **DEFERRED Chris SME** F1.4 chunk_id labeling cascade Q001-Q030 + Q036-Q055(target ≥ 45/55 validated;keyword-mode fallback acceptable for 1st-pass Gate 2 verdict if SME cycles slip)
+- [ ] F1.5 `scripts/run_cohere_lift_smoke.py` LIVE run on 10 representative queries → hybrid-only vs hybrid+Cohere R@5 lift output(blocked by F1.1)
+- [ ] F1.6 `scripts/run_reranker_shootout.py` LIVE run on full 55-query eval-set → **3-way comparison**(hybrid-only / cohere / azure)+ R@5;Voyage + ZeroEntropy rows auto-SKIPPED with reason "key/endpoint unset"
 - [ ] F1.7 `scripts/run_ragas_eval.py` LIVE run on winning reranker + Cohere baseline → 4-metric within-5pp 互換 verdict
 - [ ] F1.8 Gate 2 verdict landed:**PASS** = continue F2-F4 / **FAIL** = trigger ADR-0012 + drop L2 CRAG decision
-- [ ] F1.9 Q5 + Q21 + relevant OQ follow-up note in `decision-form.md`
+- [ ] F1.9 Q5 + Q21 + relevant OQ follow-up note in `decision-form.md`(Q21 narrowed to Cohere vs Azure semantic 2-way per W5 D1 Voyage/ZeroEntropy drop)
 
 ## F2 — CRAG threshold empirical fine-tune(W4 R6 close)
 
