@@ -170,9 +170,9 @@ Chris uploaded 3 .pptx samples to `docs/06-reference/01-sample-doc/`:`FY26 BP - 
 
 | Hash | Subject |
 |---|---|
-| _pending_ | `docs(decision,risk): Q5 → Path A + Q17/Q18 Chris confirm + R3 Resolved (Chris signoff log)` |
-| _pending_ | `feat(c04): F1 Cohere Rerank v3.5 scaffold + Reranker Protocol + factory + 8 tests (W3 D1 — Path A,wire deferred)` |
-| _pending_ | `docs(planning): W3 D1 後段 progress entry + F5 real-sample sanity outcome (107/107 tests)` |
+| `da0f47f` | `docs(decision,risk): Q5 → Path A + Q17/Q18 Chris confirm + R3 Resolved (Chris signoff log)` |
+| `2997c74` | `feat(c04): F1 Cohere Rerank v3.5 scaffold + Reranker Protocol + factory + 8 tests (W3 D1 — Path A, wire deferred)` |
+| `d859965` | `docs(planning): W3 D1 後段 — Chris signoff log + F5 real-sample sanity + F1 scaffold tick (107/107 tests)` |
 
 ---
 
