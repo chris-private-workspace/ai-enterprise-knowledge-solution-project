@@ -1,11 +1,11 @@
-# Enterprise Knowledge Platform (EKP) — Tier 1 Foundation 規格 v5
+# Enterprise Knowledge Platform (EKP) — Tier 1 Foundation 規格 v5.1
 
 **Codename**:EKP(Enterprise Knowledge Platform)
 **First Use Case**:Drive Project — Ricoh internal user manuals
-**Status**:Draft v5 — content patches over v4(architecture locked,no structural change)
+**Status**:**v5.1**(W6 D5 closeout stakeholder approval cycle increment 2026-05-05)— v5 frozen baseline + 2 surgical amendments(§3.2 reranker model upgrade v3.5 → v4.0-pro;§6.3 Gate 2 verdict landed PARTIAL PASS confirmed)
 **目標讀者**:Claude Code(實作執行)、Chris(技術 Lead)、Project Stakeholder
 **Timeline**:Tier 1 = 12 週(POC 6w + Beta 4w + Staged Rollout 2w)
-**最後更新**:2026-04-27
+**最後更新**:2026-05-05(v5.1 stakeholder amendment cycle increment;v5 frozen 2026-04-27)
 
 > **v4 → v5 嘅 5 個 targeted patch**(內容補充,架構不變):
 > 1. **§1.7 新增 Business Impact Metrics**(time-to-answer reduction、shadow AI displacement、user satisfaction)
@@ -230,7 +230,7 @@ End User UI
 |---|---|---|
 | Search Service | **Azure AI Search Standard S1** | — |
 | Embedding | **Azure OpenAI text-embedding-3-large**(1024d MRL) | text-embedding-3-small(W3 cost A/B) |
-| Reranker | **Cohere Rerank v3.5**(Azure Marketplace) | W4 shootout: Voyage / ZeroEntropy / Azure built-in |
+| Reranker | **Cohere Rerank v4.0-pro**(Azure Marketplace) | _W4 shootout completed:4-way → 2-way per Karpathy §1.2 simplicity drop(Voyage + ZeroEntropy DROPPED Tier 1 W5 D1);Azure built-in semantic ranker comparison W6 D1 LIVE 2-way verify(faith Δ -11.76pp + rel Δ -9.81pp WORSE → Cohere reaffirmed final per Q21 Resolved 2026-05-05;ADR-0012 formal record);Tier 2 reconsideration if Beta real-query distribution diverges_ |
 | LLM(synthesis) | **Azure OpenAI GPT-5.5** | GPT-5.4-mini(W3 cost A/B) |
 | LLM(judge / confidence) | **GPT-5.4-mini**(快、平) | GPT-5.5 |
 | LLM(eval judge) | **GPT-5.5 Pro** | — |
@@ -934,6 +934,17 @@ KB-level config:embedding model lock、chunk strategy default、retrieval defaul
 | **任意 3+ metric miss target by > 5pp** | **ESCALATE** — Stakeholder review:係 architectural 問題?抑或 ground truth 問題?抑或 build vs buy 要 re-examine? |
 
 **Gate 2 嘅 implication 對 W5–W6**:Sprint plan 要保留 buffer。我哋規定 **W5 嘅 stretch L3 adaptive routing 屬 conditional**(Gate 2 全 pass 先做),呢樣 v4 已有,Gate 2 將佢 explicit 化。
+
+#### Gate 2 verdict landed(W5 D2 + W6 D1 LIVE)— v5.1 amendment
+
+| Phase | Outcome | Action triggered |
+|---|---|---|
+| **W5 D2** Cohere v4.0-pro baseline subset=20 LIVE | **PARTIAL PASS** — faithfulness 1.000 / context_precision 0.985 / context_recall 1.000 ≥ 95%;answer_relevancy 0.841 邊緣 < 0.85 due to GPT-5.5 verbose tendency | "CONTINUE w/ Watch":W5 D3 CRAG threshold KEEP 0.70 + W5 D4 NON-STICKY reranker decision + W5 retro carry-over C4 prompt tuning candidate;**L3 stretch defer Tier 2**(strict reading PARTIAL PASS 不 trigger upgrade path) |
+| **W6 D1** Azure 2-way 互換 verify subset=20 LIVE | **PARTIAL PASS confirmed** NOT upgraded to STRONG PASS — apples-to-apples n=17:faith Δ -11.76pp + rel Δ -9.81pp WORSE Azure < Cohere(only context_precision + context_recall within-5pp互換);**Cohere v4.0-pro reaffirmed final** via "alternative-disprove" frame | Q21 Resolved Cohere v4.0-pro production lock 2026-05-05;ADR-0012 formal record(architecture amendment + Gate 2 verdict);L2 CRAG NOT dropped(drop-L2 trigger 4-metric within-5pp 互換 FAIL 未觸發 — partial verdict 仍 PASS path) |
+| **W6 D2** Synthesizer prompt tuning A/B subset=10 LIVE | **LAND tweak** — first-10 baseline 0.853 → tweaked 0.872 = +1.92pp lift;rule 3 single-line surgical change `prompt_builder.py:25`("Lead with a direct one-sentence answer" + soft length cap "<= 150 words") | W5 retro carry-over C4 closed;**rel ≥ 0.85 Tier 1 acceptance criterion met on contracted A/B sample** |
+| **W6 D5** F3 subset=20 confirmation LIVE | **incremental improvement confirmed at scale** — tweaked subset=20 +0.85pp aggregate lift + +1.4pp on borderline cluster Q011-Q020 ex-Q014;rel 0.803 still < 0.85 at subset=20 scale but LAND decision correct per W6 plan F3.4 contracted criterion;7 winners + 5 losers + 3 ties high per-query variance | W6 retro carry-over C2 closed;tweak retains as **incremental improvement not threshold-crossing fix**;W7+ optional further mitigation candidate if Beta real-query distribution signals continued borderline pressure |
+
+**Gate 2 final verdict**:**PARTIAL PASS confirmed**(NOT STRONG PASS upgrade)。Verdict path:within-5pp 互換 only on context_precision + context_recall(2 of 4 metrics);faith + rel ≥ 5pp Cohere ahead。**L2 CRAG NOT dropped + production lock landed**;W6 retro Phase Gate G1+G3+G5+G6+G7 PASS,G2+G4 DEFERRED non-blocking。
 
 > 出處:Decision Gate 概念來自 RAPO Drive Knowledge Agent POC Strategy 文件 §6.1。
 > Strategy 文件 Gate 2 用「Tier 3 cross-department accuracy < 60% → rescope」;

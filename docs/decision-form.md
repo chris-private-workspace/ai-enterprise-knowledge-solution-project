@@ -140,10 +140,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | W9 Beta 階段嘅 50 internal user 由邊度黎?(RAPO 內部 team 成員?其他 BU 友好部門?願意 hands-on testing 嘅 power user?) |
 | **Why it matters** | Beta phase 嘅 real query log 係 production deployment 前最後一道 validation。Sample 唔 representative(e.g. 全部 dev 同事)= production 撞 user behavior gap。 |
 | **Default if unanswered** | 假設 RAPO 內部 + 1–2 個友好部門。 |
-| **Decision** | 🟡 To be filled by stakeholder |
-| **Decided By** | _(name)_ |
-| **Date** | _(YYYY-MM-DD)_ |
-| **Status** | `Open` |
+| **Decision** | **Approved per W6 D5 stakeholder approval cycle**(2026-05-05 Beta plan v1 sign-off batch)— Chris pre-identify from EKP-target user pool;default path landed = RAPO 內部 + 1-2 友好部門;具體 50 user identification W7-W8 internal cascade,W9 D1 onboarding trigger。 |
+| **Decided By** | Stakeholder(W6 D5 closeout approval cycle)|
+| **Date** | 2026-05-05 |
+| **Status** | `Resolved`(default path approved;50 user identification W7-W8 operational cascade)|
 
 ---
 
@@ -168,10 +168,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | 100 份 manual 嘅 sensitivity classification?(Public / Internal / Confidential / Restricted?) 需唔需要 Customer-Managed Keys(CMK)? 有冇 PII / 客戶資料? |
 | **Why it matters** | 影響 Azure AI Search、Blob、Key Vault 嘅 security 配置。CMK setup 多 ~3 工作日 IT 工。如有 PII,部分 logging 要 mask。 |
 | **Default if unanswered** | 假設 `Internal` 級別,無 PII,唔需 CMK。 |
-| **Decision** | 🟡 To be filled by stakeholder |
-| **Decided By** | _(name)_ |
-| **Date** | _(YYYY-MM-DD)_ |
-| **Status** | `Open` |
+| **Decision** | **Approved per W6 D5 stakeholder approval cycle**(2026-05-05 Beta plan v1 sign-off batch)— default path accepted = `Internal` classification + no PII + no CMK Beta phase;Azure-managed key acceptable W7;CMK only if Beta+ requires(post-Beta phase risk re-assessment trigger)。 |
+| **Decided By** | Stakeholder(W6 D5 closeout approval cycle)|
+| **Date** | 2026-05-05 |
+| **Status** | `Resolved`(default Azure-managed key path approved;CMK trigger 留 post-Beta if requires)|
 
 ---
 
@@ -182,10 +182,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | EKP 有冇 designated designer 出 brand guidelines(primary color、typography、logo)?如冇,W1 dev 用中性 design tokens(neutral grayscale + 一個 accent color),W4 由 designer pass。 |
 | **Why it matters** | Frontend 質素 = stakeholder demo 第一印象。中性 token 可以 ship,但 W6 demo 之前唔上 designer 過 = 視覺 polish 達唔到 70–80% Dify quality target(spec §1.3)。 |
 | **Default if unanswered** | W1 用 neutral tokens,W4 提醒 stakeholder 要 designer。 |
-| **Decision** | 🟡 To be filled by stakeholder |
-| **Decided By** | _(name)_ |
-| **Date** | _(YYYY-MM-DD)_ |
-| **Status** | `Open` |
+| **Decision** | **Approved per W6 D5 stakeholder approval cycle**(2026-05-05 Beta plan v1 sign-off batch)— default neutral tokens path accepted W7;visual identity polish W7 D5 polish window;若 Beta phase 需要 designated designer brand guidelines → post-Beta optional cycle。 |
+| **Decided By** | Stakeholder(W6 D5 closeout approval cycle)|
+| **Date** | 2026-05-05 |
+| **Status** | `Resolved`(default neutral tokens approved;designer pass post-Beta optional)|
 
 ---
 
@@ -196,10 +196,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | Beta(W7+)階段加 SSO,用咩 Microsoft Entra ID tenant?Ricoh 有統一 tenant?用 RAPO 子 tenant?新開 application registration?Owner of app registration? |
 | **Why it matters** | W7 critical:auth 唔 ready 撞 Beta 50 user onboarding。App registration 通常 IT approve 3–7 工作日。 |
 | **Default if unanswered** | 假設用 Ricoh 統一 tenant,W6 末由 IT initiate app registration。 |
-| **Decision** | 🟡 To be filled by stakeholder |
-| **Decided By** | _(name)_ |
-| **Date** | _(YYYY-MM-DD)_ |
-| **Status** | `Open` |
+| **Decision** | **Approved per W6 D5 stakeholder approval cycle**(2026-05-05 Beta plan v1 sign-off batch)— default path accepted = Ricoh 統一 tenant via Entra ID;**W7 D1 critical path**:IT engagement trigger to confirm tenant access + app registration + owner identification;fallback = mock auth dev mode for W7 D1-D3 if IT cascade slips,Beta-blocking if W7 D5 仍未 confirm。 |
+| **Decided By** | Stakeholder(W6 D5 closeout approval cycle)|
+| **Date** | 2026-05-05 |
+| **Status** | `Resolved`(decision-level approve Ricoh 統一 tenant path;W7 D1 IT operational confirmation cascade trigger — fallback mock auth dev mode preserved per W7 plan F1.1)|
 
 ---
 
@@ -210,10 +210,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | Confirm Chris 為 Tier 2 GraphRAG / Knowledge Graph 嘅 decision owner(架構規格 §11.2 trigger matrix 滿 3 條 + Chris approve = trigger Tier 2)? |
 | **Why it matters** | 防止 stakeholder 喺 production 階段「不如試下 GraphRAG」打亂 Tier 1 backlog。Decision owner 明確 = governance clear。 |
 | **Default if unanswered** | Yes(沿用 v5 spec §11.2)。 |
-| **Decision** | 🟡 To be filled by stakeholder |
-| **Decided By** | _(name)_ |
-| **Date** | _(YYYY-MM-DD)_ |
-| **Status** | `Open` |
+| **Decision** | **Approved per W6 D5 stakeholder approval cycle**(2026-05-05)— **Chris confirmed as Tier 2 GraphRAG / Knowledge Graph decision owner**(及其他 Tier 2 features:multi-agent / multi-tenancy / multi-modal / multi-language / auto-sync / fine-tuning / workflow);trigger matrix 滿 3 條 + Chris approve 觸發 Tier 2 phase kickoff;**post-W12 production launch governance trigger**。 |
+| **Decided By** | Stakeholder(W6 D5 closeout approval cycle)|
+| **Date** | 2026-05-05 |
+| **Status** | `Resolved`(Chris as Tier 2 owner confirmed)|
 
 ---
 
@@ -363,12 +363,12 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | Q4 | Azure OpenAI deployment | Stakeholder + IT | 🔴 | C05 + C01 | `Resolved` (full) | 2026-05-01 |
 | Q5 | Cohere procurement | Chris | 2026-05-04 | C04 | Resolved | W3 D1 critical |
 | Q6 | Real query collection | Stakeholder | | C06 | Open | — |
-| Q7 | Beta user source | Stakeholder | | C09 + C10 + C11 | Open | — |
+| Q7 | Beta user source | Stakeholder | 2026-05-05 | C09 + C10 + C11 | `Resolved` (default RAPO 內部 + 1-2 友好部門;Chris pre-identify W7-W8) | W6 D5 stakeholder approval cycle |
 | Q8 | 4-metric replacement | Stakeholder | | C06 | Open | — |
-| Q9 | Sensitivity / CMK | Stakeholder | | C03 + C12 | Open | — |
-| Q10 | Visual identity | Stakeholder | | C09 + C10 | Open (using default neutral tokens) | — |
-| Q11 | Entra ID tenant | Stakeholder | | C11 | Open | — |
-| Q12 | Tier 2 owner = Chris | Stakeholder | | (cross-cutting governance) | Open | — |
+| Q9 | Sensitivity / CMK | Stakeholder | 2026-05-05 | C03 + C12 | `Resolved` (default Internal classification + Azure-managed key;CMK trigger post-Beta if requires) | W6 D5 stakeholder approval cycle |
+| Q10 | Visual identity | Stakeholder | 2026-05-05 | C09 + C10 | `Resolved` (default neutral tokens approved;designer pass post-Beta optional) | W6 D5 stakeholder approval cycle |
+| Q11 | Entra ID tenant | Stakeholder | 2026-05-05 | C11 | `Resolved` (Ricoh 統一 tenant via Entra ID;W7 D1 IT operational confirmation cascade trigger;fallback mock auth dev mode preserved) | W6 D5 stakeholder approval cycle |
+| Q12 | Tier 2 owner = Chris | Stakeholder | 2026-05-05 | (cross-cutting governance) | `Resolved` (Chris confirmed as Tier 2 GraphRAG + multi-agent + multi-tenancy + ... decision owner) | W6 D5 stakeholder approval cycle |
 | Q13 | Ground truth allocation | Stakeholder | 🔴 | C06 | `Resolved` | 2026-04-30 |
 | Q14 | Specific labeler | Domain Expert | 🔴 | C06 | `Resolved` (full — Chris Lai self-assigned) | 2026-05-01 |
 | Q15 | Update frequency | Domain Expert | | C01 | Open | — |

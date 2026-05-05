@@ -2,14 +2,14 @@
 phase: W07-beta-deploy
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: draft     # draft → active → closed; will flip to active at W7 D1 kickoff trigger
+status: active     # flipped draft→active 2026-05-05 W6 D5 stakeholder approval cycle cascade
 ---
 
 # Phase W07 — Progress
 
 > Daily progress + 結尾 retro。
 > 每 commit 必須對應一個 Day-N entry mention(R2 binding rule per PROCESS.md §5)。
-> Status:`draft` 直到 W6 D5 closeout sign-off + W7 D1 kickoff approval + Q11 IT confirm。
+> Status:`active` 自 2026-05-05 W6 D5 stakeholder approval cycle cascade。
 
 ---
 
@@ -35,11 +35,39 @@ status: draft     # draft → active → closed; will flip to active at W7 D1 ki
 - **W7 critical path identification**:**Q11 Entra ID tenant access** must IT confirm by W7 D1 — blocks F1.1 → F1.7 cascade。Fallback = mock auth dev mode for D1-D3 development;若 W7 D5 仍未 confirm → F1 LIVE smoke defer W8(Beta-blocking)
 - **POC closeout context**:W6 closes Tier 1 12-week sprint POC phase(W1-W6 portion);W7-W8 = Beta deploy(Microsoft Entra ID + rate limiting + React polish + Beta deploy);W9-W10 = Beta internal testing;W11-W12 = staged rollout 25% → 100% production launch per architecture.md §6.1 timeline。
 
-**Status update will follow at W6 D5 closeout commit**(W6 frontmatter `active → closed` + Chris approve W7 kickoff trigger + Q11 IT confirm → W7 status `draft → active`)。
+**Status update at W6 D5 closeout cascade(2026-05-05 same-session)**:Stakeholder approve 4 points landed → W6 frontmatter `active → closed` + Q11 decision-level approve(Ricoh 統一 tenant via Entra ID;W7 D1 IT operational confirm cascade trigger;fallback mock auth dev mode preserved per F1.1 if IT slips)→ **W07 status `draft → active` 2026-05-05**(this entry)。
 
 ---
 
-## Day 1 — _(pending W7 kickoff trigger)_
+## Day 0 cont — 2026-05-05: W7 phase activation post-stakeholder approval cycle
+
+**Action**:W6 D5 stakeholder approval cycle cascade landed → W7 phase activation:
+
+- Stakeholder approval cycle outcome(2026-05-05 same-session):
+  - **Approval 1+2** architecture.md §3.2 + §6.3 amendment **APPROVED** → architecture.md v5 → v5.1 increment + ADR-0012 formal record(`docs/adr/0012-cohere-v4-pro-upgrade-and-gate2-partial-pass.md`)
+  - **Approval 3** 5 OQ Resolved batch:**Q7 Q9 Q10 Q11 Q12** all `Resolved` 2026-05-05 — Q12 explicit Chris as Tier 2 owner;Q11 decision-level approve unblocks W7 active flip
+  - **Approval 4** Beta plan v1 **APPROVED** → `docs/03-implementation/beta-plan-v1.md` status `draft → active`
+- W7 plan/checklist/progress frontmatter status `draft → active`(this batch)
+- W7 D1 critical path:**Q11 IT operational confirm cascade trigger** — Chris W7 D1 engage IT to confirm Ricoh tenant access + app registration + owner identification;若 IT cascade slips → F1.1 fallback mock auth dev mode preserved for D1-D3;若 W7 D5 仍未 confirm → F1 LIVE smoke defer W8(Beta-blocking risk per R-B1 active monitoring)
+
+### Decisions / OQ summary
+
+- Q7 + Q9 + Q10 + Q11 + Q12 — all `Resolved` 2026-05-05 W6 D5 stakeholder approval cycle
+- ADR-0012 — formal record landed(architecture.md v5 → v5.1 amendment + Gate 2 PARTIAL PASS verdict)
+- Phase status W07 `draft → active` 2026-05-05
+
+### Open / blocked
+
+- ⏸ W7 D1 implementation start awaiting Chris IT engagement trigger(Q11 operational cascade)
+- ⏸ Q11 IT operational confirmation by W7 D5(Beta-blocking risk threshold)
+
+### Commit reference
+
+- _(W6 D5 stakeholder approval cycle cascade commit pending — references B1-B6 batch covering architecture amendment + ADR-0012 + 5 OQ resolved + beta-plan active + session-start sync + W7 active)_
+
+---
+
+## Day 1 — _(pending W7 D1 implementation start)_
 
 ---
 

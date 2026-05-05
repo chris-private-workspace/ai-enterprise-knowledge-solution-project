@@ -1,14 +1,14 @@
 ---
 phase: W07-beta-deploy
 plan_ref: ./plan.md
-status: draft
+status: active
 last_updated: 2026-05-05
 ---
 
 # Phase W07 — Checklist
 
 > Atomic checkbox(每 item ≤ 0.5–2 hour effort per W6 C10 calibration:LIVE deploy days × 2;static days × 0.5)。
-> Status:`draft` 直到 W6 D5 closeout sign-off + W7 D1 kickoff approval + Q11 IT confirm。
+> Status:`active` 自 2026-05-05 W6 D5 stakeholder approval cycle cascade。
 > 全 unchecked 至 W7 D1 implementation start。
 
 ## F1 — Microsoft Entra ID auth integration(C11,W7 critical path)

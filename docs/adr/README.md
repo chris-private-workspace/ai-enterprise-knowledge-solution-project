@@ -17,6 +17,7 @@
 | [0009](./0009-frontend-backend-separated.md) | Frontend / Backend separated(not Next.js full-stack) | Accepted | `architecture.md` §13.8 |
 | [0010](./0010-dify-read-only-reference.md) | Dify as read-only reference(no fork, no copy) | Accepted | `architecture.md` §13.9 |
 | [0011](./0011-custom-crag-vs-langgraph.md) | Custom CRAG vs LangGraph framework — Tier 1 path | Accepted | `architecture.md` §13.11 |
+| [0012](./0012-cohere-v4-pro-upgrade-and-gate2-partial-pass.md) | Cohere Rerank v3.5 → v4.0-pro same-vendor model upgrade + Gate 2 PARTIAL PASS verdict landed | Accepted | W6 D5 stakeholder approval cycle 2026-05-05(`architecture.md` v5 → v5.1 amendment) |
 
 > §13.10 ("Other v3 inherits") 屬 meta-rollup,不單獨 promote。
 

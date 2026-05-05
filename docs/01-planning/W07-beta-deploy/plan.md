@@ -4,7 +4,7 @@ name: "Beta Hardening Sprint 1 — Auth + Rate Limiting + Audit + Mobile Respons
 sprint_week: W7
 start_date: 2026-05-12          # tentative — assumes W6 closed 2026-05-09
 end_date: 2026-05-16            # 5 working days
-status: draft                   # flipped to active when Chris W7 D1 sign-off + W6 D5 closeout PASS + Q11 IT 配合 confirmed
+status: active                  # flipped draft→active 2026-05-05 W6 D5 stakeholder approval cycle cascade(Q11 decision-level approve;IT operational confirm cascade trigger W7 D1)
 spec_refs:
   - architecture.md §6.1 W7 row             # Microsoft Entra ID + rate limiting + React polish + Beta deploy
   - architecture.md §6.2 Beta + Rollout     # W7-W12 timeline
@@ -194,6 +194,7 @@ Carry-overs from `W06-final-eval-demo/progress.md` retro:
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-05-05 | Initial draft(W6 D4 末 closeout prep early-start)| Per PROCESS.md §2.3 rolling-JIT kickoff;status=draft pending Chris W6 D5 closeout sign-off + W7 D1 kickoff approval + Q11 IT confirm | Chris(pending approve to flip active) |
+| 2026-05-05 | Status flip `draft → active`(W6 D5 stakeholder approval cycle cascade)| Stakeholder approve 4 points landed(architecture amendment + Q7/Q9/Q10/Q11/Q12 Resolved + Beta plan v1 sign-off);Q11 decision-level approve unblocks W7 active flip;**Q11 IT operational confirm cascade trigger W7 D1**(non-blocking flip — F1.1 fallback mock auth dev mode preserved if IT slips;Beta-blocking only if W7 D5 仍未 confirm)| Stakeholder + Chris(W6 D5 closeout)|
 
 ---
 

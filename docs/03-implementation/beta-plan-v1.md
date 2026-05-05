@@ -1,6 +1,6 @@
 ---
 title: "EKP Tier 1 Beta Plan v1"
-status: draft                          # flipped to active when stakeholder approves W7-W8 kickoff
+status: active                         # flipped draft→active 2026-05-05 W6 D5 stakeholder approval cycle sign-off
 sprint_weeks: W7-W12
 start_date: 2026-05-12                 # tentative — assumes W6 closeout 2026-05-09
 end_date: 2026-07-19                   # tentative — full Tier 1 production launch
@@ -181,12 +181,12 @@ Beta plan + W7-W8 kickoff signoff requires stakeholder review on:
 - ✅ W6 closeout demo + Q&A briefing pack(`docs/01-planning/W06-final-eval-demo/artifacts/demo-prep.md`)
 - ✅ W6 D2 prompt tuning A/B verdict(W5 retro carry-over C4 closed)
 - ✅ W6 D1 Cohere v4.0-pro reaffirmed(W5 retro carry-over C1 closed)
-- ⏸ architecture.md §3.2 + §6.3 amendment ticket(F1.7 narrative ready;**stakeholder approval cycle for content-lock vNext increment**)
-- ⏸ Q7 Beta user source resolution
-- ⏸ Q9 Sensitivity / CMK decision
-- ⏸ Q10 Visual identity / brand confirmation
-- ⏸ Q11 Entra ID tenant access(IT 配合)
-- ⏸ Q12 Tier 2 owner identification(if signal strong)
+- ✅ architecture.md §3.2 + §6.3 amendment ticket — **Approved 2026-05-05**(content-lock v5 → v5.1 increment landed via ADR-0012 formal record)
+- ✅ Q7 Beta user source — **Resolved 2026-05-05**(default RAPO 內部 + 1-2 友好部門 + Chris pre-identify W7-W8)
+- ✅ Q9 Sensitivity / CMK — **Resolved 2026-05-05**(default Internal + Azure-managed key;CMK post-Beta trigger if requires)
+- ✅ Q10 Visual identity — **Resolved 2026-05-05**(default neutral tokens approved;designer pass post-Beta optional)
+- ✅ Q11 Entra ID tenant — **Resolved 2026-05-05**(Ricoh 統一 tenant via Entra ID;W7 D1 IT operational confirmation cascade trigger;fallback mock auth dev mode preserved per W7 plan F1.1)
+- ✅ Q12 Tier 2 owner — **Resolved 2026-05-05**(Chris as Tier 2 GraphRAG + multi-agent + multi-tenancy + ... decision owner;post-W12 production launch governance trigger)
 
 ---
 
@@ -194,7 +194,8 @@ Beta plan + W7-W8 kickoff signoff requires stakeholder review on:
 
 | Date | Change | Reason | Approver |
 |---|---|---|---|
-| 2026-05-05 | Initial draft(W6 D3 F5.3)| Per W6 plan F5.3;status=draft pending Chris W6 D5 closeout sign-off + stakeholder W7-W8 kickoff approve | _(pending)_ |
+| 2026-05-05 | Initial draft(W6 D3 F5.3)| Per W6 plan F5.3;status=draft pending Chris W6 D5 closeout sign-off + stakeholder W7-W8 kickoff approve | _(W6 D3)_ |
+| 2026-05-05 | Status flip `draft → active` + 5 OQ stakeholder approvals(Q7+Q9+Q10+Q11+Q12 Resolved + architecture.md amendment ticket Approved + Beta plan v1 sign-off) | W6 D5 closeout stakeholder approval cycle batch — all 4 approval points landed | Stakeholder + Chris(W6 D5 closeout)|
 
 ---
 
