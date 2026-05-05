@@ -197,34 +197,34 @@ ls docs/10-development-log/01-daily/ | tail -3
 
 ---
 
-## 第九部分:21 條 OQ 狀態(W2 closeout — 2026-05-04 截快照)
+## 第九部分:21 條 OQ 狀態(W6 closeout — 2026-05-05 截快照)
 
 > **每次 phase 結束按需要 sync 此節,但唔係必更新**;權威 source = `docs/decision-form.md §4 Decision Status Dashboard`
 
-### ✅ Resolved(7 條)
+### ✅ Resolved(11 條)
 - **Q1**(format ratio,2026-04-30)
 - **Q2**(source access,2026-04-30)
 - **Q3**(Azure AI Search S1 + eastus2 + index `ekp-kb-drive-v1`,2026-05-02)
 - **Q4**(Azure OpenAI deployment full,2026-05-01)
+- **Q5**(Cohere procurement Path A Azure Marketplace + v3.5 → v4.0-pro spec drift accept;W6 D1 LIVE Azure 2-way reaffirm,2026-05-04 + 2026-05-05)
 - **Q13**(ground truth allocation,2026-04-30)
 - **Q14**(specific labeler = Chris Lai,2026-05-01)
+- **Q17**(Sample structure — 6 sample W2 used + W2 D5 cont,2026-05-04)
+- **Q18**(Image format — PNG/JPEG dominant per W2 D3 actual data,2026-05-04)
 - **Q19**(embedding dim = 1024d MRL truncate baseline,2026-05-05 W2 D3)
+- **Q21**(Reranker final pick = Cohere v4.0-pro;W6 D1 LIVE Azure 2-way reaffirm via faith Δ -11.76pp + rel Δ -9.81pp WORSE,2026-05-05)
 
-### 🔴 Open(14 條)— 影響將來 phase
-- **Q5** Cohere procurement Path A(Azure Marketplace)vs Path B(direct API)→ **W3 D1 critical**(blocks F1 Cohere Rerank)
-- **Q20** LLM synthesis final pick → W3
-- **Q21** Reranker final pick → W4(4-way shootout)
-- **Q6** Real query collection owner → W3-4
-- **Q8** 4-metric replacement → W4 if Gate 2 fails
-- **Q9** Sensitivity / CMK → Beta+
-- **Q10** Visual identity / brand(default neutral tokens 進行中)→ Beta
-- **Q11** Entra ID tenant → W7 Beta+
-- **Q7** Beta user source → W7-8
-- **Q12** Tier 2 owner → ongoing
-- **Q15** Manual update frequency → Beta
-- **Q16** Status quo baseline → W6 demo prep
-- **Q17** Sample structure → already used 6 sample W2;OQ formal close pending Chris explicit
-- **Q18** Image format → W2 D3 actual data confirmed PNG/JPEG dominant;OQ formal close pending Chris explicit
+### 🔴 Open(10 條)— 影響將來 phase
+- **Q6** Real query collection owner → W9-W10 Beta phase real query log collection trigger
+- **Q7** Beta user source → **W7-W8 critical**(50 internal users 50 user identification;blocks W9 onboard)
+- **Q8** 4-metric replacement → defer Tier 2(Gate 2 PARTIAL PASS confirmed,not FAIL — replacement 4-metric NOT triggered)
+- **Q9** Sensitivity / CMK → **W8 D1 candidate**(non-blocking,default Azure-managed key acceptable W7;CMK if Beta+ requires)
+- **Q10** Visual identity / brand → W7 D5 polish window(default neutral tokens 進行中 acceptable W7)
+- **Q11** Entra ID tenant → **W7 D1 critical path**(blocks W7.F1 if IT not confirm tenant access by W7 D1;fallback = mock auth dev mode for D1-D3)
+- **Q12** Tier 2 owner → W10 D5 / W12 production launch trigger(per W6 retro carry-over W6 C9)
+- **Q15** Manual update frequency → defer Beta phase real query log signal(W9-W10)
+- **Q16** Status quo baseline → defer W12 production launch trigger
+- **Q20** LLM synthesis final pick → defer Tier 2(GPT-5.5 spec lock per architecture.md §3.2 H2;Tier 2 may revisit if real query distribution requires alternative)
 
 **Default behavior for Open OQ**:用 spec default value 繼續,**喺 commit message 標**:`Note: depends on OQ-Q<N> default`(per CLAUDE.md §8)。
 
@@ -237,19 +237,19 @@ per [`CLAUDE.md §9`](../../../CLAUDE.md):
 | Week | Default focus | Hard cutoff |
 |---|---|---|
 | W1 | Foundation:FastAPI/Next.js skeleton + Docling docx parser PoC + KB CRUD + eval-set v0 + Azurite local | ✅ **closed 2026-05-02** |
-| W2 | Multi-format ingestion + hybrid retrieval baseline + Admin Console layout + Gate 1 R@5 ≥ 80% | ⚠️ **code-complete 2026-05-04;Gate 1 verdict pending live run post-VPN-disconnect** |
-| W3 | Cohere Rerank + GPT-5.5 synthesis + Citation + Chat UI streaming + PPT parser | _draft pending Gate 1 pass + W2 closeout sign-off_ |
-| W4 | CRAG L2 + RAGAs eval automation + Reranker shootout(4-way)+ 加 20 條 real query | **Gate 2 Decision(4 metric within 5pp)** |
-| W5 | Optimization;**conditional** L3 routing(only if Gate 2 全 pass) | — |
-| W6 | Final eval + demo prep + Beta plan | POC 結束 |
-| W7-8 | Microsoft Entra ID + rate limiting + React polish + Beta deploy | — |
+| W2 | Multi-format ingestion + hybrid retrieval baseline + Admin Console layout + Gate 1 R@5 ≥ 80% | ✅ **closed 2026-05-04**(Gate 1 PASS R@5=0.9722 LIVE post-truststore mitigation)|
+| W3 | Cohere Rerank + GPT-5.5 synthesis + Citation + Chat UI streaming + PPT parser | ✅ **closed 2026-05-04** |
+| W4 | CRAG L2 + RAGAs eval automation + Reranker shootout(4-way → 2-way per Karpathy §1.2 simplicity drop)+ 加 20 條 real query | ✅ **closed 2026-05-04**(Gate 2 PARTIAL PASS DEFERRED → W5 D2 land)|
+| W5 | Optimization;**conditional** L3 routing(only if Gate 2 全 pass)| ✅ **closed 2026-05-04**(Gate 2 PARTIAL PASS landed W5 D2 — L3 routing defer per strict reading;CRAG threshold KEEP 0.70;NON-STICKY reranker decision)|
+| W6 | Final eval + demo prep + Beta plan + Azure 2-way verify(Gate 2 STRONG PASS upgrade attempt)| ✅ **closed 2026-05-05**(Gate 2 PARTIAL PASS confirmed NOT upgraded;Cohere v4.0-pro reaffirmed final;Q21 Resolved;F3 prompt tweak landed +0.85pp aggregate lift)|
+| W7-8 | Microsoft Entra ID + rate limiting + React polish + Beta deploy | _W7 draft pending Q11 IT confirm + Chris kickoff;W8 unwritten rolling JIT_ |
 | W9-10 | Beta internal testing + UX iteration | — |
 | W11-12 | Staged rollout 25% → 100% | **Production launch** |
 
 **Critical gates**:
-- **Gate 1(W2 末 R@5 ≥ 80%)** — fail = HALT POC,foundation iteration loop per `architecture.md §6.3`
-- **Gate 2(W4 末 4 metric within 5pp 互換)** — fail = drop L2 CRAG,Tier 1 收尾轉 baseline-only
-- **Gate 3(W6 末 demo ready)** — Beta plan signoff
+- **Gate 1(W2 末 R@5 ≥ 80%)** — ✅ **PASS** R@5=0.9722 W2 D5 LIVE eval post-truststore
+- **Gate 2(W4-W6 4 metric within 5pp 互換)** — ✅ **PARTIAL PASS confirmed**(Cohere v4.0-pro baseline robust;W6 D1 Azure 2-way LIVE reaffirm — within-5pp on prec+recall only,faith+rel ≥ 5pp Cohere ahead)→ L2 CRAG NOT dropped(drop-L2 trigger 未觸發);production lock landed
+- **Gate 3(W6 末 demo ready)** — ✅ **READY**(`docs/01-planning/W06-final-eval-demo/artifacts/demo-prep.md` Part 1 + 2 + 3 + `docs/03-implementation/beta-plan-v1.md` ready);Beta plan signoff pending stakeholder review cycle
 
 如果 session 唔清楚邊個 week,**ask user "What week / day are we in?"** 之後再做 default focus 對應。
 
@@ -259,25 +259,29 @@ per [`CLAUDE.md §9`](../../../CLAUDE.md):
 
 > **此節要每 phase 收尾時更新**:把 retro 嘅 carry-overs + ADR triggers 精煉成下方一句話列表
 
-### 已知未解(at session start time = 2026-05-04 W2 D5 closeout draft)
+### 已知未解(at session start time = 2026-05-05 W6 D5 closeout)
 
-#### W2 carry-overs to W3
-- ⏸ **C1** F7 live Gate 1 eval — `scripts/run_populate_sanity.py` + `backend/eval/runner.py` ready,等 Chris VPN-disconnect 後 trigger;**verdict 决定 W3 active flip**
-- ⏸ **C2** F8 chunk_id discovery + SME validation — `scripts/discover_chunk_ids.py` ready;cascade after C1 populate complete
-- ⏸ **C3** R12 Azurite SDK signature mismatch — defer to W7+ cloud Azure Blob;F3 blob upload disabled in W2 baseline
-- ⏸ **C4** Q5 Cohere procurement Path A vs B — **W3 F1 D1 critical**
-- ⏸ **C5** plan.md F2 chunk count estimate revised(2000-3000 → 329 actual)— eval-set v0 placeholder pattern still valid
-- ⏸ **C6** R8 procedural mitigation per-session — verify VPN state via `netstat -rn` + `curl Azure-OpenAI-endpoint` before cloud-bound work
-- ⏸ **C7** F9 Admin Console KB views — W2 D5 partial(4 views light scaffolding);W3 D5 polish + Pipeline wizard
-- ⏸ **C8** F2 chunker low_value 67.2% rate Gate 1 risk — 若 Gate 1 fail,W3 retro 三 mitigation candidates(threshold 50t / disable filter / augment short chunks)
+#### W6 carry-overs to W7-beta-deploy(per W6 retro § Carry-overs C1-C10)
+- ⏸ **W6 C1** F2 final eval full-corpus(post Chris SME chunk_id labeling cascade strict-mode RAGAs)— Chris async dependency unchanged 3/55 validated;留 W7-W8 background polish if labeling lands;若 W12 production launch 前唔 cascade → strict-mode eval 屬 Tier 2 evaluation phase
+- ⏸ **W6 C2** F3 subset=20 borderline cluster confirmation — **closed W6 D5**(parallel-track LIVE within W6 D5 closeout same-session;tweak +0.85pp aggregate lift confirmed at scale + +1.4pp borderline cluster lift Q011-Q020 ex-Q014;rel 0.803 still below 0.85 Tier 1 strict-acceptance at subset=20 but LAND decision correct;**W7+ optional further mitigation candidate** if real query distribution signals continued borderline pressure)
+- ⏸ **W6 C3** F4 W4/W5 LIVE smoke remainder — Chris dev server bound;**W7 D1 sync-point candidate**(PPT E2E + GPT-5.5 latency baseline + Chat UI screenshots)
+- ⏸ **W6 C4** F5.4 demo screenshots / GIF artifacts — tied to F4 dev server cascade;W7 polish window post-Chris dev server availability
+- ⏸ **W6 C5** architecture.md §3.2 + §6.3 amendment ticket — F1.7 narrative ready in `artifacts/demo-prep.md` Part 2 Section A;**stakeholder approval cycle vNext increment**(per CLAUDE.md §4.4 architecture content-lock — AI 不單方面 edit)
+- ⏸ **W6 C6** RAGAs evaluator REFUSAL_PHRASE skip enhancement(W5 C3 inherit)— Q014 OOS pattern faith=0/rel=0/prec=1/recall=1 仍 pollute aggregate;detect REFUSAL_PHRASE substring + auto-skip faith/rel for refusal queries;W7+ optional polish
+- ⏸ **W6 C7** R8 mitigation update entry to `RISK_REGISTER.md` — **landed 2026-05-05 same-session housekeeping**(Python httpx probe ground truth pattern;curl schannel CRL revocation failure ≠ Python failure documentation)
+- ⏸ **W6 C8** F3 L3 routing conditional — defer Tier 2(Gate 2 STRONG PASS upgrade trigger 唔 fire;W6 D1 Cohere reaffirmed not STRONG PASS upgrade)
+- ⏸ **W6 C9** Q-deps for Beta:Q7+Q9+Q10+**Q11 W7 critical path**+Q12 — stakeholder approval cycle for W7-W8 kickoff trigger
+- ⏸ **W6 C10** Plan estimate calibration:LIVE deploy 2x;static 0.5x — applied to W7 plan §2 effort estimates
 
 #### Cross-phase / governance
-- ⏸ **R8** Ricoh corp proxy — mitigated 2026-05-03 via home network;但 SSL inspection root cause means 每 cloud-bound session start 必 verify
+- ⏸ **R8** Ricoh corp proxy — mitigated 2026-05-03 via truststore + 2026-05-05 W6 D1 calibration update(Python httpx probe ground truth ≠ curl schannel CRL revocation strict mode;curl-level failure unreliable for Python pipeline reachability);RISK_REGISTER.md updated W6 D5 closeout housekeeping
 - ⏸ **R12** Azurite SDK signature mismatch — `RISK_REGISTER` 🔴 Open;permanent fix = cloud Azure Blob W7+
 - ⏸ **R11** Langfuse degradation — closed via BUG-001(commits `10be96d` + `78e9ece`)
 
-#### ADR 未寫(framework still pending)
-- 11 個 ADR 由 architecture.md v5 §13 Decision Log promote 而來,將喺 W2 框架完成後 batch 創建。新 ADR 由 NNNN=0012 開始(per CLAUDE.md §6)
+#### ADR status(2026-05-05 W6 closeout)
+- **11 個 ADR(0001-0011)** 由 architecture.md v5 §13 Decision Log promote 而來,**W2 D5 cont 2026-05-04 batch 創建完成**。新 ADR 由 NNNN=0012 開始(per CLAUDE.md §6)
+- **ADR-0012 reservation released for W4-W6**(no architectural-adjacent trigger fired):F1 Cohere v4.0-pro reaffirmed via Azure 2-way negative comparison(neither STICKY nor swap nor STRONG PASS upgrade trigger);prompt tweak屬 C05 implementation detail per Karpathy §1.3 surgical
+- **ADR-0012 仍 reserved for 將來 trigger**:(a)architecture.md §3.2 amendment formal record stakeholder approval cycle outcome / (b)Tier 2 per-KB reranker column STICKY future / (c)Tier 2 reranker swap if Beta real-query distribution diverges signal
 - 任何 H1 / H2 violation approval 後必須寫 ADR(format per CLAUDE.md §6)
 
 > **AI 任務**:每個新 phase 開始,先看本 prompt §11 + 上 phase progress.md retro 「Carry-overs」,向用戶確認哪些 follow-up 要喺呢個 phase 處理,哪些繼續延後
@@ -291,12 +295,15 @@ per [`CLAUDE.md §9`](../../../CLAUDE.md):
 | Phase | 完成日期 | 主要 commits | 主要成果 |
 |---|---|---|---|
 | **W01-foundation** | 2026-05-02 | `dc7e37f`(retro)+ `740de4c`(R8 mitigation)+ `c38710f`/`0a2673d`(F2 carryover)| FastAPI 18 stubs + Next.js 6 routes + KB CRUD in-memory + eval validator + Docling PoC stub + Azurite local + R8 / Q3 / Q4 / Q14 resolved |
-| **W02-multi-format-ingestion** | _2026-05-04(code-complete;Gate 1 verdict pending)_ | `f30f13a` D1 / `170e3db` D2 / `28341b8` D3 / `2b4bb7e` D4 / `072b95b` D5 | F1 Docling parser PoC + F2 layout-aware chunker + F3 screenshot pipeline + F4 embedder + F5 orchestrator + F6 hybrid retrieval + F7 eval framework + F8 chunk_id discovery + F9 Admin UI partial + index `ekp-kb-drive-v1` 1024d HNSW + Q19 resolved |
-| W03-chat-retrieval-citation | _draft pending Gate 1 verdict_ | _pending_ | Cohere Rerank v3.5 + GPT-5.5 synthesis + Citation + SSE streaming + Chat UI + PPT parser + Pipeline wizard |
-| W04-crag-eval-shootout | _not started_ | _pending_ | CRAG L2 + RAGAs eval automation + Reranker shootout(Cohere / Voyage / ZeroEntropy / Azure built-in)|
-| W05+ | _not started_ | _pending_ | (rolling JIT)|
+| **W02-multi-format-ingestion** | 2026-05-04 | `f30f13a` D1 / `170e3db` D2 / `28341b8` D3 / `2b4bb7e` D4 / `072b95b` D5 | F1 Docling parser PoC + F2 layout-aware chunker + F3 screenshot pipeline + F4 embedder + F5 orchestrator + F6 hybrid retrieval + F7 eval framework + F8 chunk_id discovery + F9 Admin UI partial + index `ekp-kb-drive-v1` 1024d HNSW + **Gate 1 PASS R@5=0.9722** + Q19 resolved |
+| **W03-chat-retrieval-citation** | 2026-05-04 | _(see W3 retro)_ | Cohere Rerank v3.5 + GPT-5.5 synthesis + Citation + SSE streaming + Chat UI + PPT parser + Pipeline wizard;Q5 Resolved Path A Marketplace |
+| **W04-crag-eval-shootout** | 2026-05-04 | _(see W4 retro)_ | CRAG L2 loop + RAGAs eval automation + Reranker shootout 4-way → 2-way per Karpathy §1.2 simplicity drop(Voyage + ZeroEntropy DROPPED Tier 1)+ 加 20 條 real query placeholder + Gate 2 verdict DEFERRED → W5 |
+| **W05-optimization** | 2026-05-04 | `99f9b36` + `163703f` + `7d97cf5` + `69b4577` | F1 Gate 2 LIVE PARTIAL PASS landed(Cohere v4.0-pro baseline robust;answer_relevancy 邊緣 follow-up;Azure 2-way carry-over W6) + F2 CRAG threshold KEEP 0.70 empirical fine-tune + F4 NON-STICKY reranker decision + Bug I max_completion_tokens floor 4096 fix + Q014 refusal investigation |
+| **W06-final-eval-demo** | 2026-05-05 | `4cc5986` + `db35c4e` + `36f2c83` + `04e8afc` + `b161b9a` | F1 Cohere v4.0-pro reaffirmed final via W6 D1 LIVE Azure 2-way negative comparison(faith Δ -11.76pp + rel Δ -9.81pp WORSE)+ F3 prompt tweak landed(W6 D2 first-10 +1.92pp / W6 D5 subset=20 +0.85pp aggregate confirmed at scale) + F5 demo prep + Beta plan v1 + F6 W6 retro + W07 phase folder rolling JIT kickoff;**Gate 2 PARTIAL PASS confirmed** NOT upgraded;Q21 Resolved Cohere v4.0-pro production lock |
+| W07-beta-deploy | _draft pending Q11 IT confirm + Chris kickoff_ | _pending_ | Microsoft Entra ID auth + rate limiting + audit logging + error handling polish + mobile responsive complete |
+| W08+ | _not started_ | _pending_ | (rolling JIT — W08 written at W7 D5 closeout) |
 
-**累計**:**1.x / 12 phase** 完成(W1 closed,W2 code-complete pending Gate 1 verdict)
+**累計**:**6 / 12 phase** 完成(W1-W6 closed = Tier 1 12-week sprint POC phase complete);Beta deploy phase(W7-W12)等 stakeholder review approval cycle
 
 ---
 
@@ -396,7 +403,7 @@ per [`CLAUDE.md §12 self-verification`](../../../CLAUDE.md):
 
 ---
 
-**Last Updated**:2026-05-04(W02 D5 closeout draft — Gate 1 verdict pending live run post-VPN-disconnect)
+**Last Updated**:2026-05-05(W06 D5 closeout — POC phase complete;Gate 2 PARTIAL PASS confirmed;累計 6/12 phase;W7+ Beta deploy phase awaiting stakeholder review approval cycle)
 **Maintainer**:Chris(技術 Lead)+ AI 助手共同維護
 **File location**:`docs/12-ai-assistant/01-prompts/01-session-start.md`
 **Companion**:`02-compact-session.md`(每個 session `/compact` 之前用)
@@ -408,3 +415,4 @@ per [`CLAUDE.md §12 self-verification`](../../../CLAUDE.md):
 | Date | Phase | Updates |
 |---|---|---|
 | 2026-05-04 | W02 D5 closeout | 初版(基於 sample-1 結構,EKP-specific 內容:12 components / H1-H6 / R1-R5 / 21 OQ snapshot / W1-W12 timeline)|
+| 2026-05-05 | W06 D5 closeout housekeeping | §9 OQ status updated 7→11 Resolved + 14→10 Open(Q5 / Q17 / Q18 / Q21 closed cycle);§10 Sprint table all W1-W6 closed + Gates verdict landed(Gate 1 PASS R@5=0.9722 / Gate 2 PARTIAL PASS confirmed / Gate 3 READY);§11 W6 carry-overs C1-C10 replaces stale W2 carry-overs;§12 milestones W3-W6 rows added 累計 6/12;ADR status update(0001-0011 batch created W2 D5 cont 2026-05-04;ADR-0012 reservation status documented per W6 retro)|
