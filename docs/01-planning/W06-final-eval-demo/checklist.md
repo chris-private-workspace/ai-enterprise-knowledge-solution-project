@@ -50,11 +50,11 @@ last_updated: 2026-05-05
 
 ## F6 — Phase Gate 2 closeout + W6 retro + W7 kickoff prep
 
-- [ ] F6.1 Gate 2 final verdict landed(STRONG PASS upgrade OR PARTIAL PASS confirmed)+ architecture.md §6.3 amendment ticket
-- [ ] F6.2 W06 progress.md retro 7 sections complete + Phase Gate verdict + carry-overs to W7-W8 + ADR triggers
-- [ ] F6.3 W07 phase folder kickoff:`docs/01-planning/W07-beta-deploy/{plan,checklist,progress}.md` draft
-- [ ] F6.4 W06 progress.md frontmatter status flipped to `closed`
-- [ ] F6.5 OQ Q21 final + Q5 + relevant other Q resolution sync to `decision-form.md`
+- [x] F6.1 Gate 2 final verdict landed ✅ W6 D1 — PARTIAL PASS confirmed(NOT upgraded to STRONG PASS via W6 D1 Azure 2-way 互換 verify negative comparison;Cohere v4.0-pro reaffirmed final);architecture.md §6.3 amendment ticket reserved stakeholder approval cycle vNext increment
+- [x] F6.2 W06 progress.md retro 7 sections **draft complete** ✅ W6 D4 — What worked / didn't work / Surprises / Carry-overs to W7-W8 (10 items C1-C10) / ADR triggers / Phase Gate result G1-G7 + Gate 2 final verdict / Phase status;**polish + finalize W6 D5**
+- [x] F6.3 W07 phase folder kickoff ✅ W6 D4 — `docs/01-planning/W07-beta-deploy/{plan,checklist,progress}.md` draft net-new(scope = Microsoft Entra ID + rate limiting + audit logging + error handling polish + mobile responsive;6 deliverables F1-F6;Q11 W7 critical path identified)
+- [ ] F6.4 W06 progress.md frontmatter status flipped to `closed`(pending W6 D5 closeout commit)
+- [x] F6.5 OQ Q21 final + Q5 ✅ W6 D1 — Q21 `Tentatively Resolved → Resolved`(Cohere v4.0-pro production lock 2026-05-05);Q5 Decision paragraph + Date row appended W6 D1 LIVE Azure 2-way reaffirm outcome
 
 ---
 
