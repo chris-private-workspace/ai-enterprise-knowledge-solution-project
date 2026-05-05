@@ -16,9 +16,22 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 
 from api.auth import get_current_user
-from api.middleware import RateLimitMiddleware
-from api.routes import chunks, debug, documents, feedback, kb, query, screenshots
-from api.routes import eval as eval_routes
+from api.middleware import AuditLogMiddleware, RateLimitMiddleware
+from api.routes import (
+    auth as auth_routes,
+)
+from api.routes import (
+    chunks,
+    debug,
+    documents,
+    feedback,
+    kb,
+    query,
+    screenshots,
+)
+from api.routes import (
+    eval as eval_routes,
+)
 from generation.crag import CragGrader, CragLoop
 from generation.synthesizer import Synthesizer
 from ingestion.embedding.azure_openai_embedder import AzureOpenAIEmbedder
@@ -129,9 +142,22 @@ app = FastAPI(
 # W7 D2 F2 — token-bucket rate limiter scoped to the same routers as auth
 # (Karpathy §1.3 surgical: shared protected prefix list keeps F1.3 + F2 in
 # lock-step). 50 req/min + 5 concurrent per user (architecture.md §8.1 R5).
-_PROTECTED_PREFIXES = ("/query", "/kb", "/feedback")
+# W7 D3 F1.5 — /auth/** auth endpoints also rate-limited; they are themselves
+# auth-protected via in-route Depends(get_current_user).
+_PROTECTED_PREFIXES = ("/query", "/kb", "/feedback", "/auth")
 app.add_middleware(
     RateLimitMiddleware,
+    settings=get_settings(),
+    protected_prefixes=_PROTECTED_PREFIXES,
+)
+
+# W7 D3 F3 — audit log middleware. Registered AFTER rate limiter so it sits
+# OUTERMOST in the Starlette stack (Starlette wraps later add_middleware calls
+# around earlier ones); the audit row therefore captures 429 responses too.
+# Scope = same protected prefixes; /health stays unaudited to avoid liveness
+# probe noise (W8 cost-effective Langfuse retention).
+app.add_middleware(
+    AuditLogMiddleware,
     settings=get_settings(),
     protected_prefixes=_PROTECTED_PREFIXES,
 )
@@ -153,6 +179,10 @@ _auth = [Depends(get_current_user)]
 app.include_router(query.router, tags=["query"], dependencies=_auth)
 app.include_router(feedback.router, tags=["query"], dependencies=_auth)
 app.include_router(kb.router, tags=["kb"], dependencies=_auth)
+# /auth/** — endpoints handle Depends(get_current_user) inside each route so
+# /auth/refresh + /auth/logout require an existing valid bearer (no
+# unauthenticated session bootstrap surface).
+app.include_router(auth_routes.router)
 app.include_router(documents.router, tags=["documents"])
 app.include_router(chunks.router, tags=["chunks"])
 app.include_router(eval_routes.router, tags=["eval"])

@@ -21,12 +21,15 @@ import time
 from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
 
+import structlog
 from fastapi import Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from api.auth.mock_msal import authenticate_mock
 from api.auth.msal_provider import authenticate_msal
 from storage.settings import Settings
+
+_logger = structlog.get_logger(__name__)
 
 
 @dataclass
@@ -196,6 +199,17 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         key = _identity_key(request, self._settings)
         allowed, retry_after = await limiter.acquire(key)
         if not allowed:
+            # F2.5 cost monitoring — emit structured event so Langfuse trace
+            # exporter (W1 stub structlog JSON renderer; W3+ Langfuse SDK)
+            # picks this up via the audit pipeline as a rate_limit.exceeded
+            # tag, feeding the W8 cost dashboard data source.
+            _logger.warning(
+                "rate_limit_exceeded",
+                identity_key=key,
+                path=request.url.path,
+                method=request.method,
+                retry_after_s=int(retry_after) or 1,
+            )
             return Response(
                 content='{"detail":"Rate limit exceeded — see Retry-After header"}',
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,

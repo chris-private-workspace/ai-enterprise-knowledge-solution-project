@@ -33,5 +33,26 @@ export async function loginMock(): Promise<AuthenticatedUser> {
 }
 
 export async function logoutMock(): Promise<void> {
-  // No-op: there is no real session to invalidate in mock mode.
+  // Mock backend `/auth/logout` is itself a no-op but we still call it so
+  // the integration smoke (F1.7-mock D5) covers the full wire — request
+  // travels through F1.3 auth Depends + F2 rate limiter + F3 audit log.
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+    await fetch(`${apiUrl}/auth/logout`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${DEV_BEARER.token}` },
+    });
+  } catch {
+    // Network blip during dev should not block UI sign-out — local store
+    // clear is the user-facing source of truth.
+  }
+}
+
+export async function refreshMock(): Promise<{
+  accessToken: string;
+  expiresIn: number;
+}> {
+  // Mock refresh returns the same fixed token. Real msal_provider W8 D2-D3
+  // wiring will exchange a refresh token here.
+  return { accessToken: DEV_BEARER.token, expiresIn: 3600 };
 }

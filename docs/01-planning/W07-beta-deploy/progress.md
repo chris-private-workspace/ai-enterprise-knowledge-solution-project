@@ -205,7 +205,67 @@ status: active     # flipped draft→active 2026-05-05 W6 D5 stakeholder approva
 
 ---
 
-## Day 3 — _(pending)_
+## Day 3 — 2026-05-14: F1.5 + F1.6 + F2.5 + F3 audit logging
+
+**Action**:W7 D3 — `/auth/refresh` + `/auth/logout` endpoints(F1.5),F1.6 expanded mocked-MSAL valid + expired token tests,rate-limit Langfuse cost-monitoring tag(F2.5),audit log middleware F3.1 + schema doc F3.2 + redaction policy F3.3 + unit tests F3.4。F3.5 LIVE smoke deferred per W6 C3 dev server availability carry-over。
+
+**Backend(C07 + C08 + C11)**:
+- `backend/api/schemas/auth.py` NEW — `RefreshResponse` + `LogoutResponse` Pydantic models
+- `backend/api/routes/auth.py` NEW — `POST /auth/refresh`(mock returns same dev-token + 1h expiry;real MSAL skeleton 503 W8 D2-D3 trigger)+ `POST /auth/logout`(stateless mock no-op;real MSAL revoke + Entra ID logout redirect W8+);both endpoints in-route Depends(get_current_user) so unauth 401 reject before route body
+- `backend/api/server.py` — `/auth/**` registered + added to `_PROTECTED_PREFIXES`(rate limit + audit scope)
+- `backend/api/middleware/rate_limit.py` — F2.5 emit `rate_limit_exceeded` structlog event with identity_key + path + method + retry_after_s on 429 path(W8 cost dashboard data source)
+- `backend/api/middleware/audit_log.py` NEW(F3.1)— `AuditLogMiddleware` BaseHTTPMiddleware:request_id(uuid4 if absent or echoed input header)+ user_id(mock/real `oid`)+ tenant_id(`tid`)+ audit_action(METHOD path)+ status_code + duration_ms;outermost in Starlette stack so 429 仍 audited;identity reuse `authenticate_{mock,msal}` matched F1.3 + F2 keys
+- `backend/api/middleware/__init__.py` — export `AuditLogMiddleware` + `REQUEST_ID_HEADER`
+- `backend/api/server.py` — `app.add_middleware(AuditLogMiddleware, ...)` registered after RateLimitMiddleware so audit sits OUTERMOST per Starlette stacking semantics
+
+**Frontend(C11)**:
+- `frontend/lib/auth/mock_msal.ts` — `logoutMock` 加 fetch `/auth/logout`(integration smoke for F1.7-mock W7 D5)+ `refreshMock` returns same dev-token
+- `frontend/lib/auth/msal_provider.ts` — `refreshMsal` skeleton throw 503-equivalent
+- `frontend/lib/auth/index.ts` — barrel export `refresh()` switching point
+
+**Doc(F3.2)**:
+- `docs/02-architecture/audit-log-schema.md` NEW(10 sections)— purpose / schema / field reference / **redaction policy CLAUDE.md §5.5 H5 alignment** / retention / wiring / verification / cross-component deps / Tier 2 boundaries / update history
+
+**Tests**:
+- `backend/tests/test_auth_endpoints.py` NEW — 5 tests F1.5(refresh dev-token + reject unauth + 503 mock disabled + logout ok + reject unauth)
+- `backend/tests/test_audit_log.py` NEW — 6 tests F3.4(tag presence on protected + skip unscoped /health + null user on unauth + Authorization redaction + request_id round-trip echo + uuid4 generation when missing)
+- `backend/tests/test_auth_routes.py` — 2 NEW F1.6 expanded(mocked-MSAL valid token 200 + expired token 401 via monkeypatch authenticate_msal — locks F1.3 contract switching point treats LIVE identical to mock,distinguishes 401 expired from 503 not-yet-wired)
+
+**Verification**:
+- `pytest -q` → **250 passed in 153.63s**(W6 baseline 215 + W7 D1 +7 + W7 D2 +15 = 237 + W7 D3 +13 = 250;zero regression)
+- `ruff check api/middleware api/auth api/routes/auth.py api/schemas/auth.py tests/test_audit_log.py tests/test_auth_endpoints.py tests/test_auth_routes.py tests/test_rate_limit.py tests/test_mock_msal.py tests/test_api_skeleton.py storage/settings.py` → All checks passed
+- `tsc --noEmit`(frontend)→ exit 0
+- `eslint --max-warnings=0`(touched files)→ exit 0
+
+**Karpathy §1 alignment**:
+- §1.1 think-before-coding:audit middleware ordering — outermost wraps rate limiter so 429 仍 captured;rate-limit Langfuse tag uses structlog(JSON renderer 已 wired via `init_tracer`)而 non Langfuse SDK direct call(W3+ scope per `langfuse_tracer.py:4` baseline);F1.5 `/auth/refresh` 503 fallback distinguishes "not yet wired" vs "expired token 401"
+- §1.2 simplicity-first:audit middleware single class ~80 LOC;identity resolution shares same `authenticate_{mock,msal}` validators(no duplicate JWT parsing logic);redaction policy = positive list(only emit allowed fields)not regex denylist
+- §1.3 surgical:F1.5 endpoints in dedicated `routes/auth.py`(no edit to existing route files);F2.5 +1 structlog warning call inside existing 429 branch;F3 server.py +1 import +1 add_middleware call
+- §1.4 goal-driven:`F1.5 + F1.6 + F2.5 + F3 + 13 new tests + zero regression + ruff/tsc/eslint clean` = verifiable;closed loop
+
+**Hard constraints check**:
+- H1 architecture lock — ✅ no §3 / §4 component change;C07 audit-log-schema.md formal record 屬 §7.4 Day-2 Readiness implementation per architecture spec
+- H2 vendor lock — ✅ zero new dep added(structlog + uuid + starlette pre-existing)
+- H3 Dify reference — ✅ untouched
+- H4 Tier 1 boundary — ✅ single-tenant only(audit `tenant_id` 來自 mock single tid;multi-tenant aggregation queries explicit Tier 2 per audit-log-schema.md §9)
+- H5 security & privacy — ✅ F3.3 redaction policy enforced:no request body / no response body / no Authorization value / no secret/key/token header in audit event;F3.4 test_audit_redacts_authorization_header verifies
+- H6 test coverage — ✅ critical modules(C07 audit + C11 auth endpoints)synced 13 new tests with code
+
+### Decisions / OQ summary
+- No OQ change(Q11 unchanged decision-level Resolved 2026-05-05)
+- No ADR triggered(audit-log-schema.md 屬 architecture.md §7.4 Day-2 Readiness implementation,non-architectural amendment per CLAUDE.md §5.1 H1 boundary)
+
+### Open / blocked
+- ⏸ F1.7-mock(W7 closeout substitute)— W7 D5 trigger per plan §5;curl `/query` Bearer dev-token end-to-end smoke + verify F2 rate-key + F3 audit-tag integration
+- ⏸ F3.5 LIVE smoke(5 query through dev server → Langfuse trace 顯示 audit tags + request_id traceable)— deferred per W6 C3 Chris dev server availability carry-over;若 W7 D4-D5 dev server 可用即 trigger,否則 W8 D1+D4 cascade post-IT engagement
+- ⏸ F4(error handling polish)— W7 D4 trigger
+- ⏸ F5(mobile responsive)— W7 D4-D5
+- ⏸ Real Langfuse SDK trace export(currently structlog stub per `langfuse_tracer.py:4`)— W3+ original scope;F2.5 + F3.1 events 已 JSON formatted ready for SDK switch when wired
+
+### Commit reference
+- _(W7 D3 commit pending — references progress.md Day 3 + checklist F1.5 + F1.6 + F2.5 + F3.1 + F3.2 + F3.3 + F3.4 ticked + F3.5 deferred 標明)_
+
+---
 
 ---
 

@@ -27,3 +27,10 @@ export async function loginMsal(): Promise<AuthenticatedUser> {
 export async function logoutMsal(): Promise<void> {
   throw NOT_WIRED;
 }
+
+export async function refreshMsal(): Promise<{
+  accessToken: string;
+  expiresIn: number;
+}> {
+  throw NOT_WIRED;
+}

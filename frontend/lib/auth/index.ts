@@ -6,12 +6,19 @@
 // Consumers (api-client.ts, providers/auth-provider.tsx) import from this
 // barrel only — keeps the swap to a single env-var flip.
 
-import { getMockBearer, getMockUser, loginMock, logoutMock } from "./mock_msal";
+import {
+  getMockBearer,
+  getMockUser,
+  loginMock,
+  logoutMock,
+  refreshMock,
+} from "./mock_msal";
 import {
   getMsalBearer,
   getMsalUser,
   loginMsal,
   logoutMsal,
+  refreshMsal,
 } from "./msal_provider";
 import type { AuthBearer, AuthenticatedUser } from "./types";
 
@@ -33,6 +40,13 @@ export async function login(): Promise<AuthenticatedUser> {
 
 export async function logout(): Promise<void> {
   return isMockMode ? logoutMock() : logoutMsal();
+}
+
+export async function refresh(): Promise<{
+  accessToken: string;
+  expiresIn: number;
+}> {
+  return isMockMode ? refreshMock() : refreshMsal();
 }
 
 export const authMode: "mock" | "msal" = isMockMode ? "mock" : "msal";

@@ -2,7 +2,7 @@
 phase: W07-beta-deploy
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-13
+last_updated: 2026-05-14
 ---
 
 # Phase W07 — Checklist
@@ -18,8 +18,8 @@ last_updated: 2026-05-13
 - [x] **F1.2.1 NEW** `backend/api/auth/mock_msal.py` dev-only middleware + `Settings.feature_auth_mock: bool = False` flag — **W7 D1 done 2026-05-12** — `auth_mock_oid` / `auth_mock_tid` / `auth_mock_preferred_username` / `auth_mock_bearer_token` Settings;7 unit tests pass
 - [x] F1.3 Auth middleware — **W7 D2 done 2026-05-13** — wired router-level on `server.py` `/query/**` + `/kb/**` + `/feedback`(feedback rides query workflow);`/health` 公開保留;`Depends(get_current_user)` from `api.auth.dependency` single switching point;documents/chunks/eval/screenshots/debug 公開保留 W8 cascade scope per beta-plan-v1.md §2 W8.F1
 - [x] F1.4 Login flow UI(C09 Admin + C10 Chat)— **W7 D2 done 2026-05-13** — `frontend/lib/api-client.ts` Authorization Bearer header injection on every request via `lib/auth/getBearer()`;`frontend/lib/providers/auth-provider.tsx` Zustand store(idle/loading/authenticated/error)+ `<AuthProvider>` auto-signs-in mock mode;`frontend/components/auth/user-menu.tsx` UserMenu component shown in admin layout header(name + [mock] badge + sign out);Chat UI integration W7 D3 cascade if needed
-- [ ] F1.5 Token refresh logic + logout endpoints
-- [ ] F1.6 Unit tests:auth middleware reject unauth + valid token allow + expired token reject(mocked MSAL responses)
+- [x] F1.5 Token refresh logic + logout endpoints — **W7 D3 done 2026-05-14** — `backend/api/routes/auth.py` `POST /auth/refresh`(mock returns same dev-token + 1h expiry;real MSAL skeleton 503 W8 D2-D3)+ `POST /auth/logout`(mock no-op + real MSAL skeleton 留 W8);`/auth/**` rate-limited + audited;5 unit tests pass
+- [x] F1.6 Unit tests — **W7 D3 done 2026-05-14** — `tests/test_auth_routes.py` 7 tests(public no-auth + reject no-bearer + accept dev-token + reject wrong token + 503 mock-disabled + mocked-MSAL valid 200 + mocked-MSAL expired 401);`tests/test_mock_msal.py` 7 unit tests(W7 D1);`tests/test_auth_endpoints.py` 5 tests(W7 D3 F1.5)— covers reject unauth + valid token allow + expired token reject contract
 - [ ] ~~F1.7 LIVE smoke:dev tenant Entra ID end-to-end login flow on local dev server~~ → **DEFERRED W8 D4** post-IT cred delivery cascade(`Settings.feature_auth_mock=False` switch + real Entra ID redirect flow)
 - [ ] **F1.7-mock NEW W7 closeout substitute** — verify mock auth dev mode end-to-end:`Settings.feature_auth_mock=True` + curl `/query` Bearer dev-token → middleware accept → return `_DEV_USER`;invalid bearer reject 401;F2 rate-key + F3 audit tag 用 mock `oid` 完整 trace
 
@@ -29,15 +29,15 @@ last_updated: 2026-05-13
 - [ ] F2.2 Rate limit thresholds Settings:50 req/min per user + 5 concurrent active queries(architecture.md §8.1 R5 spec)
 - [ ] F2.3 429 response with Retry-After header on exceed
 - [ ] F2.4 Unit tests:burst within budget OK + burst exceed → 429;concurrent cap enforce
-- [ ] F2.5 Cost monitoring:rate-limit hit count → Langfuse tag(W8 cost dashboard data source)
+- [x] F2.5 Cost monitoring — **W7 D3 done 2026-05-14** — `rate_limit.py` emits `rate_limit_exceeded` structlog warning(identity_key + path + method + retry_after_s)on 429 path;structlog JSON renderer(`langfuse_tracer.init_tracer`)→ Langfuse SDK W3+ wire pickup ready;W8 cost dashboard data source
 
 ## F3 — Audit logging per-query trail(C07)
 
-- [ ] F3.1 Audit log middleware:tag every Langfuse trace with `user_id` + `request_id` + `audit_action` + `tenant_id`
-- [ ] F3.2 Audit-specific tag schema document at `docs/02-architecture/audit-log-schema.md`(NEW)
-- [ ] F3.3 Sensitive data redaction:never log full prompt payload to plaintext file(per CLAUDE.md §5.5 H5)
-- [ ] F3.4 Unit tests:audit middleware tag presence + redaction sanitization
-- [ ] F3.5 LIVE smoke:5 query through dev server → Langfuse trace 顯示 audit tags + request_id traceable
+- [x] F3.1 Audit log middleware — **W7 D3 done 2026-05-14** — `backend/api/middleware/audit_log.py` `AuditLogMiddleware`:request_id(uuid4 if absent or echo input X-Request-ID header)+ user_id(mock/real `oid`)+ tenant_id(`tid`)+ audit_action(METHOD path)+ status_code + duration_ms;outermost in Starlette stack so 429 仍 audited
+- [x] F3.2 Audit-specific tag schema document — **W7 D3 done 2026-05-14** — `docs/02-architecture/audit-log-schema.md` NEW(10 sections:purpose / schema example / field reference / **F3.3 redaction policy CLAUDE.md §5.5 H5** / retention W7→Beta→Prod / wiring / verification / cross-component deps / Tier 2 boundaries / update history)
+- [x] F3.3 Sensitive data redaction — **W7 D3 done 2026-05-14** — middleware emits ONLY allowed positive-list fields(request_id / user_id / tenant_id / audit_action / status_code / duration_ms);NEVER request body / response body / Authorization header value / secret/key/token/password headers;F3.4 test_audit_redacts_authorization_header verifies enforcement
+- [x] F3.4 Unit tests — **W7 D3 done 2026-05-14** — `tests/test_audit_log.py` 6 tests:tag presence on protected + skip unscoped /health + null user on unauth + Authorization redaction + request_id round-trip echo input header + uuid4 generation when missing
+- [ ] ~~F3.5 LIVE smoke~~ → **DEFERRED post-W7 D4-D5 dev server availability** — Chris dev server availability per W6 C3 carry-over;F3.5 5-query LIVE through dev server + Langfuse trace 顯示 audit tags + request_id traceable;若 W7 D4-D5 dev server 可用 trigger,否則 W8 D1+D4 cascade post-IT engagement(non-W7-blocking — F3.1-F3.4 unit-test verified)
 
 ## F4 — Error handling polish(C08 + C09 + C10)
 
