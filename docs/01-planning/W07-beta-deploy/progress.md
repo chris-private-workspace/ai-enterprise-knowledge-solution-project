@@ -263,7 +263,7 @@ status: active     # flipped draft→active 2026-05-05 W6 D5 stakeholder approva
 - ⏸ Real Langfuse SDK trace export(currently structlog stub per `langfuse_tracer.py:4`)— W3+ original scope;F2.5 + F3.1 events 已 JSON formatted ready for SDK switch when wired
 
 ### Commit reference
-- _(W7 D3 commit pending — references progress.md Day 3 + checklist F1.5 + F1.6 + F2.5 + F3.1 + F3.2 + F3.3 + F3.4 ticked + F3.5 deferred 標明)_
+- W7 D3 commit `7fc885a`(15 files changed,+791 / -18;6 new files + 9 modified;F1.5 auth endpoints + F2.5 cost tag + F3.1 audit middleware + F3.2 schema doc + F3.3 redaction enforcement + F3.4 unit tests + F1.6 expanded tests + 13 new tests)
 
 ---
 
