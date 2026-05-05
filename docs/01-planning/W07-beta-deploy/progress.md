@@ -85,7 +85,63 @@ status: active     # flipped draft→active 2026-05-05 W6 D5 stakeholder approva
 
 ---
 
-## Day 1 — _(pending W7 D1 implementation start)_
+## Day 1 — 2026-05-12: F1.2 + F1.2.1 mock auth dev mode scaffold
+
+**Action**:W7 D1 implementation kickoff per a-revised mock auth dev mode strategy(plan §2 F1)— `backend/api/auth/` + `frontend/lib/auth/` scaffold + `Settings.feature_auth_mock` flag + 7 unit tests landed。
+
+**Backend deliverables**(C11 component spine):
+- `backend/storage/settings.py` — `feature_auth_mock: bool = False` flag(default production gate;W7 dev set True via `.env`;W8 D4 切回 False LIVE switch)+ `auth_mock_oid` / `auth_mock_tid` / `auth_mock_preferred_username` / `auth_mock_bearer_token` mock identity payload Settings(matches real MSAL JWT claim shape)
+- `backend/api/auth/__init__.py` NEW — barrel re-export `get_current_user` + `AuthenticatedUser`
+- `backend/api/auth/models.py` NEW — `AuthenticatedUser` Pydantic model(`oid` + `tid` + `preferred_username` + `is_mock`)
+- `backend/api/auth/mock_msal.py` NEW(F1.2.1) — dev-only middleware,`Settings.auth_mock_bearer_token` accept rule;invalid bearer / missing creds / wrong scheme 各自 401 with `WWW-Authenticate: Bearer` header(real MSAL future contract preserved)
+- `backend/api/auth/msal_provider.py` NEW(F1.2 skeleton) — fail-closed 503 stub;real JWKS + signature + audience/issuer + expiry validation 留 W8 D2-D3 IT cred delivery 後 cascade
+- `backend/api/auth/dependency.py` NEW(F1.3 pre-wire) — single FastAPI Depends switching point:`get_current_user` flag-guards `authenticate_mock` vs `authenticate_msal`;F1.3 D2 wiring on `backend/api/main.py` lifespan 一行 import edit
+
+**Frontend deliverables**(C09 + C10 共用):
+- `frontend/lib/auth/types.ts` NEW — `AuthenticatedUser` + `AuthBearer` TS interface(mirrors backend Pydantic shape)
+- `frontend/lib/auth/mock_msal.ts` NEW(F1.2.1) — fixed dev-token bearer + `_DEV_USER` claim;`loginMock` / `logoutMock` no-op stubs
+- `frontend/lib/auth/msal_provider.ts` NEW(F1.2 skeleton) — fail-closed throw stub;real PublicClientApplication + MsalProvider + redirect flow 留 W8 D2-D3
+- `frontend/lib/auth/index.ts` NEW — barrel single switching point:`NEXT_PUBLIC_AUTH_MOCK=true` → mock path;false / unset → msal_provider path(W8 D4 LIVE switch)
+
+**Tests**(F1.6 partial):
+- `backend/tests/test_mock_msal.py` NEW — 7 unit tests:accept dev-token + return _DEV_USER;reject missing creds 401;reject wrong scheme 401;reject invalid token 401;msal_provider skeleton fails-closed 503;dependency routes mock when flag True;dependency routes msal when flag False(503 stub)
+
+**Verification**:
+- `.venv/Scripts/python.exe -m pytest -q` → **222 passed in 171.24s**(W6 baseline 215 + new 7 mock_msal tests;zero regression)
+- `.venv/Scripts/python.exe -m ruff check api/auth tests/test_mock_msal.py storage/settings.py` → All checks passed!
+- `npx tsc --noEmit`(frontend)→ exit 0(clean)
+- 68 ruff baseline scripts/ truststore E402 unchanged(non-target)
+
+**Karpathy §1 alignment**:
+- §1.1 think-before-coding:Annotated dependency pattern matched existing `kb.py:12` repo convention(B008 dodge);MSAL skeleton fail-closed 503 prevents silent auth bypass
+- §1.2 simplicity-first:zero new external dep — mock middleware uses existing `fastapi.security.HTTPBearer` + Pydantic;no msal SDK install yet(W8 D2-D3 trigger when LIVE)
+- §1.3 surgical:`feature_auth_mock=False` default = zero impact production code path;new files only,no edit to existing routers / lifespan / main.py(F1.3 D2 +1 import line scope)
+- §1.4 goal-driven:`mock auth dev mode scaffold + tests + zero regression` = verifiable;222/222 + tsc 0 + ruff 0 closed loop
+
+**Hard constraints check**(per CLAUDE.md §5):
+- H1 architecture lock — ✅ no §3 / §4 component change;C11 design intent preserved per plan §2 F1.2.1 explicit boundary check
+- H2 vendor lock — ✅ no new dep added(msal SDK install deferred W8 D2-D3 per beta-plan-v1.md §2 W8.F1)
+- H3 Dify reference — ✅ untouched
+- H4 Tier 1 boundary — ✅ single-tenant mock identity only;multi-tenancy explicit OUT
+- H5 security — ✅ `feature_auth_mock=False` default production gate;`.env` gitignored;no hard-code tenant ID / connection string
+- H6 test coverage — ✅ critical module(C11 auth)synced 7 tests with code
+
+### Decisions / OQ summary
+- No OQ change(Q11 already Resolved 2026-05-05 W6 D5;operational IT cred cascade trigger W8 D1 unchanged per beta-plan-v1.md)
+- No ADR triggered(architecture impact zero per plan §2 F1 a-revised CLAUDE.md §5.1 H1 boundary check)
+
+### Open / blocked
+- ⏸ F1.3 main.py lifespan auth middleware wire — W7 D2 trigger(use `get_current_user` Depends on protected routes `/query/**` + `/kb/**`;`/health` 公開保留)
+- ⏸ F1.4 login flow UI(C09 Admin + C10 Chat hamburger user menu)— W7 D2 trigger
+- ⏸ F1.5 token refresh + logout endpoint — W7 D3 trigger
+- ⏸ F1.6 full middleware integration tests(reject unauth route + valid token allow + expired token reject mocked MSAL)— W7 D3 trigger(D1 covers F1.2.1 scope only)
+- ⏸ F2 + F3 sequential after F1.3 wired(D2-D3)
+- ⏸ W6 C7 R8 mitigation `RISK_REGISTER.md` entry — already landed W6 D5 closeout housekeeping per session-start §11(no W7 D1 cascade required)
+
+### Commit reference
+- _(W7 D1 implementation commit pending — references progress.md Day 1 + checklist F1.2 + F1.2.1 ticked + 9 new files + 1 file modified)_
+
+---
 
 ---
 

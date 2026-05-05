@@ -2,7 +2,7 @@
 phase: W07-beta-deploy
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-05
+last_updated: 2026-05-12
 ---
 
 # Phase W07 — Checklist
@@ -14,8 +14,8 @@ last_updated: 2026-05-05
 ## F1 — Microsoft Entra ID auth integration(C11,W7 mock auth dev mode path per a-revised 2026-05-05)
 
 - [ ] ~~**CRITICAL Q11 IT** F1.1 IT confirm Ricoh Entra ID tenant access~~ → **DEFERRED W8 D1** per a-revised mock auth strategy(Q11 decision-level Resolved 2026-05-05;operational IT cred cascade trigger moved Beta deploy phase entry per `beta-plan-v1.md §2 W8.F1`)
-- [ ] F1.2 MSAL Python SDK + msal-react integration scaffold(`backend/api/auth/` + `frontend/lib/auth/`)— library install + import + skeleton;**唔需要 real cred 即可寫**
-- [ ] **F1.2.1 NEW** `backend/api/auth/mock_msal.py` dev-only middleware + `Settings.feature_auth_mock: bool = False` flag(default False production gate;W7 dev mode set True via `.env`)
+- [x] F1.2 MSAL Python SDK + msal-react integration scaffold(`backend/api/auth/` + `frontend/lib/auth/`)— **W7 D1 done 2026-05-12** — library skeleton + import + barrel re-export(msal SDK install 推 W8 D2-D3 per Karpathy §1.2 — current scaffold uses fastapi.security.HTTPBearer + Pydantic only,zero new dep);msal_provider.py / .ts fail-closed 503 / throw stub
+- [x] **F1.2.1 NEW** `backend/api/auth/mock_msal.py` dev-only middleware + `Settings.feature_auth_mock: bool = False` flag — **W7 D1 done 2026-05-12** — `auth_mock_oid` / `auth_mock_tid` / `auth_mock_preferred_username` / `auth_mock_bearer_token` Settings;7 unit tests pass
 - [ ] F1.3 Auth middleware on `backend/api/main.py` lifespan — protect `/query/**` + `/kb/**`;`/healthz` + `/livez` 公開;FastAPI Depends pattern `auth_dependency = get_current_user_mock if settings.feature_auth_mock else get_current_user_msal`
 - [ ] F1.4 Login flow UI(C09 Admin + C10 Chat):redirect to Entra ID hosted login → callback → token store;**dev mode UI returns fake bearer "dev-token" via `frontend/lib/auth/mock_msal.ts`**
 - [ ] F1.5 Token refresh logic + logout endpoints

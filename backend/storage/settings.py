@@ -97,6 +97,20 @@ class Settings(BaseSettings):
     feature_l3_routing_enabled: bool = False
     feature_auth_enabled: bool = False
 
+    # W7 F1.2.1 mock auth dev mode (per plan §2 F1 a-revised 2026-05-05).
+    # Default False = production gate; W7 dev sets True via .env to short-circuit
+    # MSAL JWT validation through `backend/api/auth/mock_msal.py` while real Entra
+    # ID cred lands W8 D4. Single FastAPI Depends switching point in F1.3.
+    feature_auth_mock: bool = False
+
+    # W7 F1.2.1 mock identity payload — matches real MSAL JWT claim shape so
+    # downstream F2 rate-key + F3 audit-tag use the same fields whether dev or
+    # LIVE. `oid` = stable principal id (Entra ID object id); `tid` = tenant id.
+    auth_mock_oid: str = "00000000-0000-0000-0000-000000000001"
+    auth_mock_tid: str = "00000000-0000-0000-0000-0000000000ff"
+    auth_mock_preferred_username: str = "dev-user@ekp.local"
+    auth_mock_bearer_token: str = "dev-token"
+
     # Logging / Environment
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     environment: Literal["local", "poc", "beta", "production"] = "local"
