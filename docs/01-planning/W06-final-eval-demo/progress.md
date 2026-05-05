@@ -223,7 +223,63 @@ Pre-flight:`backend/tests/` synthesizer 14/14 pass(non-regression structural con
 
 ---
 
-## Day 3 — _(pending)_
+## Day 3 — 2026-05-05: F5 Demo prep + Beta plan(static-heavy AI-doable solo)
+
+**Action**:Candidate readiness scan → F2 BLOCKED(SME labeling 3/55 not cascaded)+ F4 BLOCKED(Chris dev server not up)+ F3 optional cost($15-25)→ **F5 selected(zero-cost,4 artifact outputs,no external dep)**
+
+### Pre-flight readiness scan
+
+| Candidate | Readiness signal | Status |
+|---|---|---|
+| F2 SME labeling | `validated:true` count = 3/55(target ≥ 45);last commit 2026-05-04 W4 D2 — no recent SME activity | 🛑 BLOCKED Chris async |
+| F3 subset=20 | optional ~$15-25 USD;Tier 1 acceptance W6 D2 already met | 🟡 OPTIONAL — defer D4 if stakeholder approves extra spend |
+| F4 W4/W5 carry-overs | `curl localhost:8000` failed — dev server not running | 🛑 BLOCKED Chris dev server |
+| F5 Demo prep | static-heavy + no external dep + 4 artifact outputs | ✅ SELECTED |
+
+### F5.1 + F5.2 — Demo prep artifact bundled
+
+- File:`docs/01-planning/W06-final-eval-demo/artifacts/demo-prep.md`(net-new)
+- Part 1 Demo script:15-min flow narrative(Context+Problem 2min / Architecture 2min / Ingestion E2E 3min / Query+Citation 4min / Eval+Quality numbers 3min / Risk+Beta transition 1min)+ Pre-demo setup checklist + Demo polish checkpoints W6 D4-D5
+- Part 2 Stakeholder Q&A pack:**14 pre-canned answers** organized 4 sections:
+  - Section A Quality+Capability(Q-A1 0.795 rel / Q-A2 Cohere over Azure / Q-A3 production lock / Q-A4 Q014 OOS refusal)
+  - Section B Architecture+Tier Boundary(Q-B1 GraphRAG / Q-B2 single-vendor / Q-B3 Cohere outage)
+  - Section C Operations+Cost+Beta(Q-C1 per-query cost ~$0.005-0.020 / Q-C2 latency p50 8-15s p95 25-30s / Q-C3 Beta scope+timeline)
+  - Section D Risk Slides(Q-D1 active risks + R8 calibration / Q-D2 Gate 2 STRONG PASS fallback)
+- Part 3 Demo Artifacts Checklist(7 artifact items + status + owner)
+- Bundling rationale:Karpathy §1.2 simplicity-first + 易 stakeholder review(single file vs 2 split)
+
+### F5.3 — Beta plan v1 draft
+
+- File:`docs/03-implementation/beta-plan-v1.md`(net-new per W6 plan F5.3 path)
+- 7 sections:Executive Summary / Phase Breakdown W7-W12 / OQ Dependencies(Q7+Q9+Q10+Q11+Q12)/ Risk Register Beta-specific(R-B1 to R-B8 inherited)/ Day-2 Readiness Checklist / Stakeholder Approval Triggers / Changelog
+- W7 critical path:**Q11 Entra ID tenant** must resolve W7 D1(blocks W7.F1)— IT 配合 dependency
+- Out-of-scope explicit list(per CLAUDE.md §5.4 H4 Tier 1 boundary)— GraphRAG / multi-agent / multi-tenancy / multi-modal / multi-language / auto-sync / fine-tuning / workflow
+- 8 Beta-specific risks(R-B1 to R-B8)including W6 D1 calibration carry-over R8(Python httpx probe ground truth)
+
+### F5.4 — DEFERRED demo screenshots / GIF artifacts
+
+- Per F4.4 Chris dev server bottleneck — defer W6 D4/D5 post-F4(若 dev server 起得起來)
+- 若 W6 closeout still bound on dev server → carry-over to W7 polish window
+- Non-blocking F6 Gate 2 closeout retro
+
+### Decisions / OQ summary
+
+- F2 cascade Q14 SME labeling — Chris async dependency unchanged
+- F3 subset=20 confirmation — optional W6 D4 candidate(if stakeholder approves $15-25 extra spend for borderline cluster lift validation)
+- F4 carry-overs — Chris dev server bound;non-blocking
+- No new ADR triggers;no new OQ status change(F5 deliverables 屬 stakeholder approval cycle prep,not direct OQ resolve)
+
+### Open / blocked
+
+- ⏸ F2 final eval(Chris SME labeling cascade async)
+- ⏸ F4 W4/W5 LIVE smoke remainder(Chris dev server)
+- ⏸ F5.4 demo screenshots(tied to F4)
+- ⏸ F3 subset=20 confirmation(optional,W6 D4 if stakeholder approves)
+- ⏸ architecture.md §3.2 + §6.3 amendment ticket(F1.7 narrative ready;stakeholder approval cycle vNext increment)
+
+### Commit reference
+
+- _(W6 D3 closeout commit pending — references F5.1+F5.2+F5.3 ticked + F5.4 deferred + 2 net-new artifact files)_
 
 ---
 

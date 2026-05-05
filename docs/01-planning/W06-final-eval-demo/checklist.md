@@ -43,10 +43,10 @@ last_updated: 2026-05-05
 
 ## F5 — Demo prep + Beta plan(W7-W8 stakeholder cycle prep)
 
-- [ ] F5.1 Demo script narrative draft(15-min flow:use case 1 + ingestion E2E + query + citation + Pipeline wizard + retro)
-- [ ] F5.2 Stakeholder Q&A briefing pack(common questions + risk slides)
-- [ ] F5.3 Beta plan draft `docs/03-implementation/beta-plan-v1.md`(scope + timeline + Q7-Q12 dependencies + risk)
-- [ ] F5.4 Demo screenshots / GIF artifacts(post F4.4)
+- [x] F5.1 Demo script narrative draft ✅ W6 D3 — `docs/01-planning/W06-final-eval-demo/artifacts/demo-prep.md` Part 1(15-min flow:Context+Problem 2min / Architecture 2min / Ingestion 3min / Query+Citation 4min / Eval+Quality 3min / Risk+Beta 1min);bundled with F5.2 per Karpathy §1.2 simplicity
+- [x] F5.2 Stakeholder Q&A briefing pack ✅ W6 D3 — same file Part 2 — 14 pre-canned answers in 4 sections(Quality+Capability / Architecture+Tier Boundary / Operations+Cost+Beta / Risk Slides)
+- [x] F5.3 Beta plan v1 draft ✅ W6 D3 — `docs/03-implementation/beta-plan-v1.md`(7 sections:Executive / Phase Breakdown W7-W12 / OQ Deps Q7+Q9+Q10+Q11+Q12 / Risk Register Beta-specific R-B1 to R-B8 / Day-2 Readiness / Stakeholder Approval Triggers / Changelog);Q11 Entra ID critical path identified
+- [ ] **DEFERRED Chris dev server** F5.4 Demo screenshots / GIF artifacts(post F4.4 Chris dev server availability;若 W6 closeout still bound → carry W7 polish window)
 
 ## F6 — Phase Gate 2 closeout + W6 retro + W7 kickoff prep
 
