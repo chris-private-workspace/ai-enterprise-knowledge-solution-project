@@ -4,7 +4,7 @@ name: "Azure 2-way Verify + Final Eval + Demo Prep + Beta Plan"
 sprint_week: W6
 start_date: 2026-05-05          # W6 D1 kickoff — Chris approved; W5 closed 2026-05-04
 end_date: 2026-05-09            # 5 working days
-status: active                  # flipped from draft 2026-05-05 W6 D1 per Chris kickoff sign-off
+status: closed                  # flipped active→closed 2026-05-05 W6 D5 closeout per Chris approve same-session execution
 spec_refs:
   - architecture.md §6.1 W6 row     # final eval + demo prep + Beta plan
   - architecture.md §6.3            # Gate 2 STRONG PASS upgrade path
@@ -182,6 +182,7 @@ Carry-overs from `W05-optimization/progress.md` retro:
 |---|---|---|---|
 | 2026-05-04 | Initial draft(W5 D5 末 closeout batch)| Per PROCESS.md §2.3 rolling-JIT kickoff;status=draft pending Chris W5 D5 closeout sign-off + W6 kickoff approval | Chris(pending approve to flip active) |
 | 2026-05-05 | Status flip `draft → active` + dates re-anchor(2026-05-05 → 2026-05-09)| Chris W6 D1 kickoff sign-off;原 tentative dates 2026-05-29 起源 Option-A 2-day-shift heuristic 已 obsolete(W5 closed 2026-05-04 actual,W6 D1 = today)| Chris approve via "執行 (a) W6 D1 kickoff" |
+| 2026-05-05 | Status flip `active → closed`(W6 D5 closeout same-session)| W6 5 days completed in single calendar day per same-session execution model:F1 Cohere reaffirmed + F3 prompt tweak landed + F5 demo prep + Beta plan + F6 retro draft + W07 phase folder kickoff + F3 subset=20 D5 parallel-track confirmation;Phase Gate verdict PASS structural + PARTIAL PASS Gate 2 LIVE + DEFERRED non-blocking(G2/G4 Chris-async)| Chris approve via recommended option (b) execution |
 
 ---
 
