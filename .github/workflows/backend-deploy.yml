@@ -1,0 +1,155 @@
+# EKP backend — Beta deploy pipeline (W8 D2 F2.3).
+# Per W08-beta-deploy-sprint2 plan §2 F2.3 + infrastructure/aca/backend.bicep.
+#
+# Trigger: push to main affecting backend/** OR manual workflow_dispatch.
+# Stages: test → ruff → docker build → ACR push → ACA deploy revision → smoke.
+# Rollback: ACA revision swap (manual via workflow_dispatch with rollback=true)
+# — not destructive; previous revision stays warm in case re-promotion needed.
+
+name: backend-deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "infrastructure/aca/**"
+      - ".github/workflows/backend-deploy.yml"
+  workflow_dispatch:
+    inputs:
+      rollback:
+        description: "Rollback to previous ACA revision"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write  # OIDC federated credential for `azure/login`
+
+env:
+  AZURE_RESOURCE_GROUP: rg-ekp-beta-eastus2
+  ACR_NAME: acrekpbeta
+  ACA_NAME: ekp-beta-backend
+  IMAGE_NAME: ekp-backend
+  KEY_VAULT_NAME: kv-ekp-beta
+  MANAGED_IDENTITY_NAME: id-ekp-beta-backend
+
+jobs:
+  # ---- Stage 1: test + ruff (gates the deploy) ----
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: ${{ !inputs.rollback }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install --no-cache-dir uv
+      - run: |
+          uv venv .venv
+          uv pip install --python .venv/bin/python ".[dev]"
+      - run: .venv/bin/python -m ruff check .
+      - run: .venv/bin/python -m pytest -q
+
+  # ---- Stage 2-4: docker build → ACR push → ACA deploy revision ----
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [validate]
+    if: ${{ always() && (success() || inputs.rollback) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC federated)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Rollback path — swap traffic back to previous revision and exit.
+      - name: Rollback to previous ACA revision
+        if: ${{ inputs.rollback }}
+        run: |
+          set -euo pipefail
+          PREV=$(az containerapp revision list \
+            --name $ACA_NAME \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --query "[?properties.active && properties.trafficWeight==\`0\`].name | [0]" \
+            -o tsv)
+          if [ -z "$PREV" ]; then
+            echo "::error::No previous active revision found to roll back to."
+            exit 1
+          fi
+          az containerapp ingress traffic set \
+            --name $ACA_NAME \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --revision-weight "${PREV}=100"
+          echo "Rolled back traffic to revision $PREV"
+
+      # Forward path — build + push + deploy new revision.
+      - name: ACR build + push
+        if: ${{ !inputs.rollback }}
+        run: |
+          set -euo pipefail
+          IMAGE_TAG=${GITHUB_SHA::12}
+          az acr build \
+            --registry $ACR_NAME \
+            --image $IMAGE_NAME:$IMAGE_TAG \
+            --image $IMAGE_NAME:latest \
+            --file backend/Dockerfile \
+            backend
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Resolve ACA managed environment + identity IDs
+        if: ${{ !inputs.rollback }}
+        run: |
+          set -euo pipefail
+          ME_ID=$(az containerapp env show \
+            --name cae-ekp-beta \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --query id -o tsv)
+          MI_ID=$(az identity show \
+            --name $MANAGED_IDENTITY_NAME \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --query id -o tsv)
+          KV_URI="https://${KEY_VAULT_NAME}.vault.azure.net/"
+          echo "ME_ID=$ME_ID" >> $GITHUB_ENV
+          echo "MI_ID=$MI_ID" >> $GITHUB_ENV
+          echo "KV_URI=$KV_URI" >> $GITHUB_ENV
+
+      - name: Deploy backend.bicep (new ACA revision)
+        if: ${{ !inputs.rollback }}
+        run: |
+          set -euo pipefail
+          az deployment group create \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --template-file infrastructure/aca/backend.bicep \
+            --parameters \
+              environmentTag=beta \
+              managedEnvironmentId="$ME_ID" \
+              image="${ACR_NAME}.azurecr.io/${IMAGE_NAME}:${IMAGE_TAG}" \
+              keyVaultUri="$KV_URI" \
+              userAssignedIdentityId="$MI_ID"
+
+      # ---- Stage 5: smoke test ----
+      - name: Resolve backend FQDN + smoke /health
+        run: |
+          set -euo pipefail
+          FQDN=$(az containerapp show \
+            --name $ACA_NAME \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          # ACA internal ingress isn't reachable from GHA runner; use az
+          # containerapp exec for the smoke probe (runs inside the container).
+          az containerapp exec \
+            --name $ACA_NAME \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --command "curl -fsS http://127.0.0.1:8000/health"
+          echo "Smoke OK on $FQDN"

@@ -1,0 +1,52 @@
+# EKP backend — PR validation pipeline (W8 D2 F2.3).
+# Per W08-beta-deploy-sprint2 plan §2 F2.3 + components/C12-devops.md.
+#
+# Runs on every PR / push to main: ruff → pytest. No deploy here — that lives
+# in backend-deploy.yml gated on main-branch push only.
+
+name: backend-ci
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install uv
+        run: pip install --no-cache-dir uv
+
+      - name: Install backend deps
+        run: |
+          uv venv .venv
+          uv pip install --python .venv/bin/python ".[dev]"
+
+      - name: Ruff lint
+        run: .venv/bin/python -m ruff check .
+
+      - name: Pytest
+        run: .venv/bin/python -m pytest -q

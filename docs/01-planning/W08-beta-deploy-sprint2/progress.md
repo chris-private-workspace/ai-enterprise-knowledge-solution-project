@@ -117,7 +117,69 @@ status: active    # flipped draft→active 2026-05-19 W8 D1 kickoff
 
 ---
 
-## Day 2 — _(pending)_
+## Day 2 — 2026-05-20: F1.2 real msal_provider + F1.6 + F2.3 + F2.4
+
+**Action**:W8 D2 — backend real Microsoft Entra ID JWT validator landed(F1.2 + F1.6),GHA CI/CD pipeline draft(F2.3),Key Vault secrets management SOP(F2.4)。**F1.1 Q11 IT engagement** — Chris external in-progress;tenant_id + client_id 仍 pending — F1.2 implementation 不 block(empty config falls back to 503;Settings populate W8 D2-D3 cascade once IT delivers)。
+
+**Backend(C11)**:
+- `backend/pyproject.toml` — `python-jose[cryptography]>=3.3` added(Karpathy §1.2 simplicity-first:backend = resource server only,validates JWT;skip msal Python SDK since frontend msal-react W8 D3 handles token acquisition;single new dep within architecture.md §3.2 Microsoft Entra ID vendor scope per W8 plan §2 F1.2)
+- `backend/storage/settings.py` — `azure_tenant_id` + `azure_client_id` + `jwks_cache_ttl_s=3600` + `azure_jwt_issuer_template` + `azure_jwks_uri_template` 新 Settings(populated via Key Vault refs in ACA per `infrastructure/aca/backend.bicep`)
+- `backend/api/auth/msal_provider.py` — **real implementation replaces W7 D1 503 skeleton**:
+  - JWKS fetch via httpx with module-level TTL cache(`reset_jwks_cache()` test hook)
+  - `_select_signing_key` matches JWT header `kid` against JWKS keys
+  - `jwt.decode` enforces RS256 + audience=`azure_client_id` + issuer per tenant
+  - Failure paths:expired → 401 token expired;audience/issuer mismatch → 401 token claims invalid;malformed → 401;missing kid / oid / tid → 401;JWKS fetch fail → 503
+  - Identity build:`oid` + `tid` required;`preferred_username` falls back to `upn` then `email` then `oid`(B2B / guest tolerance)
+  - All failures emit safe message — never leak inner JOSE error to client(CLAUDE.md §5.5 H5)
+  - Server-side structlog `jwt_decode_failed` / `jwks_fetch_failed` / `jwt_claims_invalid` for ops debugging
+
+**Tests(F1.6)**:
+- `backend/tests/test_msal_provider.py` NEW — 13 unit tests with self-signed RSA keypair fixture + JWKS mock:valid signed JWT 200 + upn fallback 200 + expired 401 + audience mismatch 401 + issuer mismatch 401 + missing kid 401 + unknown kid 401 + missing oid claim 401 + malformed JWT 401 + missing credentials 401 + JWKS fetch failure 503 + incomplete config 503 + JWKS cache TTL reuse(2 calls → 1 fetch)
+- W7 D1-D5 baseline preserved:`test_mock_msal.py` 7 + `test_auth_routes.py` 7(monkeypatched authenticate_msal still exercises the contract)+ `test_auth_endpoints.py` 5 + `test_f1_7_mock_smoke.py` 9 — all 28 unchanged because real msal_provider with empty `azure_tenant_id` falls back to 503 same as old skeleton
+
+**Infra(C12)**:
+- `.github/workflows/backend-ci.yml` NEW(F2.3 PR validation)— ruff + pytest on every PR / push to main affecting `backend/**`;15-min timeout;uv venv install
+- `.github/workflows/backend-deploy.yml` NEW(F2.3 deploy)— main push triggers test → ACR build + push → resolve ACA env + MI IDs → Bicep deploy → smoke `/health` via `az containerapp exec`(internal ingress per backend.bicep);workflow_dispatch with `rollback=true` swaps traffic to previous active revision(non-destructive;previous revision stays warm)
+- OIDC federated credential via `azure/login@v2`(GHA secrets `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` / `AZURE_SUBSCRIPTION_ID` 走 SP non plain-text)
+- `infrastructure/keyvault/README.md` NEW(F2.4 SOP)— vault layout 6 secrets + create/populate commands + Managed Identity grant(`Key Vault Secrets User` reader role per least-privilege CLAUDE.md §5.5 H5)+ rotation SOP(per-cadence + emergency)+ verification + Tier 2 boundaries(CMK / cross-region replication out)
+
+**Verification**:
+- `pytest -q` → **282 passed in 143.57s**(W7 closeout baseline 269 + F1.6 +13 = 282;zero regression)
+- `ruff check api/auth/msal_provider.py tests/test_msal_provider.py storage/settings.py` → All checks passed
+- W7 baseline 28 auth/rate/audit tests verified pass with real msal_provider in-place
+
+**Karpathy §1 alignment**:
+- §1.1 think-before-coding:backend = resource server,frontend handles token acquisition → backend doesn't need msal Python SDK,only python-jose for JWT validation;single dep instead of two;empty `azure_tenant_id` 503 fail-closed preserves W7 D1 contract while W8 D2-D3 IT delivery in-flight
+- §1.2 simplicity-first:python-jose[cryptography] single dep covers all needs(httpx already available for JWKS fetch);no in-memory key parsing libraries;TTL cache simple dict instead of cachetools;module-level singleton with test reset hook
+- §1.3 surgical:msal_provider.py rewrite scope-isolated(no edit to mock_msal.py / dependency.py / models.py / test_mock_msal.py);GHA workflows in dedicated `.github/workflows/`;Key Vault SOP in dedicated `infrastructure/keyvault/`
+- §1.4 goal-driven:13 acceptance criteria(W8 plan §2 F1.6 + extras: kid missing/unknown,oid missing,JWKS cache reuse)→ 13 named tests → all 13 PASS;closed loop
+
+**Hard constraints check**:
+- H1 architecture lock — ✅ no §3 / §4 component change;real msal_provider implements C11 design intent per architecture.md §6.1 W7 + §6.2 Beta;non-architectural amendment
+- H2 vendor lock — ✅ python-jose[cryptography] within architecture.md §6.1 W7 Microsoft Entra ID scope;NO new vendor introduced(Microsoft Entra ID 已 locked vendor;python-jose 是 implementation library for that vendor's protocol per W8 plan §2 F1.2 ask-and-approve direct approve cycle pre-confirmed)
+- H3 Dify reference — ✅ untouched
+- H4 Tier 1 boundary — ✅ single-tenant;multi-tenant aggregation queries explicit Tier 2
+- H5 security & privacy — ✅ all JWT validation failures emit safe message(client never sees JOSE error / signature detail);Key Vault SOP enforces no plain-text bake-in;Managed Identity reader role least-privilege;GHA OIDC federated credential 唔 plain-text SP secret in workflow logs
+- H6 test coverage — ✅ 13 new tests for critical C11 module;test_msal_provider.py covers W8 plan §2 F1.6 acceptance matrix + edge cases
+
+### Decisions / OQ summary
+- No OQ change(Q11 unchanged decision-level Resolved;operational IT engagement F1.1 in-progress external)
+- No ADR triggered(python-jose dep within architecture.md §6.1 Microsoft Entra ID vendor scope;non-architectural amendment per CLAUDE.md §5.1 H1 boundary check + §5.2 H2 ask-and-approve direct approve cycle pre-confirmed in W8 plan §2 F1.2)
+
+### Open / blocked
+- ⏸ **F1.1 W8 D1 Q11 IT operational confirm cascade** — Chris external in-progress;tenant_id + client_id + client_secret 走 Key Vault populate W8 D2-D3 cascade per `infrastructure/keyvault/README.md`;若 W8 D5 仍未 confirm → R-B1 escalation per RISK_REGISTER R14
+- ⏸ F1.3 frontend msal-react real wire — W8 D3 trigger
+- ⏸ F1.4 W8 D4 LIVE switch + F1.5 LIVE smoke — W8 D4
+- ⏸ F2.5 ACA networking + Private Endpoint — W8 D2-D3 trigger(Chris infra)
+- ⏸ F3 SWA frontend deploy — W8 D3-D4
+- ⏸ F4 LIVE smoke cascade — W8 D4
+- ⏸ F5 cost dashboard + Langfuse SDK wire — W8 D5
+- ⏸ F6 closeout — W8 D5
+
+### Commit reference
+- _(W8 D2 commit pending — references progress.md Day 2 + checklist F1.2 + F1.6 + F2.3 + F2.4 ticked)_
+
+---
 
 ---
 

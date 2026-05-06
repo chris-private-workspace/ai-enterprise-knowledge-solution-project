@@ -118,6 +118,18 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = 50
     rate_limit_concurrent: int = 5
 
+    # W8 D2 F1.2 — Real Microsoft Entra ID JWT validation. Backend = resource
+    # server only; frontend msal-react acquires tokens (W8 D3 F1.3). Empty
+    # tenant_id falls back to msal_provider 503 fail-closed (W7 D1 baseline).
+    azure_tenant_id: str = ""
+    azure_client_id: str = ""  # API audience the backend expects in JWT `aud`
+    # JWKS endpoint TTL — Microsoft rotates keys ~24h; 1h cache balances
+    # rotation tolerance against per-request latency.
+    jwks_cache_ttl_s: int = 3600
+    # Allowed JWT issuer pattern — defaults to Entra ID v2.0 endpoint per tenant.
+    azure_jwt_issuer_template: str = "https://login.microsoftonline.com/{tenant_id}/v2.0"
+    azure_jwks_uri_template: str = "https://login.microsoftonline.com/{tenant_id}/discovery/v2.0/keys"
+
     # Logging / Environment
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     environment: Literal["local", "poc", "beta", "production"] = "local"

@@ -23,6 +23,10 @@ dependencies = [
     "azure-identity>=1.20",
     "openai>=1.50",
     "truststore>=0.10",
+    # W8 D2 F1.2 — Microsoft Entra ID JWT validation. Backend = resource server,
+    # validates client tokens only; token acquisition lives in frontend
+    # msal-react (W8 D3 F1.3). architecture.md §6.1 W7 + §3.2 vendor scope.
+    "python-jose[cryptography]>=3.3",
 ]
 
 [project.optional-dependencies]
