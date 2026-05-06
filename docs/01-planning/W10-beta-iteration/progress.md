@@ -165,7 +165,8 @@ status: active   # `draft → active` flipped 2026-06-02 W10 D1 Track B kickoff(
 
 ### Commit reference
 
-- W10 D2 commit:_(pending — will backfill after `feat` + `docs(planning)` pair)_
+- W10 D2 commit `86ecf7f`(feat — F4.3 Q15 weekly signal scaffold + Track A monitor;C07)
+- W10 D2 backfill commit `_(pending — this docs(planning) commit)_` will land hash to this entry
 
 ### What worked
 _(W10 D5 末 fill)_
