@@ -239,11 +239,75 @@ status: active   # `draft → active` flipped 2026-06-02 W10 D1 Track B kickoff(
 ### Commit reference
 
 - W10 D3 commit `d656b03`(feat — F5.2 cost dashboard real-time wire;C07 + C08)
-- W10 D3 backfill commit `_(pending — this docs(planning) commit)_` will land hash to this entry
+- W10 D3 backfill commit `4d810ef`(docs(planning) — hash backfill to W10 D3 entry per R2)
 
 ---
 
-## Retro(填於 W10 D5 末)
+## Day 4 — 2026-06-05: F4.4 defer + F5.4 W11 prep deck draft + F5.1 defer
+
+**Action**:Track B implementation polish 進入收尾 — F4.4 Pixel diff harness installation check yields **DEFER W11+** decision(Vitest/Playwright 未 install,real cohort signal pending);F5.4 W11 staged rollout 25% Stakeholder Go/No-Go prep deck draft landed(10 sections + 3 open gate items surfaced including NEW Q4 pricing rate from W10 D3 F5.2);F5.1 Runbook real-incident exercise **defers to W10 D5** by design(needs staged ACA env per Track A,still pending IT cred populate event)。Track A monitor unchanged — real-calendar W10 D4 = 2026-06-05,2-day buffer remaining within target window 2026-06-02 to 2026-06-07。
+
+- **F4.4 🚧 DEFER W11+ decision documented**(W7 D5 carry-over preserved)
+  - **Finding**:`frontend/package.json` 唔 install Vitest 唔 install Playwright(devDependencies = ESLint + Prettier + TypeScript + Tailwind only;no `test` script in scripts block)
+  - **Decision**:**DEFER to W11+ post-cohort signal** per Karpathy §1.2 simplicity-first — install cost ~1 day + mock 2-3 baseline snapshots without real cohort UX signal = wasted polish before signal exists
+  - **Re-trigger condition**:real cohort feedback W11+ surfaces UX regression risk → install harness + capture baseline pre-rollout(carry-over preserved into W11 phase folder per rolling JIT)
+  - **Non-Beta-blocking**:F4.4 was tagged「non-Beta-blocking」in W10 plan §2 + W7 D5 carry-over context;Stakeholder W11 prep deck §3 reflects defer transparently
+- **F5.4 ✅ done — W11 staged rollout 25% prep deck draft**(governance)
+  - `docs/03-implementation/w11-staged-rollout-25-prep-deck.md` NEW 10-section Stakeholder Go/No-Go prep deck
+  - **§1 Executive summary**:3 open gate items surfaced(R-B1 closure + Q4 pricing rate confirmation NEW + cohort expansion roster)+ Conditional GO recommendation contingent on all 3 resolved by W10 D5 末
+  - **§2 W10 verdict snapshot**(per plan §3 G1-G7):G1-G3 Track A ⏸ pending(IT cred event)+ G4 Track B ✅ PASS(F4.1 + F4.2 + F4.3 + F5.2 = 4/4 IT-cred-independent items shipped)+ G5 Track B partial pass(F5.1 + F5.3 blocked Track A;F5.4 = this deck;F4.4 deferred)+ G6 ✅ 456/456 pytest + ruff clean + G7 partial OQ sync
+  - **§3 W11 rollout scope** per Beta plan v1 §2 W11(F1 25% rollout 62-125 users + F2 daily metric monitor + F3 50% EoW conditional gate + F4 incident response runbook drill + F5 Q15 first weekly signal review wiring weekly_signal_report.py)
+  - **§4 Go criteria**:GC1-GC8 must-pass(R-B1 closed / Q4 pricing confirm NEW / cohort roster final / onboarding doc final / runbook exercise / Day-2 ops handover / Stakeholder sign-off / pytest+lint green already met)
+  - **§5 No-Go fallback plan**:explicit branches for each gate slip — R-B1 → re-escalation cycle + W12 D1 defer / Q4 pricing → spend cap proxy alarm Option B(Karpathy §1.2 recommended)/ cohort roster → phased onboard RAPO 內部 first / onboarding doc → generic helpdesk placeholder / runbook → tabletop exercise substitute
+  - **§6 Open gate items detail**:Q4 pricing rate(Option A block vs Option B placeholder + spend cap proxy + 7-day re-baseline;Karpathy §1.2 favours Option B)+ R-B1 closure(no new decision unless re-escalation 2026-06-08 trigger fires)+ cohort roster(default RAPO 內部 ≥ 3 + 1-2 friendly departments per W6 D5)
+  - **§7 Day-2 ops handover checklist** per architecture.md §7.4(cost dashboard ✅ + alert ruleset ✅ + runbook authored ✅ + audit logging ✅ + feedback loop ✅ + eval-set augmentation ✅ + CRAG monitoring ✅ + streaming observability ✅ — 8/8 ready;runbook exercise pending F5.1)
+  - **§8 Stakeholder decision form**:approve / approve-with-conditions / defer / no-go + Q4 pricing Option A/B + cohort roster confirmed + Day-2 handover acknowledge sign-off block
+  - **Karpathy §1.2 simplicity-first**:one-page-decision-form structure — exec summary + go criteria + no-go fallback + sign-off section;detailed implementation context link out to artifact,not duplicated;3 gate items surfaced WITHOUT padding
+- **F5.1 🚧 defer to W10 D5**(by design,not regression)
+  - F5.1 Runbook real-incident exercise needs staged ACA env per Track A
+  - Track A still blocked on IT cred populate event(real-calendar 2026-06-05 = 2 days remaining in target window 2026-06-02 to 2026-06-07)
+  - **No-Go fallback already documented**:if 2026-06-08 仍未 deliver → tabletop exercise as substitute(Chris walks through `runbook/README.md §1 + §2` 10-step procedures with AI;document clarifications inline)— captured in W11 prep deck §5
+- **Tests**:**456 unchanged**(no code change W10 D4;governance + frontend doc only)
+- **Lint**:N/A(only Markdown writes)
+
+### Track A status(W10 D4 monitor pass-through,unchanged)
+
+- ⏸ IT cred populate event still NOT fired(real-calendar W10 D4 = 2026-06-05;target window 2026-06-02 to 2026-06-07 per W9 D1 三方 outcome;**2-day buffer remaining within target**)
+- 🟡 R-B1 status:**Active monitor preserved unchanged**(re-escalation deadline 2026-06-08 = 3 days out;within target window so 🔴 trigger NOT armed)
+- Q11 status:`Resolved` decision-level + **operational committed early June real** unchanged
+- W11 prep deck §6.2 documents「No new decision required from Stakeholder unless re-escalation trigger fires」— mechanical execution path
+
+### Track B progress
+
+- F4.1 ✅(observe_streaming;W10 D1)
+- F4.2 ✅(eval-set augmentation pipeline;W10 D1)
+- F4.3 ✅(weekly_signal_report Q15 scaffold;W10 D2)
+- F5.2 ✅(real-time cost dashboard hybrid endpoint;W10 D3)
+- F4.4 🚧(Pixel diff harness DEFER W11+ post-cohort signal;W10 D4 today decision)
+- F5.4 ✅(W11 staged rollout 25% prep deck draft;W10 D4 today)
+- F5.1 ⏳(Runbook real-incident exercise → W10 D5;tabletop fallback if Track A 仍 blocked)
+- F5.3 ⏳(Onboarding doc final review → W10 D5;blocked on Chris IT helpdesk contact populate)
+
+### Decisions / OQ summary
+
+- **F4.4 DEFER decision recorded** — no architectural change(Pixel diff harness install was W7 D5 carry-over polish item,non-Beta-blocking per W10 plan §2);Karpathy §1.2 rationale logged for re-trigger condition
+- **F5.4 W11 prep deck shipped** — surfaces NEW Q4 pricing rate gate item(per W10 D3 F5.2 placeholder labelling)— Stakeholder review trigger event scheduled W10 D5 末 closeout sync
+- No architectural change(governance Markdown deliverable;within architecture.md §6.1 W11 row + §7.4 + Beta plan v1 §2 W11 spec scope)
+- No ADR triggered(no §3/§4 component change;ADR-0012 still reserved for W10 Track A IT cred populate trigger)
+- No OQ status change(Q11 + Q15 + Q6 unchanged;**Q4 surfaced as NEW dependency** for W11 spend gate)
+- No R-B1 status change(🟡 Active monitor preserved per real-calendar within-target-window context)
+
+### Open / blocked
+
+- ⏸ Track A cascade still blocked on IT cred populate event;Track B continues unblocked
+- ⏸ F5.1 Runbook real-incident exercise → W10 D5(tabletop fallback if Track A 仍 blocked)
+- ⏸ F5.3 Onboarding doc final review → W10 D5(IT helpdesk contact dependency)
+- ⏸ Q4 deployment pricing rate confirmation(Stakeholder W10 D5 review cycle decision Option A vs Option B per W11 prep deck §6.1)
+- ⏸ W11 prep deck Stakeholder review approve cycle(W10 D5 末 trigger event)
+
+### Commit reference
+
+- W10 D4 commit:_(pending — will backfill after `feat` + `docs(planning)` pair)_
 
 ### What worked
 _(W10 D5 末 fill)_
