@@ -339,7 +339,7 @@ status: active    # flipped draft→active 2026-05-26 W9 D1 kickoff(A+B parallel
 - ⏸ W10+ progressive scope:wire `observe_async` to `/query` route handler for top-level trace span + nest synthesizer/retrieval/crag.refine generation events as children(producing single-trace-per-request hierarchical view in Langfuse dashboard)
 
 ### Commit reference
-- W9 D3 commit `_(pending — 1+2 parallel batch)`(W9 D3 single feat(generation,observability,docs)batch per W7+W8+W9 D1+D2 closeout pattern)
+- W9 D3 commit `8bc5868`(7 files changed,+787 / -9;3 new files + 4 modified;single feat(observability,docs)batch per W7+W8+W9 D1+D2 closeout pattern;CRAG decoration cascade + GradeResult/RewriteResult deployment field + query_collector C07 module + 8-row mock corpus + observability SOP CRAG section update)
 
 ---
 
