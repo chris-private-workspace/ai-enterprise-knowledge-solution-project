@@ -307,7 +307,8 @@ status: active   # `draft → active` flipped 2026-06-02 W10 D1 Track B kickoff(
 
 ### Commit reference
 
-- W10 D4 commit:_(pending — will backfill after `feat` + `docs(planning)` pair)_
+- W10 D4 commit `787eae4`(feat — F4.4 defer + F5.4 W11 staged rollout 25% prep deck;governance)
+- W10 D4 backfill commit `_(pending — this docs(planning) commit)_` will land hash to this entry
 
 ### What worked
 _(W10 D5 末 fill)_
