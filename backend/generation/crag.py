@@ -41,7 +41,7 @@ from tenacity import (
 )
 
 from generation.synthesizer import SynthesisResult, Synthesizer
-from observability.observe import observe_async
+from observability.observe import observe_async, observe_llm_async
 from retrieval.retrieval_engine import RetrievalEngine, RetrievalResult, RetrievedChunk
 
 logger = structlog.get_logger(__name__)
@@ -76,6 +76,9 @@ class GradeResult:
     input_tokens: int
     output_tokens: int
     latency_ms: int
+    # W9 D3 F5.2-cont — deployment surfaced for observe_llm_async cost attribution.
+    # Defaults to empty string for back-compat with empty-chunks early-return path.
+    deployment: str = ""
 
 
 @dataclass(slots=True, frozen=True)
@@ -84,6 +87,8 @@ class RewriteResult:
     input_tokens: int
     output_tokens: int
     latency_ms: int
+    # W9 D3 F5.2-cont — same as GradeResult.
+    deployment: str = ""
 
 
 @dataclass(slots=True)
@@ -155,6 +160,13 @@ class CragGrader:
             await self._client.close()
             self._client = None
 
+    @observe_llm_async(
+        name="crag.grade",
+        model_attr="deployment",
+        input_tokens_attr="input_tokens",
+        output_tokens_attr="output_tokens",
+        extra_metadata_attrs=("latency_ms", "confidence"),
+    )
     @retry(
         retry=retry_if_exception_type((RateLimitError, APITimeoutError)),
         stop=stop_after_attempt(3),
@@ -165,7 +177,8 @@ class CragGrader:
         """Score chunk relevance ∈ [0, 1]. Returns 0.0 if chunks empty."""
         if not chunks:
             return GradeResult(confidence=0.0, raw_text="(no chunks)",
-                               input_tokens=0, output_tokens=0, latency_ms=0)
+                               input_tokens=0, output_tokens=0, latency_ms=0,
+                               deployment=self.deployment)
 
         assert self._client is not None, "use 'async with' to manage CragGrader lifecycle"
         user_msg = _build_grader_user_message(query, chunks)
@@ -192,8 +205,16 @@ class CragGrader:
             input_tokens=int(getattr(usage, "prompt_tokens", 0) or 0),
             output_tokens=int(getattr(usage, "completion_tokens", 0) or 0),
             latency_ms=latency_ms,
+            deployment=self.deployment,
         )
 
+    @observe_llm_async(
+        name="crag.rewrite_query",
+        model_attr="deployment",
+        input_tokens_attr="input_tokens",
+        output_tokens_attr="output_tokens",
+        extra_metadata_attrs=("latency_ms",),
+    )
     @retry(
         retry=retry_if_exception_type((RateLimitError, APITimeoutError)),
         stop=stop_after_attempt(3),
@@ -204,7 +225,8 @@ class CragGrader:
         """Generate a reformulated query for re-retrieval. Empty input → empty output."""
         if not query.strip():
             return RewriteResult(rewritten_query="", input_tokens=0,
-                                 output_tokens=0, latency_ms=0)
+                                 output_tokens=0, latency_ms=0,
+                                 deployment=self.deployment)
 
         assert self._client is not None, "use 'async with' to manage CragGrader lifecycle"
         user_msg = _build_rewrite_user_message(query, chunks)
@@ -236,6 +258,7 @@ class CragGrader:
             input_tokens=int(getattr(usage, "prompt_tokens", 0) or 0),
             output_tokens=int(getattr(usage, "completion_tokens", 0) or 0),
             latency_ms=latency_ms,
+            deployment=self.deployment,
         )
 
 

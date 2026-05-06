@@ -263,7 +263,87 @@ status: active    # flipped draft→active 2026-05-26 W9 D1 kickoff(A+B parallel
 
 ---
 
-## Day 3 — _(pending)_
+## Day 3 — 2026-05-28: F5.2-cont CRAG observe_llm_async + F5.3 query log scaffolding parallel batch
+
+**Action**:W9 D3 1+2 parallel batch per W9 D2 closeout next-steps proposal:**(1)F5.2-cont CRAG observe_llm_async**(apply LLM decorator to `CragGrader.grade` + `CragGrader.rewrite_query` + add `deployment` field to `GradeResult` + `RewriteResult` for cost attribution)+ **(2)F5.3 Real query log scaffolding**(`query_collector.py` C07 module + `RealQueryRecord` Pydantic schema + PII strip + dedup + YAML round-trip + 8-row mock corpus)。兩 deliverables 都 IT-cred-independent + close W9 plan §2 F5 acceptance criteria。**Architecture impact zero**;CRAG decoration extension of W9 D2 pattern + query_collector屬 C07 implementation living code per architecture.md §3.1 audit pipeline。
+
+**1. F5.2-cont CRAG observe_llm_async(C07 + C05)**:
+- `backend/generation/crag.py`:
+  - `GradeResult` dataclass + `deployment: str = ""` field — back-compat default for empty-chunks early-return path(line 179);populated `self.deployment` at line 202 main return + line 179 empty-chunks return
+  - `RewriteResult` dataclass + `deployment: str = ""` field — same pattern,populated line 227 empty-query early-return + line 256 main return
+  - **`@observe_llm_async("crag.grade", model_attr="deployment", input_tokens_attr="input_tokens", output_tokens_attr="output_tokens", extra_metadata_attrs=("latency_ms","confidence"))`** applied above `@retry` stack — composes correctly per W9 D2 `test_decorator_composes_with_tenacity_retry` pattern(observe captures FINAL outcome after retries)
+  - **`@observe_llm_async("crag.rewrite_query", ...)`** same pattern with `extra_metadata_attrs=("latency_ms",)`(rewrite has no confidence attr)
+  - 4 construction sites updated:179, 202, 227, 256(all `return GradeResult(...)` / `return RewriteResult(...)` callers gain `deployment=self.deployment` kwarg)
+- CRAG-triggered query 一次 emit 3-4 generation events:
+  - **Initial** synth(no CRAG)= 1 generation
+  - **Confidence ≥ threshold** = 2 generations(initial synth + grade)
+  - **CRAG triggered correction** = 4 generations(initial synth + grade + rewrite_query + corrected synth)
+  - Real-time cost rollup possible per query via Langfuse generations API W11+
+
+**2. F5.3 Real query log scaffolding(C07)**:
+- `backend/observability/query_collector.py` NEW — three concerns per Karpathy §1.2 simplicity-first:
+  - **`RealQueryRecord`** Pydantic v2 BaseModel:`query_hash`(SHA-256 hex 64-char)+ `query_text`(PII-stripped)+ `kb_id` + `timestamp`(ISO 8601 UTC)+ `status_code` + `duration_ms` + `refused` + `crag_triggered` + `user_oid_redacted`(4-char slug `u_<4hex>`)
+  - **PII strip regex baseline**(CLAUDE.md §5.5 H5):4 patterns — `_EMAIL_PATTERN` + `_PHONE_PATTERN`(intl + dash format + parens)+ `_EMPLOYEE_ID_PATTERN`(`emp\d{5,8}` case-insensitive)+ `_RICOH_ID_PATTERN`(`ricoh\d{4,8}`)→ replaces with `<REDACTED_*>` placeholder tokens
+  - **Canonicalisation + dedup**:`_canonical()` lowercase + collapse internal whitespace + strip ends — used purely for hash + duplicate detection(NOT stored as query_text);`query_hash()` SHA-256 hex stable across runs;`dedupe_queries()` first-seen preserved
+  - **Construction helpers**:`build_record()` PII strip + redact oid to 4-char slug + ISO 8601 timestamp;`_redact_user_oid()` strip dashes/underscores → first 4 hex chars `u_<4hex>`(empty input → `u_0000` baseline)
+  - **YAML serialise**:`to_yaml()` returns string with `collection_metadata` header(phase + collection_owner + privacy_class + pii_strip_version + record_count + spec_ref);`write_yaml()` runs dedup pass before serialise;`read_yaml()` round-trip with auto-coerce datetime → ISO string for Pydantic compat(YAML auto-parses ISO timestamps)
+- `docs/03-implementation/beta-real-queries-W9-W10.yaml` NEW 8-row mock corpus:
+  - 4 EN queries(printer double-sided + toner replacement + scan-to-email + paper jam)
+  - 1 多語 query(粵語 "點樣 reset 個 Ricoh MP C5503 嘅密碼?")
+  - 1 OOS refusal demo(`refused=true` for "airspeed of unladen swallow" Q014 pattern)
+  - 1 CRAG-triggered demo(error code E-08 + `crag_triggered=true` + 2450ms duration)
+  - 2 PII demo records(scan-to-email mentions `<REDACTED_EMAIL>` + IT helpdesk mentions `<REDACTED_PHONE>`)— shows PII strip output format pre-bootstrap
+
+**Tests(F5.2-cont + F5.3 coverage,+24 new tests = baseline 329 → 353)**:
+- `backend/tests/test_query_collector.py` NEW(24 tests):
+  - PII strip:8 cases(email + phone dash + phone intl + emp ID + ricoh ID + multiple patterns + empty + no-match passthrough)
+  - query_hash:3 cases(canonicalisation stability across casing/whitespace + uniqueness + 64-hex shape)
+  - dedupe:3 cases(collapse + empty + single)
+  - build_record + redaction:5 cases(PII+oid integrity + 4-hex truncate + short-input + empty-input fallback + provided-timestamp + propagates-flags)
+  - YAML round-trip:3 cases(roundtrip preserves + metadata header + write_yaml dedup pass)
+  - Mock corpus sanity:1 case(`docs/03-implementation/beta-real-queries-W9-W10.yaml` 加 `read_yaml` clean parse + ≥5 records + status_code valid + 4-char slug)
+- `tests/test_crag.py` 6 existing tests pass unchanged(zero regression on CRAG decoration)
+- `tests/test_observe.py` 17 existing tests pass unchanged
+
+**Doc**:
+- `infrastructure/observability/README.md` updated W9 D3 — "LLM stage decoration" section extended:CRAG cascade documented(grade + rewrite_query)+ deployment field rationale + per-query 3-4 generation rollup pattern + W11+ real-time USD attribution upgrade path
+
+**Verification**:
+- `pytest -q` → **353 passed in 159.15s**(W9 D2 baseline 329 + CRAG cascade 0 + query_collector +24 = 353;zero regression)
+- `ruff check generation/crag.py observability/query_collector.py tests/test_query_collector.py` → All checks passed(after auto-fix UP017 datetime.UTC + I001 import sort + F401 unused import)
+- frontend tsc + eslint unchanged(no frontend code changes W9 D3)
+
+**Karpathy §1 alignment**:
+- §1.1 think-before-coding:**explicitly surfaced** that CRAG decoration needs `deployment` field on result dataclasses(decorator inspects result attrs not method receiver self.deployment)— added as default `""` for back-compat with empty-chunks early-return paths;explicitly chose regex PII baseline(NER classifier = Tier 2 when corpus volume warrants)+ no live Langfuse fetch in scaffolding(W11+ scope post-cohort);ruff datetime.UTC alias auto-fix accepted(Python 3.11+ idiom)
+- §1.2 simplicity-first:CRAG decoration = 2 single-line `@observe_llm_async(...)` adds + 2-field dataclass extend + 4-line construction site updates;query_collector single-file coverage(Pydantic schema + PII regex + canonical hash + dedup + YAML)— NOT split into multi-file package;mock corpus 8 rows demonstrate full feature surface(EN + 粵語 + OOS refusal + CRAG triggered + 2 PII demos)without scope creep
+- §1.3 surgical:`deployment: str = ""` default preserves all 4 GradeResult/RewriteResult construction sites that previously omitted deployment;ruff auto-fix touches only its scope(query_collector + tests);no edit to existing CRAG / synthesizer / retrieval test files
+- §1.4 goal-driven:F5.2-cont verifiable("CragGrader.grade emits client.generation() with model+usage when client wired" — covered by W9 D2 LLM decorator tests already);F5.3 verifiable("PII strip + dedup + YAML round-trip work end-to-end" — 24 unit tests close loop);353/353 full-suite pytest verifies zero regression on CRAG / observe / synthesizer / 312 W8 baseline pre-existing tests
+
+**Hard constraints check**:
+- H1 architecture lock — ✅ no §3 / §4 component change(CRAG decoration extension of W9 D2 pattern;query_collector屬 C07 living code per architecture.md §3.1 audit pipeline + Q6 scaffold scope)
+- H2 vendor lock — ✅ zero new dep(`yaml` stdlib already in pyproject;`pydantic` already locked W1 baseline)
+- H3 Dify reference — ✅ untouched
+- H4 Tier 1 boundary — ✅ NER PII classifier explicit Tier 2 in module docstring;live Langfuse fetch / DB layer also explicit Tier 2/W11+ scope
+- H5 security — ✅ **regex PII strip baseline + 4-char user_oid slug** + write_yaml runs dedup BEFORE PII text touches disk(privacy class Internal per Q9);test coverage `test_pii_strip_handles_multiple_patterns` verifies original PII NOT present in output
+- H6 test coverage — ✅ +24 tests for critical C07 query_collector module + 6 CRAG existing tests preserved + 17 observe existing tests preserved
+
+### Decisions / OQ summary
+- No OQ change(Q6 owner identification 仍 deferred to W9 D4+ per W9 D2 next-steps)
+- No ADR triggered W9 D3(CRAG decoration extension + query_collector scaffolding 全 architecture.md §3.1 + §6.1 W9 spec implementation;non-architectural living docs)
+
+### Open / blocked
+- ⏸ F5.1 Q6 Real query collection owner identification — W9 D4 actionable(Chris with Stakeholder)
+- ⏸ F4.2 Onboarding doc draft — W9 D4 actionable(content prep;provisioning推 W11)
+- ⏸ C11 dependency_overrides cleanup(W8 retro § Carry-over)— W10 polish window
+- ⏸ Live query collection plumbing(connect query_collector to actual `audit_log` stream OR Langfuse generations API)— W11+ scope post-IT-cred populate per W9 D1 三方 outcome
+- ⏸ W10+ progressive scope:wire `observe_async` to `/query` route handler for top-level trace span + nest synthesizer/retrieval/crag.refine generation events as children(producing single-trace-per-request hierarchical view in Langfuse dashboard)
+
+### Commit reference
+- W9 D3 commit `_(pending — 1+2 parallel batch)`(W9 D3 single feat(generation,observability,docs)batch per W7+W8+W9 D1+D2 closeout pattern)
+
+---
+
+## Day 4 — _(pending)_
 
 ---
 

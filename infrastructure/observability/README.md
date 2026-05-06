@@ -77,9 +77,19 @@ client.generation(
 NEVER leaves the backend** to Langfuse cloud — verified by
 `test_llm_decorator_h5_no_prompt_or_answer_text_emitted`。
 
-W9 D3+ progressive scope:apply `@observe_llm_async` to `crag.grade` + `crag.rewrite_query`
-similarly。W11+ Beta cohort onset:Langfuse generations API populates real-time
-USD per query in `/observability/cost-summary` rows(replaces static §9 projection)。
+W9 D3 cont:**applied `@observe_llm_async` to `crag.grade` + `crag.rewrite_query`**
+— CRAG L2 grader(GPT-5.4-mini)+ rewriter both emit Langfuse generation events
+with model + usage attribution。`GradeResult` + `RewriteResult` dataclasses
+gained `deployment` field(default `""` for back-compat with empty-chunks
+early-return)so cost-attribution dashboard sees CRAG triggered queries with
+full per-call cost rollup(initial synth + grader + optional rewriter +
+corrected synth = 3-4 generations per CRAG-triggered query)。
+
+W11+ Beta cohort onset:Langfuse generations API populates real-time USD per
+query in `/observability/cost-summary` rows(replaces static §9 projection)。
+Per-query cost rollup uniquely identifies CRAG-heavy patterns(eg. recurring
+borderline queries triggering reformulation cycle)→ feeds Q15 manual update
+frequency + Q21 reranker alternative considerations per real signal。
 
 ## Cost dashboard(F5.2)
 

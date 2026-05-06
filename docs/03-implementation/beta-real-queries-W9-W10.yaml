@@ -1,0 +1,93 @@
+collection_metadata:
+  phase: W9-W10 Beta internal testing
+  collection_owner: TBD per Q6 W9 D3 trigger
+  privacy_class: Internal
+  pii_strip_version: v1
+  record_count: 8
+  spec_ref: W09 plan §2 F5.3 + Q6 owner + Q9 sensitivity classification
+  status: mock-bootstrap-2026-05-28
+  notes: |
+    W9 D3 mock corpus to bootstrap the YAML format ahead of real Beta cohort
+    onboarding(IT cred populate target early June real per W9 D1 三方 outcome)。
+    Replace with real records W11+ when actual cohort traffic flows。
+    All 8 sample queries are SYNTHETIC — no real user data。
+queries:
+  - query_hash: 5b1a7f3c8e9d2a6f0b4c8e9d2a6f0b4c8e9d2a6f0b4c8e9d2a6f0b4c8e9d2a6f
+    query_text: How do I configure the printer for double-sided printing?
+    kb_id: drive_user_manuals
+    timestamp: 2026-05-30T09:14:00Z
+    status_code: 200
+    duration_ms: 1850
+    refused: false
+    crag_triggered: false
+    user_oid_redacted: u_a3b2
+
+  - query_hash: 6c2b8e4d9f0a3b1c5d9f0a3b1c5d9f0a3b1c5d9f0a3b1c5d9f0a3b1c5d9f0a3b
+    query_text: 點樣 reset 個 Ricoh MP C5503 嘅密碼?
+    kb_id: drive_user_manuals
+    timestamp: 2026-05-30T10:42:00Z
+    status_code: 200
+    duration_ms: 2100
+    refused: false
+    crag_triggered: true
+    user_oid_redacted: u_5d7e
+
+  - query_hash: 7d3c9f5e0a1b4c2d6e0a1b4c2d6e0a1b4c2d6e0a1b4c2d6e0a1b4c2d6e0a1b4c
+    query_text: What is the toner replacement procedure for IM C400F?
+    kb_id: drive_user_manuals
+    timestamp: 2026-05-30T11:05:00Z
+    status_code: 200
+    duration_ms: 1620
+    refused: false
+    crag_triggered: false
+    user_oid_redacted: u_a3b2
+
+  - query_hash: 8e4d0a6f1b2c5d3e7f1b2c5d3e7f1b2c5d3e7f1b2c5d3e7f1b2c5d3e7f1b2c5d
+    query_text: How to scan to email when SMTP is configured? Contact <REDACTED_EMAIL> if needed.
+    kb_id: drive_user_manuals
+    timestamp: 2026-05-30T13:22:00Z
+    status_code: 200
+    duration_ms: 1740
+    refused: false
+    crag_triggered: false
+    user_oid_redacted: u_b8c1
+
+  - query_hash: 9f5e1b7c2d3e6f4a8c2d3e6f4a8c2d3e6f4a8c2d3e6f4a8c2d3e6f4a8c2d3e6f
+    query_text: Why is my printer showing error E-08?
+    kb_id: drive_user_manuals
+    timestamp: 2026-05-30T14:55:00Z
+    status_code: 200
+    duration_ms: 2450
+    refused: false
+    crag_triggered: true
+    user_oid_redacted: u_3e9d
+
+  - query_hash: 0a6f2c8d3e4f7b5c9d3e4f7b5c9d3e4f7b5c9d3e4f7b5c9d3e4f7b5c9d3e4f7b
+    query_text: What is the airspeed velocity of an unladen swallow?
+    kb_id: drive_user_manuals
+    timestamp: 2026-05-30T15:18:00Z
+    status_code: 200
+    duration_ms: 980
+    refused: true
+    crag_triggered: false
+    user_oid_redacted: u_5d7e
+
+  - query_hash: 1b7c3d9e4f5a8b6c0d4f5a8b6c0d4f5a8b6c0d4f5a8b6c0d4f5a8b6c0d4f5a8b
+    query_text: Paper jam recovery steps for Ricoh MP C2503
+    kb_id: drive_user_manuals
+    timestamp: 2026-05-30T15:31:00Z
+    status_code: 200
+    duration_ms: 1530
+    refused: false
+    crag_triggered: false
+    user_oid_redacted: u_a3b2
+
+  - query_hash: 2c8d4e0f5a6b9c7d1e5a6b9c7d1e5a6b9c7d1e5a6b9c7d1e5a6b9c7d1e5a6b9c
+    query_text: Reach IT helpdesk at <REDACTED_PHONE> for printer setup
+    kb_id: drive_user_manuals
+    timestamp: 2026-05-30T16:04:00Z
+    status_code: 200
+    duration_ms: 1180
+    refused: false
+    crag_triggered: false
+    user_oid_redacted: u_3e9d
