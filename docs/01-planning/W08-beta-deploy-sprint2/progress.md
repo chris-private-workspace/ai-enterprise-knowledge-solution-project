@@ -247,7 +247,7 @@ status: active    # flipped draft→active 2026-05-19 W8 D1 kickoff
 - ⏸ F6 closeout — W8 D5
 
 ### Commit reference
-- _(W8 D3 commit pending — references progress.md Day 3 + checklist F1.3 + F2.5 + F3.1 + F3.4 ticked)_
+- W8 D3 commit `cbd36b3`(11 files changed,+621 / -41;3 new files + 8 modified;real msal-react wire + SWA pipeline + SWA config + ACA PE Bicep + 2 deps installed + .env.example expanded)
 
 ---
 
