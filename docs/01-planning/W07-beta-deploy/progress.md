@@ -398,7 +398,7 @@ status: closed     # flipped active→closed 2026-05-16 W7 D5 closeout(G1'-G7 �
 - ⏸ F5.5 pixel diff snapshots — W8 polish(no harness installed)
 
 ### Commit reference
-- _(W7 D5 closeout commit pending — references progress.md Day 5 + Retro + checklist F1.7-mock + F5.4 + F6.1-F6.6 + W08 phase folder NEW + RISK_REGISTER R-B1 update)_
+- W7 D5 closeout commit `247bb49`(15 files changed,+776 / -34;9 new files + 6 modified;F1.7-mock 9-case smoke + F5.4 5/5 viewports + W08 phase folder + RISK_REGISTER R14 R-B1 + frontmatter active→closed)
 
 ---
 
@@ -472,7 +472,7 @@ status: closed     # flipped active→closed 2026-05-16 W7 D5 closeout(G1'-G7 �
 
 ### Phase status
 
-- Closeout commit:_(pending — backfilled post-commit)_
+- Closeout commit:`247bb49`(2026-05-16 W7 D5 末 — feat(api,docs): W7 D5 closeout — F1.7-mock smoke + F5.4 viewport + F6 Phase Gate PASS)
 - Frontmatter status flipped to `closed`:**2026-05-16**(this batch)
 - Phase W08 kickoff trigger:**W8 plan = Azure Container Apps + Static Web Apps + cost monitoring + user feedback dashboard + W8 D1 IT engagement + W8 D2-D3 real msal SDK wire + W8 D4 F1.7 LIVE switch + F3.5 + F4.5 LIVE smoke cascade + Langfuse SDK W3+ scope**(per plan.md §1 timeline + retro § Carry-overs C1-C10)
 
