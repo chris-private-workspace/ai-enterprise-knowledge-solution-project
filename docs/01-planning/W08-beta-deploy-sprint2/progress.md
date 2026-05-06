@@ -309,7 +309,7 @@ status: active    # flipped draft→active 2026-05-19 W8 D1 kickoff
 - ⏸ F6 closeout — W8 D5
 
 ### Commit reference
-- _(W8 D4 commit pending — references progress.md Day 4 + checklist F4 substitute + F3.2 SOP + F3.3 SOP ticked + F1.4 + F1.5 + F4.5 LIVE deferred 標明)_
+- W8 D4 commit `84c7a26`(5 files changed,+719 / -6;3 new files + 2 modified;F4 substitute integration smoke + Entra ID app registration SOP + SWA custom domain SOP + W8 D4 progress + checklist;F1.4 + F1.5 + F4.5 LIVE 全 explicit deferred 標明 reason)
 
 ---
 
