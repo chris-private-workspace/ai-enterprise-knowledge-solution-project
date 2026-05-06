@@ -114,7 +114,7 @@ status: active   # `active` 自 W11 D1(2026-06-09)— Chris W10 closeout sign-of
 
 ### Commit reference
 
-- W11 D1 batch commit `_(pending — F4.1-F4.4 runbook AF1-AF4 + F5.3 Tier 2 review draft + W11 frontmatter flip per Chris sign-off authorization)_`
+- W11 D1 batch commit `4be2c17`(F4.1-F4.4 runbook AF1-AF4 + F5.3 Tier 2 review draft + W11 frontmatter flip per Chris sign-off authorization)
 
 ---
 
