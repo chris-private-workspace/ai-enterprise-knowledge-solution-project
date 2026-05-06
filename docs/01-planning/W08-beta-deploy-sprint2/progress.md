@@ -111,7 +111,7 @@ status: active    # flipped draft→active 2026-05-19 W8 D1 kickoff
 - ⏸ F6 closeout — W8 D5
 
 ### Commit reference
-- _(W8 D1 commit pending — references progress.md Day 1 + checklist F2.1 + F2.2 ticked + frontmatter active flip)_
+- W8 D1 commit `de316e4`(7 files changed,+362 / -14;2 new files + 5 modified;Dockerfile multi-stage + non-root + HEALTHCHECK + .dockerignore H5 + ACA backend.bicep + README + W8 frontmatter active flip)
 
 ---
 
