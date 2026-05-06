@@ -418,7 +418,7 @@ status: active    # flipped draft→active 2026-05-26 W9 D1 kickoff(A+B parallel
 - ⏸ F6 W9 closeout + W10 phase folder rolling-JIT kickoff — W9 D5
 
 ### Commit reference
-- W9 D4 commit `_(pending — 1+2 parallel batch)`(W9 D4 single feat(api,docs)batch per W7+W8+W9 D1+D2+D3 closeout pattern)
+- W9 D4 commit `252e989`(6 files changed,+593 / -3;2 new files + 4 modified;single feat(api,docs)batch per W7+W8+W9 D1+D2+D3 closeout pattern;F4.2 onboarding doc 9-section + /query route observe_async wire + 5 NEW signature/trace/envelope regression tests + observability SOP hierarchical trace ASCII diagram)
 
 ---
 
