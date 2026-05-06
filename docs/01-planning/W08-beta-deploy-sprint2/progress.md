@@ -177,7 +177,7 @@ status: active    # flipped draft→active 2026-05-19 W8 D1 kickoff
 - ⏸ F6 closeout — W8 D5
 
 ### Commit reference
-- _(W8 D2 commit pending — references progress.md Day 2 + checklist F1.2 + F1.6 + F2.3 + F2.4 ticked)_
+- W8 D2 commit `9504a6b`(9 files changed,+910 / -28;4 new files + 5 modified;real msal_provider + 13 F1.6 tests + 2 GHA workflows + Key Vault SOP + python-jose[cryptography] dep)
 
 ---
 
