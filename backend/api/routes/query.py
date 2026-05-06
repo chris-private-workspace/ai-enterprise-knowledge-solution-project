@@ -23,6 +23,7 @@ from generation.citation_enrichment import build_citations
 from generation.crag import CragLoop
 from generation.stream_composer import compose_query_stream
 from generation.synthesizer import Synthesizer
+from observability.observe import observe_async
 from retrieval.retrieval_engine import RetrievalEngine
 
 logger = structlog.get_logger(__name__)
@@ -49,8 +50,24 @@ def _engine_or_503(request: Request) -> RetrievalEngine:
 
 
 @router.post("/query", response_model=QueryResponse)
+@observe_async(
+    name="api.query",
+    capture_attrs=(
+        "latency_ms",
+        "model_used",
+        "reranker_used",
+        "refused",
+        "crag_triggered",
+        "crag_iterations",
+    ),
+)
 async def query(payload: QueryRequest, request: Request) -> QueryResponse:
-    """Main RAG query — hybrid → (rerank) → synthesis → citations."""
+    """Main RAG query — hybrid → (rerank) → synthesis → citations.
+
+    W9 D4 F5.2 cont — top-level @observe_async wraps the orchestration;
+    nested observe_llm_async on synthesizer/crag stages produce a single
+    hierarchical Langfuse trace per request when client wired (W11+).
+    """
     engine = _engine_or_503(request)
     synthesizer: Synthesizer | None = getattr(request.app.state, "synthesizer", None)
 

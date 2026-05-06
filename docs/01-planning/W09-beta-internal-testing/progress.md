@@ -343,7 +343,86 @@ status: active    # flipped draft→active 2026-05-26 W9 D1 kickoff(A+B parallel
 
 ---
 
-## Day 4 — _(pending)_
+## Day 4 — 2026-05-29: F4.2 Onboarding doc draft + W10+ /query route observe_async wire parallel batch
+
+**Action**:W9 D4 1+2 parallel batch per W9 D3 closeout next-steps proposal:**(1)F4.2 Beta cohort onboarding doc draft**(content prep ahead of W11 cohort kickoff)+ **(2)W10+ /query route observe_async wire**(top-level trace span on `/query` route handler so each request produces single hierarchical Langfuse trace with synthesizer / retrieval / crag.refine generations as nested children)。兩 deliverables 都 IT-cred-independent + close 兩個 W11 milestone prep gaps。**Architecture impact zero**;onboarding doc屬 implementation living doc;route observe wire 應用 W9 D1 既有 `observe_async` decorator pattern surgically。
+
+**1. F4.2 Beta cohort onboarding doc draft(C09+C10+governance)**:
+- `docs/03-implementation/beta-cohort-onboarding-W11-W12.md` NEW — 9 sections covering:
+  - **§1 Login flow**:URL `https://ekp-beta.ricoh.com` + 3-step Microsoft SSO + AADSTS50011 troubleshoot pointers + access provision via Q7 cohort list
+  - **§2 Query examples**:✅ good queries(具體機型 + 多語 EN + 粵語)+ ⚠️ marginal(太籠統 / OOS grounded refusal NOT a bug)+ ❌ bad(PII NO-GO + 超 2000 字符 reject)
+  - **§3 Feedback flow**:👍/👎 + optional comment;Langfuse cloud encrypted;aggregate-only review by Beta team
+  - **§4 Beta phase limitations**:Drive KB scope only;2-5s normal latency;CRAG-triggered 4-6s;peak hour 5-8s;Q15 update frequency pending feedback signal
+  - **§5 Bug report**:Slack `#ekp-beta` channel + reproduction steps template + what NOT to include(PII / confidential / cred)
+  - **§6 Privacy notice**:Q9 Internal classification + Langfuse retention 90-day rolling + PII auto-redact via `query_collector.pii_strip` per CLAUDE.md §5.5 H5 + 4-char user_oid slug + opt-out / data export 7-day SLA
+  - **§7 W11-W12 staged rollout context**:25% → 100% per beta-plan-v1.md §3 + Stakeholder gate
+  - **§8 Quick reference card**:printable / bookmarkable cheat sheet(URL + steps + latency SLO + refusal explanation)
+  - **§9 Update history**:Initial draft W9 D4;final cohort kickoff version W11 D1 review + contact info populate;real-cohort feedback W11 D5 retro update
+- Karpathy §1.2 simplicity-first single-file coverage;**provisioning推 W11 D1**(等 IT cred + DNS apply + Chris finalise contact info per W9 D1 三方 outcome)
+
+**2. W10+ /query route observe_async wire(C07+C08)**:
+- `backend/api/routes/query.py:query()` function 加 **`@observe_async("api.query", capture_attrs=("latency_ms","model_used","reranker_used","refused","crag_triggered","crag_iterations"))`** 喺 `@router.post("/query", response_model=QueryResponse)` 同 `async def query` 之間
+- Single import added:`from observability.observe import observe_async`
+- 唔 wire `query_stream`(W3 D3 F4)— `StreamingResponse` 即時 return 而後續 streaming async 發生,wrapper 量到 ~0ms duration NOT 包括 actual streaming latency;`observe_async` 對 streaming endpoints 唔 applicable(W11+ scope:dedicated `observe_streaming` decorator 監聽 SSE 流 close)
+- **Hierarchical trace structure post-W11 Langfuse cred populate**:
+  ```
+  trace: api.query (top-level)
+    ├─ generation: retrieval.retrieve  (W9 D1 + observe_async on RetrievalEngine.retrieve)
+    ├─ generation: synthesizer.synthesize  (W9 D2 observe_llm_async)
+    └─ trace: crag.refine  (W9 D1 observe_async; only if crag triggered)
+        ├─ generation: crag.grade  (W9 D3 observe_llm_async)
+        ├─ generation: crag.rewrite_query  (W9 D3 observe_llm_async; only if confidence < threshold)
+        ├─ generation: retrieval.retrieve  (re-fetch with rewritten query)
+        └─ generation: synthesizer.synthesize  (corrected synthesis)
+  ```
+- **FastAPI signature compat verified**:`functools.wraps __wrapped__` chain preserves param signature;`inspect.signature(query)` returns `(payload: QueryRequest, request: Request)` even after decoration;FastAPI Pydantic body validation + Request injection both fire correctly
+
+**Tests(F5.2-W10 wire coverage,+5 new tests = baseline 353 → 358)**:
+- `backend/tests/test_observe_query_route.py` NEW(5 tests):
+  - **`test_query_route_succeeds_with_observe_wrapper_and_no_langfuse`** — local dev / CI baseline;wrapped route returns 200 OK without Langfuse client
+  - **`test_query_route_emits_top_level_trace_when_langfuse_wired`** — `client.trace(name="api.query", ...)` fires with metadata captured from `QueryResponse` fields(latency_ms / model_used / reranker_used / refused / crag_triggered / crag_iterations)
+  - **`test_query_route_observe_captures_refused_and_latency`** — refused answer surfaces in observe metadata for Q014-style OOS pattern downstream analysis
+  - **`test_query_route_signature_preserved_for_fastapi_depends`** — critical FastAPI introspection regression catch:`inspect.signature(query_route.query).parameters` == `["payload", "request"]`
+  - **`test_query_route_traceback_not_leaked_on_engine_failure`** — observe wrapper integration with W7 D4 F4.1 envelope contract preserved;502 path no Traceback / site-packages leak
+- All existing tests 353 → 358 pass(zero regression on `/query` route + middleware + auth + envelope)
+
+**Verification**:
+- `pytest -q` → **358 passed**(W9 D3 baseline 353 + observe query route +5 = 358;zero regression on FastAPI Depends + middleware + envelope contract)
+- `ruff check api/routes/query.py tests/test_observe_query_route.py` → All checks passed!
+- frontend tsc + eslint unchanged W9 D4(no frontend code changes)
+
+**Karpathy §1 alignment**:
+- §1.1 think-before-coding:**explicitly surfaced** that `query_stream` SSE handler 對 wrapper 唔 applicable(StreamingResponse async pattern)— 推 W11+ dedicated observe_streaming decorator;explicitly verified FastAPI signature compat via dedicated `test_query_route_signature_preserved_for_fastapi_depends` regression catch;onboarding doc explicitly defers contact info populate to Chris W11 D1 review(stakeholder-blocked decisions NOT pre-populated)
+- §1.2 simplicity-first:single-line `@observe_async` decoration on /query route + 1 import line;onboarding doc single-file 9-section coverage(NO multi-file split / no separate FAQ / no separate quick-ref);test fixture reuses `_build_smoke_app` pattern from W8 D4 F4 substitute integration smoke
+- §1.3 surgical:zero edit to `query_stream` handler / synthesizer / retrieval / crag bodies;route docstring augmented with W9 D4 note;onboarding doc isolated in `docs/03-implementation/`(consistent topology with `r-b1-alignment-memo-2026-05-26.md` + `beta-real-queries-W9-W10.yaml`)
+- §1.4 goal-driven:F4.2 verifiable("9 sections covering login + query + feedback + privacy + bug report + W11-W12 context")— content checklist closes loop;F5.2-W10 verifiable("FastAPI signature preserved + trace fires when Langfuse wired + envelope contract preserved on engine failure")— 5 unit tests close loop
+
+**Hard constraints check**:
+- H1 architecture lock — ✅ no §3 / §4 component change;observe_async on /query route 應用 既有 W9 D1 pattern;onboarding doc references existing Q7 + Q9 + Q11 + architecture.md spec
+- H2 vendor lock — ✅ zero new dep
+- H3 Dify reference — ✅ untouched
+- H4 Tier 1 boundary — ✅ Onboarding doc explicit Beta scope = Drive KB only(其他 KB Tier 2 multi-KB expansion via Q12 trigger);query_stream observe wrapper deferred Tier 1+(W11+ dedicated streaming variant)
+- H5 security — ✅ Onboarding doc §6 privacy notice referencing PII auto-redact via `query_collector.pii_strip`(W9 D3 implementation)+ 4-char user_oid slug + 90-day rolling retention + opt-out 7-day SLA;observe wrapper preserves W7 D4 F4.1 envelope contract(no Traceback leak verified by `test_query_route_traceback_not_leaked_on_engine_failure`)
+- H6 test coverage — ✅ +5 tests for critical C08 /query route observe wire + FastAPI signature regression catch + envelope contract integration
+
+### Decisions / OQ summary
+- No OQ change W9 D4(F5.1 Q6 owner + F4 cohort onboarding 仍 W9 D5 OR W11 trigger per W9 D1 三方 outcome cascade)
+- No ADR triggered W9 D4(observe wire on /query route + onboarding doc 全 architecture.md §3.1 + §6.1 W9 spec implementation;non-architectural)
+
+### Open / blocked
+- ⏸ F5.1 Q6 Real query collection owner — W9 D5 actionable(Chris with Stakeholder)
+- ⏸ C11 dependency_overrides cleanup(W8 retro § Carry-over)— W10 polish window
+- ⏸ Live query collection plumbing — W11+ post-IT-cred(per W9 D1 三方 outcome)
+- ⏸ /query/stream observe wire — W11+ dedicated `observe_streaming` decorator(SSE flow capture)
+- ⏸ Onboarding doc final review + contact info populate — Chris W11 D1 cohort kickoff
+- ⏸ F6 W9 closeout + W10 phase folder rolling-JIT kickoff — W9 D5
+
+### Commit reference
+- W9 D4 commit `_(pending — 1+2 parallel batch)`(W9 D4 single feat(api,docs)batch per W7+W8+W9 D1+D2+D3 closeout pattern)
+
+---
+
+## Day 5 — _(pending)_
 
 ---
 

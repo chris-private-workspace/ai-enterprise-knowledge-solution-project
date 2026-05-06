@@ -91,6 +91,49 @@ Per-query cost rollup uniquely identifies CRAG-heavy patterns(eg. recurring
 borderline queries triggering reformulation cycle)→ feeds Q15 manual update
 frequency + Q21 reranker alternative considerations per real signal。
 
+### W9 D4 cont — top-level `/query` route trace wire
+
+`backend/api/routes/query.py:query()` now decorated with `@observe_async("api.query")`
+so each request produces a single hierarchical Langfuse trace post W11+ cred
+populate:
+
+```
+trace: api.query  (top-level — captures latency_ms + model_used +
+  │                reranker_used + refused + crag_triggered + crag_iterations)
+  │
+  ├─ generation: retrieval.retrieve  (W9 D1 — embed/search/rerank latency
+  │                                    + reranked flag)
+  │
+  ├─ generation: synthesizer.synthesize  (W9 D2 — model + usage{input/
+  │                                        output tokens} + refused flag)
+  │
+  └─ trace: crag.refine  (W9 D1 — only when CRAG triggered)
+        │
+        ├─ generation: crag.grade  (W9 D3 — judge model + usage +
+        │                            confidence)
+        │
+        ├─ generation: crag.rewrite_query  (W9 D3 — rewriter model +
+        │                                    usage; only if confidence
+        │                                    < threshold)
+        │
+        ├─ generation: retrieval.retrieve  (re-fetch with rewritten query)
+        │
+        └─ generation: synthesizer.synthesize  (corrected synthesis)
+```
+
+**FastAPI signature compat**:`functools.wraps __wrapped__` chain preserves
+the original endpoint signature so `inspect.signature(query)` returns
+`(payload: QueryRequest, request: Request)` post-decoration — FastAPI
+Pydantic body validation + Request injection both fire correctly。
+Regression-guarded by `tests/test_observe_query_route.py::
+test_query_route_signature_preserved_for_fastapi_depends`。
+
+**Why `/query/stream` is NOT wrapped**:SSE handler returns `StreamingResponse`
+immediately while async streaming continues afterwards;`observe_async`
+wrapper measures only the synchronous return path duration(~0ms),NOT the
+actual streaming latency。Dedicated `observe_streaming` decorator listening
+on SSE flow close = W11+ scope。
+
 ## Cost dashboard(F5.2)
 
 `GET /observability/cost-summary` returns the projected daily spend dashboard:

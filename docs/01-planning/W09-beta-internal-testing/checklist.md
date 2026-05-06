@@ -38,7 +38,7 @@ last_updated: 2026-05-26 cont
 ## F4 — Beta internal user onboarding
 
 - [ ] F4.1 Final user roster confirm with Chris(per Q7;~5-10 first-cohort)
-- [ ] F4.2 Onboarding doc 1-page:login + query example + feedback button + bug reporting channel
+- [x] F4.2 Onboarding doc 1-page — **W9 D4 done 2026-05-29** — `docs/03-implementation/beta-cohort-onboarding-W11-W12.md` NEW 9-section guide:§1 login flow(3-step Entra ID SSO + AADSTS50011 troubleshoot)+ §2 query examples(good / marginal / bad — 多語 OK 粵語 + EN + OOS refusal explained;PII no-go)+ §3 feedback flow(👍/👎 + comment;Langfuse cloud encrypted;aggregate-only review)+ §4 known limitations(Drive KB scope + 2-5s normal latency + Q15 manual update frequency)+ §5 bug report template(Slack `#ekp-beta` + reproduction steps)+ §6 privacy notice(Q9 Internal classification + PII auto-redact + 90-day rolling + opt-out)+ §7 W11-W12 staged rollout context(25% → 100%)+ §8 quick-reference card(printable / bookmarkable)+ §9 update history;Karpathy §1.2 simplicity-first 1-page coverage;final cohort kickoff version W11 D1 post IT cred + DNS apply per W9 D1 三方 outcome
 - [ ] F4.3 Entra ID app access provision:add users to app registration(or assign role if Pattern B)
 - [ ] F4.4 First-cohort kick-off ping(Slack / email)+ feedback intake channel established
 
