@@ -189,7 +189,81 @@ status: active    # flipped draft→active 2026-05-26 W9 D1 kickoff(A+B parallel
 
 ---
 
-## Day 2 — _(pending)_
+## Day 2 — 2026-05-27: 1+2 parallel batch — observability progressive upgrade + W11 production launch runbook draft
+
+**Action**:W9 D2 batch per W9 D1 cont retro § Open / blocked next-steps proposal:**(1)F5.2 progressive @observe upgrade**(client.trace() → client.generation() for synthesizer LLM cost-attribution)+ **(2)W11 production launch runbook + rollback SOP draft**(architecture.md §7.4 Day-2 Readiness scope)。兩 deliverables 都 IT-cred-independent + closes W11 milestone prep gaps。**Architecture impact zero**;observe_llm_async wrapper屬 C07 implementation living code per architecture.md §3.1 Langfuse correlation;runbook implements §7.4 Day-2 spec(non-architectural amendment per CLAUDE.md §5.1 H1 boundary check)。
+
+**1. F5.2 progressive @observe upgrade(C07)**:
+- `backend/observability/observe.py` extended:
+  - **NEW `observe_llm_async` decorator** — emits `client.generation()` instead of `client.trace()` for LLM-stage methods;maps result attributes to Langfuse generation event shape:`model` from `model_attr`(default "deployment")+ `usage={"input":N,"output":M,"unit":"TOKENS"}` from `input_tokens_attr` + `output_tokens_attr` + extra_metadata_attrs flat metadata
+  - **NEW `_emit_generation_safe` helper** — graceful fallback when client lacks `generation()` method(legacy SDK)→ falls back to `trace()` so cost attribution best-effort across Langfuse SDK versions
+  - **H5 SECURITY**(per CLAUDE.md §5.5 enforced via test):wrapper passes ONLY `model` + `usage`(token counts)+ metadata flat fields;**NEVER** passes `input` / `output` text content to Langfuse cloud — full prompt / answer remain backend-private
+- `backend/generation/synthesizer.py:Synthesizer.synthesize` — replaced `@observe_async("synthesizer.synthesize", capture_attrs=...)` with **`@observe_llm_async("synthesizer.synthesize", model_attr="deployment", input_tokens_attr=..., output_tokens_attr=..., extra_metadata_attrs=("latency_ms","refused"))`** — single-line replacement preserves @retry stack composition
+- W9 D3+ progressive scope ready:apply `observe_llm_async` to `CragGrader.grade` + `CragGrader.rewrite_query`(per crag.py:164 + similar);apply `observe_async` orchestration to remaining stages
+
+**2. W11 production launch runbook + rollback SOP(C12)**:
+- `infrastructure/runbook/README.md` NEW — 10 sections covering:
+  - **§1 Document parse failure** — symptoms + first-line mitigation(per-doc skip vs infrastructure fault path)+ root cause investigation(Langfuse / KQL / common causes per architecture.md §8.3 R7)+ recovery
+  - **§2 API quota exhaustion** — per-quota mitigation(Azure OpenAI tighten rate limit + Cohere fallback + Search SKU upgrade)+ cost dashboard correlation
+  - **§3 Index corruption** — index alias swap rollback + re-ingest procedure + schema drift detection
+  - **§4 Reranker outage** — Cohere → Azure built-in semantic ranker hot fallback(architecture.md §8.3 R6 + W4 shootout faith Δ -11.76pp tradeoff documented)
+  - **§5 CRAG loop bug** — disable / threshold raise mitigation + langfuse_status correlation + W5 D2 baseline 0.70 reference
+  - **§6 Rollback procedures** — ACA revision swap + Bicep deploy rollback + SWA frontend rollback + DNS rollback + Index alias rollback
+  - **§7 Cred rotation emergency** — leak response 30-min steps + Key Vault update + ACA revision restart
+  - **§8 Escalation matrix** — P1/P2/P3 severity + on-call rotation + IT manager + Cohere account team contacts
+  - **§9 Reference quick-links** + **§10 Update history**
+- Cross-component dependencies:references all infrastructure/* SOPs + architecture.md §3 + §7.4 + §8 + components/Cn-*.md;Karpathy §1.2 simplicity-first single-file 5-scenario coverage(don't create 5 separate files);per-scenario SLA + first-line < 5-30 min mitigation explicit
+
+**Tests(F5.2 LLM upgrade coverage,+7 new tests = baseline 322 → 329)**:
+- `backend/tests/test_observe.py` extended(8 → 17 tests):
+  - **NEW `test_llm_decorator_emits_generation_with_usage`** — verifies model + usage shape + metadata + trace NOT called when generation available
+  - **NEW `test_llm_decorator_skips_usage_when_tokens_missing`** — graceful when result lacks token counts
+  - **NEW `test_llm_decorator_falls_back_to_trace_when_no_generation`** — legacy SDK path
+  - **NEW `test_llm_decorator_no_op_when_client_absent`** — local dev / CI path
+  - **NEW `test_llm_decorator_swallows_generation_emit_failure`** — generation emit error → 202-equivalent + warn
+  - **NEW `test_llm_decorator_propagates_exception_with_error_status`** — wrapped fn raise → emit error status + re-raise
+  - **NEW `test_llm_decorator_h5_no_prompt_or_answer_text_emitted`** — **H5 SECURITY assertion** — kwargs.keys() ⊆ {name, model, usage, metadata};no `input` / `output` text fields ever reach Langfuse cloud
+
+**Doc**:
+- `infrastructure/observability/README.md` updated W9 D2 — NEW "LLM stage decoration" section between F5.1 lifecycle and F5.2 cost dashboard;documents `@observe_llm_async` usage + H5 security guarantee + W9 D3+ progressive scope
+
+**Verification**:
+- `pytest -q` → **329 passed in 128.57s**(W9 D1 baseline 322 + observe_llm_async +7 = 329;zero regression)
+- `ruff check observability/observe.py tests/test_observe.py generation/synthesizer.py` → All checks passed!
+- frontend tsc + eslint unchanged from W9 D1 baseline(no frontend code changes)
+
+**Karpathy §1 alignment**:
+- §1.1 think-before-coding:**explicitly surfaced** that production launch runbook 5-scenario coverage matches architecture.md §7.4 spec exactly(NO scope creep — same 5 + rollback);LLM decoration upgrade clean separation of concerns(observe_async for orchestration / observe_llm_async for billable generation events)
+- §1.2 simplicity-first:single decorator per concern(non-LLM = `observe_async` / LLM = `observe_llm_async`);single runbook file with sections(NOT 5 separate files);H5 enforcement via explicit assertion(NOT speculative defensive code)
+- §1.3 surgical:single-line decoration replacement on synthesizer.synthesize;observe.py extended with 2 new symbols + 1 helper;runbook NEW file in dedicated `infrastructure/runbook/` folder(consistent with other infra/* topology)
+- §1.4 goal-driven:F5.2 progressive scope verifiable("synthesizer.synthesize emits client.generation() with usage when client wired" → 7 unit tests close loop);runbook verifiable("each scenario has symptoms + first-line mitigation + root cause + rollback section" — all 5 + rollback section landed)
+
+**Hard constraints check**:
+- H1 architecture lock — ✅ no §3 / §4 component change;observe_llm_async屬 C07 implementation per §3.1 Langfuse correlation;runbook implements §7.4 Day-2 spec
+- H2 vendor lock — ✅ zero new dep
+- H3 Dify reference — ✅ untouched
+- H4 Tier 1 boundary — ✅ no Tier 2 滲入(custom span hierarchy / sampling tuning / multi-region 全 explicit Tier 2 in observability SOP §Tier 2;runbook §6.5 Tier 2 SKU upgrade noted;§3 Index corruption "Restore from snapshot" Tier 2 noted)
+- H5 security — ✅ **explicit H5 enforcement test**(`test_llm_decorator_h5_no_prompt_or_answer_text_emitted`)— NO prompt / answer text reaches Langfuse cloud;cred rotation emergency procedure documented runbook §7
+- H6 test coverage — ✅ +7 tests for critical C07 LLM decorator + composition + H5 security
+
+### Decisions / OQ summary
+- No OQ change(F5.1 Q6 owner + F4 cohort onboarding 仍 W9 D3+ deferred per W9 D1 cont re-baseline)
+- No ADR triggered W9 D2(observe_llm_async + runbook 全 architecture.md §3.1 + §7.4 spec implementation;non-architectural living docs)
+
+### Open / blocked
+- ⏸ F5.1 Q6 Real query collection owner — W9 D3 actionable(Chris with Stakeholder)
+- ⏸ F5.2 progressive scope continued — W9 D3+ apply `observe_llm_async` to `CragGrader.grade` + `CragGrader.rewrite_query`(grader / rewriter LLM cost attribution)
+- ⏸ F5.3 Real query log scaffolding(mock corpus)— W9 D3-D4 actionable
+- ⏸ F4.2 Onboarding doc draft — W9 D3-D4 actionable
+- ⏸ C11 dependency_overrides cleanup(W8 retro § Carry-over)— W10 polish window
+- ⏸ Runbook real-incident exercise — W11+ Beta cohort onset(post-IT cred populate)post-mortem updates per `infrastructure/runbook/README.md` §10 update history
+
+### Commit reference
+- W9 D2 commit `_(pending — 1+2 parallel batch)`(W9 D2 single feat(observability,docs)+ docs(infra)batch per W7+W8+W9 D1 closeout pattern)
+
+---
+
+## Day 3 — _(pending)_
 
 ---
 

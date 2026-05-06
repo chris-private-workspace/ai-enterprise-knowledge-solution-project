@@ -22,7 +22,7 @@ import pytest
 import structlog
 
 from observability import langfuse_tracer
-from observability.observe import observe_async
+from observability.observe import observe_async, observe_llm_async
 
 
 @pytest.fixture(autouse=True)
@@ -249,3 +249,161 @@ async def test_decorator_composes_with_tenacity_retry() -> None:
     # Single trace span for the FINAL outcome (retries are internal).
     fake_client.trace.assert_called_once()
     assert fake_client.trace.call_args.kwargs["output"]["status"] == "ok"
+
+
+# ===========================================================================
+# observe_llm_async — W9 D2 F5.2 upgrade(client.generation()emit)
+# ===========================================================================
+
+
+@dataclass(slots=True, frozen=True)
+class _FakeLLMResult:
+    deployment: str
+    input_tokens: int
+    output_tokens: int
+    latency_ms: int
+    refused: bool
+
+
+async def test_llm_decorator_emits_generation_with_usage() -> None:
+    """LLM decorator maps deployment + token counts to client.generation()."""
+    fake_client = MagicMock()
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+
+    @observe_llm_async(
+        name="synthesizer.synthesize",
+        extra_metadata_attrs=("latency_ms", "refused"),
+    )
+    async def fake_synthesize() -> _FakeLLMResult:
+        return _FakeLLMResult(
+            deployment="gpt-5-5",
+            input_tokens=1024,
+            output_tokens=256,
+            latency_ms=1500,
+            refused=False,
+        )
+
+    result = await fake_synthesize()
+    assert result.input_tokens == 1024
+
+    fake_client.generation.assert_called_once()
+    kwargs = fake_client.generation.call_args.kwargs
+    assert kwargs["name"] == "synthesizer.synthesize"
+    assert kwargs["model"] == "gpt-5-5"
+    assert kwargs["usage"] == {"input": 1024, "output": 256, "unit": "TOKENS"}
+    md = kwargs["metadata"]
+    assert md["status"] == "ok"
+    assert md["duration_ms"] >= 0
+    assert md["latency_ms"] == 1500
+    assert md["refused"] is False
+    # trace() NOT called when generation() is available
+    fake_client.trace.assert_not_called()
+
+
+async def test_llm_decorator_skips_usage_when_tokens_missing() -> None:
+    """Result without token counts → generation emitted without usage field."""
+    fake_client = MagicMock()
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+
+    @dataclass
+    class _NoTokens:
+        deployment: str
+
+    @observe_llm_async(name="missing.tokens")
+    async def fn() -> _NoTokens:
+        return _NoTokens(deployment="gpt-5-5")
+
+    await fn()
+    kwargs = fake_client.generation.call_args.kwargs
+    assert kwargs["model"] == "gpt-5-5"
+    assert "usage" not in kwargs
+
+
+async def test_llm_decorator_falls_back_to_trace_when_no_generation() -> None:
+    """Older SDK without generation() — wrapper falls back to trace()."""
+    fake_client = MagicMock(spec=["trace"])  # NO generation attribute
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+
+    @observe_llm_async(name="legacy.client")
+    async def fn() -> _FakeLLMResult:
+        return _FakeLLMResult("gpt-5-5", 100, 50, 200, False)
+
+    await fn()
+    fake_client.trace.assert_called_once()
+
+
+async def test_llm_decorator_no_op_when_client_absent() -> None:
+    """Local dev / CI — no client → wrapper returns unchanged result."""
+    @observe_llm_async(name="solo.test")
+    async def fn() -> _FakeLLMResult:
+        return _FakeLLMResult("gpt-5-5", 100, 50, 200, False)
+
+    result = await fn()
+    assert result.input_tokens == 100
+
+
+async def test_llm_decorator_swallows_generation_emit_failure(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """`client.generation()` raises → wrapper still returns result + warns."""
+    fake_client = MagicMock()
+    fake_client.generation.side_effect = RuntimeError("network down")
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+    caplog.set_level(logging.WARNING, logger="ekp.observe")
+
+    @observe_llm_async(name="emit.failing")
+    async def fn() -> _FakeLLMResult:
+        return _FakeLLMResult("gpt-5-5", 100, 50, 200, False)
+
+    result = await fn()
+    assert result.input_tokens == 100
+
+    warn_msgs = "\n".join(
+        r.getMessage() for r in caplog.records if r.name == "ekp.observe"
+    )
+    assert "generation_emit_failed" in warn_msgs
+
+
+async def test_llm_decorator_propagates_exception_with_error_status(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    fake_client = MagicMock()
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+    caplog.set_level(logging.WARNING, logger="ekp.observe")
+
+    @observe_llm_async(name="llm.failing")
+    async def fn() -> _FakeLLMResult:
+        raise TimeoutError("LLM call exceeded 30s")
+
+    with pytest.raises(TimeoutError):
+        await fn()
+
+    blob = "\n".join(r.getMessage() for r in caplog.records if r.name == "ekp.observe")
+    assert "llm_stage_failed" in blob
+    assert "TimeoutError" in blob
+
+    # Generation emitted with error status + no usage(model+tokens unknown)
+    fake_client.generation.assert_called_once()
+    kwargs = fake_client.generation.call_args.kwargs
+    assert kwargs["metadata"]["status"] == "error"
+    assert "model" not in kwargs
+    assert "usage" not in kwargs
+
+
+async def test_llm_decorator_h5_no_prompt_or_answer_text_emitted() -> None:
+    """H5 SECURITY:wrapper passes ONLY token counts + model + metadata —
+    NEVER prompt content / answer content / chunk text."""
+    fake_client = MagicMock()
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+
+    @observe_llm_async(name="h5.privacy")
+    async def fn() -> _FakeLLMResult:
+        return _FakeLLMResult("gpt-5-5", 100, 50, 200, False)
+
+    await fn()
+    kwargs = fake_client.generation.call_args.kwargs
+    # Crucial H5 assertion:no `input` / `output` text fields ever emitted
+    assert "input" not in kwargs
+    assert "output" not in kwargs
+    # Only structured fields:name, model, usage, metadata
+    assert set(kwargs.keys()) <= {"name", "model", "usage", "metadata"}

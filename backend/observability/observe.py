@@ -138,3 +138,150 @@ def _emit_trace_safe(
             error_type=type(exc).__name__,
             error_message=str(exc),
         )
+
+
+def observe_llm_async(
+    name: str | None = None,
+    *,
+    model_attr: str = "deployment",
+    input_tokens_attr: str = "input_tokens",
+    output_tokens_attr: str = "output_tokens",
+    extra_metadata_attrs: tuple[str, ...] = (),
+) -> Callable[[Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]]:
+    """LLM-stage decorator emitting Langfuse `client.generation()`(W9 D2 F5.2 upgrade).
+
+    Difference from `observe_async`:
+      - Emits `client.generation()` instead of `client.trace()` so Langfuse
+        cost-attribution dashboard sees the LLM call as a billable
+        generation event(per-model cost table multiplies usage tokens)
+      - Maps result attributes to generation event shape:`model` from
+        `model_attr` + `usage` from `input_tokens_attr` + `output_tokens_attr`
+      - Anything else listed in `extra_metadata_attrs` lands in metadata
+
+    `/observability/cost-summary` endpoint thus rises from static projection
+    (architecture.md §9 baseline)to **real-time per-query USD attribution**
+    once Langfuse client is wired and `client.generation_dashboard_api` reads
+    these events(W11+ Beta cohort onset)。
+
+    Apply to LLM-stage methods only(synthesizer.synthesize / crag.grade /
+    crag.rewrite_query)。Non-LLM stages keep `observe_async`(retrieve / refine
+    orchestration)。
+
+    H5 SECURITY:wrapper does NOT pass `input` / `output` text to Langfuse —
+    only token COUNTS。Full prompt / answer payload remains private(per
+    CLAUDE.md §5.5 — never log full LLM prompts to plaintext)。Langfuse
+    cloud receives:model name + input/output token counts + metadata fields;
+    NO prompt content, NO answer content, NO chunk_text。
+    """
+
+    def decorator(fn: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
+        gen_name = name or getattr(fn, "__qualname__", fn.__name__)
+
+        @functools.wraps(fn)
+        async def wrapper(*args: Any, **kwargs: Any) -> T:
+            client = get_langfuse_client()
+            start = time.perf_counter()
+
+            try:
+                result = await fn(*args, **kwargs)
+            except Exception as exc:  # noqa: BLE001 — re-raised below
+                duration_ms = int((time.perf_counter() - start) * 1000)
+                _logger.warning(
+                    "llm_stage_failed",
+                    stage=gen_name,
+                    duration_ms=duration_ms,
+                    error_type=type(exc).__name__,
+                    error_message=str(exc),
+                )
+                _emit_generation_safe(
+                    client,
+                    gen_name,
+                    model=None,
+                    input_tokens=None,
+                    output_tokens=None,
+                    metadata={"duration_ms": duration_ms, "status": "error"},
+                )
+                raise
+
+            duration_ms = int((time.perf_counter() - start) * 1000)
+            model = getattr(result, model_attr, None)
+            input_tokens = getattr(result, input_tokens_attr, None)
+            output_tokens = getattr(result, output_tokens_attr, None)
+
+            metadata: dict[str, Any] = {"duration_ms": duration_ms, "status": "ok"}
+            for attr in extra_metadata_attrs:
+                value = getattr(result, attr, None)
+                if value is not None:
+                    metadata[attr] = value
+
+            _logger.info(
+                "llm_stage_complete",
+                stage=gen_name,
+                model=model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                **metadata,
+            )
+            _emit_generation_safe(
+                client,
+                gen_name,
+                model=model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                metadata=metadata,
+            )
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+def _emit_generation_safe(
+    client: object | None,
+    gen_name: str,
+    *,
+    model: str | None,
+    input_tokens: int | None,
+    output_tokens: int | None,
+    metadata: dict[str, Any],
+) -> None:
+    """Best-effort Langfuse generation emit — swallow every failure mode.
+
+    Generation event shape per Langfuse SDK 2.x:
+        client.generation(
+            name=..., model=..., usage={"input": N, "output": M, "unit": "TOKENS"},
+            metadata=...,
+        )
+
+    `usage` skipped when token counts are None(graceful degradation when
+    upstream stage didn't capture tokens)。Tracer must NEVER block the wrapped
+    function path on observability error — same H5 + Karpathy §1.2 pattern as
+    `_emit_trace_safe`。
+    """
+    if client is None:
+        return
+    gen_fn = getattr(client, "generation", None)
+    if not callable(gen_fn):
+        # Fallback to trace() when generation() not available — keeps cost
+        # attribution best-effort across SDK versions
+        _emit_trace_safe(client, gen_name, output={"status": metadata.get("status", "ok")}, metadata=metadata)
+        return
+    kwargs: dict[str, Any] = {"name": gen_name, "metadata": metadata}
+    if model is not None:
+        kwargs["model"] = model
+    if input_tokens is not None and output_tokens is not None:
+        kwargs["usage"] = {
+            "input": input_tokens,
+            "output": output_tokens,
+            "unit": "TOKENS",
+        }
+    try:
+        gen_fn(**kwargs)
+    except Exception as exc:  # noqa: BLE001
+        _logger.warning(
+            "generation_emit_failed",
+            stage=gen_name,
+            error_type=type(exc).__name__,
+            error_message=str(exc),
+        )

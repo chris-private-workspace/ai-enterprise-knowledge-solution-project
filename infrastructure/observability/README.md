@@ -38,6 +38,49 @@ Lifecycle:
   - Import / init failure → singleton stays `None`(structured warning logged;never raises)
 - `flush_tracer()` runs in FastAPI `lifespan` shutdown finally block — drains queued events before process exit so short-lived tasks(CI / one-shot scripts)don't lose traces
 
+## LLM stage decoration(W9 D2 progressive upgrade)
+
+W9 D1 baseline shipped `@observe_async` emitting `client.trace()` for timing
++ structured metadata。W9 D2 adds **`@observe_llm_async`** specifically for
+LLM-stage methods,emitting Langfuse `client.generation()` so cost-attribution
+dashboard sees the call as a billable generation event(per-model token cost
+table multiplies usage tokens automatically when Langfuse cloud receives the
+event)。
+
+```python
+from observability.observe import observe_llm_async
+
+@observe_llm_async(
+    name="synthesizer.synthesize",
+    model_attr="deployment",          # SynthesisResult.deployment → Langfuse "model"
+    input_tokens_attr="input_tokens",
+    output_tokens_attr="output_tokens",
+    extra_metadata_attrs=("latency_ms", "refused"),
+)
+@retry(...)  # tenacity stack composes correctly per test_decorator_composes_with_tenacity_retry
+async def synthesize(self, query, chunks) -> SynthesisResult:
+    ...
+```
+
+Generation event shape sent to Langfuse:
+```python
+client.generation(
+    name="synthesizer.synthesize",
+    model="gpt-5-5",
+    usage={"input": 1024, "output": 256, "unit": "TOKENS"},
+    metadata={"duration_ms": 1500, "status": "ok", "latency_ms": 1500, "refused": False},
+)
+```
+
+**H5 SECURITY note**(per CLAUDE.md §5.5):wrapper passes ONLY `model` + `usage`
+(token counts)+ metadata(no prompt content)。**Full prompt / answer text
+NEVER leaves the backend** to Langfuse cloud — verified by
+`test_llm_decorator_h5_no_prompt_or_answer_text_emitted`。
+
+W9 D3+ progressive scope:apply `@observe_llm_async` to `crag.grade` + `crag.rewrite_query`
+similarly。W11+ Beta cohort onset:Langfuse generations API populates real-time
+USD per query in `/observability/cost-summary` rows(replaces static §9 projection)。
+
 ## Cost dashboard(F5.2)
 
 `GET /observability/cost-summary` returns the projected daily spend dashboard:

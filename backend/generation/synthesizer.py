@@ -28,7 +28,7 @@ from tenacity import (
 )
 
 from generation.prompt_builder import REFUSAL_PHRASE, build_prompt
-from observability.observe import observe_async
+from observability.observe import observe_llm_async
 from retrieval.retrieval_engine import RetrievedChunk
 
 logger = structlog.get_logger(__name__)
@@ -103,9 +103,12 @@ class Synthesizer:
             await self._client.close()
             self._client = None
 
-    @observe_async(
+    @observe_llm_async(
         name="synthesizer.synthesize",
-        capture_attrs=("input_tokens", "output_tokens", "latency_ms", "refused"),
+        model_attr="deployment",
+        input_tokens_attr="input_tokens",
+        output_tokens_attr="output_tokens",
+        extra_metadata_attrs=("latency_ms", "refused"),
     )
     @retry(
         retry=retry_if_exception_type((RateLimitError, APITimeoutError)),
