@@ -130,6 +130,8 @@ status: active   # `active` 自 W11 D1(2026-06-09)— Chris W10 closeout sign-of
 ### Commit reference
 
 - W11 D1 batch commit `4be2c17`(F4.1-F4.4 runbook AF1-AF4 + F5.3 Tier 2 review draft + W11 frontmatter flip per Chris sign-off authorization)
+- W11 D1 backfill commit `185ca82`(F4.1-F4.4 + F5.3 progress Day 1 commit hash backfill)
+- W11 D1 F5.2 same-day batch commit `433a31d`(Q4 pricing rate Option B path active + realtime_cost.py docstring/comment Karpathy §1.3 surgical update + decision-form Q4 sync + prep deck §6.1 Decision recorded + checklist F5.2 tick + Day 1 entry F5.2 sub-section append)
 
 ---
 
