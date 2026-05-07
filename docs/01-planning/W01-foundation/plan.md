@@ -4,7 +4,7 @@ name: "Foundation Setup"
 sprint_week: W1
 start_date: 2026-04-30
 end_date: 2026-05-04          # planned, 5 工作日
-status: active
+status: closed                # closed 2026-05-02 W1 末(Foundation phase complete;F1-F8 done;commits dc7e37f / 740de4c / c38710f / 0a2673d + W1 retro);retroactive frontmatter sync per W11 D1 housekeeping(plan.md missed during original closeout — checklist.md + progress.md 已 closed)
 spec_refs:
   - architecture.md §6.1 W1 row
   - architecture.md §3.3      # multi-format ingestion

@@ -4,7 +4,7 @@ name: "Multi-Format Ingestion + Hybrid Retrieval Baseline"
 sprint_week: W2
 start_date: 2026-05-03
 end_date: 2026-05-07          # planned, 5 工作日 (D1=Sun ... D5=Thu) — shifted 2 days earlier per 2026-05-03 Chris call (originally D1=2026-05-05 Mon ... D5=2026-05-09 Fri)
-status: active                 # draft | active | closed
+status: closed                 # draft | active | closed — closed 2026-05-04 W2 D5 末(Gate 1 PASS R@5=0.9722 LIVE post-truststore mitigation;F1-F9 + 5 daily batches f30f13a / 170e3db / 28341b8 / 2b4bb7e / 072b95b);retroactive frontmatter sync per W11 D1 housekeeping(plan.md missed during original closeout — progress.md 已 closed)
 spec_refs:
   - architecture.md §6.1 W2 row
   - architecture.md §3.3       # multi-format ingestion

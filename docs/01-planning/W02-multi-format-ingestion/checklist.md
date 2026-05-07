@@ -1,8 +1,8 @@
 ---
 phase: W02-multi-format-ingestion
 plan_ref: ./plan.md
-status: in-progress
-last_updated: 2026-05-03
+status: closed                 # closed 2026-05-04 W2 D5 末;PROCESS.md v2.0 enum = draft | active | closed(`in-progress` 屬 v1.0 vocabulary remnant);retroactive frontmatter sync per W11 D1 housekeeping
+last_updated: 2026-06-09
 ---
 
 # Phase W02 — Checklist
