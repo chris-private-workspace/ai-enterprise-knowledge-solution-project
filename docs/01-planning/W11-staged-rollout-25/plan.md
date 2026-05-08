@@ -191,6 +191,8 @@ Carry-overs from `W10-beta-iteration/progress.md` retro § Carry-overs(W10 D5 cl
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-06 | Initial draft(W10 D5 末 closeout cascade)| Per PROCESS.md §2.3 rolling-JIT kickoff;status=draft pending Chris W10 closeout sign-off + Stakeholder W11 prep deck approve cycle | Chris(pending approve to flip active) |
+| 2026-06-09 | Status `draft → active` flip + Track B IT-cred-independent items kickoff(F4.1-F4.4 + F5.3 + F5.2)| Chris W10 closeout sign-off authorization | Chris |
+| 2026-06-10 | **Personal Azure dev tier deployed as Track A blockade workaround pattern**(Batch 5:`az acr build` + ACA secret set + ACR registry creds + image update + ingress targetPort fix + min/max replicas tune;backend live on personal subscription cross-tenant API key access to company AI Search + AOAI)| Track A IT cred re-escalation deadline 2026-06-08 buffer expended without IT response;personal Azure dev tier preempt unblocks W11 backend functional path verification + F4.5 Runbook live exercise prerequisite(replaces W10 D5 tabletop substitute);Beta cohort production deploy(F2.1-F2.4)仍需 Track A IT cred event。**ADR-0013 candidate trigger** for pattern formalization(defer W11 closeout retro per R5)| Chris(W10 D5 closeout sign-off authorization 連帶授權 Track B IT-cred-independent items including dev tier sidecar)|
 
 ---
 

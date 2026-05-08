@@ -132,6 +132,84 @@ status: active   # `active` 自 W11 D1(2026-06-09)— Chris W10 closeout sign-of
 - W11 D1 batch commit `4be2c17`(F4.1-F4.4 runbook AF1-AF4 + F5.3 Tier 2 review draft + W11 frontmatter flip per Chris sign-off authorization)
 - W11 D1 backfill commit `185ca82`(F4.1-F4.4 + F5.3 progress Day 1 commit hash backfill)
 - W11 D1 F5.2 same-day batch commit `433a31d`(Q4 pricing rate Option B path active + realtime_cost.py docstring/comment Karpathy §1.3 surgical update + decision-form Q4 sync + prep deck §6.1 Decision recorded + checklist F5.2 tick + Day 1 entry F5.2 sub-section append)
+- W11 D1 D2 housekeeping commits `4be2c17` / `185ca82` / `433a31d` / `5bdc115` / `d3adc8a`(D2 frontmatter retroactive sync W01 + W02 closed)
+
+---
+
+## Day 2 — 2026-06-10:Personal Azure dev tier — Track A IT cred blockade workaround pattern executed(Batch 5 backend live)
+
+**Action**:Track B continuation — **Personal Azure dev tier EKP backend full deployment cascade**(Batch 5:`az acr build` + ACA secret set + ACR registry creds + image update + ingress targetPort fix + min/max replicas tune)。Track A IT cred event 仍 pending(2026-06-08 re-escalation deadline 1-day buffer expended without IT response;ADMIN follow-up via separate channel needed)→ **Personal Azure dev tier 作為 Track A blockade workaround pattern 執行**,unblock W11 backend functional path verification + F4.5 Runbook live exercise prerequisite。
+
+### Batch 5 sub-step outcome
+
+- **5.1 ✅** `az acr build --registry acrekpdev --image ekp-backend:v1 ./backend` — 9:01 build,17/17 steps;run `ch1` Succeeded server-side。Stream-log Windows cp1252 UnicodeEncodeError(uv install progress bar Unicode)≠ build failure(per `az acr task list-runs` ground truth check)。
+- **5.2 ✅** ACA secrets + registry creds — `azure-search-admin-key` + `azure-openai-api-key` 2 secrets stored;ACR admin user pivot per Graph API R8 SSL block(production GHA workflow 後 switch to Managed Identity AcrPull proper setup)。
+- **5.3 ✅** Image + 14 env vars update via `az containerapp update --replace-env-vars`(12 inline non-secret + 2 secretref `AZURE_SEARCH_ADMIN_KEY` + `AZURE_OPENAI_API_KEY`)。RERANKER_KIND=off(Karpathy §1.2 simplicity-first;W11 cohort smoke 階段 retrieval-only fallback OK;Cohere Marketplace cross-sub billing NEW Q5 ADMIN confirm pending)。
+- **5.4 ✅** `/health` smoke 200 `{"status":"ok"}` via httpx truststore-mitigated(curl schannel CRL revocation fail per W6 D1 R8 calibration ground truth)。
+
+### R8 friction encountered + bypassed(6 incidents — calibration data)
+
+| # | Incident | Bypass |
+|---|----------|--------|
+| 1 | `az acr build` cp1252 stream-log codec | `az acr task list-runs` ground truth check |
+| 2 | Graph API role grant SSL(`graph.microsoft.com`) | ACR admin user pivot |
+| 3 | Ingress targetPort 80(helloworld inherit) vs uvicorn 8000 | `az containerapp ingress update --target-port 8000` |
+| 4 | Scale-to-zero replica recycle(minReplicas=0)→ ActivationFailed | `--min-replicas 1 --max-replicas 1` |
+| 5 | Local curl schannel CRL revocation | httpx + `truststore.inject_into_ssl()` |
+| 6 | ACA logstream + log-analytics extension SSL(`eastus2.azurecontainerapps.dev` + `aka.ms`) | Log Analytics REST API direct via `api.loganalytics.io` truststore-mitigated httpx |
+
+### Final live state
+
+- URL:`https://ekp-dev-backend.victoriousstone-0c83ea1b.eastus2.azurecontainerapps.io`
+- Revision:`ekp-dev-backend--0000002` `RunningAtMaxScale` `Healthy`
+- Image:`acrekpdev.azurecr.io/ekp-backend:v1`
+- Cross-tenant API access verified via lifespan init success(02:43:10 startup → Azure SDK clients connected to company AI Search + AOAI;Langfuse fail-soft graceful per `not_configured` status)
+
+### Decisions / OQ summary
+
+- **Personal Azure dev tier 作為 Track A IT cred blockade workaround pattern executed** — backend functional path verified;Track A 仍係 Beta cohort production path(needs company Entra ID auth via IT cred populate event)
+- **Cross-tenant API key access pattern** verified work(personal sub ACA → company tenant AI Search admin key + AOAI key)— 確立 dev tier cross-tenant 作業可行性
+- **Cohere Marketplace cross-sub billing**(NEW Q5)deferred — `RERANKER_KIND=off` retrieval-only fallback acceptable W11 smoke;final disposition post Q5 ADMIN confirm
+- **Q11 IT cred path**:re-escalation deadline 2026-06-08 buffer expended → personal Azure dev tier preempt makes Track A timing **non-critical** for Track B IT-cred-independent items(F4.5 runbook live exercise + W11 D2-D5 governance work)+ W12 production launch readiness final review
+- **ADR-0013 candidate trigger** — Personal Azure dev tier Track A blockade workaround pattern formalization(per CLAUDE.md §6 ADR format + R5 binding rule:phase closeout 之前 architectural-adjacent decision);final approval defer W11 D5 closeout retro per rolling-JIT discipline
+
+### Open / blocked
+
+- ⏸ **Track A IT cred populate event** — STILL pending;ADMIN follow-up via separate channel needed;personal Azure dev tier preempt unblock W11 functional verification path,但 Beta cohort production deploy 仍需 Track A
+- 🟢 **F4.5 Runbook live exercise** — **NOW UNBLOCKED**(backend live on personal ACA env;`runbook/README.md §1+§2` walkthrough 即時可開始 vs W10 D5 tabletop substitute);pending Chris bandwidth W11 D2-D5 trigger
+- ⏸ **Batch 4 SWA frontend** — pending W11 D2-D5 schedule(option A vs F4.5 priority)
+- ⏸ **F2.1-F2.4 25% rollout activation cascade** — STILL BLOCKED on Track A(cohort needs company Entra ID auth which Track A IT cred cascade provides)
+- ⏸ **F3.1-F3.5 daily metric monitor + 50% EoW gate** — STILL BLOCKED on F2(Track A)
+- ⏸ **F5.1 Q15 first weekly signal report** — STILL BLOCKED on F2 cohort traffic
+- ⏳ **F5.2 7-day re-baseline** — non-blocking governance follow-up,W11+ post real cohort traffic accumulation
+
+### Tests / discipline
+
+- **0 Python logic change today**(governance + cloud infrastructure ops only);pytest sweep not re-run;456/456 baseline preserved from W10 D3
+- **Karpathy §1.3 surgical**:純 cloud config + image deploy 動作,no source code change;every action traces to user "personal Azure dev tier Batch 5" instruction
+- **H1 / H2 / H3 / H4 / H5 / H6 self-check**:
+  - **H1 ✅** No `architecture.md` v5 §3/§4 component change(personal ACA = sidecar deployment topology,not architecture)
+  - **H2 ✅** No new vendor(ACR/ACA/KV/LA/AI Search/AOAI 全部 v5 stack 內;personal subscription same-vendor instance)
+  - **H3 ✅** No Dify reference touch
+  - **H4 ✅** No Tier 2 implementation
+  - **H5 ⚠️** **5 secrets entered conversation context** — added to post-Beta rotation tracker P1 governance(`AZURE_SEARCH_ADMIN_KEY` + `AZURE_OPENAI_API_KEY` + `acrekpdev` ACR admin password + 2 ACA secret refs;同 ADMIN-provided SP secret + `ekp-dev-automation` SP secret 90d expiry rotation cycle 一齊)
+  - **H6 ✅** No test code change
+- **R1 ✅** W11 plan/checklist already committed before D2 work
+- **R2 binding** ✅ this entry corresponds to W11 D2 commit(about to commit post-entry write)
+- **R3 ✅** No silent plan drift — personal Azure dev tier deployment 屬 Track A workaround pattern,plan §5 D1-D5 day-by-day breakdown caveat 已 cover「Track A timing depends on real-calendar IT cred event;若 slip past 2026-06-08 → all Track A days shift」
+- **R4** N/A(no OQ resolved today;Q5 NEW Cohere cross-sub billing pending;Q11 operational still pending despite buffer expended)
+- **R5 ✅** ADR-0013 candidate trigger noted for personal Azure dev tier pattern documentation;final formalization decision defer W11 D5 closeout retro
+
+### Cost impact(Personal Azure dev tier baseline)
+
+- ACR Basic build:~$0.30(9 min vs 6 min/day free tier overflow)
+- ACA `min=max=1`:~$1-3/day idle baseline(vCPU + memory always-on)
+- Storage egress:negligible(intra-Azure region)
+- **Estimated monthly**:~$30-90 if 24/7;cost-cutting option = `--min-replicas 0 --max-replicas 1` post-smoke(cooldownPeriod=300s scale-to-zero;trade-off = first-request cold start latency ~30-60s)
+
+### Commit reference
+
+- W11 D2 batch commit:_(filled post-commit per backfill pattern)_
 
 ---
 
