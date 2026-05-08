@@ -231,7 +231,7 @@ status: active   # `active` 自 W11 D1(2026-06-09)— Chris W10 closeout sign-of
    - **意義**:SME labeling 必須 redo based on D365 F&O domain 而非 MFP — Q14 ground truth labeler(Chris Lai,Resolved 2026-05-01)real labeling work scope clarified
    - **W6 D5 final eval Recall@5=0.9722 baseline 仍 valid**:測量嘅係 retrieval pipeline mechanism correctness;真實 SME-labeled query distribution 後 metric 可能 variance(上下浮動 reasonable Beta cohort signal range)
    - **Carry-over to W11 D5 retro**:promote 為 explicit Surprises / discoveries entry + carry-over candidate to Beta plan v1 §2 SME labeling task scope adjustment
-   - **W11 D2 cont anchor(2026-06-10 末段)**:formal clarification memo created `docs/03-implementation/drive-corpus-scope-clarification-W11-d2.md`(7 sections);decision-form.md Q14 Notes row appended cross-ref;Q14 status `Resolved` preserved(corpus scope clarification 屬 implementation detail,non-decision)
+   - **W11 D2 cont anchor(2026-06-10 末段,commit `9e94e01`)**:formal clarification memo created `docs/03-implementation/drive-corpus-scope-clarification-W11-d2.md`(6 sections + cross-ref index);decision-form.md Q14 Notes row appended cross-ref;Q14 status `Resolved` preserved(corpus scope clarification 屬 implementation detail,non-decision)
 
 2. **🆕 KB Manager 喺 fresh ACA deploy = empty(`GET /kb` 返 `[]`)**
    - Backend KB Manager **in-memory only**(per W1 baseline + architecture.md §4.3)— fresh personal ACA deploy = no KB registered
