@@ -362,7 +362,7 @@ AF3 W11 D1 edit text 寫「synthesizer init fails gracefully in lifespan startup
 - W11 D2 backfill commit `34525be`(F4.5 commit hash backfill into F4.5 sub-section + runbook §10 history row)
 - W11 D2 Path C2 F4.5 AF3 Option B verify commit `4e390e6`(Option B verified NOT viable + W11 D5 retro decision narrowed Option A only path + runbook §2 AF3 LIVE EXERCISE WARNING + §10 history 2026-06-10 cont row;ACA revision sequence `--0000007 → --0000008 RESTORE`)
 - W11 D2 Path C2 backfill commit `1ac02f6`(commit hash backfill into Day 2 entry + runbook history)
-- W11 D2 Path C1 Batch 4 frontend deploy attempt commit:_(filled post-commit per backfill pattern)_
+- W11 D2 Path C1 Batch 4 frontend deploy attempt commit `cfab48a`(SWA→ACA pivot + Dockerfile NEXT_PUBLIC_* build args 5 ARG + 5 ENV;deploy BLOCKED Windows env chain;~70 line sub-block + final scorecard + 7 carry-overs to W11 D5 retro)
 
 #### Path C1 — Batch 4 frontend deploy ATTEMPT(2026-06-10 cont 2;BLOCKED but Dockerfile improvement preserved)
 
