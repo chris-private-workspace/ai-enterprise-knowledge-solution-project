@@ -256,7 +256,7 @@ $ grep oklch frontend/components/auth/brand-panel.tsx | wc -l
 
 ### Commit
 
-- `<TBD>` feat(frontend,docs): W13 D4 F4 V9 Register 3-step wizard + BrandPanel rule-of-2 extract
+- `79a3b67` feat(frontend,docs): W13 D4 F4 V9 Register 3-step wizard + BrandPanel rule-of-2 extract
 
 ---
 
