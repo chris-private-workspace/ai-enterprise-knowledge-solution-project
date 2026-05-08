@@ -421,7 +421,7 @@ last_updated: 2026-06-10
 
 ### Commit reference
 
-- W12 D4 batch commit _(this entry;to be backfilled per W11 D2 housekeeping pattern)_(F4.1-F4.13 admin-shell rebuild + user-menu DropdownMenu + 8 pages tokens migration + grep oklch=0 verify + type-check pass + checklist F4.1-F4.13 tick + plan changelog 2026-06-10 night cont 2 W12 D4 plan-day collapse entry + Day 4 entry initialize)
+- W12 D4 batch commit `fd85741`(F4.1-F4.13 admin-shell rebuild + user-menu DropdownMenu + 8 pages tokens migration + grep oklch=0 verify + type-check pass + checklist F4.1-F4.13 tick + plan changelog 2026-06-10 night cont 2 W12 D4 plan-day collapse entry + Day 4 entry initialize)
 
 ---
 
