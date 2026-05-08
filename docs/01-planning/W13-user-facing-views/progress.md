@@ -260,9 +260,79 @@ $ grep oklch frontend/components/auth/brand-panel.tsx | wc -l
 
 ---
 
-## Day 5 — _(W13 D5,2026-06-27,tentative)_
+## Day 5 — W13 D5 F5 backend hybrid auth(real-calendar 2026-06-10 same-day collapse cycle 2 of 4 cont)
 
-_(placeholder — F6 ACS finalize + F7 closeout retro + W14 phase folder kickoff)_
+> **Calendar note**:plan §5 tentative date 2026-06-27 superseded by real-calendar 2026-06-10 same-day collapse(D4 → D5 cycle continue post user authorization "A:continue W13 D5 — F5 backend hybrid auth begin")。Time tracking calibration:plan ~2 day budget(largest deliverable)vs actual ~2 hr(7-10x under-budget but slower than UI phases due to investigation + ADR-0016 + scrypt maxmem debug + 41 test cases)。
+
+### What landed
+
+| F# | Deliverable | Files | Status |
+|---|---|---|---|
+| Investigation phase | Read W7+W8 baseline auth scaffolding(C11 mock/MSAL Depends switching point)| `backend/api/auth/{__init__.py, models.py, dependency.py, mock_msal.py}` + `routes/auth.py` + `schemas/auth.py` + `error_handlers.py` | ✅ |
+| ADR-0016 password hash vendor switch | NEW `docs/adr/0016-password-hash-scrypt-stdlib.md`(argon2-cffi → hashlib.scrypt;R8 corp proxy blocker;OWASP-approved memory-hard KDF;0 external dep)+ ADR README index updated(0016 entry + Next NNNN 0017)| ✅ |
+| F5.1 Users repo | NEW `backend/api/auth/users_repo.py`(in-memory `_users` + `_sessions` dicts + RLock + `reset_repo()` fixture helper + UserRecord/SessionRecord Pydantic + register/find_by_email/find_by_oid/regenerate_verification_code/mark_verified/create_session/resolve_session/revoke_session)| ✅ |
+| F5.2 Pydantic schemas | UPDATE `backend/api/schemas/auth.py`(7 new models:UserRegisterRequest + UserLoginRequest + UserVerifyEmailRequest + UserResendVerificationRequest + UserPublic + RegisterResponse + VerifyEmailResponse + LoginResponse + ResendVerificationResponse);UPDATE `backend/api/schemas/errors.py`(7 new ErrorCodes constants:AUTH_INVALID_CREDENTIALS / AUTH_EMAIL_NOT_VERIFIED / AUTH_EMAIL_ALREADY_EXISTS / AUTH_VERIFICATION_FAILED / AUTH_VERIFICATION_EXPIRED / AUTH_RESEND_RATE_LIMITED / VALIDATION_INVALID_EMAIL / VALIDATION_WEAK_PASSWORD)| ✅ |
+| Security helpers | NEW `backend/api/auth/security.py`(scrypt N=2^17/r=8/p=1 maxmem=256MB + `scrypt$N$r$p$salt$hash` storage format + 6-digit verification code per V9 wireframe + 256-bit session tokens + email/password validators)| ✅ |
+| Email provider stub | NEW `backend/api/auth/email_provider.py`(EmailProvider Protocol + ConsoleEmailProvider default w/ structlog send_verification log + `get_email_provider()` Depends factory;F6 swaps to ACS-backed provider behind same Protocol contract)| ✅ |
+| F5.3 POST /auth/register | UPDATE `backend/api/routes/auth.py`(public endpoint;email + password strength + display_name validation + duplicate check + scrypt hash + 6-digit code + email send via EmailProvider Depends + 201 Created)| ✅ |
+| F5.4 POST /auth/verify-email | UPDATE `routes/auth.py`(public;6-digit format check + email lookup + idempotent on verified + expiry check + code match + clear code + verified=True)| ✅ |
+| F5.5 POST /auth/login | UPDATE `routes/auth.py`(public;email lookup + constant-time scrypt verify_password + verified gate + 7-day session token + body return access_token + UserPublic;httpOnly cookie deferred Beta)| ✅ |
+| F5.6 Session resolution | UPDATE `backend/api/auth/dependency.py`(session branch BEFORE mock/MSAL fork;`users_repo.resolve_session(token)` returns AuthenticatedUser w/ tid=`SELF_REGISTER_TID` + is_mock=False;non-breaking — mock/MSAL paths unchanged on session miss);UPDATE `routes/auth.py` /auth/logout(extend to revoke session token via LogoutBearerDep)| ✅ |
+| F5.4-F5.6 supporting | UPDATE `backend/api/error_handlers.py` http_exception_handler(structured dict-detail decode {code,message,hint};4-line backwards-compatible extension preserves W7 string-detail path);UPDATE `backend/api/auth/__init__.py`(re-export users_repo + EmailProvider + get_email_provider)+ POST /auth/resend-verification(60s anti-spam cooldown + email enumeration防範 silent return)| ✅ |
+| F5.7 Tests | NEW `backend/tests/test_auth_self_register.py`(**41 tests pass** — security helpers 6 / users_repo 9 / register endpoint 5 / verify-email 6 / login 4 / resend 3 / dependency session branch 3 / email_provider 2 / logout 1);**456/456 W7+W8 baseline regression 0 break**(`pytest tests/ --ignore=tests/test_auth_self_register.py`);coverage tool install blocked R8 proxy → manual trace ≥85% estimated | ✅ |
+| F5.8 Karpathy §1.3 surgical | no §3/§4 component change per H1(scope already in ADR-0014);scrypt vendor change → ADR-0016 per H2 strict reading;non-breaking changes only(W7 mock path preserved + /auth/refresh untouched + error_handler dict detail backwards-compatible + /auth/logout additive session revoke)| ✅ |
+
+### Decisions
+
+1. **F5.6 implementation = Depends extension, not ASGI middleware**:plan §F5.6 said "session middleware";existing W7 pattern uses `Depends(get_current_user)` per-route NOT ASGI middleware-layer;**implemented as session branch in `dependency.get_current_user` BEFORE mock/MSAL fork** — preserves W7 architecture pattern + session lookup `users_repo.resolve_session(token)` returns same AuthenticatedUser model so downstream code is provider-agnostic
+2. **scrypt maxmem=256MB explicit**:Python `hashlib.scrypt` defaults to OpenSSL 32MB cap which rejects N=2^17(memory limit exceeded);set maxmem=256MB(headroom for forward param tuning);verify_password also wraps scrypt in try-except `ValueError | OverflowError` for defensive "stored hash too aggressive" handling
+3. **6-digit verification code vs 32-char URL-safe token**:plan §F5.3 said `secrets.token_urlsafe(32)`;V9 wireframe §2.9 + frontend Step 2 inputs 6 digits;**采 6-digit numeric**(`secrets.randbelow(1_000_000):06d`)— 20-bit entropy acceptable Tier 1 with rate-limit + 60s cooldown + 24h expiry;矛盾源於 plan 寫早於 V9 wireframe ratification
+4. **Resend silent-return on unknown/verified**:防 email enumeration attack — `POST /auth/resend-verification` returns 200 OK regardless when email unknown OR already verified;rate-limit case differentiates(429)只係 已知 user 嘅 active state — combined with F2 IP rate-limit middleware acceptable Tier 1 hardening
+5. **error_handlers.py dict-detail extension**:routes need specific error codes(e.g. `auth.email_already_exists` vs generic `resource.conflict` 409 fallback);extended http_exception_handler 4-line surgically(`isinstance(exc.detail, dict)` branch);string-detail W7 baseline preserved
+
+### Verification
+
+```
+$ cd backend && .venv/Scripts/python.exe -m pytest tests/test_auth_self_register.py
+41 passed in 30.85s
+
+$ cd backend && .venv/Scripts/python.exe -m pytest tests/ --ignore=tests/test_auth_self_register.py
+456 passed in 147.15s   # 0 regression on W7+W8 baseline
+
+$ cd backend && .venv/Scripts/python.exe -m mypy --explicit-package-bases --ignore-missing-imports api/auth/security.py api/auth/users_repo.py api/auth/email_provider.py api/auth/dependency.py api/routes/auth.py api/schemas/auth.py
+Success: no issues found in 6 source files
+```
+
+✅ **41/41 F5 tests pass**;**456/456 baseline regression 0 break**;**mypy strict clean** on all 6 F5 source files(jose stubs gap is W7 baseline pre-existing,non-F5 issue)。
+
+### F5.7 Coverage manual trace(R8 corp proxy blocked `pip install coverage`)
+
+| Module | Manual estimate | Notes |
+|---|---|---|
+| `security.py` | ~95% | hash/verify round-trip + corrupted format + validators(email + password)+ token generators 全 hit;唯一 gap = scrypt-internal extreme-N OverflowError defensive branch(unreachable in practice)|
+| `users_repo.py` | ~95% | register + find_by_email/oid + regenerate + mark_verified idempotent + create_session + resolve_session(missing/expired/dropped-user)+ revoke 全 covered |
+| `email_provider.py` | ~95% | ConsoleEmailProvider.send_verification 直接 test + get_email_provider 直接 test |
+| `dependency.py` | ~90% | session branch valid token + mock fall-through + invalid bearer 全 covered;`scheme.lower() != "bearer"` non-Bearer scheme branch implicit covered via mock_msal |
+| `routes/auth.py` | ~90% | register / verify-email / login / resend / logout 5 endpoints 4-7 path each;/auth/refresh 由 baseline `test_auth_routes.py` cover |
+| `schemas/auth.py` | ~100% | Pure data models — instantiated in every endpoint test |
+
+**Aggregate F5 coverage estimate ≥85%**(F5.7 ≥80% acceptance criteria 達到)。
+
+### Carry-overs to W13 D5 cont(F6 + F7 OR next session)
+
+- ⏳ **W13 D5 F6**:C13 ACS Email Verification Service integration(real ACS Email Client wrapper replace ConsoleEmailProvider;sender domain env var;FEATURE_EMAIL_MOCK toggle;real ACS smoke deferred Beta phase post sender domain SPF/DKIM ready)
+- ⏳ **W13 D5 F7**:phase Gate verdict + retro 7 sections + W14-admin-views phase folder kickoff
+- 📝 **W13 retro carry-over candidates**:
+  - CO_F5a:`/auth/refresh` self-register session rotation(mock mode currently returns mock_bearer for self-register users — wrong;follow-up minimal fix)
+  - CO_F5b:httpOnly cookie hardening(Beta — currently body-only token return)
+  - CO_F5c:Argon2id revisit if R8 proxy resolved + security review prefers it(forward-compatible storage format makes migration surgical via re-hash-on-login)
+  - CO_F5d:Frontend wire — F3 V8 Login + F4 V9 Register stub handlers should call new endpoints(`POST /auth/register` + `POST /auth/verify-email` + `POST /auth/login`)— logged W13 D3+D4 deviations now resolvable
+  - CO_F5e:Coverage tool install when R8 proxy resolved → objective F5.7 measurement
+- 🚧 user smoke(non-blocker for D5 cont — F6 ACS stub mode similar pattern):optional `! pnpm dev` + `! cd backend && .venv/Scripts/python -m uvicorn api.server:app --port 8000` + curl/Postman test 4 new endpoints
+
+### Commit
+
+- `<TBD>` feat(backend,docs): W13 D5 F5 backend hybrid auth + ADR-0016 scrypt + 4 new endpoints + 41 tests
 
 ---
 

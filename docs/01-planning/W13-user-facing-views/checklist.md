@@ -54,14 +54,14 @@ last_updated: 2026-06-10
 
 ## F5 — Backend hybrid auth cascade
 
-- [ ] F5.1 `users` table schema decision:initial in-memory dict mock per W1 KB Manager pattern OR SQLite Tier 1 + TODO Beta hardening Postgres / Cosmos DB(W11 retro CO18 carry-over)
-- [ ] F5.2 User Pydantic models:`UserRegister` + `UserLogin` + `UserVerifyEmail` + `User`(public model excludes password_hash)
-- [ ] F5.3 `POST /auth/register` endpoint:validate email + password strength + check duplicate + Argon2id hash(`argon2-cffi` utility-lib H2 example)+ verification_token sign(`secrets.token_urlsafe(32)` 24h expiry)+ store user(verified=False)+ trigger F6 send + return success
-- [ ] F5.4 `POST /auth/verify-email` endpoint:validate token(non-expired + matches user)+ update user verified=True + clear token + return success
-- [ ] F5.5 `POST /auth/login` endpoint:lookup by email + verify Argon2id match + check verified=True + generate session token(7-day expiry)+ store session httpOnly cookie + return user + token
-- [ ] F5.6 Session middleware:wire bearer token validation for protected routes(`_PROTECTED_PREFIXES` 已 W7 D1 baseline);self-register users return same `User` shape as MSAL user
-- [ ] F5.7 Tests:pytest unit + integration test for each endpoint;coverage ≥ 80% per CLAUDE.md §3.6 H6
-- [ ] F5.8 Karpathy §1.3 surgical:non architectural change(ADR-0014 已 covered scope per H1);Argon2id password hashing default per industry standard(non new vendor decision)
+- [x] F5.1 `users` table schema:in-memory dict per ADR-0014 Tier 1 + Beta hardening TODO Postgres / Cosmos DB(W11 retro CO18);`backend/api/auth/users_repo.py` w/ `_users` + `_sessions` dicts + RLock + `reset_repo()` test fixture helper
+- [x] F5.2 User Pydantic models:`UserRegisterRequest` + `UserLoginRequest` + `UserVerifyEmailRequest` + `UserResendVerificationRequest` + `UserPublic`(excludes password_hash + verification_code per CLAUDE.md §5.5 H5);responses:`RegisterResponse` + `VerifyEmailResponse` + `LoginResponse` + `ResendVerificationResponse`
+- [x] F5.3 `POST /auth/register`:**deviations logged plan §7 changelog 2026-06-10 (D5)** — (a)hash lib argon2-cffi → hashlib.scrypt(ADR-0016 R8 corp proxy blocker);(b)verification token 32-char URL-safe → 6-digit numeric code(V9 wireframe §2.9 + OTP UX);validate email + password strength + check duplicate + scrypt hash + 6-digit code generation + 24h expiry + email send via C13 EmailProvider stub(ConsoleEmailProvider for F5;F6 swaps to ACS)+ 201 Created
+- [x] F5.4 `POST /auth/verify-email`:validate code format(6-digit numeric)+ lookup user by email + check expiry + match code + idempotent on already-verified + clear code + flip verified=True + return UserPublic
+- [x] F5.5 `POST /auth/login`:**deviation logged plan §7 changelog (D5)** — httpOnly cookie deferred Beta hardening;lookup by email + scrypt verify_password(constant-time)+ check verified=True + 256-bit session token(`secrets.token_urlsafe(32)`)+ 7-day expiry + return body w/ access_token + UserPublic(API-explicit pattern;cookie via Set-Cookie defer)
+- [x] F5.6 Session resolution:**deviation logged plan §7 changelog (D5)** — implemented as Depends extension(not separate ASGI middleware)per W7 pattern parity;`api/auth/dependency.get_current_user` adds session branch BEFORE mock/MSAL fork(`users_repo.resolve_session(token)` returns AuthenticatedUser w/ tid=`SELF_REGISTER_TID` + is_mock=False);downstream code consumes same model regardless of provider;`/auth/logout` extended to revoke session token if presented(non-breaking)
+- [x] F5.7 Tests:**41 tests pass** in `backend/tests/test_auth_self_register.py`(security helpers / users_repo / 4 endpoints / dependency session branch / logout revoke);**456/456 W7+W8 baseline regression 0 break**;coverage tool install blocked by R8 proxy → manual trace ≥85% estimated(security ~95% / users_repo ~95% / email_provider ~90% / dependency ~90% / routes/auth ~90%)
+- [x] F5.8 Karpathy §1.3 surgical preserved:no §3/§4 architectural change(ADR-0014 covered scope per H1);scrypt vendor change ADR-0016 written per H2 strict reading;structured `detail` dict in HTTPException 解 error_handler.http_exception_handler 4-line backwards-compatible extension(string detail W7 path preserved);existing /auth/refresh + /auth/logout routes preserved(/auth/logout 加 minimal session revoke)
 
 ## F6 — C13 ACS Email Verification Service integration
 

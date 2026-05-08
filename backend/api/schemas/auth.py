@@ -1,4 +1,4 @@
-"""C11 — auth endpoint request/response schemas (W7 D3 F1.5)."""
+"""C11 — auth endpoint request/response schemas (W7 D3 F1.5 + W13 D5 F5)."""
 
 from __future__ import annotations
 
@@ -21,3 +21,72 @@ class RefreshResponse(BaseModel):
 class LogoutResponse(BaseModel):
     status: str = Field(default="ok")
     is_mock: bool = Field(default=False)
+
+
+# --- W13 F5 self-register hybrid auth (per ADR-0014) -------------------------
+#
+# Three new public endpoints:
+#   POST /auth/register     → RegisterResponse(verified=False) + email sent
+#   POST /auth/verify-email → VerifyEmailResponse(verified=True)
+#   POST /auth/login        → LoginResponse(access_token + UserPublic)
+# Plus resend helper:
+#   POST /auth/resend-verification → ResendVerificationResponse
+
+
+class UserRegisterRequest(BaseModel):
+    email: str = Field(..., description="Login email — must be unique within the EKP self-register table")
+    password: str = Field(..., description="Plaintext password — hashed via scrypt before storage (ADR-0016)")
+    display_name: str = Field(..., description="Greeting name shown on /chat + admin views")
+
+
+class UserLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class UserVerifyEmailRequest(BaseModel):
+    email: str
+    code: str = Field(..., description="6-digit numeric verification code from email (V9 wireframe Step 2)")
+
+
+class UserResendVerificationRequest(BaseModel):
+    email: str
+
+
+class UserPublic(BaseModel):
+    """Sanitised user model returned to clients — never contains password_hash
+    or verification_code so accidental log/serialisation can't leak secrets."""
+
+    oid: str
+    email: str
+    display_name: str
+    verified: bool
+    is_mock: bool = Field(default=False)
+
+
+class RegisterResponse(BaseModel):
+    user: UserPublic
+    message: str = Field(default="Verification email sent — check your inbox.")
+
+
+class VerifyEmailResponse(BaseModel):
+    user: UserPublic
+    message: str = Field(default="Email verified. You can sign in now.")
+
+
+class LoginResponse(BaseModel):
+    """Issued by `POST /auth/login` for self-register users (per ADR-0014).
+
+    `access_token` is a server-side session token (not a JWT) — stored in the
+    in-memory sessions repo per Tier 1 scope (W11 retro CO18 → Beta hardening).
+    """
+
+    access_token: str
+    token_type: str = Field(default="Bearer")
+    expires_in: int = Field(..., description="Seconds until access_token expires (7 days)")
+    user: UserPublic
+
+
+class ResendVerificationResponse(BaseModel):
+    message: str = Field(default="Verification email resent.")
+    cooldown_seconds: int = Field(..., description="Seconds the client should disable Resend before next attempt")

@@ -29,6 +29,13 @@ class ErrorCodes:
     # Auth / 401 / 403
     AUTH_UNAUTHORIZED = "auth.unauthorized"
     AUTH_FORBIDDEN = "auth.forbidden"
+    # W13 F5 self-register hybrid auth (per ADR-0014)
+    AUTH_INVALID_CREDENTIALS = "auth.invalid_credentials"
+    AUTH_EMAIL_NOT_VERIFIED = "auth.email_not_verified"
+    AUTH_EMAIL_ALREADY_EXISTS = "auth.email_already_exists"
+    AUTH_VERIFICATION_FAILED = "auth.verification_failed"
+    AUTH_VERIFICATION_EXPIRED = "auth.verification_expired"
+    AUTH_RESEND_RATE_LIMITED = "auth.resend_rate_limited"
 
     # Rate limit / 429
     RATE_LIMIT_EXCEEDED = "rate_limit.exceeded"
@@ -36,6 +43,8 @@ class ErrorCodes:
     # Validation / 422
     VALIDATION_INVALID_PAYLOAD = "validation.invalid_payload"
     VALIDATION_QUERY_TOO_LONG = "validation.query_too_long"  # E6 architecture.md §7.3
+    VALIDATION_INVALID_EMAIL = "validation.invalid_email"
+    VALIDATION_WEAK_PASSWORD = "validation.weak_password"
 
     # Resource / 404 / 409
     RESOURCE_NOT_FOUND = "resource.not_found"

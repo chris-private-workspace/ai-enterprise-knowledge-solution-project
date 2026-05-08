@@ -72,6 +72,27 @@ async def http_exception_handler(
     request: Request,
     exc: StarletteHTTPException,
 ) -> JSONResponse:
+    # W13 F5 — routes can pass structured detail
+    # `{"code": "...", "message": "...", "hint": "..."}` to override the
+    # generic status→code mapping (e.g. 409 → auth.email_already_exists vs the
+    # default resource.conflict). String detail keeps W7 baseline behaviour.
+    if isinstance(exc.detail, dict) and isinstance(exc.detail.get("code"), str):
+        code = exc.detail["code"]
+        message = str(exc.detail.get("message", code))
+        hint = exc.detail.get("hint")
+        body = ApiErrorResponse(
+            error=ApiErrorBody(
+                code=code,
+                message=message,
+                actionable_hint=hint if isinstance(hint, str) else _HINTS.get(code),
+            )
+        )
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=body.model_dump(),
+            headers=exc.headers,
+        )
+
     code = _STATUS_TO_CODE.get(exc.status_code, ErrorCodes.INTERNAL_SERVER_ERROR)
     message = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
     return _build_response(
