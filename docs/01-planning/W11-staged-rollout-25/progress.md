@@ -209,7 +209,8 @@ status: active   # `active` 自 W11 D1(2026-06-09)— Chris W10 closeout sign-of
 
 ### Commit reference
 
-- W11 D2 batch commit:_(filled post-commit per backfill pattern)_
+- W11 D2 batch commit `fcd8c25`(progress.md Day 2 entry + plan.md changelog 2026-06-09 active flip + 2026-06-10 personal Azure dev tier pattern executed)
+- W11 D2 backfill commit:_(filled post-backfill commit)_
 
 ---
 
