@@ -191,9 +191,88 @@ last_updated: 2026-06-10
 
 ---
 
-## Day 3 — _(W12 D3,2026-06-18,tentative)_
+## Day 3 — 2026-06-10 night cont:F3 shadcn/ui foundation setup + 19 primitives install + tokens audit补齊(W12 D1+D2+D3 calendar-day collapse cont per pivot momentum)
 
-_(placeholder)_
+**Action**:W12 D3 plan-day F3 work executed same-calendar-day as W12 D1+D2(2026-06-10 night cont per stakeholder authorization pivot momentum;real-calendar 2026-06-10 = plan-W12 D1+D2+D3 collapsed cycle)。Per W12 plan §5 W12 D4 advanced into D3 slot;F2 已 W12 D2 完成。
+
+### F3.1-F3.2 — components.json + sidestep interactive init
+
+- ✅ Manually written `frontend/components.json`(sidesteps `pnpm dlx shadcn@latest init` interactive Q&A — F2 已 land tokens.ts + globals.css + tailwind.config.ts integration setup,init step 重複)
+- Config:New York style + RSC enabled + tsx + Tailwind CSS variables(`cssVariables: true`)+ baseColor neutral + alias `@/components` `@/lib/utils` `@/components/ui` `@/lib` `@/lib/hooks` + lucide icon library
+
+### F3.3-F3.6.1 — 19 shadcn primitives install via pnpm dlx batch
+
+- ✅ Smoke install `pnpm dlx shadcn@latest add button --yes`(initial test):created `components/ui/button.tsx`,1 file
+- ✅ Batch install 18 remaining components in single command:`pnpm dlx shadcn@latest add input textarea label select switch slider checkbox card separator sheet dialog tabs badge sonner skeleton dropdown-menu breadcrumb avatar --yes`:created 18 files in `components/ui/`
+- **19 components final list**:button / input / textarea / label / select / switch / slider / checkbox / card / separator / sheet / dialog / tabs / badge / sonner / skeleton / dropdown-menu / breadcrumb / avatar
+- **🆕 Plan F3 scope adjustment**(plan changelog 2026-06-10 night entry):"12-15 base components" → actual 19 per design ref doc §4 component-to-view mapping table authoritative count;Avatar 補加 cross-view essential(V1/V2/V3/V4/V5/V7 user-menu)
+- shadcn auto-installed deps to package.json:`@radix-ui/*`(12 packages)+ `next-themes` 0.4.6(sonner integration)+ `sonner` 2.0.7
+- Network discipline:pnpm dlx 經 `.npmrc node-linker=hoisted` config(W11 D2 cont landed)正常運作;corp VPN 不再 block(R8 mitigation P2 truststore for Python + pnpm 屬獨立 Node.js stack)
+
+### F3.7 — tokens audit + 6 missing tokens 補齊
+
+**🆕 Audit finding**:shadcn components reference 6 tokens 我哋 F2 baseline 未 wire — secondary / secondary-foreground / card / card-foreground / popover / popover-foreground。Surfaces:
+- `button.tsx` variant=secondary uses `bg-secondary text-secondary-foreground`
+- `badge.tsx` variant=secondary uses 同樣 pattern
+- `sheet.tsx` close button uses `bg-secondary` data-state=open
+- `card.tsx` root uses `bg-card text-card-foreground`
+- `dropdown-menu.tsx` content uses `bg-popover text-popover-foreground`(亦 select.tsx 同樣)
+
+**Mitigation**(三 files 同步 update,Karpathy §1.3 surgical):
+- `frontend/app/globals.css` :root + .dark add 3 token pairs:secondary / card / popover(各 light + foreground / dark + foreground 共 12 CSS custom property entries)
+- `frontend/tailwind.config.ts` colors mapping add 6 entries(`oklch(var(--token))` wire pattern)
+- `frontend/lib/theming/tokens.ts` colorsLight + colorsDark documentation 同步(6 entries each)
+
+**Option C-compatible 數值設計**:
+- secondary:light `oklch(0.94 0.005 285)` warm-neutral 比 muted 略深 hue 285 tinted;dark `oklch(0.28 0.005 285)` slightly darker than muted。Foreground 對應 contrast。
+- card:light `oklch(1 0 0)` 同 background flat design pattern(Notion-leaning 不需 elevated card surface);dark `oklch(0.20 0.005 285)` slightly lighter than dark bg for subtle elevation
+- popover:light 同 card pattern;dark 同 card pattern(dropdown 同 card 視覺一致 per editorial cohesion)
+
+### F3.8-F3.9 — smoke render + type-check
+
+- ✅ F3.8 smoke render:`frontend/app/admin/page.tsx` 「Manage KBs →」link refactored from hardcoded `bg-[oklch(0.42_0.04_260)]` inline Link → `<Button asChild><Link href="/admin/kb">Manage KBs →</Link></Button>` shadcn Button wrap pattern。順便 F4 admin page tokens migration head-start(1 less hardcoded oklch in admin/page.tsx)
+- ✅ F3.9 type-check:`pnpm type-check` 跑 2 次:
+  - First run:1 TS error in `tailwind.config.ts:43` — `as const` 喺 tokens.ts 令 fontFamily readonly arrays 唔 assignable to Tailwind mutable `string[]` expected type
+  - Fix:remove `as const` from `ekpTokens` declaration in `tokens.ts`(literal narrowing benefit minor for our usage;mutable safer for downstream consumption)
+  - Second run:✅ 0 errors,exit code 0
+
+### Decisions / OQ summary
+
+- **F3 scope adjustment 12-15 → 19 primitives**(plan changelog 2026-06-10 night entry;design ref doc §4 authoritative)
+- **6 missing tokens audit-driven add**(secondary / card / popover pairs)— non plan deviation per F3.7 acceptance「tokens.ts 整合 via Tailwind CSS variable layer」extension
+- **Avatar 升級為 essential cross-view primitive**(原 F3.3 nav 列 2 個 → 加 Avatar 為 1 個)— plan F3.6.1 sub-item added per design ref §4 mapping
+- **No new OQ**;Q22 Resolved 不變;Q10 visual identity continues default neutral path(Option C 屬 implementation)
+
+### Open / blocked
+
+- ⏳ F4 Admin shell + 8 pages tokens migration — W12 D4-D5 plan window;F3.8 admin/page.tsx 已 1 line head-start
+- ⏳ F5 Phase Gate closeout + W13 phase folder kickoff — W12 D5 final
+- ⏸ W13 user-facing views(Landing / Login / Register / Chat refactor)— W13 D1 implementation start
+
+### Tests / discipline
+
+- 0 backend logic change W12 D3(frontend infrastructure-only);456/456 backend baseline preserved
+- Frontend type-check ✅(0 errors post `as const` remove fix)
+- Frontend lint not yet re-run(F4 phase first opportunity for full lint sweep)
+- Karpathy §1.2 simplicity-first ✅:components.json 手寫 sidestep interactive init(more deterministic + no Q&A friction);batch install 19 single command(non per-component cycle)
+- Karpathy §1.3 surgical ✅:tokens audit fix 純 add 6 missing pairs(no existing token alteration);F3.8 smoke render 順便 F4 head-start(Replace 1 hardcoded oklch with shadcn Button asChild — non scope creep)
+- Karpathy §1.4 goal-driven ✅:F3.5 acceptance「render `<Button variant="default">Test</Button>` 喺 admin page → visual match tokens primary」滿足 via `<Button asChild><Link>...</Link></Button>` pattern(default variant uses `bg-primary text-primary-foreground` Tailwind classes which now resolve via our CSS variable wire)
+- H1 / H2 / H3 / H4 / H5 / H6 self-check:
+  - **H1 ✅** No `architecture.md` v6 §3/§4 component change
+  - **H2 ✅** shadcn primitive packages 屬 ADR-0006 + ADR-0015 已 lock(non new vendor;Radix UI primitives 屬 shadcn dependency tree expected)
+  - **H3 ✅** shadcn 自 npm registry 取得;non Dify reference touch
+  - **H4 ✅** 19 components 全屬 Tier 1 UI scope per ADR-0015
+  - **H5 ✅** No secret commit;`NODE_TLS_REJECT_UNAUTHORIZED=0` env var(observed in install logs)屬 user dev workstation R8 corp proxy workaround,non commit
+  - **H6 ✅** No backend test code change;frontend test coverage W3+ stretch
+- R1 ✅:W12 plan/checklist active 自 W12 D1 commit `00a1dba`
+- R2 binding ✅:W12 D3 commit 對應呢個 Day 3 entry
+- R3 ✅:plan changelog 2026-06-10 night entry(F3 scope 12-15 → 19 + W12 D3 plan-day collapse)
+- R4 N/A:no OQ resolved
+- R5 ✅:no architectural-adjacent decision(shadcn integration 屬 §5.1 implementation per spec lock + ADR-0006 + ADR-0015 covered scope;ADR-0013 reservation preserved)
+
+### Commit reference
+
+- W12 D3 batch commit _(this entry;to be backfilled per W11 D2 housekeeping pattern)_(F3.1-F3.9 components.json + 19 shadcn primitives install + 6 missing tokens audit補齊 + admin page Button smoke + as const removal type-check fix + checklist F3.1-F3.9 tick + plan changelog 2026-06-10 night F3 scope adjustment entry + Day 3 entry initialize)
 
 ---
 

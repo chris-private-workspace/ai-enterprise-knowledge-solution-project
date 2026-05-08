@@ -26,10 +26,16 @@ export const ekpTokens = {
   colorsLight: {
     primary: 'oklch(0.20 0.01 285)',
     'primary-foreground': 'oklch(0.98 0 0)',
+    secondary: 'oklch(0.94 0.005 285)',
+    'secondary-foreground': 'oklch(0.20 0.01 285)',
     accent: 'oklch(0.65 0.18 25)',
     'accent-foreground': 'oklch(0.98 0 0)',
     background: 'oklch(1 0 0)',
     foreground: 'oklch(0.15 0 0)',
+    card: 'oklch(1 0 0)',
+    'card-foreground': 'oklch(0.15 0 0)',
+    popover: 'oklch(1 0 0)',
+    'popover-foreground': 'oklch(0.15 0 0)',
     muted: 'oklch(0.96 0 0)',
     'muted-foreground': 'oklch(0.45 0 0)',
     border: 'oklch(0.92 0 0)',
@@ -54,10 +60,16 @@ export const ekpTokens = {
   colorsDark: {
     primary: 'oklch(0.95 0.005 285)',
     'primary-foreground': 'oklch(0.18 0.005 285)',
+    secondary: 'oklch(0.28 0.005 285)',
+    'secondary-foreground': 'oklch(0.95 0 0)',
     accent: 'oklch(0.68 0.16 25)',
     'accent-foreground': 'oklch(0.15 0 0)',
     background: 'oklch(0.18 0.005 285)',
     foreground: 'oklch(0.95 0 0)',
+    card: 'oklch(0.20 0.005 285)',
+    'card-foreground': 'oklch(0.95 0 0)',
+    popover: 'oklch(0.20 0.005 285)',
+    'popover-foreground': 'oklch(0.95 0 0)',
     muted: 'oklch(0.25 0.005 285)',
     'muted-foreground': 'oklch(0.65 0 0)',
     border: 'oklch(0.30 0.005 285)',
@@ -119,6 +131,6 @@ export const ekpTokens = {
     durationSlow: '300ms',
     easeDefault: 'cubic-bezier(0.4, 0, 0.2, 1)',
   },
-} as const;
+};
 
 export type EkpTokens = typeof ekpTokens;

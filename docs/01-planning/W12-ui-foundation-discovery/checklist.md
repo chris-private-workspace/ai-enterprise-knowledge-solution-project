@@ -32,17 +32,18 @@ last_updated: 2026-06-10
 - [x] F2.9 Design reference doc — §4 component-to-view mapping table(19 shadcn primitives × 9 views matrix + 4 custom EKP-built components)✅ W12 D2
 - [x] F2.10 Design reference doc — §5 Dify reference path index(per architecture.md v6 §5.5.1-§5.5.5 + §5.8 + §5.9-§5.11;layout source + NEVER copy visual identity per ADR-0010)+ §6 W12-W15 implementation sequencing + §7 maintenance protocol ✅ W12 D2
 
-## F3 — shadcn/ui foundation setup + 12-15 base components
+## F3 — shadcn/ui foundation setup + 12-15 base components(actual 19 per design ref §4 — scope adjusted)
 
-- [ ] F3.1 `pnpm dlx shadcn@latest init` run in `frontend/` w/ New York style + Tailwind CSS variables + tokens.ts integration verify
-- [ ] F3.2 `frontend/components.json` 配置 → tracked in git(committed at W12 commit cycle)
-- [ ] F3.3 Form primitives install:Button、Input、Textarea、Label、Select、Switch、Slider、Checkbox(8 components)
-- [ ] F3.4 Layout primitives install:Card、Separator、Sheet、Dialog、Tabs(5 components)
-- [ ] F3.5 Feedback primitives install:Badge、Toast(via sonner per shadcn default)、Skeleton(3 components)
-- [ ] F3.6 Nav primitives install:Dropdown、Breadcrumb (custom if shadcn 唔支援)(2 components)
-- [ ] F3.7 全部 shadcn components 在 `frontend/components/ui/` 目錄;tokens.ts 整合 via Tailwind CSS variable layer
-- [ ] F3.8 Smoke verify:Render `<Button variant="default">Test</Button>` 喺 `app/admin/page.tsx` → visual match tokens primary
-- [ ] F3.9 Type-check pass(`pnpm type-check` clean — 0 shadcn-introduced TS error per Karpathy §1.4 verification)
+- [x] F3.1 ~~`pnpm dlx shadcn@latest init`~~ → **manually written `frontend/components.json`**(sidesteps interactive Q&A;matches existing tokens.ts + globals.css + tailwind.config.ts integration setup landed F2)✅ W12 D3
+- [x] F3.2 `frontend/components.json` 配置(New York + Tailwind CSS variables + cssVariables true + lucide icon library)→ tracked in git ✅ W12 D3
+- [x] F3.3 Form primitives install(8):Button、Input、Textarea、Label、Select、Switch、Slider、Checkbox ✅ W12 D3 — 全部 in `frontend/components/ui/`
+- [x] F3.4 Layout primitives install(5):Card、Separator、Sheet、Dialog、Tabs ✅ W12 D3
+- [x] F3.5 Feedback primitives install(3):Badge、Sonner(toast)、Skeleton ✅ W12 D3
+- [x] F3.6 Nav primitives install(2):Dropdown-menu、Breadcrumb ✅ W12 D3 — 兩個 shadcn 支援都有
+- [x] F3.6.1 **🆕 Identity primitive install(1)**:Avatar — 補加 per design ref §4 mapping table(V1/V2/V3/V4/V5/V7 user-menu cross-view essential)✅ W12 D3 — scope adjustment 由 plan F3 12-15 target → actual 19 per design ref doc authoritative count
+- [x] F3.7 全部 shadcn components 在 `frontend/components/ui/`(19 files)+ tokens.ts 整合 via Tailwind CSS variable layer 驗證:**6 missing tokens 補齊** post-install audit(secondary / card / popover token pairs;shadcn components reference 但 F2 baseline 未 wire)→ globals.css :root + .dark + tailwind.config.ts colors mapping + tokens.ts colorsLight/Dark documentation 三 files 同步 update ✅ W12 D3
+- [x] F3.8 Smoke verify:`app/admin/page.tsx` 用 `<Button asChild>` wrap 「Manage KBs →」link(替換 hardcoded `bg-[oklch(0.42_0.04_260)]` Link)— 順便 F4 page tokens migration head-start;import resolves clean ✅ W12 D3
+- [x] F3.9 Type-check pass(`pnpm type-check` clean — 0 shadcn-introduced TS error)✅ W12 D3 — first run 撞 `as const` readonly array vs Tailwind mutable expectation conflict in tokens.ts fontFamily;remove `as const` 一行 fix → 0 errors final;initial 19 component install 100% TS-clean
 
 ## F4 — Admin shell foundation + existing pages tokens migration
 

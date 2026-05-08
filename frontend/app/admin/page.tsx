@@ -10,6 +10,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { kbApi, type KbStatus } from '@/lib/api/kb';
 
 export default function AdminOverviewPage() {
@@ -45,12 +46,9 @@ export default function AdminOverviewPage() {
       </div>
 
       <div className="mt-8">
-        <Link
-          href="/admin/kb"
-          className="inline-block rounded bg-[oklch(0.42_0.04_260)] px-4 py-2 text-sm font-medium text-white hover:bg-[oklch(0.36_0.04_260)]"
-        >
-          Manage KBs →
-        </Link>
+        <Button asChild>
+          <Link href="/admin/kb">Manage KBs →</Link>
+        </Button>
       </div>
     </div>
   );
