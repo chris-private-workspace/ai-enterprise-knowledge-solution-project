@@ -361,6 +361,73 @@ AF3 W11 D1 edit text 寫「synthesizer init fails gracefully in lifespan startup
 - W11 D2 Path B F4.5 Runbook live exercise commit `20f7f56`(F4.5 outcome sub-section + checklist F4.5 + F4.6 tick + runbook Update history 2026-06-10 entry;**🔴 AF3 critical drift finding** + 2 minor drift + 3 carry-overs to W11 D5 retro;ACA revision sequence `--0000003 → --0000004 → --0000005 → --0000006 RESTORE`)
 - W11 D2 backfill commit `34525be`(F4.5 commit hash backfill into F4.5 sub-section + runbook §10 history row)
 - W11 D2 Path C2 F4.5 AF3 Option B verify commit `4e390e6`(Option B verified NOT viable + W11 D5 retro decision narrowed Option A only path + runbook §2 AF3 LIVE EXERCISE WARNING + §10 history 2026-06-10 cont row;ACA revision sequence `--0000007 → --0000008 RESTORE`)
+- W11 D2 Path C2 backfill commit `1ac02f6`(commit hash backfill into Day 2 entry + runbook history)
+- W11 D2 Path C1 Batch 4 frontend deploy attempt commit:_(filled post-commit per backfill pattern)_
+
+#### Path C1 — Batch 4 frontend deploy ATTEMPT(2026-06-10 cont 2;BLOCKED but Dockerfile improvement preserved)
+
+**Goal**:完成 Personal Azure dev tier full deployment picture(frontend live → backend FQDN)+ remediates Path A finding 3 client-bundle bake-time URL gap。
+
+**Pivot finding(Batch 4.1 inspect)**:**SWA → Frontend Container App**(originally proposed "SWA" 係 my misnomer):
+- `frontend/next.config.mjs` `output: 'standalone'` requires Node.js runtime(NOT static)
+- `frontend/Dockerfile` 已 designed for ACA(node:20-alpine + standalone + EXPOSE 3001)
+- SWA Hybrid Next.js requires Standard SKU(~$9/mo)+ 100MB limit + Node API limitations
+- ACA pattern reuse from backend = R8 already calibrated path
+
+**Dockerfile improvement landed**(genuine product improvement,regardless of deploy timing):
+- Added `ARG NEXT_PUBLIC_API_URL` + `ARG NEXT_PUBLIC_AUTH_MOCK` + `ARG NEXT_PUBLIC_DEFAULT_KB_ID` + `ARG NEXT_PUBLIC_APP_NAME` to builder stage
+- Added matching `ENV` passthrough so `pnpm build` sees them at static replacement time(Next.js client bundle bake)
+- Runner stage `ARG/ENV NEXT_PUBLIC_API_URL` for server-side rewrite resolution(`next.config.mjs` reads at startup)
+- **Remediates Path A finding 3** — client code(`lib/api-client.ts` + `lib/api/kb.ts`)直接 reference `process.env.NEXT_PUBLIC_API_URL`,build-time bake gap 解決
+- Karpathy §1.3 surgical scope:non-architectural,5-line ARG/ENV addition;every change traces to "frontend deploy needs build-time URL bake" requirement
+
+**Deploy attempt BLOCKED — Windows env chain failures**:
+1. **`az acr build` packing fail**:`[WinError 3] The system cannot find the path specified` 喺 deeply-nested pnpm symlink target `frontend\node_modules\.pnpm\@azure+msal-browser@5.9.0\node_modules\@azure\msal-browser\dist\custom-auth-path\broker\nativeBroker\IPlatformAuthHandler.d.ts`
+2. **Multi-tool delete attempts all fail**:`rm -rf`(stuck 29391 files)+ PowerShell `Remove-Item`(4s 32709 files remain)+ `cmd rmdir /s /q`(MAX_PATH errors per file)+ `\\?\` long-path prefix(184s with "Access is denied" + remaining files)
+3. **Root cause chain**:pnpm symlink resolution doubles path depth → `node_modules/@azure/msal-browser` symlinks to `node_modules/.pnpm/.../@azure/msal-browser/...` exceeds Windows MAX_PATH(260)+ OneDrive sync lock on some files + access denied chain
+
+**Deploy carry-over to next session — 4 remediation paths**(W11 D5 retro carry-over candidates;rolling-JIT — solve at next attempt):
+1. **Move project out of OneDrive sync path**(e.g. `C:\projects\ai-enterprise-knowledge-solution-project\`)— bypasses OneDrive lock + path length;simplest if user agreeable to relocation
+2. **Enable Windows long-path support globally**(`Computer Configuration → Administrative Templates → System → Filesystem → Enable Win32 long paths` group policy + reboot)— fixes MAX_PATH systemic;needs admin elevation + system change
+3. **Build locally via Docker Desktop WSL2**(WSL2 backend uses Linux file system,no MAX_PATH;then `docker push` accepting R8 corp proxy fight which previous Path A path was 100% predicted-fail)— still doesn't bypass push
+4. **GitHub Actions remote build workflow**(self-hosted runner OR ubuntu-latest GHA;avoids local FS issues entirely;`.github/workflows/frontend-deploy.yml` setup ~30-60 min;production-pattern correct path)
+
+**Recommended next-session approach**:**Path 1**(move out of OneDrive)+ pnpm reinstall + retry `az acr build --build-arg`;~15 min if smooth。Path 4 is production-correct but ~60 min setup overhead vs immediate dev tier need。
+
+**Local frontend dev state — partial delete**:`frontend/node_modules` 喺多次 attempt 後 partial deleted state(~28k files remaining from 70k+ original);**user 下次 session 需要 `cd frontend && pnpm install` 重裝 deps** to restore local dev capability;commit message 註明此 cleanup task。
+
+**Tests / discipline**:
+- 0 source code change(Dockerfile ARG/ENV addition 屬 build config only,not application logic)
+- Karpathy §1.3 surgical:Dockerfile change minimal(NEXT_PUBLIC_* ARG passthrough);every line traces to "Path A finding 3 build-time bake gap" + "Batch 4 deploy build args needed"
+- H1 ✅ no `architecture.md` v5 §3/§4 component change(Dockerfile = infra config)
+- H2 ✅ no new vendor
+- H3-H6 ✅ unchanged from W11 D2 morning batches
+
+**Honest time-cost reflection**(W11 D5 retro What didn't work candidate):
+- Batch 4 attempt invested ~30 min before pause decision
+- R8 + Windows env compounding failure mode未 anticipated喺 W11 plan §F4 acceptance(plan §5 caveat 只 cover Track A IT cred timing,not Windows env class)
+- Frontend deploy 屬 W11 plan 隱含 deliverable(NOT explicit;personal Azure dev tier 為 Track A workaround pattern)→ pause acceptable per Karpathy §1.2 simplicity-first(diminishing returns vs sunk cost fallacy)
+
+#### Final W11 D2 deliverable scorecard(aggregate from 8 batches today)
+
+| Deliverable | Status | Commits |
+|-------------|--------|---------|
+| Personal Azure dev tier backend live(Batch 5)| ✅ COMPLETE | `fcd8c25` + `5462301` |
+| `/query` end-to-end smoke(Path A)| ✅ COMPLETE + 3 governance findings | `48008d8` + `a7a8f79` |
+| F4.5 Runbook live exercise(Path B G5)| ✅ COMPLETE + AF3 critical drift | `20f7f56` + `34525be` |
+| F4.5 C2 AF3 Option B verify | ✅ COMPLETE — Option B NOT viable | `4e390e6` + `1ac02f6` |
+| Batch 4 frontend deploy(Path C1)| 🟡 BLOCKED Windows env;Dockerfile improvement preserved | _(this commit)_ |
+
+**ACA revision sequence today**:`--0000001` → `--0000002` → `--0000003` → `--0000004` → `--0000005` → `--0000006 RESTORE` → `--0000007` → `--0000008 RESTORE`(8 revisions;backend currently `--0000008 RunningAtMaxScale Healthy`)
+
+**W11 D5 retro carry-overs consolidated(7 items)**:
+1. AF3 code fix Option A(P2 governance,sole viable path;ADR-0013 candidate trigger)
+2. Drive Project corpus = D365 F&O(Q14 SME labeling scope clarification)
+3. KB Manager persistent backing(Beta production hardening)
+4. httpx redirect Authorization-strip + URL hygiene(Batch 4 frontend impl note)
+5. `az containerapp logs show` R8 fallback(LA REST API alt;minor doc enhancement)
+6. **Batch 4 frontend deploy** — Windows env remediation needed(move out of OneDrive OR long-path support OR GHA workflow);Dockerfile improvement preserved
+7. **`frontend/node_modules` reinstall task**(local dev partial-deleted state;`cd frontend && pnpm install` 下次 session)
 
 ---
 
