@@ -32,14 +32,14 @@ last_updated: 2026-06-10
 
 ## F3 — V8 Login page implementation
 
-- [ ] F3.1 `frontend/app/login/page.tsx` create per V8 split layout(per ui-design-reference-v6.md §2.8)
-- [ ] F3.2 Brand panel(left):logo + tagline「EKP — Knowledge, on demand.」+ minimal pattern background(CSS gradient OR repeating SVG pattern)
-- [ ] F3.3 Form area(right):Email input(shadcn Input + Label)+ Password input(shadcn Input type=password)+ 「Sign in」Button(default variant)
-- [ ] F3.4 Auth path separator:shadcn Separator w/ text overlay「or」+ 「Sign in with Microsoft」Button(outline variant + Building lucide icon OR Microsoft SVG)→ MSAL redirect(existing useAuthStore provider)
-- [ ] F3.5 Footer links:「Forgot password?」disabled w/ tooltip per Tier 2 defer(ADR-0014 Consequences Neutral)+ 「Don't have an account? Register」link → `/register`
-- [ ] F3.6 Auth flow wire:internal Entra ID SSO uses existing useAuthStore;external self-register POST `/auth/login`(F5 endpoint)on form submit
-- [ ] F3.7 Error states:`error.code` from backend ApiError envelope → toast variants(invalid_cred / unverified_email / locked_account)per shadcn Sonner
-- [ ] F3.8 Loading state:button disabled + spinner icon during auth in-flight(`Loader2` lucide animate-spin)
+- [x] F3.1 `frontend/app/login/page.tsx` create per V8 split layout(per ui-design-reference-v6.md §2.8)
+- [x] F3.2 Brand panel(left):logo「EKP」+ tagline「Knowledge, on demand.」+ subtle dot-grid CSS pattern overlay(currentColor inherited from text-primary-foreground;opacity 0.06;non hardcoded oklch per W12 D2 strict baseline)
+- [x] F3.3 Form area(right):Email input(shadcn Input + Label;type=email + autoComplete=email)+ Password input(shadcn Input type=password + autoComplete=current-password)+ 「Sign in」default Button
+- [x] F3.4 Auth path separator:shadcn Separator w/ 「or」text overlay + 「Sign in with Microsoft」outline Button + Building2 lucide icon
+- [x] F3.5 Footer links:「Forgot password?」disabled span w/ title attribute per Tier 2 defer(ADR-0014 Consequences Neutral)+ 「Don't have an account? Register」Link → `/register`
+- [x] F3.6 Auth flow wire **deviation logged plan §7 changelog 2026-06-10 (D3)** — defer ALL auth wire(含 existing MSAL SSO useAuthStore W7 baseline)to F5 batch per user instruction「auth flow wire 留 F5 lands」;UI shell only stub handlers w/ `F5_PENDING_MESSAGE` constants + sonner toast feedback;TODO(W13 F5)comments in `handleSelfSubmit` + `handleSsoClick` mark replacement points
+- [x] F3.7 Error states scaffold:sonner `toast.error()` + `toast.info()` ready;variant logic(invalid_cred / unverified_email / locked_account)→ comment placeholder pending F5 ApiError envelope wire
+- [x] F3.8 Loading state:both Sign in + SSO Buttons disabled + Loader2 lucide animate-spin during local pending state(800ms simulated delay for visual demo);`anyPending` derived flag prevents form interaction during either flow
 
 ## F4 — V9 Register 3-step wizard implementation
 

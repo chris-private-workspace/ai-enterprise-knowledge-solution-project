@@ -149,9 +149,57 @@ $ # 0 errors
 
 ---
 
-## Day 3 — _(W13 D3,2026-06-25,tentative)_
+## Day 3 — W13 D3 F3 V8 Login UI(real-calendar 2026-06-10 same-day collapse cycle 2 of 4 cont)
 
-_(placeholder — F5 backend continue + F3 V8 Login complete + F4 V9 Register begin)_
+> **Calendar note**:plan §5 tentative date 2026-06-25 superseded by real-calendar 2026-06-10 same-day collapse(D2 → D3 cycle continue post user authorization "A:continue W13 D3 — F3 V8 Login UI frontend-only,可獨立 work without F5 backend ready;auth flow wire 留 F5 lands")。Time tracking calibration:plan ~1 day budget vs actual ~25 min(7x under-budget pattern continues)。
+
+### What landed
+
+| F# | Deliverable | Files | Status |
+|---|---|---|---|
+| F3.1 | V8 Login page split layout | NEW `frontend/app/login/page.tsx`(client component;BrandPanel + form area split via `flex-col md:flex-row`)| ✅ |
+| F3.2 | Brand panel | logo「EKP」+ 「Knowledge, on demand.」tagline + subtitle line + subtle dot-grid CSS pattern overlay(currentColor inherited from text-primary-foreground;opacity 0.06)| ✅ |
+| F3.3 | Form area | shadcn Input + Label(Email + Password)+ Sign in default Button | ✅ |
+| F3.4 | Auth path separator | shadcn Separator + 「or」text overlay + Sign in with Microsoft outline Button + Building2 lucide icon | ✅ |
+| F3.5 | Footer links | Forgot password?(disabled span + title attribute per ADR-0014 Tier 2 defer)+ Register Link → `/register` | ✅ |
+| F3.6 | Auth flow wire | **Deviation logged plan §7 changelog 2026-06-10 (D3)** — defer ALL auth wire(含 existing MSAL SSO W7 useAuthStore baseline)to F5 batch per user instruction「auth flow wire 留 F5 lands」;UI shell only stub handlers w/ `F5_PENDING_MESSAGE` + `F5_PENDING_SSO_MESSAGE` constants + sonner toast feedback;TODO(W13 F5)comments mark replacement points in `handleSelfSubmit` + `handleSsoClick` | ✅ (deviation noted) |
+| F3.7 | Error states scaffold | sonner `toast.error()` + `toast.info()` ready;backend ApiError envelope variant logic(invalid_cred / unverified_email / locked_account)pending F5 cascade | ✅ (scaffold ready) |
+| F3.8 | Loading state | Loader2 lucide animate-spin in both Sign in + SSO Buttons during local pending state(600ms simulated delay);`anyPending` derived flag prevents form interaction during either flow | ✅ |
+
+### Sonner Toaster mount(infrastructure prerequisite)
+
+- UPDATE `frontend/app/layout.tsx`:add `<Toaster />` from `@/components/ui/sonner`(W12 D3 installed primitive)as ThemeProvider sibling — global mount enables toast feedback across all routes(Login + future Register + admin actions)
+- shadcn Sonner uses `useTheme` from next-themes → ThemeProvider parent ordering preserved → light/dark theme syncs automatically
+
+### Decisions
+
+1. **Stub all auth wire vs partial-wire MSAL SSO**:Karpathy §1.1 think-before-coding surfaced ambiguity — plan F3.6 原文「SSO uses existing useAuthStore W7 baseline」vs user instruction「auth flow wire 留 F5 lands」;**strict reading 採用** = full UI-only deferral,F5 cascade clean batch wire(both flows together);避免 F3 / F5 partial-wire 嘅 dual-state(some auth wired now / some later)easier-to-reason-about
+2. **AuthProvider mount scope**:per F1.5 convention,Login route 不 mount AuthProvider(public);F5 cascade 將 decide 是否需要 AuthProvider(handler call useAuthStore.signIn() works in mock mode without init,real MSAL needs initMsal cascade — F5 will resolve)
+3. **Brand panel pattern background**:Karpathy §1.2 simplicity-first push-back vs ASCII wireframe「(minimal pattern bg)」— used dot-grid CSS via inline style + currentColor(token-safe;0.06 opacity 極 subtle);避免 SVG asset overhead OR multi-stop gradient over-design
+4. **Toast variant strategy**:`toast.info()` for F5_PENDING messaging(neutral expected state)vs `toast.error()` for actual validation errors(empty email/password)— UX clarity: pending ≠ broken
+
+### Verification
+
+```
+$ cd frontend && pnpm type-check
+> tsc --noEmit
+$ # 0 errors
+
+$ grep oklch frontend/app/login | wc -l
+1  # JSX comment in page.tsx:177 explains "no hardcoded oklch" token discipline
+   # (W12 admin-shell.tsx baseline pattern一致 — docstring acceptable per Karpathy §1.3)
+```
+
+✅ TypeScript strict mode clean(0 errors);no `any` / no @ts-ignore;all colors via Tailwind tokens(`bg-primary` / `text-primary-foreground` / `bg-background` / `text-foreground` / `text-muted-foreground` / `text-accent`)+ currentColor for dot-grid pattern。
+
+### Carry-overs to W13 D4
+
+- 🚧 F1.6 + F2 + F3 user smoke continue defer per CLAUDE.md §13(`! pnpm dev` localhost:3001;`/login` Brand panel + form + SSO Button + footer links)— W13 D4 F4 V9 Register work iteratively browser-verifies fills smoke gap
+- ⏳ W13 D4 focus per plan §5:F4 V9 Register 3-step wizard(reuse V8 brand panel split layout + W12 F4.9 Stepper component for step indicator)+ F5 backend hybrid auth begin(largest deliverable)+ F6 ACS email service integration begin
+
+### Commit
+
+- `<TBD>` feat(frontend,docs): W13 D3 F3 V8 Login UI shell + Toaster mount + auth wire deferral
 
 ---
 
