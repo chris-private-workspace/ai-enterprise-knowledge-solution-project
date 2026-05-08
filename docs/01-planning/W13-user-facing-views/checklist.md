@@ -21,14 +21,14 @@ last_updated: 2026-06-10
 
 ## F2 — V7 Landing page implementation
 
-- [ ] F2.1 `frontend/app/page.tsx` rebuild per V7 wireframe(per ui-design-reference-v6.md §2.7):Header + Hero + 3 Feature cards + How-it-works 3-step + Footer
-- [ ] F2.2 Header component:logo + nav links(Features / Pricing(disabled — post-launch)/ Sign in / Get started CTA)
-- [ ] F2.3 Hero section:tagline + 1-line subheading + primary CTA Button「Start asking →」 → `/login` + secondary Watch demo Button(disabled placeholder)
-- [ ] F2.4 Feature highlights — 3 shadcn Card(Multi-format ingestion / Hybrid retrieval + CRAG / Citation-grounded answers)
-- [ ] F2.5 How-it-works 3-step indicator(reuse W12 F4.9 Stepper pattern;Upload → Ask → Verify icons)
-- [ ] F2.6 Footer stubs:status link / docs / contact / legal(Tier 1 acceptable placeholders)
-- [ ] F2.7 Content discipline check per architecture.md v6 §5.9 + H4:no Tier 2 / future feature claims;all features ground 在已實 Tier 1 capability
-- [ ] F2.8 Responsive verify:mobile collapse Hero CTA + stack feature cards vertical via Tailwind responsive classes
+- [x] F2.1 `frontend/app/page.tsx` rebuild per V7 wireframe(per ui-design-reference-v6.md §2.7):Header + Hero + 3 Feature cards + How-it-works 3-step + Footer
+- [x] F2.2 Header component:logo + nav links(Features / Pricing(disabled — post-launch)/ Sign in / Get started CTA)
+- [x] F2.3 Hero section:tagline + 1-line subheading + primary CTA Button「Start asking →」 → `/login` + secondary Watch demo Button(disabled placeholder)
+- [x] F2.4 Feature highlights — 3 shadcn Card(Multi-format ingestion / Hybrid retrieval + CRAG / Citation-grounded answers)
+- [x] F2.5 How-it-works 3-step indicator(reuse W12 F4.9 Stepper visual pattern;Upload → Ask → Verify lucide icons;Karpathy §1.2 simplicity-first — static descriptive layout vs full Stepper state machine since steps non-interactive)
+- [x] F2.6 Footer stubs:status link / docs / contact / legal(Tier 1 acceptable placeholders;cursor-not-allowed + title attribute disabled state)
+- [x] F2.7 Content discipline check per architecture.md v6 §5.9 + H4:Multi-format(Docling docx + python-pptx ✅ W2 implemented)/ Hybrid retrieval + CRAG(Azure AI Search hybrid + custom CRAG L2 ✅ W3-W4 implemented)/ Citation-grounded(citation cards + chunk_id traceability ✅ W3 implemented);no GraphRAG / multi-agent / multi-tenancy / fine-tune leak
+- [x] F2.8 Responsive verify:Header nav links hidden < md(`hidden md:flex`);Hero CTAs stack `flex-col sm:flex-row`;Feature cards `grid-cols-1 md:grid-cols-3`;How-it-works `grid-cols-1 md:grid-cols-3`;Footer `flex-col sm:flex-row`
 
 ## F3 — V8 Login page implementation
 

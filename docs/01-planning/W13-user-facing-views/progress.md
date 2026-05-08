@@ -105,9 +105,47 @@ $ # 0 errors
 
 ---
 
-## Day 2 — _(W13 D2,2026-06-24,tentative)_
+## Day 2 — W13 D2 F2 V7 Landing implementation(real-calendar 2026-06-10 same-day collapse cycle 2 of 4 cont)
 
-_(placeholder — F2 V7 Landing finalize + F5 backend hybrid auth begin + F3 V8 Login UI parallel)_
+> **Calendar note**:plan §5 tentative date 2026-06-24 superseded by real-calendar 2026-06-10 same-day collapse(D1 → D2 cycle continue post user authorization "continue W13 D2 F2 V7 Landing 開工")。Time tracking calibration:plan ~1 day budget vs actual ~30 min(7x under-budget pattern continues)。
+
+### What landed
+
+| F# | Deliverable | Files | Status |
+|---|---|---|---|
+| F2.1 | V7 Landing rebuild per wireframe §2.7 | REWRITE `frontend/app/page.tsx`(replaced D1 placeholder stub)| ✅ |
+| F2.2 | Header component | `SiteHeader` — logo + nav(Features anchor / Pricing disabled / Docs disabled)+ Sign in / Get started CTA buttons | ✅ |
+| F2.3 | Hero section | tagline + subheading + Start asking → `/login` primary CTA + Watch demo disabled secondary | ✅ |
+| F2.4 | 3 Feature cards | shadcn Card(Multi-format ingestion / Hybrid retrieval + CRAG / Citation-grounded answers)w/ lucide icons FileText / Zap / Quote | ✅ |
+| F2.5 | How-it-works 3-step | static descriptive layout(Upload + MessageSquareQuote + CheckCircle2 lucide icons;step 1-3 numbered)— Karpathy §1.2 simplicity-first vs full Stepper state machine reuse since steps non-interactive | ✅ |
+| F2.6 | Footer stubs | © Ricoh + Status / Docs / Contact / Legal disabled span(cursor-not-allowed + title)| ✅ |
+| F2.7 | Content discipline check | All 3 features trace Tier 1:Multi-format(W2 Docling + python-pptx)/ Hybrid + CRAG(W2-W4)/ Citation(W3);Pricing+Docs+Demo footer 全 disabled placeholder | ✅ |
+| F2.8 | Responsive | Header nav `hidden md:flex` / Hero CTAs `flex-col sm:flex-row` / Cards `md:grid-cols-3` / How-it-works `md:grid-cols-3` / Footer `flex-col sm:flex-row` | ✅ |
+
+### Decisions
+
+1. **Static How-it-works vs Stepper reuse**:Karpathy §1.2 push-back — W12 F4.9 Stepper at `frontend/app/admin/kb/new/page.tsx:171-211` 係 active/done/pending state machine,Landing 3 steps non-interactive → 重用全套 component over-abstraction;改用 static `<ol>` w/ `<li>` icon + step number + title + description,複用 visual pattern(rounded-full + primary bg + spacing)而非 logical state
+2. **Server Component for Landing**:無 client state needed;all interactivity via Link navigation(Server-compatible);Button asChild + Link 組合保持 SSR-friendly
+3. **Disabled footer placeholders**:Pricing / Docs / Status / Contact / Legal 用 `<span cursor-not-allowed opacity-50>` + title attribute,non-anchor non-Link — 避免 dead anchor `href="#"` SEO 噪音 + visually 表達「post-launch」
+
+### Verification
+
+```
+$ cd frontend && pnpm type-check
+> tsc --noEmit
+$ # 0 errors
+```
+
+✅ TypeScript strict mode clean(0 errors);no `any` / no @ts-ignore;`grep oklch frontend/app/page.tsx` = 0(W12 D2 strict tokens-only baseline preserved);all colors via Tailwind tokens(`bg-background` / `text-foreground` / `text-muted-foreground` / `bg-accent/10` / `bg-primary` / `border-border` etc)。
+
+### Carry-overs to W13 D3
+
+- 🚧 F1.6 + F2 user smoke continue defer per CLAUDE.md §13(`! pnpm dev` localhost:3001;`/` Landing renders + nav + Hero CTA + 3 Cards + Steps + Footer;light/dark mode toggle Wi-Fi via DevTools `<html class="dark">`)— W13 D3 F3 V8 Login work iteratively browser-verifies fills smoke gap
+- ⏳ W13 D3 focus per plan §5:F5 backend hybrid auth `/auth/register` + `/auth/verify-email` + `/auth/login`(2-day largest deliverable)+ F3 V8 Login UI parallel + F4 V9 Register begin
+
+### Commit
+
+- `<TBD>` feat(frontend,docs): W13 D2 F2 V7 Landing page implementation
 
 ---
 
