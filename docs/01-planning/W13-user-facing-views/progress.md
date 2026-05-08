@@ -2,7 +2,7 @@
 phase: W13-user-facing-views
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: draft
+status: active
 last_updated: 2026-06-10
 ---
 
@@ -62,15 +62,46 @@ last_updated: 2026-06-10
 
 ---
 
-## Day 1 — _(W13 D1,2026-06-23,tentative)_
+## Day 1 — W13 D1 active flip + F1 routing restructure(real-calendar 2026-06-10 same-day collapse cycle 2 of 4)
 
-_(W13 D1 implementation start placeholder — populate at session 2026-06-23 kickoff per CLAUDE.md §10 R2;OR earlier if calendar-day-collapse cont per pivot momentum)_
+> **Calendar note**:plan §5 tentative date 2026-06-23 superseded by real-calendar 2026-06-10 same-day collapse cycle per pivot momentum stakeholder authorization(option A continue from W12 D5 closeout)。Time tracking calibration data:plan ~0.5 day budget vs actual ~30 min(W12 retro 7x under-budget pattern continues)。
 
-### Planned focus(per plan.md §5 Day-by-Day)
+### What landed
 
-- F1 routing restructure(`/` → `/chat`)+ theme provider integration + dark mode toggle UI
-- F2 V7 Landing page implementation begin(post F1 routing slot ready)
-- W13 plan/checklist/progress frontmatter `draft → active` flip post stakeholder authorization
+| F# | Deliverable | Files | Status |
+|---|---|---|---|
+| F1.1 | Chat path move `/` → `/chat` | NEW `frontend/app/chat/page.tsx`(full Chat content preserve W12 F4.4 tokens migration intact;header docstring updated)| ✅ |
+| F1.2 | V7 Landing placeholder stub | REWRITE `frontend/app/page.tsx`(Server Component;hero text + temporary Go-to-Chat link;F2 fills full layout)| ✅ |
+| F1.3 | ThemeProvider integration | NEW `frontend/lib/providers/theme-provider.tsx`(client wrapper around next-themes 0.4.6 already installed W12 D3 via sonner cascade);UPDATE `frontend/app/layout.tsx`(wire `<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>` + `<html suppressHydrationWarning>`)| ✅ |
+| F1.4 | Dark mode toggle UI | NEW `frontend/components/nav/theme-toggle.tsx`(Sun/Moon DropdownMenu + Light/Dark/System tri-state via shadcn DropdownMenu primitive);UPDATE `frontend/components/nav/admin-shell.tsx`(integrate into desktop header + mobile header before UserMenu)| ✅ |
+| F1.5 | Public-vs-protected route convention | **Deviation logged plan §7 changelog 2026-06-10 (D1)** — `middleware.ts` 從未 W7 D1 implement;apply via page-level convention(Landing/Login/Register 唔 mount AuthProvider = public;Chat/Admin/Eval/Debug 透過 UserMenu + useAuthStore 隱式 protected via AuthProvider mock auto-sign-in / MSAL real);server-side guard defer F5 backend session middleware per Karpathy §1.2 simplicity-first | ✅ (deviation noted) |
+| F1.6 | Functional smoke | 🚧 user-deferred per CLAUDE.md §13(`pnpm dev` long-running Node server conflict);AI verification = type-check 0 errors + import resolution ✅ | 🚧 (parallel CO1 W12 carry-over pattern) |
+
+### Decisions
+
+1. **next-themes provider boundary**:wrap in `frontend/lib/providers/theme-provider.tsx` client component island so root layout stays Server Component;ComponentProps type-forward keeps the wrapper transparent to next-themes API surface
+2. **Sun/Moon overlap pattern**:reuse shadcn official mode-toggle CSS transform pattern(rotate + scale transitions);added `relative` className explicit to Button per shadcn Button cva default lacks `relative` positioning
+3. **F1.5 deviation**:Karpathy §1.1 think-before-coding triggered — plan reference `_PROTECTED_PREFIXES` baseline stale,`grep` confirmed never implemented;Karpathy §1.2 simplicity-first push-back avoided speculative middleware addition without backend session(F5 will own server-side guard);plan §7 changelog logged per CLAUDE.md §10 R3
+4. **Calendar collapse continued**:real-calendar 2026-06-10 = W12 D5 closeout + W13 D1 same-day(cycle 2 of 4 UI sprint);user authorization via option A pivot momentum
+
+### Verification
+
+```
+$ cd frontend && pnpm type-check
+> tsc --noEmit
+$ # 0 errors
+```
+
+✅ TypeScript strict mode clean(0 errors;W12 F4 baseline preserved);no `any` / no @ts-ignore introduced;all new files consume tokens via Tailwind classes(no hardcoded oklch — W12 D2 strict clean preserved)。
+
+### Carry-overs to W13 D2
+
+- 🚧 F1.6 user functional smoke(non-blocker for D2 work — F2 V7 Landing implementation iteratively browser-verifies fills smoke gap as full layout lands)
+- ⏳ W13 D2 focus per plan §5:F2 V7 Landing finalize + F5 backend hybrid auth begin + F3 V8 Login UI parallel
+
+### Commit
+
+- `<TBD>` feat(frontend,docs): W13 D1 F1 routing restructure + theme provider + dark mode toggle + W13 active flip
 
 ---
 

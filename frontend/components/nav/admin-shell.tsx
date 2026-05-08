@@ -16,6 +16,7 @@ import { Fragment } from 'react';
 import { Menu } from 'lucide-react';
 
 import { UserMenu } from '@/components/auth/user-menu';
+import { ThemeToggle } from '@/components/nav/theme-toggle';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -72,7 +73,10 @@ export function AdminShell({ children }: AdminShellProps) {
         <Link href="/admin" className="text-base font-semibold">
           EKP Admin
         </Link>
-        <UserMenu />
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <UserMenu />
+        </div>
       </header>
 
       {/* Desktop sidebar */}
@@ -87,7 +91,10 @@ export function AdminShell({ children }: AdminShellProps) {
         {/* Desktop header */}
         <header className="hidden items-center justify-between border-b border-border bg-background px-8 py-3 md:flex">
           <BreadcrumbNav pathname={pathname} />
-          <UserMenu />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <UserMenu />
+          </div>
         </header>
         <div className="flex-1 p-4 md:p-8">{children}</div>
       </main>

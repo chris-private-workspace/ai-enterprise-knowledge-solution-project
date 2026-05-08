@@ -4,7 +4,7 @@ name: "User-Facing Views — Phase 2 of 4 in W12-W15 UI Tier 1 expansion sprint 
 sprint_week: W13
 start_date: 2026-06-23             # tentative — assumes W12 closeout 2026-06-10 + W13 kickoff next session
 end_date: 2026-06-27               # 5 working days(possibly +1-2 if F5 backend hybrid auth ~2-day ADR-0014 cascade absorbs W13 D6)
-status: draft                      # `draft` — pending W13 D1 active flip post stakeholder authorization + W12 closeout PASS WITH CAVEAT verdict landed
+status: active                     # `active` — W13 D1 implementation start landed 2026-06-10 (real-calendar 2026-05-09 single-day collapse cycle 2 of 4 per pivot momentum)
 spec_refs:
   - architecture.md v6 §5.2           # V1 Chat path move (`/` → `/chat`)
   - architecture.md v6 §5.9           # V7 Landing public marketing-style entry
@@ -233,6 +233,7 @@ Carry-overs from `W12-ui-foundation-discovery/progress.md` retro § Carry-overs(
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-10 | Initial draft(W12 D5 closeout cascade rolling-JIT)| Per CLAUDE.md §10 R1 rolling-JIT;W12 closeout cascade per F5.3 deliverable;W13 immediate scope = W12 retro carry-overs CO4-CO9 exact match | Chris(stakeholder authorization same-session pivot momentum;W12 closeout PASS WITH CAVEAT verdict landed) |
+| 2026-06-10 (D1) | `status: draft → active` flip + F1.5 deviation note | Stakeholder authorization landed (option A pivot momentum continue);F1.5 plan reference to `_PROTECTED_PREFIXES` middleware baseline 屬 stale — `frontend/middleware.ts` 從未 W7 D1 implement,actual auth baseline = client-side only via `useAuthStore` consumption(AuthProvider mounted at `/admin/layout.tsx`,implicit "protected" via mock auto-sign-in / MSAL real)。Per Karpathy §1.2 simplicity-first:**defer Next.js middleware addition to F5 backend session middleware deliverable**(server-side auth state will live there);W13 F1 applies convention via page-level only — Landing/Login/Register 唔 mount AuthProvider(public);Chat/Admin/Eval/Debug 透過 UserMenu 隱式 protected | Chris (technical decision per Karpathy §1.1 think-before-coding — assumption surfaced + simpler approach pushed back per CLAUDE.md §1) |
 
 ---
 

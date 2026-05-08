@@ -1,24 +1,23 @@
 ---
 phase: W13-user-facing-views
 plan_ref: ./plan.md
-status: draft
+status: active
 last_updated: 2026-06-10
 ---
 
 # Phase W13 — Checklist
 
 > Atomic checkbox(每 item ≤ 0.5–2 hour effort per W6 C10 calibration)。
-> Status:`draft` 自 2026-06-10 W12 D5 closeout cascade rolling-JIT。
-> 全 unchecked 至 W13 D1 implementation start post stakeholder authorization。
+> Status:`active` 自 2026-06-10 W13 D1 implementation start(real-calendar 2026-05-09 single-day collapse cycle 2 of 4 per pivot momentum)。
 
 ## F1 — Routing restructure + theme provider integration
 
-- [ ] F1.1 Chat path move:`frontend/app/page.tsx` → `frontend/app/chat/page.tsx`(preserve W12 F4.4 tokens migration content;Next.js App Router convention)
-- [ ] F1.2 `frontend/app/page.tsx` placeholder for V7 Landing(F1 only ensures path slot ready;F2 fills content)
-- [ ] F1.3 Theme provider integration:wire `<ThemeProvider attribute="class">` from `next-themes`(W12 D3 auto-installed via shadcn sonner)into `frontend/app/layout.tsx` root + suppress hydration warning per next-themes convention
-- [ ] F1.4 Dark mode toggle UI:add toggle Button(Sun / Moon lucide icons + DropdownMenu)to admin-shell header(desktop)+ mobile header
-- [ ] F1.5 Public-vs-protected route convention:Landing / Login / Register routes 唔 require auth(public exclude `_PROTECTED_PREFIXES`);Chat / Admin / Eval / Debug routes require auth(protected per existing W7 D1 baseline)
-- [ ] F1.6 Functional smoke:`/chat` renders W12 F4.4 chat content;`/` returns Landing(empty stub if F2 not yet land);dark mode toggle persists via localStorage
+- [x] F1.1 Chat path move:`frontend/app/page.tsx` → `frontend/app/chat/page.tsx`(preserve W12 F4.4 tokens migration content;Next.js App Router convention)
+- [x] F1.2 `frontend/app/page.tsx` placeholder for V7 Landing(F1 only ensures path slot ready;F2 fills content)
+- [x] F1.3 Theme provider integration:wire `<ThemeProvider attribute="class">` from `next-themes`(W12 D3 auto-installed via shadcn sonner)into `frontend/app/layout.tsx` root + suppress hydration warning per next-themes convention
+- [x] F1.4 Dark mode toggle UI:add toggle Button(Sun / Moon lucide icons + DropdownMenu)to admin-shell header(desktop)+ mobile header
+- [x] F1.5 Public-vs-protected route convention:**deviation per plan §7 changelog 2026-06-10 (D1)** — Next.js `middleware.ts` 唔存在(W7 D1 baseline 從未 implement);apply via page-level convention only(Landing/Login/Register 唔 mount AuthProvider = public;Chat/Admin/Eval/Debug 透過 UserMenu + useAuthStore 隱式 protected via AuthProvider mock auto-sign-in)。Server-side guard defer F5 backend session middleware
+- [ ] 🚧 F1.6 Functional smoke:user-deferred per CLAUDE.md §13 dev server policy(`pnpm dev` long-running Node server 同 Claude Code 衝突);AI verification = type-check 0 errors ✅ + import resolution ✅;`! pnpm dev` localhost:3001 user smoke remainder 候 user 自行驗證(同 W12 F4.13 carry-over CO1 pattern)
 
 ## F2 — V7 Landing page implementation
 
