@@ -1,25 +1,22 @@
 'use client';
 
 /**
- * KB Pipeline Wizard (`/admin/kb/new`) — per architecture.md §5.5 view 7.
+ * KB Pipeline Wizard (`/admin/kb/new`) — per architecture.md v6 §5.5 view 7.
  *
- * 3-step wizard: DATA SOURCE → DOCUMENT PROCESSING → EXECUTE.
- * Step 1 captures KB identity + description.
- * Step 2 reviews / overrides KbConfig defaults + picks first document.
- * Step 3 fires the POST sequence (POST /kb → POST /kb/{id}/documents) and
- * shows per-stage status, then routes to the new KB detail page on success.
+ * W12 D4 F4.9 tokens migration: hardcoded oklch → token classes;
+ * Step CTAs upgraded to shadcn Button (default + outline back). Functional
+ * logic intact (3-step wizard: DATA SOURCE → DOCUMENT PROCESSING → EXECUTE
+ * with POST /kb → POST /kb/{id}/documents sequence).
  *
- * Plain Tailwind step indicator (shadcn Stepper deferred — same Karpathy §1.2
- * trade-off as W3 D4 chat UI baseline; matches W2 D5 admin views pattern).
- *
- * Layout reference Dify Image 1 wizard (no code copy per CLAUDE.md §7);
- * EKP design tokens only via `oklch(...)`.
+ * Layout reference Dify Image 1 wizard (no code copy per ADR-0010).
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
+
+import { Button } from '@/components/ui/button';
 import {
   DEFAULT_KB_CONFIG,
   kbApi,
@@ -27,6 +24,7 @@ import {
   type KbCreatePayload,
   type KbStatus,
 } from '@/lib/api/kb';
+import { cn } from '@/lib/utils';
 
 type Step = 1 | 2 | 3;
 
@@ -100,12 +98,12 @@ export default function KbNewPage() {
     <div className="max-w-3xl">
       <Link
         href="/admin/kb"
-        className="text-sm text-[oklch(0.42_0.04_260)] hover:underline"
+        className="text-sm text-accent hover:underline"
       >
         ← Back to KBs
       </Link>
       <h1 className="mt-2 text-2xl font-semibold">Create Knowledge Base</h1>
-      <p className="mt-1 text-sm text-[oklch(0.45_0_0)]">
+      <p className="mt-1 text-sm text-muted-foreground">
         Set up a new KB and ingest its first document in three steps.
       </p>
 
@@ -184,28 +182,26 @@ function Stepper({ current }: { current: Step }) {
         return (
           <li key={s.id} className="flex flex-1 items-center gap-2">
             <span
-              className={[
+              className={cn(
                 'flex h-7 w-7 items-center justify-center rounded-full text-[11px]',
                 isActive
-                  ? 'bg-[oklch(0.42_0.04_260)] text-white'
+                  ? 'bg-primary text-primary-foreground'
                   : isDone
-                    ? 'bg-[oklch(0.65_0.16_145)] text-white'
-                    : 'border border-[oklch(0.92_0_0)] text-[oklch(0.55_0_0)]',
-              ].join(' ')}
+                    ? 'bg-success text-success-foreground'
+                    : 'border border-border text-muted-foreground',
+              )}
             >
               {isDone ? '✓' : s.id}
             </span>
             <span
               className={
-                isActive
-                  ? 'text-[oklch(0.20_0_0)]'
-                  : 'text-[oklch(0.55_0_0)]'
+                isActive ? 'text-foreground' : 'text-muted-foreground'
               }
             >
               {s.label}
             </span>
             {idx < steps.length - 1 && (
-              <span className="ml-2 flex-1 border-t border-dashed border-[oklch(0.92_0_0)]" />
+              <span className="ml-2 flex-1 border-t border-dashed border-border" />
             )}
           </li>
         );
@@ -228,7 +224,7 @@ function Step1({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <h2 className="text-lg font-medium">Data Source</h2>
-      <p className="text-sm text-[oklch(0.45_0_0)]">
+      <p className="text-sm text-muted-foreground">
         Identify the new KB. The KB id forms the Azure AI Search index name
         (<span className="font-mono">ekp-kb-{'{kb_id}'}-v{'{n}'}</span>) and
         cannot change after creation.
@@ -239,7 +235,7 @@ function Step1({
           value={state.kb_id}
           onChange={(e) => onChange({ ...state, kb_id: e.target.value })}
           placeholder="e.g. drive_user_manuals"
-          className="w-full rounded border border-[oklch(0.92_0_0)] px-3 py-1.5 text-sm font-mono"
+          className="w-full rounded-md border border-input bg-background px-3 py-1.5 font-mono text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           autoFocus
         />
       </Field>
@@ -248,7 +244,7 @@ function Step1({
           value={state.name}
           onChange={(e) => onChange({ ...state, name: e.target.value })}
           placeholder="Drive — User Manuals"
-          className="w-full rounded border border-[oklch(0.92_0_0)] px-3 py-1.5 text-sm"
+          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
       </Field>
       <Field label="Description (optional)">
@@ -256,18 +252,14 @@ function Step1({
           value={state.description}
           onChange={(e) => onChange({ ...state, description: e.target.value })}
           rows={3}
-          className="w-full resize-none rounded border border-[oklch(0.92_0_0)] px-3 py-1.5 text-sm"
+          className="w-full resize-none rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
       </Field>
 
       <div className="flex justify-end pt-2">
-        <button
-          type="submit"
-          disabled={Object.keys(errors).length > 0}
-          className="rounded bg-[oklch(0.42_0.04_260)] px-4 py-2 text-sm font-medium text-white hover:bg-[oklch(0.36_0.04_260)] disabled:opacity-50"
-        >
+        <Button type="submit" disabled={Object.keys(errors).length > 0}>
           Next →
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -289,7 +281,7 @@ function Step2({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <h2 className="text-lg font-medium">Document Processing</h2>
-      <p className="text-sm text-[oklch(0.45_0_0)]">
+      <p className="text-sm text-muted-foreground">
         Review the indexing config and choose the first document to ingest.
         Defaults match architecture.md §3.2 baseline; settings are editable
         later under KB → Settings.
@@ -304,7 +296,7 @@ function Step2({
               config: { ...state.config, embedding_model: e.target.value },
             })
           }
-          className="w-full rounded border border-[oklch(0.92_0_0)] px-3 py-1.5 text-sm"
+          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
       </Field>
       <Field label="Embedding dimension" error={errors.embedding_dimension}>
@@ -321,7 +313,7 @@ function Step2({
               },
             })
           }
-          className="w-full rounded border border-[oklch(0.92_0_0)] px-3 py-1.5 text-sm"
+          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
       </Field>
       <Field label="Chunk strategy">
@@ -336,7 +328,7 @@ function Step2({
               },
             })
           }
-          className="w-full rounded border border-[oklch(0.92_0_0)] px-3 py-1.5 text-sm"
+          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <option value="auto">auto (per format)</option>
           <option value="layout_aware">layout_aware (Word/PDF)</option>
@@ -359,7 +351,7 @@ function Step2({
                 },
               })
             }
-            className="w-full rounded border border-[oklch(0.92_0_0)] px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
         </Field>
         <Field label="Default rerank_k" error={errors.default_rerank_k}>
@@ -376,7 +368,7 @@ function Step2({
                 },
               })
             }
-            className="w-full rounded border border-[oklch(0.92_0_0)] px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
         </Field>
       </div>
@@ -391,7 +383,7 @@ function Step2({
           className="block w-full text-sm"
         />
         {state.file && (
-          <span className="mt-1 block text-xs text-[oklch(0.45_0_0)]">
+          <span className="mt-1 block text-xs text-muted-foreground">
             Selected: <span className="font-mono">{state.file.name}</span>
             {' · '}
             {(state.file.size / 1024).toFixed(1)} KB
@@ -400,20 +392,12 @@ function Step2({
       </Field>
 
       <div className="flex justify-between pt-2">
-        <button
-          type="button"
-          onClick={onBack}
-          className="rounded border border-[oklch(0.92_0_0)] px-4 py-2 text-sm hover:bg-[oklch(0.96_0_0)]"
-        >
+        <Button type="button" variant="outline" onClick={onBack}>
           ← Back
-        </button>
-        <button
-          type="submit"
-          disabled={Object.keys(errors).length > 0}
-          className="rounded bg-[oklch(0.42_0.04_260)] px-4 py-2 text-sm font-medium text-white hover:bg-[oklch(0.36_0.04_260)] disabled:opacity-50"
-        >
+        </Button>
+        <Button type="submit" disabled={Object.keys(errors).length > 0}>
           Next →
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -446,13 +430,13 @@ function Step3({
   return (
     <div className="space-y-5">
       <h2 className="text-lg font-medium">Execute</h2>
-      <p className="text-sm text-[oklch(0.45_0_0)]">
+      <p className="text-sm text-muted-foreground">
         Confirm and create the KB. This runs two requests sequentially:
         <span className="font-mono"> POST /kb</span> then{' '}
         <span className="font-mono">POST /kb/{'{id}'}/documents</span>.
       </p>
 
-      <dl className="rounded border border-[oklch(0.92_0_0)] bg-[oklch(0.98_0_0)] p-4 text-sm">
+      <dl className="rounded-md border border-border bg-muted/40 p-4 text-sm">
         <Summary label="KB id" value={state.kb_id} />
         <Summary label="Name" value={state.name} />
         <Summary label="Description" value={state.description || '—'} />
@@ -485,26 +469,21 @@ function Step3({
       </ol>
 
       <div className="flex justify-between pt-2">
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={onBack}
           disabled={inFlight}
-          className="rounded border border-[oklch(0.92_0_0)] px-4 py-2 text-sm hover:bg-[oklch(0.96_0_0)] disabled:opacity-50"
         >
           ← Back
-        </button>
-        <button
-          type="button"
-          onClick={onExecute}
-          disabled={inFlight || allDone}
-          className="rounded bg-[oklch(0.42_0.04_260)] px-4 py-2 text-sm font-medium text-white hover:bg-[oklch(0.36_0.04_260)] disabled:opacity-50"
-        >
+        </Button>
+        <Button type="button" onClick={onExecute} disabled={inFlight || allDone}>
           {inFlight
             ? 'Running…'
             : allDone
               ? 'Done — redirecting…'
               : 'Create + Ingest'}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -521,14 +500,12 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="block text-xs font-medium uppercase tracking-wide text-[oklch(0.45_0_0)]">
+      <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
       <div className="mt-1">{children}</div>
       {error && (
-        <span className="mt-1 block text-xs text-[oklch(0.57_0.22_25)]">
-          {error}
-        </span>
+        <span className="mt-1 block text-xs text-destructive">{error}</span>
       )}
     </label>
   );
@@ -536,8 +513,8 @@ function Field({
 
 function Summary({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between border-b border-[oklch(0.92_0_0)] py-1.5 last:border-0">
-      <dt className="text-[oklch(0.45_0_0)]">{label}</dt>
+    <div className="flex justify-between border-b border-border py-1.5 last:border-0">
+      <dt className="text-muted-foreground">{label}</dt>
       <dd className="font-mono">{value}</dd>
     </div>
   );
@@ -555,16 +532,16 @@ function Stage({
   error: Error | null;
 }) {
   let icon = '○';
-  let cls = 'text-[oklch(0.55_0_0)]';
+  let cls = 'text-muted-foreground';
   if (pending) {
     icon = '◐';
-    cls = 'text-[oklch(0.42_0.04_260)] animate-pulse';
+    cls = 'text-accent animate-pulse';
   } else if (error) {
     icon = '✗';
-    cls = 'text-[oklch(0.57_0.22_25)]';
+    cls = 'text-destructive';
   } else if (success) {
     icon = '✓';
-    cls = 'text-[oklch(0.65_0.16_145)]';
+    cls = 'text-success';
   }
   return (
     <li className="flex items-start gap-3">
@@ -572,9 +549,7 @@ function Stage({
       <div className="flex-1">
         <div>{label}</div>
         {error && (
-          <div className="mt-0.5 text-xs text-[oklch(0.57_0.22_25)]">
-            {error.message}
-          </div>
+          <div className="mt-0.5 text-xs text-destructive">{error.message}</div>
         )}
       </div>
     </li>

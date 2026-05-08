@@ -28,12 +28,12 @@ export default function AdminOverviewPage() {
   return (
     <div>
       <h1 className="text-2xl font-semibold">Overview</h1>
-      <p className="mt-2 text-sm text-[oklch(0.45_0_0)]">
+      <p className="mt-2 text-sm text-muted-foreground">
         Aggregate stats across all Knowledge Bases.
       </p>
 
       {query.isError && (
-        <div className="mt-4 rounded border border-[oklch(0.57_0.22_25)] bg-[oklch(0.96_0.02_25)] p-3 text-sm">
+        <div className="mt-4 rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
           Failed to load — backend unreachable. R8 reactivation? Disconnect VPN +
           retry. Error: {String((query.error as Error)?.message ?? 'unknown')}
         </div>
@@ -64,8 +64,8 @@ function StatCard({
   loading: boolean;
 }) {
   return (
-    <div className="rounded border border-[oklch(0.92_0_0)] p-4">
-      <div className="text-xs uppercase tracking-wide text-[oklch(0.45_0_0)]">
+    <div className="rounded-md border border-border bg-card p-4">
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">
         {label}
       </div>
       <div className="mt-2 text-2xl font-semibold">

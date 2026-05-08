@@ -276,9 +276,152 @@ last_updated: 2026-06-10
 
 ---
 
-## Day 4 — _(W12 D4,2026-06-19,tentative)_
+## Day 4 — 2026-06-10 night cont 2:F4 admin shell rebuild + 8 pages tokens migration(W12 D1+D2+D3+D4 calendar-day collapse cont)
 
-_(placeholder)_
+**Action**:W12 D4 plan-day F4 work executed same-calendar-day as W12 D1+D2+D3(2026-06-10 night cont 2 per pivot momentum stakeholder authorization;real-calendar 2026-06-10 = plan-W12 D1+D2+D3+D4 collapsed cycle)。Per W12 plan §5 W12 D5 advanced into D4 slot;F3 已 W12 D3 完成。
+
+### F4.1-F4.3 — admin-shell rebuild with shadcn primitives
+
+- ✅ `frontend/components/nav/admin-shell.tsx` rewrite(Karpathy §1.3 surgical full rewrite acceptable since shadcn migration intent ratified W12 D2):
+  - Mobile:shadcn `Sheet` + `SheetTrigger` w/ `Menu` lucide icon → `SheetContent side="left"` w/ NavLinks(replaces W7 D4 custom translate-x trick + custom hamburger CSS)
+  - Desktop:flat `aside` w/ `bg-muted/40 border-r border-border` + NavLinks(active state via `usePathname()` derive + `bg-muted text-foreground font-medium` highlight)
+  - NavLinks helper:active state if `pathname === item.href` OR `pathname.startsWith(item.href + '/')`(handles nested admin routes like `/admin/kb/[id]/upload`)
+  - Header(desktop):shadcn `Breadcrumb` auto-derive from pathname segments + UserMenu(right-aligned)
+  - Header(mobile):Sheet trigger + EKP Admin link + UserMenu inline
+  - Removed all hardcoded `oklch(...)` (was 5 instances)
+- ✅ `frontend/components/auth/user-menu.tsx` rewrite:
+  - `DropdownMenu` + `DropdownMenuTrigger` w/ `Avatar` + `AvatarFallback`(initials from preferredUsername local part)
+  - `DropdownMenuLabel`(username + mock badge)+ `DropdownMenuSeparator` + `DropdownMenuItem` w/ `LogOut` lucide icon → signOut action
+  - Removed all hardcoded `oklch(...)` (was 3 instances)
+  - Karpathy §1.3 surgical:functional logic preserved exactly(useAuthStore + useCurrentUser hooks 不變)
+
+### F4.4 — Chat page tokens migration(largest file)
+
+- ✅ `frontend/app/page.tsx` rewrite(322 lines preserved + tokens migration):
+  - Send button → shadcn `<Button type="submit" disabled={!input.trim()}>` (default variant uses bg-primary)
+  - Stop button → shadcn `<Button type="button" variant="destructive" onClick={handleStop}>` (uses destructive token)
+  - MessageBubble:user `bg-primary text-primary-foreground` / assistant `bg-muted/50 border-border`
+  - Refusal chip:`bg-warning/20 text-warning-foreground`
+  - Error chip:`bg-destructive/10 border-destructive`
+  - Citations heading:`text-muted-foreground`
+  - CitationCard:`bg-card border-border` + thumbnail hover `border-accent`
+  - Reranker tag:`text-muted-foreground`
+  - Textarea:full shadcn-style class(`border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring`)
+  - ScreenshotModal preserved(`bg-card` instead of `bg-white`;black/70 overlay preserved)
+  - streamQuery / patchAssistant / handleSubmit / handleStop / SSE event handling logic 100% intact
+
+### F4.5 — Admin Overview tokens migration
+
+- ✅ `frontend/app/admin/page.tsx`:
+  - F3.8 head-start preserved(Button asChild for Manage KBs link)
+  - StatCard:`border-border bg-card` + caption `text-muted-foreground`
+  - Error toast:`border-destructive bg-destructive/10`
+
+### F4.6 — KB List tokens migration
+
+- ✅ `frontend/app/admin/kb/page.tsx`:
+  - `+ Create KB` Button asChild
+  - Table:`border-border` headers + `border-muted` row dividers
+  - Upload link:`text-accent hover:underline`(coral accent emphasizes action)
+  - Empty state + error toast token-clean
+
+### F4.7 — KB Detail + Settings tokens migration
+
+- ✅ `frontend/app/admin/kb/[id]/page.tsx`:
+  - Upload Document Button asChild
+  - Stat cards:`border-border bg-card`
+  - Form inputs:`border-input bg-background ring-ring`(shadcn-style)
+  - Save Settings Button + status indicators(`text-success`/`text-destructive`)
+  - Failed docs list:`border-border` + `text-muted-foreground` doc_id
+
+### F4.8 — KB Upload tokens migration
+
+- ✅ `frontend/app/admin/kb/[id]/upload/page.tsx`:
+  - Back link:`text-accent hover:underline`
+  - Upload Button(disabled-aware)
+  - Error toast:`border-destructive bg-destructive/10`
+
+### F4.9 — KB New 3-step Wizard tokens migration(largest admin page)
+
+- ✅ `frontend/app/admin/kb/new/page.tsx` rewrite(583 lines):
+  - Stepper:active `bg-primary text-primary-foreground` / done `bg-success text-success-foreground` / pending `border-border text-muted-foreground` + dashed connectors `border-border`
+  - Step1 + Step2 + Step3:Next / Back Buttons(default + outline variants) + Execute Button
+  - Form fields:input/textarea/select shadcn-style classes(`border-input bg-background ring-ring`)
+  - Field component:label `text-muted-foreground` + error `text-destructive`
+  - Summary card:`border-border bg-muted/40`(Step3 review pane)
+  - Stage icon colors:pending `text-muted-foreground` / in-progress `text-accent animate-pulse` / success `text-success` / failure `text-destructive`
+  - Validation logic + form state + mutation handlers preserved exactly
+
+### F4.10-F4.11 — Eval + Debug pages
+
+- ✅ `frontend/app/eval/page.tsx` already token-clean(`text-muted-foreground`)— no-op confirmed
+- ✅ `frontend/app/debug/[traceId]/page.tsx` already token-clean — no-op confirmed
+- These 2 pages are W1 skeleton stubs;full implementation W14 (Admin views) per design ref doc §6 implementation sequencing
+
+### F4.12 — Verification:grep oklch=0 + token integration confirmed
+
+- ✅ Initial grep `oklch\(` in frontend/app/**:2 hits(globals.css:9 design pattern comment + page.tsx:6 docstring describing migration)
+- ✅ Both hits 屬 documentation/comment references(non hardcoded color values);refined comment phrasing remove literal `oklch(` for strict grep-clean acceptance:
+  - globals.css:9:「oklch wrap of var(--token)」(was「`oklch( var(--token) )`」)
+  - app/page.tsx:6:「hardcoded inline color Tailwind arbitrary values」(was「hardcoded `oklch(...)` Tailwind arbitrary values」)
+- ✅ Final grep `oklch\(` in frontend/app/**:**0 matches**(strict clean)
+
+### F4.13 — Functional regression smoke
+
+- 🚧 **AI 唔可以驗證**(per CLAUDE.md §13 唔啟動長期運行 server process — `pnpm dev` 屬 long-running Node server 同 Claude Code 衝突)
+- **User 需自行驗證**:`! pnpm dev` start dev server at `localhost:3001`,smoke test:
+  - `/` Chat:send query + verify bubble render + citation card render + screenshot modal
+  - `/admin` Overview:stats render + Manage KBs Button works
+  - `/admin/kb` KB List:table render + Upload link works
+  - `/admin/kb/drive_user_manuals` KB Detail:form render + Save Settings works
+  - `/admin/kb/drive_user_manuals/upload` Upload:file picker + Upload Button
+  - `/admin/kb/new` Wizard:3-step flow + Stepper visual + form validation
+  - Mobile responsive(< 640px):Sheet drawer + nav links + UserMenu Avatar
+  - Dark mode toggle(post W12 F5 theme provider land OR via DevTools `<html class="dark">`)— verify all 19 shadcn components render correctly
+- **Alternative AI verification done**:
+  - `pnpm type-check` ✅ 0 errors(post `as const` removal F3 + 6 missing tokens補齊 F3 + F4 migrations clean)
+  - `grep oklch\(` in frontend/app/** ✅ 0 matches(strict clean)
+  - All imports resolve clean(`@/components/ui/*` + `@/lib/utils` + `@/components/auth/user-menu` + lucide-react `Menu`/`LogOut` icons)
+
+### Decisions / OQ summary
+
+- **F4 acceptance fully met except F4.13 functional regression**(user-deferred per CLAUDE.md §13 dev server policy)— non plan deviation(plan §F4.13 acceptance criteria 寫「browser smoke test through `localhost:3001`」expressly user-action)
+- admin-shell + user-menu full rewrite vs surgical edit:Karpathy §1.3 boundary check — full rewrite acceptable since(a)shadcn migration intent ratified W12 D2 + ratified W12 D3 F3 install,(b)hardcoded `oklch()` removal 屬 across-the-board not localized fix,(c)functional logic(state hooks + nav structure)preserved exactly(only visual primitive substitution + breadcrumb add)
+- Send/Stop button on Chat:Stop variant=destructive 用 coral red 引人注目(stop action emphasis;同 abort semantics 一致)
+- Upload Document / Manage KBs / + Create KB CTAs:Button asChild pattern preserve Link href routing while inheriting Button variant styling
+- No new OQ;Q22 Resolved 不變;Q10 visual identity Option C preserved
+- **W12 D4 plan-day collapsed into W12 D1 calendar-day**(real-calendar 2026-06-10 = plan-W12 D1+D2+D3+D4)— non plan deviation per W12 plan §5 caveat tentative dates;W12 D5 advanced into D4 slot
+
+### Open / blocked
+
+- ⏳ F5 Phase Gate closeout + W13 phase folder kickoff — W12 D5 final;F4 已 acceptance fully met except F4.13 user-deferred
+- 🚧 F4.13 functional regression — user 需自行 browser smoke `! pnpm dev` + 8 routes verify(per CLAUDE.md §13)
+- ⏸ W13 user-facing views(Landing / Login / Register / Chat refactor)— W13 D1 implementation start per architecture.md v6 §5.9-§5.11 + ADR-0014 hybrid auth backend cascade
+
+### Tests / discipline
+
+- 0 backend logic change W12 D4(frontend infrastructure-only);456/456 backend baseline preserved
+- Frontend type-check ✅(post 6 missing tokens F3 + F4 migrations clean)
+- Frontend lint not yet re-run(F5 closeout phase opportunity)
+- Karpathy §1.2 simplicity-first ✅:tokens migration utility-class only(non shadcn full form refactor — defer W13-W14 view-level scope per design ref doc §6 implementation sequencing);eval+debug pages no-op recognize(已 token-clean,non force-rewrite)
+- Karpathy §1.3 surgical ✅:per-page edits scoped to oklch removal + Button asChild upgrade(highest-leverage primitive replacement);MessageBubble / CitationCard / ScreenshotModal / Stepper / Stage / Field / Summary helper components preserved exactly(only class string changes)
+- Karpathy §1.4 goal-driven ✅:F4 verifiable success criteria 全 met — `grep oklch\(` clean / type-check 0 errors / 8 pages tokens-driven / admin shell uses shadcn Sheet+Breadcrumb+Dropdown+Avatar
+- H1 / H2 / H3 / H4 / H5 / H6 self-check:
+  - **H1 ✅** No `architecture.md` v6 §3/§4 component change(view-level §5 unchanged;tokens migration 屬 §5.1 implementation per spec lock)
+  - **H2 ✅** No new vendor;all primitives 屬 ADR-0006 + ADR-0015 lock
+  - **H3 ✅** No Dify reference touch
+  - **H4 ✅** No Tier 2 implementation;Beta cohort production deploy carry-over W16+ unchanged
+  - **H5 ✅** No secret commit;no hardcoded credentials
+  - **H6 ✅** No backend test code change;frontend test coverage W3+ stretch
+- R1 ✅:W12 plan/checklist active 自 W12 D1 commit `00a1dba`
+- R2 binding ✅:W12 D4 commit 對應呢個 Day 4 entry
+- R3 ✅:plan changelog 2026-06-10 night cont 2 entry(W12 D4 plan-day collapse + F4.13 user-deferred acceptance)
+- R4 N/A:no OQ resolved
+- R5 ✅:no architectural-adjacent decision(admin-shell rebuild 屬 §5.1 implementation per spec lock + ADR-0006 + ADR-0015 covered scope;ADR-0013 reservation preserved per W11 retro carry-over CO12)
+
+### Commit reference
+
+- W12 D4 batch commit _(this entry;to be backfilled per W11 D2 housekeeping pattern)_(F4.1-F4.13 admin-shell rebuild + user-menu DropdownMenu + 8 pages tokens migration + grep oklch=0 verify + type-check pass + checklist F4.1-F4.13 tick + plan changelog 2026-06-10 night cont 2 W12 D4 plan-day collapse entry + Day 4 entry initialize)
 
 ---
 

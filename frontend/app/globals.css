@@ -6,7 +6,7 @@
   /*
    * EKP CSS custom properties — synchronized with frontend/lib/theming/tokens.ts
    * (colorsLight / colorsDark). Bare oklch component values (L C H) wrapped via
-   * Tailwind config to oklch(var(--token)) for utility class consumption.
+   * Tailwind config to oklch wrap of var(--token) for utility class consumption.
    *
    * Decision: Option C "Warm Charcoal + Coral Accent" (W12 D2 ratification
    * 2026-06-10 per architecture.md v6 §5.1 + ADR-0015).

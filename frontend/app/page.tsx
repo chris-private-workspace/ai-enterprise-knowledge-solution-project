@@ -1,20 +1,29 @@
 'use client';
 
 /**
- * End User Chat (`/`) — per architecture.md §5.2 + components/C10-chat-ui.md.
+ * End User Chat (`/`) — per architecture.md v6 §5.2 + components/C10-chat-ui.md.
  *
- * W3 D4 baseline plain HTML/Tailwind (shadcn upgrade deferred to W3 D5 F8 polish
- * window per Karpathy §1.2 simplicity-first; matches W2 D5 admin-views pattern).
+ * W12 D4 F4.4 tokens migration:hardcoded inline color Tailwind arbitrary values
+ * replaced with token-referenced classes(`bg-primary` / `border-border` / etc)
+ * wired via Tailwind config to CSS custom properties(globals.css :root + .dark)。
+ * Functional logic intact:streamQuery / MessageBubble / CitationCard / ScreenshotModal
+ * preserved exactly per F4 plan acceptance「no logic change」。
  *
- * SSE consumed via `streamQuery` async generator (lib/api/query.ts). Per-event
+ * Send + Stop buttons upgraded to shadcn Button(default + destructive variants)
+ * per F3.5 head-start pattern;remaining inline elements still plain HTML w/
+ * token classes(full shadcn form refactor defer W13-W14 view-level work)。
+ *
+ * SSE consumed via `streamQuery` async generator(lib/api/query.ts)。Per-event
  * React state updates render token-by-token streaming + citation cards as they
- * arrive. Click thumbnail → ScreenshotModal full-image overlay (ESC closes).
+ * arrive。Click thumbnail → ScreenshotModal full-image overlay(ESC closes)。
  *
- * Layout reference Dify Image 5 chat + citation card (no code copy per CLAUDE.md §7);
- * EKP design tokens only via `oklch(...)` from `lib/theming/tokens.ts`.
+ * Layout reference Dify Image 5 chat + citation card(no code copy per ADR-0010);
+ * EKP visual identity via tokens.ts Option C "Warm Charcoal + Coral Accent"。
  */
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+
+import { Button } from '@/components/ui/button';
 import {
   streamQuery,
   type Citation,
@@ -128,16 +137,16 @@ export default function ChatPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-8">
-      <header className="mb-6 border-b border-[oklch(0.92_0_0)] pb-4">
+      <header className="mb-6 border-b border-border pb-4">
         <h1 className="text-2xl font-semibold">EKP — Knowledge Chat</h1>
-        <p className="mt-1 text-xs text-[oklch(0.45_0_0)]">
+        <p className="mt-1 text-xs text-muted-foreground">
           KB: <span className="font-mono">{KB_ID}</span>
         </p>
       </header>
 
       <section className="flex-1 space-y-4">
         {messages.length === 0 && (
-          <div className="rounded border border-dashed border-[oklch(0.92_0_0)] p-6 text-center text-sm text-[oklch(0.45_0_0)]">
+          <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             Ask about Ricoh financial software (AR / AP / FA / CB / GL / BM).
           </div>
         )}
@@ -148,7 +157,7 @@ export default function ChatPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="sticky bottom-0 mt-6 border-t border-[oklch(0.92_0_0)] bg-[oklch(1_0_0)] py-4"
+        className="sticky bottom-0 mt-6 border-t border-border bg-background py-4"
       >
         <div className="flex gap-2">
           <textarea
@@ -156,7 +165,7 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask a question…"
             rows={2}
-            className="flex-1 resize-none rounded border border-[oklch(0.92_0_0)] px-3 py-2 text-sm focus:border-[oklch(0.42_0.04_260)] focus:outline-none"
+            className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             disabled={isStreaming}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -166,21 +175,13 @@ export default function ChatPage() {
             }}
           />
           {isStreaming ? (
-            <button
-              type="button"
-              onClick={handleStop}
-              className="rounded bg-[oklch(0.57_0.22_25)] px-4 py-2 text-sm font-medium text-white hover:bg-[oklch(0.50_0.22_25)]"
-            >
+            <Button type="button" variant="destructive" onClick={handleStop}>
               Stop
-            </button>
+            </Button>
           ) : (
-            <button
-              type="submit"
-              disabled={!input.trim()}
-              className="rounded bg-[oklch(0.42_0.04_260)] px-4 py-2 text-sm font-medium text-white hover:bg-[oklch(0.36_0.04_260)] disabled:opacity-50"
-            >
+            <Button type="submit" disabled={!input.trim()}>
               Send
-            </button>
+            </Button>
           )}
         </div>
       </form>
@@ -202,10 +203,10 @@ function MessageBubble({
     <div className={isUser ? 'flex justify-end' : 'flex justify-start'}>
       <div
         className={[
-          'max-w-[88%] rounded p-3 text-sm',
+          'max-w-[88%] rounded-md p-3 text-sm',
           isUser
-            ? 'bg-[oklch(0.42_0.04_260)] text-white'
-            : 'border border-[oklch(0.92_0_0)] bg-[oklch(0.98_0_0)]',
+            ? 'bg-primary text-primary-foreground'
+            : 'border border-border bg-muted/50',
         ].join(' ')}
       >
         <div className="whitespace-pre-wrap">
@@ -214,20 +215,20 @@ function MessageBubble({
         </div>
 
         {message.refused && (
-          <div className="mt-2 rounded bg-[oklch(0.96_0.04_80)] px-2 py-1 text-xs text-[oklch(0.40_0.10_60)]">
+          <div className="mt-2 rounded-sm bg-warning/20 px-2 py-1 text-xs text-warning-foreground">
             Refused — answer not found in available documentation.
           </div>
         )}
 
         {message.errorText && (
-          <div className="mt-2 rounded border border-[oklch(0.57_0.22_25)] bg-[oklch(0.96_0.02_25)] p-2 text-xs">
+          <div className="mt-2 rounded-sm border border-destructive bg-destructive/10 p-2 text-xs">
             Stream error: {message.errorText}
           </div>
         )}
 
         {message.citations.length > 0 && (
           <div className="mt-3">
-            <div className="text-xs font-medium uppercase tracking-wide text-[oklch(0.45_0_0)]">
+            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Citations ({message.citations.length})
             </div>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -239,7 +240,7 @@ function MessageBubble({
         )}
 
         {!isUser && !message.isStreaming && message.rerankerUsed && (
-          <div className="mt-2 text-[10px] uppercase tracking-wide text-[oklch(0.55_0_0)]">
+          <div className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">
             reranker: {message.rerankerUsed}
           </div>
         )}
@@ -258,17 +259,20 @@ function CitationCard({
   const sectionLabel = citation.section_path.length > 0 ? citation.section_path.join(' > ') : '—';
   const thumbnail = citation.embedded_images[0];
   return (
-    <div className="rounded border border-[oklch(0.92_0_0)] bg-white p-2">
+    <div className="rounded-md border border-border bg-card p-2">
       <div className="text-xs font-semibold">{citation.chunk_title || '(untitled chunk)'}</div>
-      <div className="mt-0.5 text-[11px] text-[oklch(0.45_0_0)]">{citation.doc_title}</div>
-      <div className="mt-0.5 truncate font-mono text-[10px] text-[oklch(0.55_0_0)]" title={sectionLabel}>
+      <div className="mt-0.5 text-[11px] text-muted-foreground">{citation.doc_title}</div>
+      <div
+        className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground"
+        title={sectionLabel}
+      >
         {sectionLabel}
       </div>
       {thumbnail && thumbnail.blob_url && (
         <button
           type="button"
           onClick={() => onThumbnailClick(thumbnail)}
-          className="mt-2 block w-full overflow-hidden rounded border border-[oklch(0.92_0_0)] hover:border-[oklch(0.42_0.04_260)]"
+          className="mt-2 block w-full overflow-hidden rounded-sm border border-border transition-colors hover:border-accent"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -278,7 +282,7 @@ function CitationCard({
           />
         </button>
       )}
-      <div className="mt-1 text-[10px] text-[oklch(0.55_0_0)]">
+      <div className="mt-1 text-[10px] text-muted-foreground">
         score: {citation.relevance_score.toFixed(3)}
       </div>
     </div>
@@ -300,7 +304,7 @@ function ScreenshotModal({
       onClick={onClose}
     >
       <div
-        className="relative max-h-full max-w-4xl overflow-hidden rounded bg-white"
+        className="relative max-h-full max-w-4xl overflow-hidden rounded-md bg-card"
         onClick={(e) => e.stopPropagation()}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -312,7 +316,7 @@ function ScreenshotModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-2 top-2 rounded bg-black/60 px-3 py-1 text-xs text-white hover:bg-black/80"
+          className="absolute right-2 top-2 rounded-sm bg-black/60 px-3 py-1 text-xs text-white transition-colors hover:bg-black/80"
         >
           Close (Esc)
         </button>

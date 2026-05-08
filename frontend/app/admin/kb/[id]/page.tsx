@@ -1,17 +1,21 @@
 'use client';
 
 /**
- * KB Detail (`/admin/kb/[id]`) — per architecture.md §5.4 view 4.
+ * KB Detail (`/admin/kb/[id]`) — per architecture.md v6 §5.4 view 4.
  *
- * Shows KB summary + KbConfig form (PATCH /kb/{id}/settings) + link to upload.
- * W2 baseline plain HTML form; shadcn Form upgrade W3 D5 F8 polish window.
- * Layout reference Dify Image 4 (code not copied per CLAUDE.md §7).
+ * W12 D4 F4.7 tokens migration: hardcoded oklch → token classes;
+ * Upload CTA + Save Settings upgraded to shadcn Button. Functional logic
+ * intact (TanStack Query useQuery + useMutation patchSettings).
+ *
+ * Layout reference Dify Image 4 (no code copy per ADR-0010).
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+
+import { Button } from '@/components/ui/button';
 import { kbApi, type KbConfig, type KbStatus } from '@/lib/api/kb';
 
 export default function KbDetailPage() {
@@ -45,7 +49,7 @@ export default function KbDetailPage() {
   if (query.isLoading) return <p>Loading…</p>;
   if (query.isError) {
     return (
-      <div className="rounded border border-[oklch(0.57_0.22_25)] bg-[oklch(0.96_0.02_25)] p-3 text-sm">
+      <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
         Failed to load KB {kbId}: {String((query.error as Error)?.message)}
       </div>
     );
@@ -59,14 +63,11 @@ export default function KbDetailPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">{kb.name || kb.kb_id}</h1>
-          <p className="mt-1 text-xs text-[oklch(0.45_0_0)]">{kb.kb_id}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{kb.kb_id}</p>
         </div>
-        <Link
-          href={`/admin/kb/${kbId}/upload`}
-          className="rounded bg-[oklch(0.42_0.04_260)] px-4 py-2 text-sm font-medium text-white hover:bg-[oklch(0.36_0.04_260)]"
-        >
-          Upload Document
-        </Link>
+        <Button asChild>
+          <Link href={`/admin/kb/${kbId}/upload`}>Upload Document</Link>
+        </Button>
       </div>
 
       <p className="mb-6 text-sm">{kb.description}</p>
@@ -91,7 +92,7 @@ export default function KbDetailPage() {
             onChange={(e) =>
               setFormState({ ...formState, embedding_model: e.target.value })
             }
-            className="w-full rounded border border-[oklch(0.92_0_0)] px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
         </Field>
         <Field label="Embedding Dimension">
@@ -104,7 +105,7 @@ export default function KbDetailPage() {
                 embedding_dimension: Number(e.target.value),
               })
             }
-            className="w-full rounded border border-[oklch(0.92_0_0)] px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
         </Field>
         <Field label="Chunk Strategy">
@@ -116,7 +117,7 @@ export default function KbDetailPage() {
                 chunk_strategy: e.target.value as KbConfig['chunk_strategy'],
               })
             }
-            className="w-full rounded border border-[oklch(0.92_0_0)] px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <option value="auto">auto</option>
             <option value="layout_aware">layout_aware</option>
@@ -131,7 +132,7 @@ export default function KbDetailPage() {
             onChange={(e) =>
               setFormState({ ...formState, default_top_k: Number(e.target.value) })
             }
-            className="w-full rounded border border-[oklch(0.92_0_0)] px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
         </Field>
         <Field label="Default rerank_k">
@@ -141,25 +142,19 @@ export default function KbDetailPage() {
             onChange={(e) =>
               setFormState({ ...formState, default_rerank_k: Number(e.target.value) })
             }
-            className="w-full rounded border border-[oklch(0.92_0_0)] px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
         </Field>
 
-        <div className="pt-3">
-          <button
-            type="submit"
-            disabled={patchMutation.isPending}
-            className="rounded bg-[oklch(0.42_0.04_260)] px-4 py-2 text-sm font-medium text-white hover:bg-[oklch(0.36_0.04_260)] disabled:opacity-50"
-          >
+        <div className="flex items-center gap-3 pt-3">
+          <Button type="submit" disabled={patchMutation.isPending}>
             {patchMutation.isPending ? 'Saving…' : 'Save Settings'}
-          </button>
+          </Button>
           {patchMutation.isError && (
-            <span className="ml-3 text-sm text-[oklch(0.57_0.22_25)]">
-              Save failed
-            </span>
+            <span className="text-sm text-destructive">Save failed</span>
           )}
           {patchMutation.isSuccess && (
-            <span className="ml-3 text-sm text-[oklch(0.65_0.16_145)]">Saved.</span>
+            <span className="text-sm text-success">Saved.</span>
           )}
         </div>
       </form>
@@ -171,9 +166,9 @@ export default function KbDetailPage() {
             {kb.failed_documents.map((f) => (
               <li
                 key={f.doc_id}
-                className="rounded border border-[oklch(0.92_0_0)] p-3"
+                className="rounded-md border border-border p-3"
               >
-                <div className="font-mono text-xs text-[oklch(0.45_0_0)]">
+                <div className="font-mono text-xs text-muted-foreground">
                   {f.doc_id} · stage={f.stage}
                 </div>
                 <div className="mt-1">{f.error}</div>
@@ -188,8 +183,8 @@ export default function KbDetailPage() {
 
 function Stat({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="rounded border border-[oklch(0.92_0_0)] p-3">
-      <div className="text-xs uppercase text-[oklch(0.45_0_0)]">{label}</div>
+    <div className="rounded-md border border-border bg-card p-3">
+      <div className="text-xs uppercase text-muted-foreground">{label}</div>
       <div className="mt-1 text-xl font-semibold">{value}</div>
     </div>
   );
@@ -198,7 +193,7 @@ function Stat({ label, value }: { label: string; value: number | string }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-xs font-medium uppercase tracking-wide text-[oklch(0.45_0_0)]">
+      <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
       <div className="mt-1">{children}</div>

@@ -47,19 +47,19 @@ last_updated: 2026-06-10
 
 ## F4 — Admin shell foundation + existing pages tokens migration
 
-- [ ] F4.1 `frontend/components/nav/admin-shell.tsx` rebuild w/ shadcn primitives:sidebar nav using `Sheet`(mobile)+ flat sidebar(desktop)
-- [ ] F4.2 admin-shell header w/ breadcrumb + user-menu(reuse `auth/user-menu.tsx`,wrap in shadcn `Dropdown`)
-- [ ] F4.3 admin-shell main content area outlet
-- [ ] F4.4 `frontend/app/page.tsx` (Chat) tokens migration — replace hardcoded `oklch(...)` with tokens-referenced classes;keep functional logic intact
-- [ ] F4.5 `frontend/app/admin/page.tsx` tokens migration
-- [ ] F4.6 `frontend/app/admin/kb/page.tsx` tokens migration
-- [ ] F4.7 `frontend/app/admin/kb/[id]/page.tsx` tokens migration
-- [ ] F4.8 `frontend/app/admin/kb/[id]/upload/page.tsx` tokens migration
-- [ ] F4.9 `frontend/app/admin/kb/new/page.tsx` tokens migration
-- [ ] F4.10 `frontend/app/eval/page.tsx` tokens migration
-- [ ] F4.11 `frontend/app/debug/[traceId]/page.tsx` tokens migration
-- [ ] F4.12 Visual sanity check post-refactor:all 8 pages tokens-driven + no hardcoded oklch leakage(grep `oklch\(` in `frontend/app/**` should return 0 matches)
-- [ ] F4.13 Functional regression smoke browser test:KB list / chat stream / admin nav / KB detail render still work via `localhost:3001`
+- [x] F4.1 `frontend/components/nav/admin-shell.tsx` rebuild w/ shadcn primitives:sidebar nav using `Sheet`(mobile)+ flat sidebar(desktop)✅ W12 D4 — Sheet trigger + SheetContent(left side)+ flat sidebar md+ + responsive layout
+- [x] F4.2 admin-shell header w/ breadcrumb + user-menu(reuse `auth/user-menu.tsx`,wrap in shadcn `Dropdown`)✅ W12 D4 — Breadcrumb auto-derive from `usePathname()` + 6 segment label mapping(admin/kb/eval/debug/new/upload)+ dynamic segment truncation;UserMenu rebuilt with `DropdownMenu` + Avatar(initials fallback)+ DropdownMenuLabel/Separator/Item LogOut icon
+- [x] F4.3 admin-shell main content area outlet ✅ W12 D4 — `<main>` with desktop header(breadcrumb + UserMenu)+ p-4 md:p-8 content padding
+- [x] F4.4 `frontend/app/page.tsx` (Chat) tokens migration ✅ W12 D4 — Send/Stop buttons → shadcn Button(default + destructive variants);MessageBubble + CitationCard + ScreenshotModal use token classes(`bg-primary text-primary-foreground` / `bg-muted/50 border-border` / `bg-warning/20 text-warning-foreground` / `bg-destructive/10` / `text-muted-foreground` / `bg-card`);streamQuery / patchAssistant / handleSubmit / handleStop functional logic intact
+- [x] F4.5 `frontend/app/admin/page.tsx` tokens migration ✅ W12 D4 — F3.8 head-start completed via Button asChild + StatCard `border-border bg-card` + error toast `border-destructive bg-destructive/10` + StatCard `text-muted-foreground` caption
+- [x] F4.6 `frontend/app/admin/kb/page.tsx` tokens migration ✅ W12 D4 — `+ Create KB` Button asChild + table headers `border-border` + row dividers `border-muted` + Upload link `text-accent hover:underline`
+- [x] F4.7 `frontend/app/admin/kb/[id]/page.tsx` tokens migration ✅ W12 D4 — Upload Button asChild + Save Settings Button + Stat card `border-border bg-card` + error toast `border-destructive bg-destructive/10` + Save success/failed `text-success`/`text-destructive` + form inputs `border-input bg-background ring-ring` + failed docs list `border-border`
+- [x] F4.8 `frontend/app/admin/kb/[id]/upload/page.tsx` tokens migration ✅ W12 D4 — Back link `text-accent hover:underline` + Upload Button + error toast `border-destructive bg-destructive/10`
+- [x] F4.9 `frontend/app/admin/kb/new/page.tsx` tokens migration ✅ W12 D4 — Step1+Step2+Step3 Next/Back/Execute Buttons(default + outline) + Stepper bullet `bg-primary text-primary-foreground` active / `bg-success text-success-foreground` done / `border-border text-muted-foreground` pending + Summary `border-border bg-muted/40` + Stage icon colors `text-success`/`text-destructive`/`text-accent`/`text-muted-foreground` + form inputs token-clean
+- [x] F4.10 `frontend/app/eval/page.tsx` tokens migration ✅ W12 D4 — already token-clean(`text-muted-foreground`)no-op
+- [x] F4.11 `frontend/app/debug/[traceId]/page.tsx` tokens migration ✅ W12 D4 — already token-clean(`text-muted-foreground`)no-op
+- [x] F4.12 Visual sanity check post-refactor:all 8 pages tokens-driven + no hardcoded oklch leakage(grep `oklch\(` in `frontend/app/**` returns 0 matches)✅ W12 D4 — final grep clean(包括 docstring + globals.css comment refinement remove `oklch(` literal references)
+- [ ] F4.13 Functional regression smoke browser test:KB list / chat stream / admin nav / KB detail render still work via `localhost:3001` 🚧 **AI 唔可以驗證**(per CLAUDE.md §13 唔啟動長期運行 server process — `pnpm dev` 屬 long-running)→ user 需自行 `! pnpm dev` 然後 browser smoke;**alternative AI verification done**:type-check ✅ 0 errors + grep oklch ✅ 0 matches;all imports resolve clean(`@/components/ui/*` + `@/lib/utils` + `@/components/auth/user-menu` + lucide-react Menu/LogOut icons)
 
 ## F5 — Phase Gate closeout + W13 phase folder kickoff
 
