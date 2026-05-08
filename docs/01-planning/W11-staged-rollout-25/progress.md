@@ -2,14 +2,14 @@
 phase: W11-staged-rollout-25
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active   # `active` 自 W11 D1(2026-06-09)— Chris W10 closeout sign-off + Track B IT-cred-independent items kickoff
+status: closed   # `closed` 自 W11 D2 cont evening 2026-06-10 — early closeout per stakeholder authorization;Phase Gate PARTIAL PASS verdict per retro section
 ---
 
 # Phase W11 — Progress
 
 > Daily progress + 結尾 retro。
 > 每 commit 必須對應一個 Day-N entry mention(R2 binding rule per PROCESS.md §5)。
-> Status:`draft` 自 2026-06-06 W10 D5 closeout cascade。
+> Status:`closed` 自 2026-06-10 W11 D2 cont evening early closeout per stakeholder authorization。
 
 ---
 
@@ -443,30 +443,85 @@ AF3 W11 D1 edit text 寫「synthesizer init fails gracefully in lifespan startup
 
 ---
 
-## Retro(填於 W11 D5 末)
+## Retro(early closeout 2026-06-10 W11 D2 cont evening — early-closeout per stakeholder authorization 2026-06-10 evening session)
+
+> **Note**:呢個 retro 屬 **early closeout**(原計劃 W11 D5 == 2026-06-13 closeout)。Trigger:W11 D2 cont evening UI gap surface → strategic pivot W12 production-launch → ui-foundation-discovery,production launch defer W16+。Track A IT cred event 仍 pending,但 **W12 UI sprint phase 唔依賴 Track A LIVE deploy**(local dev workflow per W11 D2 cont `.npmrc` hoisted + `/api/backend` proxy unblocked already)→ W11 closeout 唔再 block 落 UI sprint 啟動。Track A 仍係 W16+ Beta cohort production deploy critical path,但唔再 W11 critical path。
 
 ### What worked
-_(W11 D5 末 fill)_
+
+1. **Track B IT-cred-independent items execute clean** — W11 D1 single batch landed F4.1-F4.4 runbook AF1-AF4 in-place edits + F5.3 Tier 2 trigger metric review draft + F5.2 Q4 pricing rate Option B authorization same-day。Karpathy §1.2 simplicity-first 體現:Q4 Option B pure governance decision(zero production code logic change),realtime_cost.py 純 docstring stale comment cleanup。
+2. **Personal Azure dev tier 作為 Track A blockade workaround pattern executed** — W11 D2 Batch 5 backend full deployment cascade(`az acr build` + ACA secret set + ACR registry creds + image + ingress + replica tune + 5 ACA revisions sequence)unblock W11 backend functional path verification + F4.5 Runbook live exercise prerequisite。Cross-tenant API key access pattern verified work(personal sub ACA → company tenant AI Search admin key + AOAI key)— 確立 dev tier sidecar 作業可行性。
+3. **F4.5 LIVE exercise goal-driven execution(Karpathy §1.4)** — same-session 內完成 Path A `/query` smoke + Path B AF1-AF4 narrative walkthrough + Path C2 AF3 Option B verify(NOT viable confirmed within hours)。Goal = "close AF3 outstanding question in same session if viable" → option matrix narrowed Option A only(splitting lifespan gates pattern)without 拖到 W11 D5 retro。
+4. **W11 D2 cont 1 day strategic governance pivot landed clean** — UI gap surface(~15-20% completion vs §5 spec)→ architecture.md v5.1 → v6 amendment(`49a634b`)+ ADR-0014 hybrid auth + ADR-0015 UI Tier 1 expansion sister cycle(`44a52cb`)+ W12 phase folder kickoff(`dca5135`)+ W11 plan changelog deviation entry(`1431e73`)合計 4-5 commits 完成 governance prep — 防止 W12 D1 implementation start 撞 architectural-adjacent decision retroactive cascade。
 
 ### What didn't work / unexpected friction
-_(W11 D5 末)_
+
+1. **🔴 AF3 critical mitigation drift surfaced** — F4.5 LIVE exercise verified runbook AF3「set `OPENAI_API_KEY=''` env override → retrieval-only fallback path active」**DOES NOT WORK**(503 instead of degraded retrieval-only)。Root cause:`server.py:64` lifespan gate `if settings.azure_openai_api_key and settings.azure_search_admin_key:` 包覆 BOTH retrieval engine AND synthesizer construction。Path C2 alternative trigger verify(`AZURE_OPENAI_DEPLOYMENT_LLM_PRIMARY=invalid-name`)亦 NOT viable(502 retrieval_failed instead of 503)— sole viable path = Option A code fix splitting lifespan gates。**Operational impact**:if real production AOAI quota exhaustion oncall follows AF3 → service goes to 503 outage instead of degraded retrieval-only。
+2. **Path C1 frontend deploy BLOCKED Windows env compounding** — pnpm symlink chain depth(`@azure+msal-browser` → `node_modules/.pnpm/.../msal-browser/dist/...` exceeds Windows MAX_PATH 260)+ OneDrive sync lock + access denied chain → `az acr build` 0 line 0 file packing fail + multi-tool delete attempts(rm -rf / Remove-Item / cmd rmdir / `\\?\` long-path prefix)全部 fail with files remain。W11 plan §5 Day-by-Day caveat 只 cover Track A IT cred timing slip,**未 anticipate Windows env class friction**。Pause acceptable per Karpathy §1.2 simplicity-first(diminishing returns vs sunk cost fallacy)。
+3. **Track A IT cred event 2026-06-08 re-escalation deadline buffer expended** — IT response 仍 pending W11 D2 末。原 plan §6.1 R1 risk(IT cred slip past 2026-06-08 → R-B1 re-escalation 🟡 → 🔴)trigger pattern 應 fire,但 **W11 D2 cont strategic pivot exposed:UI quality gap mooted Track A LIVE deploy timing**(冇 quality UI 落 cohort 都係 cosmetic embarrassment)→ Track A 改為 W16+ Beta cohort production deploy critical path,W11 closeout 唔再 escalate。
+4. **W11 plan §5 Day-by-Day breakdown D3-D5 全部冇執行** — D3 F2.3-F2.4 first-cohort kick-off + Day-1 metric baseline / D4 F3.1-F3.3 daily metric monitor / D5 F3.4-F3.5 50% EoW conditional gate 全部 Track A 依賴 → 唔 fire。原 plan 假設 D1-D2 Track A 落地 → D3+ 自然 cascade,但 IT cred event 唔出現 → 整條 cascade 凍結 → W11 plan §5 6 deliverables 入面 4 條(F1+F2+F3+F5.1)full block。
 
 ### Surprises / discoveries
-_(W11 D5 末)_
 
-### Carry-overs to W12-production-launch
-_(W11 D5 末)_
+1. **🆕 Drive Project corpus 真實內容 = D365 F&O ERP user manuals,不是 Ricoh MFP printer manuals** — Top retrieved chunks 全部來自 `DRIVE_User_Manual_0605_GL_FNA-General_Ledger_Management` doc(General Ledger / Allocation Rules / Microsoft Dynamics 365 Finance & Operations 員工指引)。eval-set-v0 placeholder 已 self-disclaim "validation_status: UNVALIDATED" + "domain_assumption.confidence: low" + "synthetic, pre-SME, validation_status: UNVALIDATED"。**意義**:SME labeling 必須 redo based on D365 F&O domain 而非 MFP — Q14 ground truth labeler(Chris Lai)real labeling work scope clarified。**W6 D5 final eval Recall@5=0.9722 baseline 仍 valid**:測量嘅係 retrieval pipeline mechanism correctness;真實 SME-labeled query distribution 後 metric variance reasonable Beta cohort signal range。**Closure**:W11 D2 cont commit `9e94e01` clarification memo `docs/03-implementation/drive-corpus-scope-clarification-W11-d2.md` + decision-form.md Q14 Notes row appended。
+2. **🆕 KB Manager 喺 fresh ACA deploy = empty(`GET /kb` 返 `[]`)** — Backend KB Manager **in-memory only**(per W1 baseline + architecture.md §4.3)— fresh personal ACA deploy = no KB registered。`/query` 仍 work — engine 直接打 AI Search index,**唔經 KB Manager**(`payload.kb_id` schema-required 但 route 唔 enforce)。**意義 for UI E2E**:Admin Console `KbStatus` view 會顯示 "No KB registered" visual state;F4.4 pixel diff harness baseline 應該 capture both empty + populated states。**Beta production hardening implication**:KB Manager 需要 persistent backing(SQLite / Postgres / Cosmos DB)— W12-W15 UI sprint scope 之外,但 carry-over candidate to Beta plan v1 §3 W16+ production launch readiness。
+3. **🆕 httpx `follow_redirects=True` strip `Authorization` header on 307 redirect(security feature,not bug)** — `GET /kb/`(trailing slash)→ FastAPI 307 redirect → `/kb`,但 httpx 為防止 credential leak 跨 origin,**預設 strip `Authorization` header on redirect**。**Closure**:W11 D2 cont commit `afec92e` `frontend/lib/api-client.ts` top docstring URL hygiene rule added;URL constants verified compliant `lib/api/kb.ts` + `lib/api/query.ts`(zero changes needed,already canonical)。
+4. **🆕 UI quality gap surface ~15-20% completion vs §5 spec 6 views Dify pattern requirement** — User opened browser at localhost:3001 → barebones UI(322-line page.tsx,no shadcn/ui,no tokens consume,no KB selector / sidebar / citation panel)→ surface architecture.md §5 spec ~15-20% completion vs 6 views Dify pattern requirement。**Decision**:pivot W12 from production-launch → UI Tier 1 expansion sprint(Phase 1 of 4)。Production launch 推到 W16+。Stakeholder ack(user)recorded。**Cascade**:architecture.md v5.1 → v6 amendment + ADR-0014(hybrid auth)+ ADR-0015(UI expansion)+ W12-W15 multi-sprint roadmap。**Sister surprise**:User self-introspection 揭發 = current frontend 喺 W3 D4 deferred shadcn install never resolved,tokens.ts not consumed,no KB selector / sidebar / citation panel — **Tier 1 UI promise 喺 ADR-0006 Day 1 從來冇真正 fulfill**。
+5. **🆕 truststore 信 OS trust store + Ricoh corp CA via Windows GPO chain** — W11 D2 R8 calibration awareness:Python httpx probe 為 ground truth (curl schannel CRL revocation fail ≠ Python failure)。R8 mitigation under VPN 仍 work via truststore;curl reliability 對 Python pipeline 不可信。
+6. **🆕 hybrid auth model 必要性 surface during UI gap exploration** — User explicit ack:Drive Project 真實 user pool **可能包含** external partner / vendor / contractor 唔在 Ricoh Entra ID tenant 入面 → ADR-0014 hybrid model(SSO + self-service register)。原 Q11 Entra ID enterprise SSO 唯一路徑 assumption refuted;Tier 1 v6 amendment 必須 cover hybrid。
+
+### Carry-overs to W12-ui-foundation-discovery
+
+> **W11 D2 cont scorecard 已 consolidated 8 items(closures: #2 Q14 ✅ / #4 URL hygiene ✅ / #5 LA REST API ✅ / #7 frontend reinstall ✅;remaining: #1 AF3 / #3 KB Manager / #6 cloud deploy / #8 UI sprint)**。W11 D5 closeout 重新分類為 **W12 vs Beta deploy(W16+)**:
+
+#### To W12 immediate(UI sprint scope)
+
+- **CO1** 🆕 **W12-W15 UI Tier 1 expansion sprint cycle 啟動** — pivot from W12-production-launch per stakeholder ack 2026-06-10:Spec §5 完成度 ~15-20% vs 6 views Dify pattern requirement → 4-sprint UI sprint W12-W15 + production launch defer to W16+;ADR-0014 hybrid auth + ADR-0015 UI expansion + architecture.md v5.1→v6 amendment governance prerequisite already landed
+- **CO2** Q22 NEW(Email Verification Service vendor)— W12 D1-D2 land per ADR-0014 candidate Azure Comm Service / SendGrid;default-if-unanswered = Azure Comm Service per CLAUDE.md §5.2 H2 Azure-native preference
+
+#### To Beta deploy(W16+ post UI sprint)
+
+- **CO3** AF3 code fix Option A(P2 governance,sole viable path post Path C2 verify)— ADR-0013 candidate trigger consolidated with Personal Azure dev tier pattern formalization;Beta cohort cutover 前必須 land per architecture.md §7.4 Day-2 Readiness operational acceptance
+- **CO4** KB Manager persistent backing(SQLite / Postgres / Cosmos DB)— Beta production hardening,Tier 1 boundary check:呢個 carry-over 唔 trigger Tier 2(persistence ≠ multi-tenancy);純粹 W16+ Beta production hardening 嘅一部分
+- **CO5** Track A IT cred populate event(R-B1 closure trigger)— still pending IT response;W16+ Beta cohort production deploy critical path,但唔再 W11 critical path due to UI sprint absorbing W12-W15
+- **CO6** Batch 4 frontend cloud deploy Windows env remediation — `.npmrc node-linker=hoisted` + custom proxy route 已 unblock local dev,but `az acr build` Windows MAX_PATH fail-mode preserved → 4 remediation paths:(1)move project out of OneDrive、(2)Win32 long-paths group policy、(3)WSL2 build、(4)GHA remote build。Recommended Path 4 GHA production-correct path
+- **CO7** F2.1-F2.4 25% rollout activation cascade — STILL BLOCKED on Track A;defer W16+ post UI sprint
+- **CO8** F3.1-F3.5 daily metric monitor + 50% EoW conditional gate — STILL BLOCKED on F2(Track A);defer W16+
+- **CO9** F5.1 Q15 first weekly signal report — STILL BLOCKED on F2 cohort traffic;defer W16+
+
+#### Cross-cutting(non-blocking governance)
+
+- **CO10** F5.2 7-day re-baseline schedule — W11+ post real cohort traffic accumulation trigger window;outcome = refresh `_PRICING_TABLE` if cohort billing data diverges > ±10% from publicly-quoted rates;defer W16+ post real traffic
+- **CO11** RAGAs evaluator REFUSAL_PHRASE skip enhancement(W5 C3 / W6 C6 inherit)— Q014 OOS pattern faith=0/rel=0/prec=1/recall=1 仍 pollute aggregate;detect REFUSAL_PHRASE substring + auto-skip faith/rel for refusal queries;W16+ optional polish
+- **CO12** ADR-0013 reservation preserved — consolidate AF3 code fix Option A(splitting lifespan gates pattern)+ Personal Azure dev tier Track A blockade workaround pattern formalization 兩個 architectural-adjacent decision;final formalization decision defer Beta cohort cutover preparation phase
 
 ### ADR triggers
-_(W11 D5 末 — ADR-0013 reservation candidate per W11 outcome)_
 
-### Phase Gate result(per plan.md §3 + architecture.md §7 acceptance)
-- G1-G8:_(W11 D5 末)_
-- **W11 staged rollout 25% verdict**:_(W11 D5 末)_ → ready for W12 production launch 100% / require additional polish
+- **ADR-0013 candidate trigger preserved** — consolidate two architectural-adjacent decisions:(a)AF3 code fix Option A splitting lifespan gates pattern(retrieval engine vs synthesizer construction separation per F4.5/Path C2 LIVE outcome)+(b)Personal Azure dev tier Track A blockade workaround pattern formalization(cross-tenant API key access + sidecar deploy topology + 5 ACA revisions cycle)。Final formalization defer **Beta cohort cutover preparation phase**(W16+),non-blocking for W12-W15 UI sprint cycle。
+- **ADR-0014 + ADR-0015 已 landed 2026-06-10**(commits `44a52cb` + `49a634b` + `1431e73`)— UI Tier 1 expansion + hybrid auth amendment 屬 W11 closeout cycle內 governance work,non new ADR trigger for W11 retro。
+- **No new H1 trigger fired W11** — H1 architectural change constraint 全程 preserved;personal Azure dev tier deploy 屬 sidecar topology(non architecture);Q4 Option B 屬 governance(non spec change);ADR-0014/0015 已 cover UI sprint pivot pre-emptively。
+
+### Phase Gate result(per plan.md §3 Success Criteria + architecture.md §7 acceptance)
+
+| # | Criterion | Verdict | Rationale |
+|---|---|---|---|
+| **G1** | F1 R-B1 closed + Q11 final operational Resolved | ❌ **NOT MET** | Track A IT cred event still pending;R-B1 status preserved 🟡 Active monitor;Q11 operational committed unchanged |
+| **G2** | F2 25% rollout activated + Day-1 metric baseline captured | ❌ **NOT MET** | Track A blocked → no cohort onboard |
+| **G3** | F3 4-metric within ±3pp baseline + no Sev1/Sev2 + cost ≤ projected × 1.2 | ❌ **NOT MET** | Track A blocked → no real cohort traffic to monitor |
+| **G4** | F3.5 50% rollout activation if conditional gate passes | ❌ **NOT MET** | G3 not met → 50% gate uncalled;held at 0% rollout |
+| **G5** | F4 Runbook live exercise replaces tabletop substitute | ✅ **MET with finding** | F4.1-F4.4 AF1-AF4 in-place edits landed W11 D1 + F4.5 LIVE exercise W11 D2 against personal Azure dev tier ACA + F4.6 Update history entry。**🔴 AF3 critical drift surfaced**(503 instead of retrieval-only fallback)→ Option A code fix sole viable path(Beta deploy carry-over CO3) |
+| **G6** | F5 Q15 first weekly signal report + Q4 pricing rate decision | ⚠️ **PARTIAL MET** | Q4 ✅ Option B chosen W11 D1(Karpathy §1.2 simplicity-first;placeholder rates preserved + 7-day re-baseline schedule)+ F5.3 Tier 2 review draft ✅ landed W11 D1(`tier-2-trigger-review-W11.md` 7 sections + 0/8 capability triggers + 0/5 GraphRAG triggers fired)。Q15 first weekly signal report ❌ blocked Track A cohort traffic |
+| **G7** | Backend pytest 456+/456+ + ruff + frontend lint + type-check 0 errors | ✅ **MET(baseline preserved)** | W11 全程 0 Python logic change(governance + cloud config + runbook docs);456/456 baseline preserved from W10 D3 |
+| **G8** | OQ Q11 + Q15 + Q6 + Q4 pricing sync to decision-form.md per outcome | ⚠️ **PARTIAL MET** | Q4 ✅ pricing rate Option B sub-decision sync W11 D1;Q11 + Q15 + Q6 status unchanged(pending Track A cohort onboard);Q14 W11 D2 cont corpus scope clarification Notes row appended;Q22 NEW deferred to W12 D1(scope shifted from W11 to W12 per pivot) |
+
+#### **W11 staged rollout 25% verdict**:🟡 **PARTIAL PASS — Track B IT-cred-independent + UI sprint pivot governance complete;Track A blocked items defer W16+**
+
+Rationale:Track B IT-cred-independent items execute clean(F4.1-F4.4 + F5.2 + F5.3)+ F4.5 LIVE exercise unblocked via personal Azure dev tier workaround pattern + Strategic UI sprint pivot governance landed clean(architecture.md v6 + ADR-0014/0015 + W12 phase folder kickoff);Track A blocked items(F1 + F2 + F3 + F5.1)defer to W16+ Beta cohort production deploy phase post UI sprint cycle complete。**W12 readiness**:UI Foundation & Discovery sprint phase folder skeleton(W11 D2 cont commit `dca5135`)+ governance prerequisites(`44a52cb` + `49a634b`)preserved for W12 D1 active flip without retroactive cascade。
 
 ### Phase status
-- Closeout commit:_(W11 D5 末)_
-- Frontmatter status flipped to `closed`:_(W11 D5 末)_
-- Phase W12 kickoff trigger:_(W11 D5 末 — W12 plan = production launch 100% + Day-2 ops handover + final post-launch monitoring per architecture.md §6.1 W12 row)_
+
+- **Closeout commit**:_(this commit)_ — early closeout 2026-06-10 W11 D2 cont evening per stakeholder authorization;original W11 D5 == 2026-06-13 not used per pivot
+- **Frontmatter status flipped to `closed`**:✅(plan.md + checklist.md + progress.md;this commit)
+- **Phase W12 kickoff trigger**:**W12-ui-foundation-discovery** active flip(per W11 plan changelog 2026-06-10 F6.3 deviation entry)— Phase 1 of 4 UI sprint cycle W12-W15;production launch phase folder defer to W15 D5 retro per architecture.md v6 §13.12 amendment + ADR-0015 sprint sequencing
 
 ---

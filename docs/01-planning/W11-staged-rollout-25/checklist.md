@@ -1,15 +1,15 @@
 ---
 phase: W11-staged-rollout-25
 plan_ref: ./plan.md
-status: active
+status: closed
 last_updated: 2026-06-10
 ---
 
 # Phase W11 — Checklist
 
 > Atomic checkbox(每 item ≤ 0.5–2 hour effort per W6 C10 calibration:LIVE deploy 2x;static 0.5x)。
-> Status:`draft` 自 2026-06-06 W10 D5 closeout cascade。
-> 全 unchecked 至 W11 D1 implementation start。
+> Status:`closed` 自 2026-06-10 W11 D2 cont evening(early closeout per stakeholder authorization)。
+> Track B + UI sprint pivot governance items completed(F4.1-F4.6 + F5.2 + F5.3);Track A blocked items(F1 + F2 + F3.1-F3.5 + F5.1 + F6 closeout sub-items)defer to W16+ Beta cohort production deploy phase。Phase Gate PARTIAL PASS verdict per progress.md retro。
 
 ## F1 — Track A IT cred populate event + R-B1 closure(W10 carry-over)
 
