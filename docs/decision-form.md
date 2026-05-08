@@ -246,6 +246,7 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Decided By** | Chris(acting as Stakeholder per 2026-04-30 session;specific labeler self-assigned 2026-05-01) |
 | **Date** | 2026-04-30(initial)/ 2026-05-01(labeler) |
 | **Status** | `Resolved` (full) |
+| **Notes** | **W11 D2 corpus scope clarification(2026-06-10)**:Drive Project corpus actual content = **D365 F&O ERP user manuals**(NOT MFP product manuals as eval-set-v0 placeholder assumed)。Labeler unchanged(Chris);domain alignment + Q14 status `Resolved` preserved per memo `docs/03-implementation/drive-corpus-scope-clarification-W11-d2.md` §4.1。Eval-set-v1 refresh 屬 W11+ cohort traffic-fed iteration(non-blocking)。 |
 
 ---
 
