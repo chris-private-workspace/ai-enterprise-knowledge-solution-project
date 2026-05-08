@@ -6,6 +6,20 @@
  * `lib/auth/index.ts` so /query/** + /kb/** + /feedback land authenticated.
  * Mock vs real MSAL is a `NEXT_PUBLIC_AUTH_MOCK` env-var flip — same single
  * switching point as backend `Settings.feature_auth_mock`.
+ *
+ * URL hygiene rule (W11 D2 discovery 2026-06-10): URL paths passed to
+ * ApiClient methods MUST NOT have trailing slashes. FastAPI auto-redirects
+ * `/path/` → `/path` with HTTP 307; the redirect hop CAN strip the
+ * Authorization header (Python httpx strips by default as cross-origin
+ * credential-leak prevention; native fetch behavior on 307+Auth is
+ * implementation-defined and fragile). Path canonicalization at source
+ * eliminates the redirect hop entirely.
+ *
+ * Verified compliant 2026-06-10: lib/api/kb.ts (/kb, /kb/${id},
+ * /kb/${id}/settings, /kb/${id}/documents), lib/api/query.ts (/query/stream).
+ *
+ * Reference: docs/01-planning/W11-staged-rollout-25/progress.md Day 2 §3
+ * governance finding #3 + W11 D5 retro carry-over #4.
  */
 
 import { getBearer } from './auth';
