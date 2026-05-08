@@ -520,7 +520,7 @@ Rationale:Track B IT-cred-independent items execute clean(F4.1-F4.4 + F5.2 + F5.
 
 ### Phase status
 
-- **Closeout commit**:_(this commit)_ — early closeout 2026-06-10 W11 D2 cont evening per stakeholder authorization;original W11 D5 == 2026-06-13 not used per pivot
+- **Closeout commit**:`4ec56d5` — early closeout 2026-06-10 W11 D2 cont evening per stakeholder authorization;original W11 D5 == 2026-06-13 not used per pivot
 - **Frontmatter status flipped to `closed`**:✅(plan.md + checklist.md + progress.md;this commit)
 - **Phase W12 kickoff trigger**:**W12-ui-foundation-discovery** active flip(per W11 plan changelog 2026-06-10 F6.3 deviation entry)— Phase 1 of 4 UI sprint cycle W12-W15;production launch phase folder defer to W15 D5 retro per architecture.md v6 §13.12 amendment + ADR-0015 sprint sequencing
 

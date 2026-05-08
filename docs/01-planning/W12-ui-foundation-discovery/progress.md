@@ -91,7 +91,7 @@ last_updated: 2026-06-10
 ### Commit reference
 
 - W11 D5 early closeout commit `4ec56d5`(Phase A — same-session pre-cascade for W12 D1 active flip)
-- W12 D1 batch commit _(this entry)_(Phase B — W12 active flip + F1 Q22 default activation + architecture.md v6 §3.2 C13 component card + checklist F1.1-F1.6 tick + plan changelog 2026-06-10 evening active flip entry)
+- W12 D1 batch commit `00a1dba`(Phase B — W12 active flip + F1 Q22 default activation + architecture.md v6 §3.7 C13 component card + checklist F1.1-F1.6 tick + plan changelog 2026-06-10 evening active flip entry)
 
 ---
 
