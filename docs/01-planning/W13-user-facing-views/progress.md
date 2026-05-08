@@ -203,9 +203,60 @@ $ grep oklch frontend/app/login | wc -l
 
 ---
 
-## Day 4 — _(W13 D4,2026-06-26,tentative)_
+## Day 4 — W13 D4 F4 V9 Register 3-step wizard(real-calendar 2026-06-10 same-day collapse cycle 2 of 4 cont)
 
-_(placeholder — F5 backend tests + F4 V9 Register complete + F6 ACS integration)_
+> **Calendar note**:plan §5 tentative date 2026-06-26 superseded by real-calendar 2026-06-10 same-day collapse(D3 → D4 cycle continue post user authorization "A:continue W13 D4 — F4 V9 Register 3-step wizard(frontend-only,reuse V8 BrandPanel split + Stepper visual pattern + step transitions;backend wire 同樣 stub/F5 defer)")。Time tracking calibration:plan ~1 day budget vs actual ~50 min(largest UI phase yet — wizard state machine + 6-box code input + countdown timer + 3 step components)。
+
+### What landed
+
+| F# | Deliverable | Files | Status |
+|---|---|---|---|
+| BrandPanel rule-of-2 extraction | NEW shared component | NEW `frontend/components/auth/brand-panel.tsx`(Server Component;dot-grid pattern + EKP logo + tagline preserved exactly from V8 inline)| ✅ |
+| V8 Login refactor consume shared | UPDATE `frontend/app/login/page.tsx`(import shared BrandPanel + remove internal function;5-line surgical touch)| ✅ |
+| F4.1 V9 Register page split layout | NEW `frontend/app/register/page.tsx`(client component;BrandPanel + form area split via `flex-col md:flex-row`)| ✅ |
+| F4.2 Step indicator inline | parallel W12 F4.9 Pipeline wizard pattern(rounded circle w/ number/checkmark + dashed connector;active=primary / done=success / pending=border-only;labels hidden < sm)| ✅ |
+| F4.3 Step 1 Account info | Email + Password + Confirm + Display name shadcn Input + Label + 5-segment strength bar + `validateAccountInfo` client-side rules(EMAIL_PATTERN + min 8 + uppercase + digit/symbol + match)| ✅ |
+| F4.4 Step 2 Email verify | MailCheck lucide icon + email display + 6 separate Input boxes(`useRef<Array<HTMLInputElement>>`)w/ auto-advance focus + Backspace previous + ArrowLeft/Right navigation + paste distribution to first box | ✅ |
+| F4.5 Step 3 Welcome | PartyPopper success icon + personalized greeting w/ displayName + disabled KB selector(`drive_user_manuals` w/ Q7 single-KB POC default title attribute)+ Tour CTA → `router.push('/chat')` | ✅ |
+| F4.6 Backend integration | **Deviation logged plan §7 changelog 2026-06-10 (D4)** — defer all wire to F5 batch per user instruction「backend wire 同樣 stub/F5 defer」(F3.6 pattern一致);stub handlers w/ `F5_PENDING_REGISTER` / `F5_PENDING_VERIFY` / `F5_PENDING_RESEND` constants;TODO(W13 F5)comments | ✅ (deviation noted) |
+| F4.7 Error states scaffold | `validateAccountInfo` produces field-level error map;F5 ApiError envelope variants(email_already_exists / invalid_password / verification_token_expired)→ pending F5 cascade | ✅ (scaffold ready) |
+| F4.8 Resend countdown | `useEffect` + `setTimeout` decrement every 1s;`resendCooldown > 0` disables Resend button + countdown text「Resend (Ns)」;`clearTimeout` cleanup on unmount;reset to 60s on Resend click + Step 1 → 2 advance | ✅ |
+
+### Decisions
+
+1. **BrandPanel rule-of-2 extraction**:Karpathy §1.1-§1.3 — design ref §2.9 explicit「Brand panel(left,same V8)」+ drift-prevention(2 places to update otherwise);extract NOW vs typical "rule of three";V8 Login refactored 5-line surgical touch(import + replace internal function call w/ shared)
+2. **Stepper inline retention**(no extraction yet):rule-of-3 pending — Pipeline wizard W12 F4.9 + Register W13 F4 = 2 active state-machine wizards;extract when 3rd emerges per Karpathy §1.2 simplicity-first;design ref §4 component map lists「Custom Step indicator」as future shared component
+3. **6-box vs single-input verification code**:wireframe §2.9 explicit 6 separate boxes;industry-standard verification UX(auto-advance feels official);accepted moderate complexity(refs management + paste handling)over single-Input simplicity;Karpathy §1.4 goal-driven — verifiable success = wireframe match
+4. **Step labels mobile collapse**:`hidden sm:inline` for label text → mobile shows just numbered circles + connectors(prevents layout overflow on narrow viewport;preserves visual rhythm)
+5. **Step 1 validation strategy**:client-side `validateAccountInfo` returns error map → field-level rendering via `<Field>` helper;Continue button disabled until all errors clear;avoids form submission attempt with invalid state(Karpathy §1.4 verifiable goal — submit only when valid)
+6. **Step 3 KB selector approach**:disabled visual rather than absent(communicates「multi-KB coming」without surfacing Tier 2 confusion;`title` attribute explains Q7 default to power users);accepts Tier 2 hint vs strict Tier 1 hide because architecture.md v6 §11 lists multi-KB selector as future user-facing extension
+
+### Verification
+
+```
+$ cd frontend && pnpm type-check
+> tsc --noEmit
+$ # 0 errors
+
+$ grep oklch frontend/app/register | wc -l
+0  # register/page.tsx fully token-clean (no docstring oklch mentions)
+
+$ grep oklch frontend/components/auth/brand-panel.tsx | wc -l
+1  # docstring at line ~7 explains "no hardcoded oklch values" token discipline
+   # (W12 admin-shell.tsx + W13 D3 login pattern一致 — Karpathy §1.3 inline comment WHY)
+```
+
+✅ TypeScript strict mode clean(0 errors);no `any` / no @ts-ignore;all colors via Tailwind tokens(`bg-primary` / `bg-accent/10` / `bg-success/15` / `bg-muted/30` / `text-foreground` / `text-muted-foreground` / `text-destructive` etc);shadcn primitives reused(Input + Label + Button)— no new vendor。
+
+### Carry-overs to W13 D5
+
+- 🚧 F1.6 + F2 + F3 + F4 user smoke continue defer per CLAUDE.md §13(`! pnpm dev` localhost:3001;`/register` 3-step flow + 6-box code input auto-advance + paste distribution + 60s countdown + Step 3 disabled KB selector + Tour CTA → /chat)— W13 D5 F5 backend cascade work fills smoke gap iteratively
+- ⏳ W13 D5 focus per plan §5:F5 backend hybrid auth(largest 2-day deliverable)+ F6 C13 ACS Email Verification Service integration + F7 closeout retro + W14 phase folder kickoff
+- 📝 Stepper extraction watch:rule-of-3 trigger pending(2/3 active wizards now);next wizard usage emergence → extract to `frontend/components/ui/stepper.tsx` shared
+
+### Commit
+
+- `<TBD>` feat(frontend,docs): W13 D4 F4 V9 Register 3-step wizard + BrandPanel rule-of-2 extract
 
 ---
 

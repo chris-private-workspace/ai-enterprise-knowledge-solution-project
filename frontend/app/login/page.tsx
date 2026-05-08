@@ -26,6 +26,7 @@ import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 
+import { BrandPanel } from '@/components/auth/brand-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -166,39 +167,3 @@ export default function LoginPage() {
   );
 }
 
-function BrandPanel() {
-  return (
-    <aside
-      className="relative hidden flex-1 flex-col justify-between overflow-hidden bg-primary p-12 text-primary-foreground md:flex"
-      aria-hidden="true"
-    >
-      {/* Subtle dot-grid pattern overlay — uses currentColor inherited from
-          text-primary-foreground so it stays in token consumption (no hardcoded
-          oklch). */}
-      <div
-        className="absolute inset-0 opacity-[0.06]"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)',
-          backgroundSize: '24px 24px',
-        }}
-      />
-      <div className="relative z-10">
-        <Link href="/" className="text-2xl font-bold tracking-tight">
-          EKP
-        </Link>
-      </div>
-      <div className="relative z-10">
-        <p className="text-3xl font-semibold leading-tight md:text-4xl">
-          Knowledge,
-        </p>
-        <p className="text-3xl font-semibold leading-tight md:text-4xl">
-          on demand.
-        </p>
-        <p className="mt-4 max-w-xs text-sm opacity-80">
-          Cited answers from your internal manuals — Word, PDF, PowerPoint.
-        </p>
-      </div>
-    </aside>
-  );
-}

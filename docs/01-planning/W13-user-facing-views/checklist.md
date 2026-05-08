@@ -43,14 +43,14 @@ last_updated: 2026-06-10
 
 ## F4 — V9 Register 3-step wizard implementation
 
-- [ ] F4.1 `frontend/app/register/page.tsx` create per V9 wireframe(per ui-design-reference-v6.md §2.9)— reuse V8 brand panel split layout
-- [ ] F4.2 Step indicator(reuse W12 F4.9 Stepper pattern;3 steps:Account info → Email verify → Welcome)
-- [ ] F4.3 Step 1 Account info:Email + Password + Confirm password + Display name(shadcn Input + Label + form validation;client-side strength preview rules)
-- [ ] F4.4 Step 2 Email verify:「Check your inbox at <email>」+ 6-digit code input(6 separate Input boxes w/ Tab navigation OR single Input auto-format)+ 「Resend(60s rate limit)」Button(disabled w/ countdown timer)
-- [ ] F4.5 Step 3 Welcome:「Account created」+ optional first KB selection(disabled — Tier 1 single-KB POC per Q7 default)+ Tour CTA Button「Start asking」 → `/chat`
-- [ ] F4.6 Backend integration:Step 1 submit → POST `/auth/register`(F5);Step 2 submit → POST `/auth/verify-email`(F5);Step 3 «Start asking» → router.push `/chat`
-- [ ] F4.7 Error states:registration failures(email_already_exists / invalid_password / verification_token_expired)→ toast + step rollback if needed
-- [ ] F4.8 Resend rate limit countdown:60s timer state + Button disabled while counting + clearTimeout on unmount
+- [x] F4.1 `frontend/app/register/page.tsx` create per V9 wireframe(per ui-design-reference-v6.md §2.9)— reuse V8 brand panel split layout via shared `frontend/components/auth/brand-panel.tsx`(rule-of-2 extracted W13 D4 per plan §7 changelog)
+- [x] F4.2 Step indicator inline parallel W12 F4.9 Pipeline wizard pattern(active/done/pending state machine;3 steps:Account info → Email verify → Welcome;step labels hidden < sm — only circle visible on mobile)
+- [x] F4.3 Step 1 Account info:Email + Password(strength preview 5-segment bar + label scoring length/uppercase/digit/symbol)+ Confirm password + Display name + client-side `validateAccountInfo` form validation(EMAIL_PATTERN + min 8 char + uppercase + digit/symbol + match)
+- [x] F4.4 Step 2 Email verify:6 separate Input boxes w/ auto-advance focus + Backspace previous focus + ArrowLeft/Right navigation + paste distribution(industry-standard verification UX);MailCheck lucide icon + email shown;`Resend (60s)` countdown button
+- [x] F4.5 Step 3 Welcome:PartyPopper success icon + personalized greeting w/ displayName + disabled KB selector(`drive_user_manuals` w/ title attribute per Q7 single-KB POC default)+ Tour CTA「Start asking →」 → `router.push('/chat')`
+- [x] F4.6 Backend integration **deviation logged plan §7 changelog 2026-06-10 (D4)** — defer all wire to F5 batch per user instruction「backend wire 同樣 stub/F5 defer」(F3.6 pattern一致);stub handlers w/ `F5_PENDING_REGISTER` / `F5_PENDING_VERIFY` / `F5_PENDING_RESEND` constants + sonner toast feedback;TODO(W13 F5)comments mark replacement points
+- [x] F4.7 Error states scaffold:`validateAccountInfo` produces field-level error map(client-side only);F5 ApiError envelope variants(email_already_exists / invalid_password / verification_token_expired)→ comment placeholder pending F5
+- [x] F4.8 Resend rate limit countdown:60s timer via `useEffect` + `setTimeout`(decrement every 1s);button disabled when `resendCooldown > 0`;`clearTimeout` cleanup on unmount;reset to 60s on Resend click + Step 1 → 2 advance
 
 ## F5 — Backend hybrid auth cascade
 
