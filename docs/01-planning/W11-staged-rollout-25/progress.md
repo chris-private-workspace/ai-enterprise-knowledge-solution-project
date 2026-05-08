@@ -313,11 +313,44 @@ AF3 W11 D1 edit text 寫「synthesizer init fails gracefully in lifespan startup
 | AF4 §2 runaway revoke | Narrative trace | ✅ Tier 1 gap acknowledgment accurate | NIL |
 | `az containerapp logs show` | Smoke attempt earlier batch | 🟡 R8 blocked | LA REST API fallback proven alternative |
 
+#### F4.5 C2 — AF3 Option B verify outcome(2026-06-10 same-day cont)
+
+**Goal**:Path C2 — verify if AF3 alternative trigger mechanism `AZURE_OPENAI_DEPLOYMENT_LLM_PRIMARY=invalid-deployment-name` 可以觸發 synthesizer construction throw 但 retrieval engine OK → 如果 work,AF3 mitigation 重寫即可,**唔需要 ADR-0013 code fix**(避開 H1 architectural-adjacent decision)。Karpathy §1.4 goal-driven:close AF3 outstanding question in same session if viable。
+
+**LIVE outcome**:
+- Trigger:`AZURE_OPENAI_DEPLOYMENT_LLM_PRIMARY=invalid-deployment-name-z9z9` env override → revision `--0000007` Activating 36s → RunningAtMaxScale 92s
+- POST /query → **502 `pipeline.retrieval_failed`** "synthesis failure: NotFoundError: 404 DeploymentNotFound"
+- **Option B verified NOT viable**
+
+**Mechanism analysis**:
+- ✅ Lifespan gate `if settings.azure_openai_api_key and settings.azure_search_admin_key:` passes(both API keys still valid)
+- 🟡 Synthesizer constructor + `await synthesizer.__aenter__()` **唔 validate deployment name**(只係 store string + setup async HTTP client / token authentication)
+- 🔴 First /query call → AOAI returns 404 DeploymentNotFound → `query.py:113-117` catches exception → wraps as 502 "synthesis failure"
+
+**Critical implication — both Options A + B FAIL retrieval-only fallback**:
+
+| Trigger | Outcome | retrieval-only fallback active? |
+|---------|---------|-------------------------------|
+| Option A:`AZURE_OPENAI_API_KEY=''`(env removal,revision `--0000005`)| 503 `pipeline.synthesis_failed` "RetrievalEngine not initialized" | ❌ |
+| Option B:`AZURE_OPENAI_DEPLOYMENT_LLM_PRIMARY=invalid-name`(revision `--0000007`)| 502 `pipeline.retrieval_failed` "synthesis failure DeploymentNotFound" | ❌ |
+
+`query.py:96-109` synthesizer-is-None retrieval-only fallback ONLY fires if `app.state.synthesizer is None` — which means lifespan gate must have failed `azure_openai_api_key` truthy check;但呢個同樣 disable retrieval engine → causing 503 BEFORE reaching synthesizer fallback path。**No env-var-only path to AF3 documented retrieval-only fallback**。
+
+**W11 D5 retro decision narrowed — Option A 唯一 viable path**:
+- Code fix splitting lifespan gates pattern:retrieval engine construction only需 `AZURE_SEARCH_ADMIN_KEY` + embedder client(separate AOAI requirement);synthesizer construction wrapped in try/except → graceful fallback `app.state.synthesizer = None` while retrieval engine survives
+- **No need to argue Option A vs Option B 喺 W11 D5 retro** — Option B 已 verify 非 viable
+- ADR-0013 candidate trigger firmly anchored on splitting lifespan gates pattern + retrieval-engine-vs-synthesizer separation
+- ADR-0013 trigger collision with Personal Azure dev tier pattern formalization 仍然有效(consolidate 兩個 architectural-adjacent decision 入同一 ADR more efficient)
+
+**Restore + verify**:`AZURE_OPENAI_DEPLOYMENT_LLM_PRIMARY=gpt-5.5` env restore → revision `--0000008` Activating 31s → RunningAtMaxScale 96s → POST /query 200 + `model_used: gpt-5.5` + 5 chunks + non-refused structured answer ✅ backend fully functional。
+
+**Runbook §2 AF3 LIVE EXERCISE WARNING callout added**(non-architectural disclosure;flagged for oncall「AF3 path DOES NOT work as documented;use Tier-2 emergency quota increase OR §6.1 revision swap until code fix lands」);§10 Update history 2026-06-10 cont row appended with Option B verify outcome。
+
 #### F4.5/F4.6 deliverable status
 
-- F4.5 ✅ checklist ticked;G5 W11 plan deliverable closed
-- F4.6 ✅ runbook Update history entry appended(2026-06-10 row;5 governance/operational findings + carry-overs)
-- 🆕 **W11 D5 retro Carry-over candidate**:AF3 mitigation rewrite OR code fix(P2 governance;ADR-0013 candidate trigger collision with Personal Azure dev tier pattern)
+- F4.5 ✅ checklist ticked;G5 W11 plan deliverable closed(C2 Option B verify 屬 F4.5 自然延伸,同 environment 同 mechanism class)
+- F4.6 ✅ runbook Update history entry appended(2026-06-10 row + 2026-06-10 cont row;Option B verify result + AF3 LIVE EXERCISE WARNING callout)
+- 🆕 **W11 D5 retro Carry-over candidate**:**AF3 code fix Option A only path**(P2 governance;ADR-0013 candidate trigger consolidated with Personal Azure dev tier pattern formalization);**Option B 已 verify 非 viable,W11 D5 retro decision narrowed**
 
 ### Commit reference
 
@@ -326,6 +359,8 @@ AF3 W11 D1 edit text 寫「synthesizer init fails gracefully in lifespan startup
 - W11 D2 Path A `/query` smoke addendum commit `48008d8`(3 governance findings + auth env var addition + smoke metric snapshot;ACA revision `--0000003` `FEATURE_AUTH_MOCK=true` enabled for dev mode bypass)
 - W11 D2 backfill commit `a7a8f79`(Path A smoke addendum commit hash backfill)
 - W11 D2 Path B F4.5 Runbook live exercise commit `20f7f56`(F4.5 outcome sub-section + checklist F4.5 + F4.6 tick + runbook Update history 2026-06-10 entry;**🔴 AF3 critical drift finding** + 2 minor drift + 3 carry-overs to W11 D5 retro;ACA revision sequence `--0000003 → --0000004 → --0000005 → --0000006 RESTORE`)
+- W11 D2 backfill commit `34525be`(F4.5 commit hash backfill into F4.5 sub-section + runbook §10 history row)
+- W11 D2 Path C2 F4.5 AF3 Option B verify commit:_(filled post-commit per backfill pattern)_
 
 ---
 
