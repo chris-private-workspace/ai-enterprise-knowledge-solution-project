@@ -264,7 +264,7 @@ status: active   # `active` 自 W11 D1(2026-06-09)— Chris W10 closeout sign-of
 
 - W11 D2 batch commit `fcd8c25`(progress.md Day 2 entry + plan.md changelog 2026-06-09 active flip + 2026-06-10 personal Azure dev tier pattern executed)
 - W11 D2 backfill commit `5462301`(commit hash backfill into Day 2 entry per W10 D5 pattern)
-- W11 D2 Path A smoke addendum commit:_(filled post-commit per backfill pattern)_
+- W11 D2 Path A `/query` smoke addendum commit `48008d8`(3 governance findings + auth env var addition + smoke metric snapshot;ACA revision `--0000003` `FEATURE_AUTH_MOCK=true` enabled for dev mode bypass)
 
 ---
 
