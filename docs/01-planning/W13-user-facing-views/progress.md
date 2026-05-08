@@ -332,7 +332,7 @@ Success: no issues found in 6 source files
 
 ### Commit
 
-- `<TBD>` feat(backend,docs): W13 D5 F5 backend hybrid auth + ADR-0016 scrypt + 4 new endpoints + 41 tests
+- `054679d` feat(backend,docs): W13 D5 F5 backend hybrid auth + ADR-0016 scrypt + 4 new endpoints + 41 tests
 
 ---
 
