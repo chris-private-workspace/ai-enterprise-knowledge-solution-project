@@ -2,7 +2,7 @@
 
 Coverage:
 - select_parser dispatches by file extension (.docx → DoclingDocxParser,
-  .pptx → PptxParser, .pdf → DoclingDocxParser)
+  .pptx → PptxParser, .pdf → DoclingPdfParser per ADR-0019)
 - select_parser raises ValueError for unsupported extension
 - select_chunker(doc_format='pptx', strategy='auto') returns LayoutAwareChunker
   (slide_based delegates per W4 D1 F9 simplification)
@@ -19,6 +19,7 @@ from ingestion.chunker.layout_aware import LayoutAwareChunker
 from ingestion.chunker.strategies import select_chunker
 from ingestion.parsers import select_parser
 from ingestion.parsers.docx_parser import DoclingDocxParser
+from ingestion.parsers.pdf_parser import DoclingPdfParser
 from ingestion.parsers.pptx_parser import PptxParser
 
 
@@ -31,11 +32,13 @@ def test_select_parser_returns_pptx_parser_for_pptx() -> None:
 def test_select_parser_returns_docling_for_docx() -> None:
     parser = select_parser(Path("/some/path/manual.docx"))
     assert isinstance(parser, DoclingDocxParser)
+    assert parser.doc_format == "docx"
 
 
-def test_select_parser_returns_docling_for_pdf() -> None:
+def test_select_parser_returns_pdf_parser_for_pdf() -> None:
     parser = select_parser(Path("/some/path/report.pdf"))
-    assert isinstance(parser, DoclingDocxParser)
+    assert isinstance(parser, DoclingPdfParser)
+    assert parser.doc_format == "pdf"
 
 
 def test_select_parser_uppercase_extension_normalised() -> None:
