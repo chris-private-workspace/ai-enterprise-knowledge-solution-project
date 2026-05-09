@@ -87,6 +87,74 @@ class HybridSearcher:
         wait=wait_exponential(multiplier=1, min=1, max=8),
         reraise=True,
     )
+    async def fetch_by_chunk_ids(
+        self,
+        chunk_ids: list[str],
+        kb_id: str,
+    ) -> dict[str, dict]:
+        """Batch fetch chunks by chunk_id list (no ranking) per ADR-0020 Context Expander.
+
+        Single Azure AI Search /docs/search call with `search.in()` filter to retrieve
+        multiple chunks in one round-trip — minimizes latency overhead vs N parallel
+        single-doc lookups. kb_id required per ADR-0018 multi-KB invariant.
+
+        Returns mapping chunk_id → fields dict; only chunks present in the index appear.
+        Empty input list returns empty dict (no API call — cost guard).
+        """
+        if not chunk_ids:
+            return {}
+        assert self._client is not None, "use 'async with' to manage searcher lifecycle"
+
+        # ADR-0018: dynamic per-KB index name (Option B b2 dynamic injection)
+        index_name = kb_id_to_index_name(kb_id, legacy_default_index=self.index_name)
+
+        # ADR-0018: prepend kb_id eq clause + chunk_id batch filter
+        kb_filter = kb_id_filter_clause(kb_id)
+        chunk_id_filter = f"search.in(chunk_id, '{','.join(chunk_ids)}', ',')"
+        full_filter = f"{kb_filter} and {chunk_id_filter}"
+
+        url = (
+            f"{self.endpoint}/indexes/{index_name}"
+            f"/docs/search?api-version={self.api_version}"
+        )
+        # search="*" + filter = pure filtering retrieval (no BM25/vector ranking)
+        payload: dict = {
+            "search": "*",
+            "filter": full_filter,
+            "top": len(chunk_ids),
+        }
+
+        response = await self._client.post(url, content=json.dumps(payload))
+
+        if response.status_code >= 500 or response.status_code == 429:
+            response.raise_for_status()
+        if response.status_code != 200:
+            response.raise_for_status()
+
+        body = response.json()
+        result: dict[str, dict] = {}
+        for item in body.get("value", []):
+            chunk_id = str(item.get("chunk_id", ""))
+            if not chunk_id:
+                continue
+            fields = {k: v for k, v in item.items() if not k.startswith("@search.")}
+            result[chunk_id] = fields
+
+        logger.debug(
+            "hybrid_fetch_by_chunk_ids",
+            index=index_name,
+            kb_id=kb_id,
+            requested=len(chunk_ids),
+            returned=len(result),
+        )
+        return result
+
+    @retry(
+        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.TransportError)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=8),
+        reraise=True,
+    )
     async def search(
         self,
         query_text: str,

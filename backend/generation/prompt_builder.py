@@ -35,10 +35,14 @@ class PromptMessages:
 
 
 def _format_chunk(chunk: RetrievedChunk) -> str:
+    """Format a chunk for LLM context. Per ADR-0020 prefer 'expanded_text' (prev+orig+next)
+    when present (Context Expander step landed); fallback to 'chunk_text' otherwise.
+    """
     cid = str(chunk.fields.get("chunk_id", ""))
     title = str(chunk.fields.get("chunk_title", "") or "(untitled)")
     section = " > ".join(chunk.fields.get("section_path") or [])
-    text = str(chunk.fields.get("chunk_text", ""))
+    # ADR-0020: expanded_text if Context Expander applied; else original chunk_text
+    text = str(chunk.fields.get("expanded_text") or chunk.fields.get("chunk_text", ""))
     section_line = f"  Section: {section}\n" if section else ""
     return (
         f"[chunk-{cid}] {title}\n"

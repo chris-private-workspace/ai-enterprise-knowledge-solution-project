@@ -178,3 +178,20 @@ class RetrievalEngine:
             total_latency_ms=total_latency_ms,
             reranked=reranked,
         )
+
+    async def expand_context_for_chunks(
+        self,
+        chunks: list[RetrievedChunk],
+        kb_id: str,
+    ):
+        """Wrap top-K reranked chunks with prev/next neighbor context per ADR-0020.
+
+        Delegates to generation.context_expander.expand_context using the engine's
+        searcher (encapsulation preserved — caller doesn't need direct searcher access).
+        Returns (list[ExpandedChunk], ExpansionStats) — see context_expander.py for shape.
+        """
+        # Local import avoids circular dependency: context_expander imports from
+        # retrieval.retrieval_engine for RetrievedChunk; engine→expander would cycle.
+        from generation.context_expander import expand_context  # noqa: PLC0415
+
+        return await expand_context(chunks, kb_id=kb_id, searcher=self._searcher)

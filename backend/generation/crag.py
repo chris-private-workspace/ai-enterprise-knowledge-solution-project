@@ -367,9 +367,26 @@ class CragLoop:
                                      rewrite=rewrite,
                                      crag_latency_ms=_elapsed_ms(crag_start))
 
+        # ADR-0020 Context Expander: wrap re-retrieved chunks before re-synthesis
+        # (parallel pattern to /query route happy path). Graceful degradation: on
+        # expand failure fall back to raw chunks for synthesis (no fatal abort).
+        try:
+            expanded_new_chunks, _new_expansion_stats = (
+                await self._engine.expand_context_for_chunks(
+                    new_result.chunks, kb_id=kb_id,
+                )
+            )
+        except Exception as exc:  # noqa: BLE001 — graceful per ADR-0020 spec
+            errors.append(f"context_expansion: {exc}")
+            logger.warning(
+                "crag_context_expansion_error",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            expanded_new_chunks = new_result.chunks  # raw fallback
+
         try:
             new_synth = await self._synthesizer.synthesize(
-                rewrite.rewritten_query, new_result.chunks,
+                rewrite.rewritten_query, expanded_new_chunks,
             )
         except Exception as exc:  # noqa: BLE001
             errors.append(f"re-synthesize: {exc}")

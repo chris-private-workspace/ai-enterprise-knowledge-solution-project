@@ -109,8 +109,22 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
             refused=False,
         )
 
+    # ADR-0020 Context Expander: wrap top-K with prev/next neighbor text before synthesis.
+    # Synthesizer.synthesize() accepts ExpandedChunk via duck-type (same score+fields shape);
+    # prompt_builder reads fields['expanded_text'] if present, else falls back to chunk_text.
     try:
-        synth = await synthesizer.synthesize(payload.query, result.chunks)
+        expanded_chunks, _expansion_stats = await engine.expand_context_for_chunks(
+            result.chunks, kb_id=payload.kb_id,
+        )
+    except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0020
+        logger.warning(
+            "context_expansion_failed_using_raw",
+            error=f"{type(exc).__name__}: {exc}",
+        )
+        expanded_chunks = result.chunks  # fallback: no expansion (raw chunks)
+
+    try:
+        synth = await synthesizer.synthesize(payload.query, expanded_chunks)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -190,6 +204,18 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
             detail=f"retrieval failure: {type(exc).__name__}: {exc}",
         ) from exc
 
+    # ADR-0020 Context Expander parallel to /query happy path (graceful degradation).
+    try:
+        expanded_chunks, _expansion_stats = await engine.expand_context_for_chunks(
+            result.chunks, kb_id=payload.kb_id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "context_expansion_stream_failed_using_raw",
+            error=f"{type(exc).__name__}: {exc}",
+        )
+        expanded_chunks = result.chunks
+
     async def event_serializer():
         # W10 D1 F4.1 — observe_streaming wraps compose_query_stream so the
         # terminal `done` frame's model + token counts flow to Langfuse
@@ -197,7 +223,7 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
         # Cancellation mid-stream still emits a generation event with
         # status=cancelled so partial-spend cost attribution stays accurate。
         try:
-            synth_stream = synthesizer.synthesize_stream(payload.query, result.chunks)
+            synth_stream = synthesizer.synthesize_stream(payload.query, expanded_chunks)
             observed = observe_streaming(
                 compose_query_stream(result, synth_stream),
                 name="api.query.stream",
