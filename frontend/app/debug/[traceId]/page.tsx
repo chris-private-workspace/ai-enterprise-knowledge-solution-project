@@ -324,7 +324,7 @@ function PipelineStageCollapsible({
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-muted/50"
+        className="flex w-full items-center justify-between gap-3 rounded-md p-3 text-left transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
       >
         <div className="flex min-w-0 items-center gap-3">
           <ChevronDown

@@ -7,8 +7,18 @@
  * backend ApiError envelope (F4.1) when available — `code` / `message` /
  * `actionable_hint` map to title / body / hint respectively. Generic
  * fallback shown when the error lacks the envelope (e.g. network failure).
+ *
+ * W15 D3 F3.4 token cleanup — replaced 6 hardcoded oklch values with Tailwind
+ * tokens (border-destructive/30, bg-destructive/10, text-destructive,
+ * text-muted-foreground) per W12 D2 strict baseline + CO_W14_F4_error_boundary
+ * carry-over from W14 retro deferred to W15 polish phase (Karpathy §1.3
+ * surgical scope expansion warranted — broader token cleanup natural-fit for
+ * W15 polish phase per W14 F4.3 audit deferral). Native `<button>` + `<a>`
+ * replaced with shadcn Button + Button asChild for visual consistency with
+ * admin UI + automatic dark mode + focus-visible ring (a11y).
  */
 
+import { Button } from '@/components/ui/button';
 import { ApiError } from '@/lib/api-client';
 
 export interface ErrorBoundaryViewProps {
@@ -17,7 +27,8 @@ export interface ErrorBoundaryViewProps {
   scope?: string;
 }
 
-const REPORT_URL = 'https://github.com/anthropics/claude-code/issues'; // W8: replace with EKP support channel
+// W8: replace with EKP support channel post Track A IT cred
+const REPORT_URL = 'https://github.com/anthropics/claude-code/issues';
 
 export function ErrorBoundaryView({
   error,
@@ -33,41 +44,41 @@ export function ErrorBoundaryView({
   return (
     <div
       role="alert"
-      className="mx-auto my-12 max-w-xl rounded-lg border border-[oklch(0.88_0.04_25)] bg-[oklch(0.98_0.02_25)] p-6 text-sm"
+      className="mx-auto my-12 max-w-xl rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-sm"
     >
-      <div className="mb-2 flex items-baseline justify-between">
-        <h2 className="text-base font-semibold text-[oklch(0.45_0.18_25)]">
+      <div className="mb-2 flex items-baseline justify-between gap-3">
+        <h2 className="text-base font-semibold text-destructive">
           {scope ? `${scope} — ` : ''}Something went wrong
         </h2>
-        <code className="text-xs text-[oklch(0.55_0_0)]">
+        <code className="font-mono text-xs text-muted-foreground">
           {code}
           {status ? ` (${status})` : ''}
         </code>
       </div>
-      <p className="mb-3">{message}</p>
+      <p className="mb-3 text-foreground">{message}</p>
       {hint ? (
-        <p className="mb-4 text-[oklch(0.45_0_0)]">
-          <strong>Next step:</strong> {hint}
+        <p className="mb-4 text-muted-foreground">
+          <strong className="font-medium text-foreground">Next step:</strong>{' '}
+          {hint}
         </p>
       ) : null}
       <div className="flex flex-wrap gap-2">
         {reset ? (
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => reset()}
-            className="rounded border border-[oklch(0.45_0.18_25)] bg-[oklch(0.98_0_0)] px-4 py-1.5 text-xs hover:bg-[oklch(0.94_0_0)]"
+            className="border-destructive text-destructive hover:bg-destructive/10"
           >
             Retry
-          </button>
+          </Button>
         ) : null}
-        <a
-          href={REPORT_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded border border-[oklch(0.92_0_0)] px-4 py-1.5 text-xs hover:bg-[oklch(0.94_0_0)]"
-        >
-          Report
-        </a>
+        <Button asChild variant="outline" size="sm">
+          <a href={REPORT_URL} target="_blank" rel="noopener noreferrer">
+            Report
+          </a>
+        </Button>
       </div>
     </div>
   );
