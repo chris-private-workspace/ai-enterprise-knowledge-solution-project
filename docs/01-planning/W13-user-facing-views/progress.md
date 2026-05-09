@@ -377,7 +377,7 @@ $ grep oklch frontend/app/login/page.tsx frontend/app/register/page.tsx frontend
 
 ### Commit
 
-- `<TBD>` feat(frontend,docs): W13 D5 cont CO_F5d frontend wire batch + ApiError envelope branching
+- `b1179cc` feat(frontend,docs): W13 D5 cont CO_F5d frontend wire batch + ApiError envelope branching
 
 ---
 
