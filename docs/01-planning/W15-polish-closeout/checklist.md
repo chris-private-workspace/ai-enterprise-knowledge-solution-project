@@ -1,7 +1,7 @@
 ---
 phase: W15-polish-closeout
 plan_ref: ./plan.md
-status: active
+status: closed
 last_updated: 2026-06-10
 ---
 
@@ -44,25 +44,25 @@ last_updated: 2026-06-10
 
 ## F5 — Tier 1 UI sprint cycle final closeout + W16+ Beta deploy phase folder kickoff
 
-- [ ] F5.1 W15 phase Gate verdict landed(PASS / PARTIAL PASS / FAIL per W14 F5.1 pattern)
-- [ ] F5.2 W15 progress.md retro 7 sections + **Tier 1 UI sprint cycle final closeout retrospective**(W12+W13+W14+W15 cumulative learnings)
-- [ ] F5.3 `docs/01-planning/W16-beta-deploy/{plan,checklist,progress}.md` draft per W11 plan F1+F2+F3 Track A IT cred event-triggered + R-B1 closure
-- [ ] F5.4 W15 plan + checklist + progress frontmatter status flipped to `closed`
-- [ ] F5.5 No new OQ surface expected;if surface → sync to decision-form.md per R4
-- [ ] F5.6 4-sprint UI Tier 1 expansion 收尾 marker — architecture.md v6 §13.12 fully implemented;ready for W16+ Beta deploy
+- [x] F5.1 W15 phase Gate **PASS WITH SMOKE-USER-DEFERRED CAVEAT** verdict landed(per W12 F5.1 + W13 F7.1 + W14 F5.1 pattern)— all 5 PASS conditions met(F1-F4 verifiable success criteria fully met);PARTIAL PASS fallback acceptance criteria 全 met(F2.4 Open in Langfuse stub URL Tier 1 + F4.5 CI integration deferred W16+ + F1.5 Reranker Shootout read-only inline static const Tier 1);no FAIL conditions tripped;SMOKE-USER-DEFERRED CAVEAT per CLAUDE.md §13 dev server policy(Playwright E2E + pixel diff baseline first capture user smoke 3-step workflow ready;W12+W13+W14+W15 manual smoke deferred backlog systematic subsume target);**MAJOR MILESTONE entire frontend oklch=0 globally** achieved W15 D3 F3.4
+- [x] F5.2 W15 progress.md retro 7 sections complete(What worked 7 items / What didn't 5 items / Surprises 6 items / Decisions 12 items / Carry-overs categorized to W16+ Beta deploy + process improvement formalization / Time tracking 7-12x under-budget calibration with W12+W13+W14 cumulative data 4-sprint cycle FINAL ~19 hours / ~20 plan-days ~10x cumulative under-budget / Spec ref alignment 5 deliverables traced architecture.md v6 §5.6-§5.7 + §5.8 + §3.5 + ADR-0014/0015/0016)+ **Tier 1 UI sprint cycle FINAL retrospective**(W12+W13+W14+W15 cumulative learnings:Implementation arc 4 sprints × ~5 plan-days delivered + Same-calendar-day collapse pattern unprecedented + Component spine coverage C09+C10+C11+C13+C12 + Karpathy §1 baseline observance arc 27+ deviations cumulative + ADR cumulative coverage 11 preserved + 3 new ADR-0014/0015/0016 + Token discipline arc W12 D2 → W15 D3 MILESTONE + CO_W14_process_grep_verify FORMALIZED + Handoff to W16+ Beta deploy)
+- [x] F5.3 NEW `docs/01-planning/W16-beta-deploy/{plan,checklist,progress}.md`(`status: draft`)per CLAUDE.md §10 R1 rolling-JIT — F1 Track A IT cred consumption + R-B1 closure verification + F2 25% Beta cohort rollout activation per W6 demo-prep.md beta-plan-v1 + F3 daily metric monitor + Q15 first weekly signal report + F4 user smoke first run(Playwright E2E baseline capture + browser binary install)+ F5 backend stub closure cascade(CO_W15_F1_backend + CO_W15_F2_backend + CO_W14_F3a-c);thin skeleton scope(detailed checkboxes deferred to W16 D1 active flip post Track A IT cred populate event trigger)
+- [x] F5.4 W15 plan + checklist + progress frontmatter status flipped to `closed`(all 3 same-commit-cycle as F5 closeout)
+- [x] F5.5 No new OQ surfaced W15(F1-F4 polish + closeout work 唔 surface OQ;W15 plan §3 success conditions explicitly 唔 expect OQ surface;16/22 Resolved unchanged from W12+W13+W14 baseline;5/22 Open unchanged Q6/Q8/Q15/Q16/Q20)
+- [x] F5.6 **4-sprint UI Tier 1 expansion 收尾 marker landed** — architecture.md v6 §13.12 amendment 完整 implemented(9 views × 6+ components × hybrid auth × ACS email × responsive/a11y/E2E/pixel diff baseline);**ready for W16+ Beta deploy production launch**;Tier 1 UI sprint cycle FINAL complete(W12+W13+W14+W15 = 20 plan-days collapsed across calendar single day per cumulative pivot momentum)
 
 ---
 
 ## Cross-Cutting
 
-- [ ] Each commit references `progress.md` Day-N entry(R2)
-- [ ] Component tag in commit message per CC-1(C09 / C06 / C07 / C10 / C11)
-- [ ] OQ status sync to `decision-form.md`(R4)— no W15 critical OQ expected
-- [ ] Risk register update if any new risk surface
-- [ ] CLAUDE.md §5.1 H1 boundary check:no architectural change without ADR(W15 scope already covered by ADR-0014 + ADR-0015 + ADR-0016)
-- [ ] CLAUDE.md §5.2 H2 boundary check:no new vendor / dependency without ADR(Playwright as Tier 1 utility test framework — pre-approved per CLAUDE.md §5.2「dev dependency」example exception OR ADR-0017 if scope expand)
-- [ ] CLAUDE.md §3.2 frontend conventions check:no `any` / no @ts-ignore / shadcn/ui only / tokens consumption verified(grep oklch=0 across all touched files including CO_W14_F4_error_boundary post-cleanup)
-- [ ] CLAUDE.md §5.5 H5 security check:no secret commit;Langfuse stub URL not real production endpoint
+- [x] Each commit references `progress.md` Day-N entry(R2)— W15 D1 `bf01091` ↔ Day 1 / W15 D2 `00b2262` ↔ Day 2 / W15 D3 `60c812d` ↔ Day 3 / W15 D4 `88320b9` ↔ Day 4 / W15 D5 F5 closeout commit ↔ Day 5
+- [x] Component tag in commit message per CC-1 — W15 commits tagged C09 Admin Console UI primary(F1+F2+F3+F4)+ C06 Eval Framework consume(F1 via 501 stub)+ C07 Observability Stack consume(F2 via 501 stub + Langfuse URL pattern)+ C10 Chat UI(F3 error boundary scope)+ C12 DevOps & Infra(F4 Playwright test harness)
+- [x] OQ status sync to `decision-form.md`(R4)— no W15 critical OQ surfaced(16/22 Resolved unchanged;5/22 Open Q6/Q8/Q15/Q16/Q20 影響 Beta + Tier 2 unchanged)
+- [x] Risk register update — no new risk surfaced W15;R8 corp proxy stable post-W6 D5 mitigation;**ADR-0017 reservation candidate** flagged for cumulative R8 mitigation pattern formalization across 4 occurrences(Cohere SDK W3 + argon2-cffi W13 + ACS SDK W13 + Playwright browser CDN W15 deferred);risk register update deferred to W16+ Beta hardening
+- [x] CLAUDE.md §5.1 H1 boundary check ✅ — no architectural change W15;F1-F4 implementation 屬 ADR-0014 + ADR-0015 + ADR-0016 already covered scope per H1
+- [x] CLAUDE.md §5.2 H2 boundary check ✅ — Playwright = dev dependency exception per CLAUDE.md §5.2「dev dependency」pre-approved;no other new vendor;ADR-0017 reservation candidate for cumulative R8 mitigation Beta hardening(non-W15-blocker)
+- [x] CLAUDE.md §3.2 frontend conventions check ✅ — type-check 0 errors × 5 phases + no `any` / no @ts-ignore / shadcn/ui only / **MAJOR MILESTONE tokens consumption verified globally** — grep `\[oklch frontend/` 0 hits(W12 D2 strict baseline now extends from admin scope to entire frontend codebase per W15 D3 F3.4 token cleanup);CO_W14_F4_error_boundary CLOSED
+- [x] CLAUDE.md §5.5 H5 security check ✅ — no secret commit;Langfuse stub URL pattern not real production endpoint(NEXT_PUBLIC_LANGFUSE_URL Beta production env var deferred per CO_W15_F2_langfuse_url);rel=noopener noreferrer preserved on external links;NEXT_PUBLIC_AUTH_MOCK=true in Playwright webServer env not production deployment
 
 ---
 
