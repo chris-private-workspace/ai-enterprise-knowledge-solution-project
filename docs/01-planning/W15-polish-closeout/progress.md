@@ -112,9 +112,55 @@ $ grep -r "\[oklch" frontend/app/eval/ frontend/lib/api/eval.ts
 
 ---
 
-## Day 2 — _(W15 D2,2026-07-08,tentative)_
+## Day 2 — W15 D2 F2 V6 Debug View implementation(real-calendar 2026-06-10 same-day collapse cycle 4 of 4 final cont)
 
-_(placeholder — F2 V6 Debug View implementation)_
+> **Calendar note**:plan §5 tentative date 2026-07-08 superseded by real-calendar 2026-06-10 same-day collapse(W15 D1 F1 → W15 D2 F2 cycle continue post user authorization "A:continue W15 D2 — F2 V6 Debug View implementation")。Time tracking calibration:plan ~1 day budget vs actual ~45 min(REWRITE V6 Debug View implementation + 4 deviations surfaced + 3 NEW frontend files;consistent with W12+W13+W14+W15 D1 7-16x under-budget pattern)。
+
+### What landed
+
+| F# | Deliverable | Files | Status |
+|---|---|---|---|
+| F2.1 | Trace header + summary cards + admin shell wrap | NEW `frontend/app/debug/layout.tsx`(AuthProvider + QueryProvider + AdminShell mirror eval/admin layout)+ NEW `frontend/lib/api/debug.ts`(typed client + TraceData + PipelineStageMetric forward-looking schema)+ REWRITE `frontend/app/debug/[traceId]/page.tsx` header(Back to Eval Link + traceId mono display + Total ms / Total cost / Query summary cards + Open in Langfuse Button);**deviation logged plan §7 (D2)** — file actually exists as W1 skeleton 15-line placeholder per Glob check(plan literal "NEW route" stale)| ✅ (deviation noted) |
+| F2.2 | 6-stage pipeline timeline(NOT 9-stage)| **deviation logged plan §7 (D2)** — plan literal "9-stage timeline" inconsistent with plan F2.2 own 6-enumeration + design ref §2.6 wireframe;采 wireframe-aligned 6-stage spec;PIPELINE_STAGES const w/ id (1-6) + name + vendor (Cohere v4.0-pro / gpt-5.5) + description per stage(Query Preprocessor / Hybrid Retrieval / Reranker / CRAG Confidence Judge / LLM Synthesis / Final Response)| ✅ (deviation noted) |
+| F2.3 | Custom Collapsible per stage | **deviation logged plan §7 (D2)** — Accordion NOT in W12 D3 19-primitive install list;design ref §2.6 explicitly permits "shadcn Accordion **OR custom Collapsible** primitive";采 custom `PipelineStageCollapsible` component(useState boolean + ChevronDown lucide rotation 0deg ↔ 180deg via CSS transition + button + aria-expanded)per Karpathy §1.2 simplicity-first + H2 vendor lock(no new dependency;6 use sites within same page = local state-machine 5-line component over npm install) | ✅ (deviation noted) |
+| F2.4 | Open in Langfuse link | stub URL pattern `https://langfuse.example.com/trace/${encodeURIComponent(traceId)}` per plan literal Tier 1 acceptance;ExternalLink lucide icon + target=_blank + rel=noopener noreferrer;works independently of backend trace API status(uses traceId from URL params via useParams flow) | ✅ |
+| F2.5 | Loading + stub + error states | **deviation logged plan §7 (D2)** — backend `GET /debug/trace/{trace_id}` returns 501 NOT_IMPLEMENTED stub(W3+ Langfuse correlation per architecture.md §5.7);采 W14 BackendStubNote stub mitigation pattern(AlertCircle alert + stub note "Backend `GET /debug/trace/&#123;trace_id&#125;` is W3+ stub — pending Langfuse correlation per architecture.md §5.7" + 6-stage scaffold "—" duration);retry: false on useQuery(避免 4-retry waste against 501 stub);non-501 error states show destructive-bordered error banner;Skeleton 3-card during initial loading(matching SummaryCard shape per design ref §3.5) | ✅ (deviation noted) |
+| ADMIN_SHELL_WRAP | NEW debug/layout.tsx | mirror admin/layout.tsx + eval/layout.tsx pattern(5-line AuthProvider + QueryProvider + AdminShell);admin-shell SEGMENT_LABELS already covers `debug` for breadcrumb auto-derivation;intentionally NOT added to NAV_ITEMS sidebar(V6 accessed via V5 Failed queries Inspect Link not as top-level nav per architecture.md v6 §5.7) | ✅ |
+
+### Decisions
+
+1. **6-stage spec correctness over plan header literal**(F2.2 "9-stage" → 6-stage)— design ref §2.6 wireframe + plan F2.2 own enumeration agree on 6 stages(Query Preprocessor + Hybrid Retrieval + Reranker + CRAG + LLM Synthesis + Final Response);plan internal inconsistency between header "9-stage" + 6-enumerated body resolved per Karpathy §1.4 verifiable goal-driven match to design ref wireframe(spec lock per §1.1)
+2. **Custom Collapsible over shadcn Accordion install**(F2.3)— design ref §2.6 explicitly permits both options;6 use sites within same page benefit from local 5-line component(button + useState + chevron rotation)over installing new shadcn primitive + radix-ui peer dependency;Karpathy §1.2 simplicity-first + H2 vendor lock preserved;mirror W14 F2.1 + W15 F1.4 plain HTML over shadcn Table choice pattern
+3. **Backend stub mitigation pattern reuse**(W14 F3.2/F3.3 + W15 F1.3 precedent)— AlertCircle alert + stub note + 6-stage scaffold "—" duration + per-stage "Stage details pending" placeholder;informational delivery without inventing fake metric numbers;UI wire intact + ready for backend completion;retry: false avoids 4-retry waste against 501 stub
+4. **Langfuse link works independently** of backend trace API status — uses traceId from URL params encodeURIComponent;link target opens in new tab w/ rel=noopener noreferrer security guard;valuable Tier 1 escape-hatch for admin user seeking real trace inspection while backend `/debug/trace` is stubbed
+5. **TraceData + PipelineStageMetric forward-looking schema** — `Record<string, PipelineStageMetric>` keyed by stage id ("1"-"6") for stable lookup when backend lands;backend can match this contract during W3+ Langfuse correlation implementation;forward-design discipline per Karpathy §1.4 verifiable goal-driven contract anchoring
+6. **debug/layout.tsx admin shell wrap** mirror eval/layout.tsx + admin/layout.tsx pattern(5-line non-invasive Karpathy §1.3 surgical);intentionally NOT added to NAV_ITEMS sidebar(V6 accessed via V5 Failed queries Inspect Link → /debug/{query_id} per architecture.md v6 §5.7 + design ref §2.6 — Inspect Link only entry point);breadcrumb auto-derivation works via SEGMENT_LABELS `debug` segment label
+7. **6th occurrence of plan literal vs actual code grep verification gap pattern accelerating in W15** — W13 F1.5 + W14 F1.1 + W14 F2.2 + W15 F1.1 baseline + W15 F1.3 metric naming + W15 F2.1 NEW route + W15 F2.2 9-vs-6 stage + W15 F2.3 Accordion not installed;CO_W14_process_grep_verify call-out further reinforced;**process improvement candidate accelerated for W15 retro decision**(formalize "spec ref grep verification" step pre-active flip checklist for W16+ Beta deploy phase folder rolling JIT trigger)
+
+### Verification
+
+```
+$ cd frontend && pnpm type-check
+> tsc --noEmit
+$ # 0 errors
+
+$ grep -r "\[oklch" frontend/app/debug/ frontend/lib/api/debug.ts
+(no matches — 0 hardcoded oklch className arbitrary values)
+```
+
+✅ TypeScript strict mode clean(0 errors);no `any` / no @ts-ignore;no hardcoded oklch — all colors via Tailwind tokens(`bg-muted` / `bg-muted/30` / `bg-muted/40` / `bg-muted/50` / `text-foreground` / `text-muted-foreground` / `border-border` / `border-destructive` / `bg-destructive/10`)。shadcn primitives reused(Card + Button + Skeleton + lucide icons AlertCircle/ChevronDown/ChevronLeft/DollarSign/ExternalLink/Timer)— no new vendor;custom PipelineStageCollapsible local component over shadcn Accordion install per Karpathy §1.2 simplicity-first。NEW lib/api/debug.ts client mirror kb.ts/query.ts/auth.ts/eval.ts pattern;NEW debug/layout.tsx mirror admin/eval layout pattern。
+
+### Carry-overs to W15 D3
+
+- 🚧 F2 user smoke deferred per CLAUDE.md §13(`! pnpm dev` + `! uvicorn`;`/debug/{traceId}` page renders + admin sidebar visible + breadcrumb "EKP > Debug > {traceId-truncated}" + Back to Eval link + Stub note alert visible + 6-stage scaffold "—" duration + Click stage → expand-collapse w/ chevron rotation + Open in Langfuse link target=_blank works + responsive collapse mobile + dark mode toggle still works)— W15 F4 Playwright E2E baseline harness 將 systematically subsume
+- ⏳ W15 D3 focus per plan §5:F3 Responsive + a11y polish across 9 views + CO_W14_F4_error_boundary token cleanup pass(`frontend/components/error/error-boundary.tsx` 6 hardcoded oklch values → Tailwind tokens);F4 Playwright install + config(corp proxy R8 mitigation if needed)
+- 📝 **CO_W15_F2_backend** Backend `GET /debug/trace/{trace_id}` W3+ implementation per Langfuse correlation(stub status documented in SummaryCard stubMode banner + retry: false on useQuery)— Beta hardening trigger fit
+- 📝 **CO_W15_F2_langfuse_url** Langfuse production URL pattern not finalized(stub `https://langfuse.example.com/trace/{traceId}` per plan literal Tier 1 acceptance);real Langfuse instance URL configurable via NEXT_PUBLIC_LANGFUSE_URL env var W16+ Beta hardening trigger fit
+- 📝 **CO_W14_process_grep_verify reinforcement** — pattern accelerating(now 8 sub-occurrences across W13+W14+W15 cycles);**W15 retro decision** to formalize "spec ref grep verification" step pre-active flip checklist required for W16+ Beta deploy phase folder rolling JIT trigger
+
+### Commit
+
+- `<hash>` feat(frontend,docs): W15 D2 F2 V6 Debug View implementation + 4 deviations + admin shell wrap + custom Collapsible
 
 ---
 

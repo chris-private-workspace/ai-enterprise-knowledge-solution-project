@@ -21,11 +21,11 @@ last_updated: 2026-06-10
 
 ## F2 — V6 Debug View implementation
 
-- [ ] F2.1 `frontend/app/debug/[traceId]/page.tsx` NEW route — Trace ID header + Total ms + cost summary
-- [ ] F2.2 9-stage timeline accordion — Query Preprocessor / Hybrid Retrieval / Reranker / CRAG / LLM Synthesis / Final Response stages per arch v6 §3.5
-- [ ] F2.3 Per-stage expand-collapse via shadcn Accordion — full prompt / raw output for LLM stages
-- [ ] F2.4 Open in Langfuse link(stub URL pattern Tier 1;real integration W16+ post-proxy)
-- [ ] F2.5 Loading + error states(trace not found / Langfuse unreachable)
+- [x] F2.1 REWRITE `frontend/app/debug/[traceId]/page.tsx` + NEW `frontend/app/debug/layout.tsx`(admin shell wrap mirror eval/admin layout)+ NEW `frontend/lib/api/debug.ts`(typed client + TraceData/PipelineStageMetric forward-looking schema)— Trace ID header + Back to Eval link + Total ms / Total cost / Query summary cards;**deviation logged plan §7 changelog 2026-06-10 (D2)** — plan literal "NEW route" stale(file actually exists as W1 skeleton 15-line placeholder per Karpathy §1.1 think-before-coding upfront grep verification;**6th occurrence of plan literal vs actual code grep verification gap pattern**)
+- [x] F2.2 6-stage pipeline timeline(NOT 9-stage)— **deviation logged plan §7 changelog 2026-06-10 (D2)** — plan literal "9-stage timeline" inconsistent with plan F2.2 own enumeration(Query Preprocessor / Hybrid Retrieval / Reranker / CRAG / LLM Synthesis / Final Response = 6 stages)+ design ref §2.6 wireframe shows "Stage 1 ... Stage 6";aligned with wireframe + plan enumeration spec;PIPELINE_STAGES const w/ id + name + vendor(Cohere v4.0-pro / gpt-5.5)+ description for each stage
+- [x] F2.3 Custom Collapsible per stage(NOT shadcn Accordion)— **deviation logged plan §7 changelog 2026-06-10 (D2)** — Accordion NOT in W12 D3 19-primitive install list per Glob check;design ref §2.6 explicitly permits "shadcn Accordion **OR custom Collapsible** primitive";采 custom Collapsible(useState boolean + ChevronDown lucide rotation 0deg ↔ 180deg via CSS transition + button + aria-expanded)per Karpathy §1.2 simplicity-first + H2 vendor lock(no new dependency)
+- [x] F2.4 Open in Langfuse link — stub URL pattern `https://langfuse.example.com/trace/{encodeURIComponent(traceId)}` per plan literal Tier 1 acceptance;ExternalLink lucide icon + target=_blank + rel=noopener noreferrer;link works independently of backend trace API status(uses traceId from URL params)
+- [x] F2.5 Loading + error + stub states — Skeleton 3-card during initial loading(matching SummaryCard shape per design ref §3.5);**deviation logged plan §7 changelog 2026-06-10 (D2)** — backend `GET /debug/trace/{trace_id}` returns 501 stub(W3+ implementation per Langfuse correlation);采 stub mitigation pattern(AlertCircle alert with stub note + 6-stage scaffold "—" duration + "Stage details pending backend trace API + Langfuse correlation")per W14/W15 F1 backend stub pattern precedent;non-501 error states show destructive-bordered error banner + retry: false on useQuery (avoid 4-retry waste against 501 stub)
 
 ## F3 — Responsive + a11y polish across 9 views
 
