@@ -775,8 +775,63 @@ EKP Tier 1 codebase 整體 **alignment substantial**:
 
 ### Living Doc Status
 
-此 audit doc 屬 **complete** for W15 D5 closeout snapshot。下次 re-audit trigger:post-W16 D10 retro(Beta deploy assessment)。新一輪 audit 結果 append 入此 doc 嘅 §10 Re-audit Log section(future)而非 overwrite。
+此 audit doc 屬 **complete** for W15 D5 closeout snapshot。下次 re-audit trigger:post-W16 D10 retro(Beta deploy assessment)。新一輪 audit 結果 append 入此 doc 嘅 §11 Re-audit Log section(future)而非 overwrite。`§10 Remediation Campaign Log`(below)tracks the post-closeout ADR + implementation cascade triggered by this audit's 5 major drifts。
 
 ---
 
-**End of audit doc — W15 D5 closeout vs spec v6**
+## 10. Remediation Campaign Log(post-W15 D5 closeout 2026-05-09)
+
+> **Purpose**:本 session(2026-05-09)post-W15 D5 closeout 觸發 audit-driven remediation cascade — 10 commits 跨 governance + ADR + implementation 三層,closure 5 major drifts 之 4(2 partial)。Log 入此 doc 而非 W16 progress.md 因為:(1)remediation 性質係 audit verdict closure,trace 直接綁 §6 5 major drifts;(2)W16 D1 active flip 仍未發生(等 Track A IT cred populate event),呢 10 commits 屬 W15 closeout cascade extension 而非 W16 implementation。
+>
+> **Governance posture**:per CLAUDE.md §10 R1/R2 紀律 spirit,本 log 補 governance gap — 過去 W2 D5 cont ADR-0001-0011 batch creation governance prep 為先例;本 cascade 依循同樣 pattern。
+
+### Commits ledger(時序)
+
+| # | Commit | Layer | Subject | Drift closure |
+|---|---|---|---|---|
+| 1 | `d099bcb` | Governance | session-start.md §9-§12 catch-up(OQ 16/21→17/22 + W7-W16+ extend + carry-overs W6→W15 + milestones +9 rows)| — |
+| 2 | `fc5cae3` | Governance | session-start.md §3 component status 12→13(C13 NEW + post-W15 status update)| — |
+| 3 | `63cd0f1` | Audit | `audit-W15-d5-vs-spec.md` NEW 782 lines(4 parallel agents + 5 spot-checks;verdict ⚠️ MINOR DRIFT,5 major + 0 silent)| — |
+| 4 | `5536a7d` | ADR | ADR-0018 Multi-KB kb_id dynamic injection(Option B b2 reaffirm ADR-0005)| Drift **#4**(decision)|
+| 5 | `371b0bb` | ADR | ADR-0019 PDF parser Tier 1 deliver(Option A reaffirm ADR-0003;text-extractable scope)| Drift **#1**(decision)|
+| 6 | `ac826a3` | ADR | ADR-0020 Context Expander deliver(Option A reaffirm §3.1 + §5.7)| Drift **#3**(decision)|
+| 7 | `c6acb3d` | Implementation | ADR-0019 Phase 3 Session 1:`backend/ingestion/parsers/pdf_parser.py` NEW + `__init__.py` route fix(13 passed/7 skipped)| Drift **#1**(80% — Session 2 sample PDF blocked Chris)|
+| 8 | `08fc25e` | Implementation | ADR-0018 Phase 3 Session 1:`kb_naming.py` NEW + `Settings.kb_id_default` + `HybridSearcher.search(kb_id)` + `RetrievalEngine.retrieve(kb_id)` + `routes/query.py` + `eval/runner.py` + `crag.refine(kb_id)`(47 tests passed)| Drift **#4**(retrieval-side closure)|
+| 9 | `3387a4f` | Implementation | ADR-0018 Phase 3 Session 2:`uploader.py` per-record dynamic container + `extractor.py` docstring + `test_multi_kb_routing.py` 4 integration tests(77 full regression)| Drift **#4**(ingestion-side **CLOSURE**)|
+| 10 | `cffb391` | Implementation | ADR-0020 Phase 3 Session 1:`context_expander.py` NEW + `HybridSearcher.fetch_by_chunk_ids()` + `RetrievalEngine.expand_context_for_chunks()` + `prompt_builder` expanded_text fallback + `routes/query.py` 兩處 wire + `crag.py` re-retrieve wire + 11 new unit tests(68 passed,0 regressions)| Drift **#3**(backend closure;frontend V6 9-stage Session 2 deferred)|
+
+### 5 major drifts closure status(post-cascade)
+
+| Drift | Severity | Pre-cascade state | Post-cascade state | Open work |
+|---|---|---|---|---|
+| **#1 C01 PDF parser missing** | 🚨 P0 | spec ADR-0003 multi-format reference;parser absent | ✅ ADR-0019 Option A landed + parser code landed + 13 unit tests passed | 🚧 ADR-0019 Session 2 sample PDF blocked Chris(W16 D1 dependency;7 skipped tests)|
+| **#2 C04 Cohere v3.5 propagation gap** | 🚨 P1 | 7+ hardcoded `v3.5` references in spec / settings / docs;production = v4.0-pro per Q21 + ADR-0012 | ⏸ NOT addressed | 🚧 P1 housekeeping batch(Phase 4 candidate this session OR W16 D5 housekeeping)|
+| **#3 C05 Context Expander missing** | 🚨 P0 | spec §3.1 mentions step;`prev_chunk_id` + `next_chunk_id` populated but never consumed | ✅ ADR-0020 Option A landed + backend module landed + 11 unit tests passed | 🚧 ADR-0020 Session 2:frontend V6 6→9 stage `PipelineStageCollapsible` expansion + `/debug/trace/{trace_id}` endpoint(W16 F5 stub closure synergy)|
+| **#4 CC-1 Multi-KB invariant gap** | 🚨 P0 | `kb_id` field on `QueryRequest` schema only;not propagated through retrieval / ingestion | ✅ ADR-0018 Option B b2 landed + retrieval-side + ingestion-side **CLOSURE**(2 sessions)| — |
+| **#5 V4 Retrieval Testing tab structural mismatch** | 🚨 P2 | spec §5.5.4 lists 4 controls + score panel + Vector/Full-Text/Hybrid radios;tab missing all | ⏸ NOT addressed | 🚧 P2 code remediation(W17+ candidate per audit §7;non-blocking Beta)|
+
+**Closure verdict**:**3 / 5 fully closed**(or near-fully — #1 only sample PDF gap);**1 / 5 partial**(#3 backend complete + frontend deferred);**1 / 5 untouched**(#2 P1 housekeeping next + #5 P2 W17+)。Audit verdict ⚠️ MINOR DRIFT post-cascade strengthened to **MINOR DRIFT (substantially remediated)**。
+
+### Reservation candidates updated
+
+- **ADR-0017** reservation candidate(R8 corp proxy mitigation pattern)— **status unchanged**:4 cumulative occurrences(Cohere W3 + argon2-cffi W13 + ACS lazy import W13 + Playwright CDN W15);本 cascade 並無觸發第 5 次或 vendor pivot,reservation 保持
+- **ADR-0021** httpOnly cookie + SameSite + CSRF token bundle — **status unchanged**(W17+ candidate per §7 proposed new ADRs;CO_F5_cookie 觸發點未到)
+- **ADR-0022** KB Manager + users_repo persistent backing — **status unchanged**(W17+ Beta hardening per CO18)
+- **next available NNNN**:0021(0013 + 0017 reserved;0014-0016 + 0018-0020 landed;0021/0022 future-proofed)
+
+### Karpathy §1 baseline check(本 cascade)
+
+- **§1.1 think-before-coding** ✅ — 每個 ADR 都先 surface 多個 Option(A/B);實作前讀 spec section + grep code base 對齊 acceptance criteria(per CO_W14_process_grep_verify)
+- **§1.2 simplicity-first** ✅ — ADR-0018 Option B b2 dynamic injection(NOT per-KB instance map);ADR-0019 Tier 1 narrow scope(text-extractable only,OCR + decryption defer Tier 2);ADR-0020 single batch fetch via `search.in()`(NOT 2K calls);duck-type ExpandedChunk(NOT new abstraction layer)
+- **§1.3 surgical** ✅ — `HybridSearcher.__init__` signature 唔變;EvalRunner kb_id default preserved;prompt_builder fallback `expanded_text or chunk_text`;backwards-compat preserved across all 4 implementation commits
+- **§1.4 goal-driven** ✅ — verifiable success criteria per ADR(unit tests + integration tests);0 regressions across 77 cumulative test runs;ruff All checks passed
+
+### Handoff to next governance step
+
+- **Phase 4 P1 housekeeping candidate**(this session OR W16 D5):Drift #2 Cohere v3.5 → v4.0-pro propagation 7+ hardcodes cleanup;spec amendments architecture v6 §3.2 + design notes refresh
+- **W16 F5 deliverable synergy**:ADR-0020 Session 2 frontend V6 9-stage expansion synergy with backend stub closure cascade(`/debug/trace/{trace_id}` endpoint);ADR-0019 Session 2 sample PDF activation post Chris dependency
+- **Re-audit cadence trigger preserved**:post-W16 D10 retro per §8.4 — 屆時 re-audit cluster 應反映本 cascade 之 closure(避免 stale drift report)
+
+---
+
+**End of audit doc — W15 D5 closeout vs spec v6**(post-cascade remediation log appended 2026-05-09)

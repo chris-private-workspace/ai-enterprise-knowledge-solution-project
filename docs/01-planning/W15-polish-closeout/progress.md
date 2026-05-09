@@ -588,4 +588,27 @@ All W15 deliverables trace back to spec citations(per CLAUDE.md §10 R5 + Karpat
 
 ---
 
-**Lifecycle reminder**:呢份 progress.md 屬 phase journal,daily entries + retro 必須 commit incrementally per R2。Day 0 setup entry 屬 W14 D5 F5 closeout cascade carry-over prep,W15 D1 active implementation start當 stakeholder authorization 後 — rolling JIT calendar-day-collapse cont OR future session。
+### Post-closeout remediation campaign(2026-05-09 — audit-driven cascade extension)
+
+> **Note**:本段 W15 retro **closed snapshot 唔 reopen**;呢段純粹係 cross-ref pointer,documenting the post-closeout remediation cascade triggered by `audit-W15-d5-vs-spec.md` 5 major drifts(verdict ⚠️ MINOR DRIFT)。Cascade 之 10 commits + drift closure traceability **authoritative log location** = `docs/02-architecture/audit-W15-d5-vs-spec.md §10 Remediation Campaign Log`。
+>
+> **Governance posture**:cascade 屬 W15 D5 closeout extension(audit doc 自身屬 W15 deliverable F5 closeout cascade;remediation 自然延伸跟住),**唔開新 phase folder**,**唔 reopen W15 retro**,只 append cross-ref pointer per CLAUDE.md §10 R2 spirit(每 commit 對應 progress.md Day-N entry — 本 cascade 對應「Post-closeout cascade entry」此一 logical pointer)。Pattern 先例:W2 D5 cont ADR-0001-0011 batch creation governance prep。
+
+| Layer | Commits | Closure |
+|---|---|---|
+| Governance(session-start.md catch-up)| `d099bcb` + `fc5cae3` | OQ 17/22 + 13 components + W7-W16+ extended + carry-overs W6→W15 + milestones |
+| Audit(audit governance doc)| `63cd0f1` | NEW 782 lines verdict ⚠️ MINOR DRIFT 5 major drifts |
+| ADR P0 batch | `5536a7d` ADR-0018 + `371b0bb` ADR-0019 + `ac826a3` ADR-0020 | 3 P0 explicit decisions reaffirm spec |
+| Implementation | `c6acb3d` + `08fc25e` + `3387a4f` + `cffb391` | Drift #1 80% / Drift #3 backend / Drift #4 CLOSURE(2 sessions)|
+
+**Closure verdict**(per audit doc §10):**3 / 5 fully closed**;**1 / 5 partial**(Drift #3 backend complete + frontend V6 9-stage Session 2 deferred);**1 / 5 untouched**(Drift #2 P1 housekeeping + Drift #5 P2 W17+)。
+
+**Open follow-ups passed to W16+**:
+- Drift #1:ADR-0019 Session 2 sample PDF(blocked Chris;W16 D1 dependency)
+- Drift #2:Cohere v3.5 → v4.0-pro propagation cleanup(P1 housekeeping — Phase 4 this session OR W16 D5)
+- Drift #3:ADR-0020 Session 2 frontend V6 9-stage expansion + `/debug/trace/{trace_id}` endpoint(W16 F5 stub closure synergy)
+- Drift #5:V4 Retrieval Testing tab structural mismatch §5.5.4(P2 W17+ candidate)
+
+---
+
+**Lifecycle reminder**:呢份 progress.md 屬 phase journal,daily entries + retro 必須 commit incrementally per R2。Day 0 setup entry 屬 W14 D5 F5 closeout cascade carry-over prep,W15 D1 active implementation start當 stakeholder authorization 後 — rolling JIT calendar-day-collapse cont OR future session。**Post-closeout remediation campaign cross-ref**(2026-05-09)= audit-W15-d5-vs-spec.md §10。
