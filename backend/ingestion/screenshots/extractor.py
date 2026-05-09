@@ -5,13 +5,20 @@ to PNG bytes, and computes SHA256. The extractor's job here is to augment each
 EmbeddedImage with KB/document context and a deterministic blob_path for the
 F3 uploader to push into Azure Blob.
 
-Path convention: `{sha256}.{ext}` — flat per-KB-container layout to enable
-cross-document SHA256 dedup (architecture.md §3 design decision: "Same logo /
-diagram across docs: upload once, reference many"). The architecture.md §4.6
-template `{kb_id}/{doc_id}/{img_id}.{ext}` is directional; we collapse {doc_id}
-out of the path to honor the dedup semantic. Chunk record stores the resolved
-blob_url; the {doc_id} association is preserved at the chunk record level, not
-the blob layer.
+Path convention: `{sha256}.{ext}` — flat per-container layout to enable
+cross-document SHA256 dedup within a KB (architecture.md §3 design decision: "Same
+logo / diagram across docs: upload once, reference many"). The architecture.md §4.6
+template `{kb_id}/{doc_id}/{img_id}.{ext}` is directional; we collapse {kb_id}
+into the container name (per ADR-0005 multi-KB convention + ADR-0018 dynamic
+injection) and collapse {doc_id} out of the blob path to honor the dedup semantic.
+Chunk record stores the resolved blob_url; the {doc_id} association is preserved
+at the chunk record level, not the blob layer.
+
+W16+ ADR-0018 multi-KB invariant: kb_id propagates from extractor (via
+ScreenshotRecord.kb_id) to uploader (where dynamic container resolution happens
+via storage.kb_naming.kb_id_to_screenshot_container). Extractor stays kb_id-aware
+since W2 D3 baseline; only uploader gained dynamic container injection in
+ADR-0018 Phase 3 Session 2.
 """
 
 from __future__ import annotations

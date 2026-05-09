@@ -210,3 +210,131 @@ def test_screenshotrecord_is_frozen_dataclass() -> None:
     record = _make_record()
     with pytest.raises((AttributeError, Exception)):
         record.kb_id = "other"  # type: ignore[misc]
+
+
+# ADR-0018 multi-KB invariant tests (W16+ Phase 3 Session 2)
+
+
+def _make_record_with_kb(kb_id: str) -> ScreenshotRecord:
+    """ScreenshotRecord helper with custom kb_id for multi-KB invariant tests."""
+    return ScreenshotRecord(
+        image_bytes=_SAMPLE_BYTES,
+        sha256=_SAMPLE_SHA,
+        blob_path=f"{_SAMPLE_SHA}.png",
+        content_type="image/png",
+        alt_text="alt",
+        doc_order=0,
+        kb_id=kb_id,
+        doc_id="d",
+    )
+
+
+@pytest.mark.asyncio
+async def test_uploader_legacy_alias_drive_user_manuals_uses_constructor_container() -> None:
+    """ADR-0018: kb_id='drive_user_manuals' resolves to constructor container_name (legacy alias)."""
+    record = _make_record_with_kb("drive_user_manuals")
+
+    mock_blob_client = AsyncMock()
+    mock_blob_client.get_blob_properties.side_effect = ResourceNotFoundError("nope")
+    mock_blob_client.upload_blob = AsyncMock(return_value=None)
+    mock_blob_client.url = "http://example/blob"
+
+    mock_service_client = AsyncMock()
+    mock_service_client.get_blob_client = MagicMock(return_value=mock_blob_client)
+    mock_service_client.create_container.side_effect = ResourceExistsError("exists")
+
+    with patch(
+        "ingestion.screenshots.uploader.BlobServiceClient.from_connection_string",
+        return_value=mock_service_client,
+    ):
+        async with ScreenshotUploader("conn-str", "ekp-kb-drive-screenshots") as up:
+            await up.upload(record)
+
+    # Legacy alias: container resolves to self.container_name (deployed legacy)
+    mock_service_client.create_container.assert_awaited_with("ekp-kb-drive-screenshots")
+    blob_call_kwargs = mock_service_client.get_blob_client.call_args.kwargs
+    assert blob_call_kwargs["container"] == "ekp-kb-drive-screenshots"
+
+
+@pytest.mark.asyncio
+async def test_uploader_new_kb_uses_adr_0005_convention_container() -> None:
+    """ADR-0018: kb_id != legacy → container=ekp-kb-{kb_id}-screenshots per ADR-0005."""
+    record = _make_record_with_kb("finance_dept")
+
+    mock_blob_client = AsyncMock()
+    mock_blob_client.get_blob_properties.side_effect = ResourceNotFoundError("nope")
+    mock_blob_client.upload_blob = AsyncMock(return_value=None)
+    mock_blob_client.url = "http://example/blob"
+
+    mock_service_client = AsyncMock()
+    mock_service_client.get_blob_client = MagicMock(return_value=mock_blob_client)
+    mock_service_client.create_container.side_effect = ResourceExistsError("exists")
+
+    with patch(
+        "ingestion.screenshots.uploader.BlobServiceClient.from_connection_string",
+        return_value=mock_service_client,
+    ):
+        async with ScreenshotUploader("conn-str", "ekp-kb-drive-screenshots") as up:
+            await up.upload(record)
+
+    # New KB: container follows ADR-0005 convention regardless of constructor arg
+    mock_service_client.create_container.assert_awaited_with("ekp-kb-finance_dept-screenshots")
+    blob_call_kwargs = mock_service_client.get_blob_client.call_args.kwargs
+    assert blob_call_kwargs["container"] == "ekp-kb-finance_dept-screenshots"
+
+
+@pytest.mark.asyncio
+async def test_uploader_multi_kb_routing_isolation() -> None:
+    """ADR-0018: 2 records different kb_id → 2 different containers ensured (no cross-leakage)."""
+    record_drive = _make_record_with_kb("drive_user_manuals")
+    record_hr = _make_record_with_kb("hr_handbook")
+
+    mock_blob_client = AsyncMock()
+    mock_blob_client.get_blob_properties.side_effect = ResourceNotFoundError("nope")
+    mock_blob_client.upload_blob = AsyncMock(return_value=None)
+    mock_blob_client.url = "http://example/blob"
+
+    mock_service_client = AsyncMock()
+    mock_service_client.get_blob_client = MagicMock(return_value=mock_blob_client)
+    mock_service_client.create_container.side_effect = ResourceExistsError("exists")
+
+    with patch(
+        "ingestion.screenshots.uploader.BlobServiceClient.from_connection_string",
+        return_value=mock_service_client,
+    ):
+        async with ScreenshotUploader("conn-str", "ekp-kb-drive-screenshots") as up:
+            await up.upload(record_drive)
+            await up.upload(record_hr)
+
+    # Two distinct containers ensured (multi-KB invariant: zero cross-leakage)
+    container_calls = [c.args[0] for c in mock_service_client.create_container.await_args_list]
+    assert "ekp-kb-drive-screenshots" in container_calls  # legacy alias
+    assert "ekp-kb-hr_handbook-screenshots" in container_calls  # ADR-0005 convention
+    assert mock_service_client.create_container.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_uploader_same_kb_ensure_container_idempotent_after_session2() -> None:
+    """ADR-0018: per-container tracking — 2 uploads same kb_id → ensure once."""
+    record_a = _make_record_with_kb("finance_dept")
+    record_b = _make_record_with_kb("finance_dept")
+
+    mock_blob_client = AsyncMock()
+    mock_blob_client.get_blob_properties.side_effect = ResourceNotFoundError("nope")
+    mock_blob_client.upload_blob = AsyncMock(return_value=None)
+    mock_blob_client.url = "http://example/blob"
+
+    mock_service_client = AsyncMock()
+    mock_service_client.get_blob_client = MagicMock(return_value=mock_blob_client)
+    mock_service_client.create_container.side_effect = ResourceExistsError("exists")
+
+    with patch(
+        "ingestion.screenshots.uploader.BlobServiceClient.from_connection_string",
+        return_value=mock_service_client,
+    ):
+        async with ScreenshotUploader("conn-str", "default-container") as up:
+            await up.upload(record_a)
+            await up.upload(record_b)
+
+    # Same kb_id → ensure once (per-container tracking via _containers_ensured set)
+    assert mock_service_client.create_container.await_count == 1

@@ -4,8 +4,11 @@ Uses azure.storage.blob.aio for async uploads. Per architecture.md §3 design de
 SHA256-based blob path enables cross-document dedup: if two docs reference the same
 logo/diagram (same content -> same SHA256 -> same blob_path), only one upload happens.
 
-Container = settings.azure_blob_container_screenshots (single-KB Tier 1 baseline;
-Tier 2 multi-tenancy will switch to per-KB containers per architecture.md §3.4).
+W16+ ADR-0018 multi-KB invariant: container resolves dynamically per record.kb_id via
+storage.kb_naming.kb_id_to_screenshot_container; constructor `container_name` becomes
+the Tier 1 legacy alias for kb_id="drive_user_manuals" (preserves deployed name
+"ekp-kb-drive-screenshots"). Future KBs follow ekp-kb-{kb_id}-screenshots convention
+per ADR-0005. Per-container ensure tracking via `_containers_ensured: set[str]`.
 
 Local dev: Azurite via connection string from settings (default DefaultEndpointsProtocol=http;
 AccountName=devstoreaccount1; ...). Cloud (Beta+): managed identity via DefaultAzureCredential.
@@ -22,6 +25,7 @@ from azure.storage.blob.aio import BlobServiceClient
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from ingestion.screenshots.extractor import ScreenshotRecord
+from storage.kb_naming import kb_id_to_screenshot_container
 
 logger = structlog.get_logger(__name__)
 _stdlib_logger = logging.getLogger(__name__)
@@ -41,6 +45,10 @@ class ScreenshotUploader:
     """Async per-KB screenshot uploader with SHA256 dedup.
 
     Caller manages lifecycle: `async with ScreenshotUploader(...)` recommended.
+
+    W16+ ADR-0018 multi-KB invariant: each upload resolves container dynamically
+    from `record.kb_id`; constructor `container_name` is the Tier 1 legacy alias
+    for kb_id="drive_user_manuals" preserving deployed "ekp-kb-drive-screenshots".
     """
 
     def __init__(
@@ -49,9 +57,9 @@ class ScreenshotUploader:
         container_name: str,
     ) -> None:
         self.connection_string = connection_string
-        self.container_name = container_name
+        self.container_name = container_name  # legacy alias for kb_id="drive_user_manuals"
         self._client: BlobServiceClient | None = None
-        self._container_ensured = False
+        self._containers_ensured: set[str] = set()  # ADR-0018: per-container tracking
 
     async def __aenter__(self) -> ScreenshotUploader:
         self._client = BlobServiceClient.from_connection_string(self.connection_string)
@@ -62,17 +70,31 @@ class ScreenshotUploader:
             await self._client.close()
             self._client = None
 
-    async def ensure_container(self) -> None:
-        """Idempotently ensure container exists. Called automatically on first upload."""
-        if self._container_ensured:
+    def _container_for_record(self, record: ScreenshotRecord) -> str:
+        """Map record.kb_id → blob container per ADR-0005 + ADR-0018 dynamic injection.
+
+        Tier 1 legacy alias preserved via self.container_name (constructor arg).
+        """
+        return kb_id_to_screenshot_container(
+            record.kb_id, legacy_default_container=self.container_name,
+        )
+
+    async def ensure_container(self, container: str | None = None) -> None:
+        """Idempotently ensure container exists (per-container tracking per ADR-0018).
+
+        Backwards-compat: omitted `container` defaults to `self.container_name` (legacy
+        alias for kb_id="drive_user_manuals"); pre-Session-1 callers behavior preserved.
+        """
+        target = container or self.container_name
+        if target in self._containers_ensured:
             return
         assert self._client is not None, "use 'async with' to manage uploader lifecycle"
         try:
-            await self._client.create_container(self.container_name)
-            logger.info("blob_container_created", container=self.container_name)
+            await self._client.create_container(target)
+            logger.info("blob_container_created", container=target)
         except ResourceExistsError:
             pass  # already exists - normal
-        self._container_ensured = True
+        self._containers_ensured.add(target)
 
     @retry(
         retry=retry_if_exception_type((ConnectionError, TimeoutError)),
@@ -82,13 +104,15 @@ class ScreenshotUploader:
     async def upload(self, record: ScreenshotRecord) -> UploadResult:
         """Upload one ScreenshotRecord, dedup-skip if blob already exists.
 
+        Container resolved dynamically from record.kb_id per ADR-0018 multi-KB invariant.
         Returns UploadResult with deduped=True when the blob already existed
         (no bytes transferred); deduped=False when a new upload happened.
         """
-        await self.ensure_container()
+        container = self._container_for_record(record)
+        await self.ensure_container(container)
         assert self._client is not None
         blob_client = self._client.get_blob_client(
-            container=self.container_name, blob=record.blob_path,
+            container=container, blob=record.blob_path,
         )
 
         # Dedup: HEAD-check via get_blob_properties (cheaper than full GET).
