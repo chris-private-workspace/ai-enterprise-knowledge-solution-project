@@ -533,7 +533,7 @@ Rationale:F1-F6 verifiable success criteria fully met within real-calendar 2026-
 
 ### Commit reference
 
-- `<TBD>` W13 D5 cont F7 batch commit(F7.1-F7.5 retro 7 sections + Phase Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT verdict + W14 phase folder kickoff + W13 frontmatter close cascade + checklist F7.1-F7.5 tick + plan changelog 2026-06-10 (D5 cont F7) W13 D1-D5 plan-day collapse + closeout entry)
+- `4f2c4cc` W13 D5 cont F7 batch commit(F7.1-F7.5 retro 7 sections + Phase Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT verdict + W14 phase folder kickoff + W13 frontmatter close cascade + checklist F7.1-F7.5 tick + plan changelog 2026-06-10 (D5 cont F7) W13 D1-D5 plan-day collapse + closeout entry)
 
 ---
 
