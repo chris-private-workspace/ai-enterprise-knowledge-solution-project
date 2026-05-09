@@ -381,7 +381,7 @@ Rationale:F1-F4 verifiable success criteria fully met within real-calendar 2026-
 
 ### Commit reference
 
-- `<hash>` W15 D5 F5 batch commit(F5.1-F5.6 retro 7 sections + Tier 1 UI sprint cycle FINAL retrospective + Phase Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT verdict + W16 phase folder rolling JIT kickoff + W15 frontmatter close cascade + checklist F5.1-F5.6 + cross-cutting tick + plan changelog 2026-06-10 (D5) W15 D1-D5 plan-day collapse + 4-sprint cumulative closeout entry)
+- `40b4d34` W15 D5 F5 batch commit(F5.1-F5.6 retro 7 sections + Tier 1 UI sprint cycle FINAL retrospective + Phase Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT verdict + W16 phase folder rolling JIT kickoff + W15 frontmatter close cascade + checklist F5.1-F5.6 + cross-cutting tick + plan changelog 2026-06-10 (D5) W15 D1-D5 plan-day collapse + 4-sprint cumulative closeout entry)
 
 ---
 
