@@ -44,6 +44,7 @@ export interface QueryRequest {
   top_k_rerank?: number;
   llm_model?: 'gpt-5.5' | 'gpt-5.4-mini';
   reranker?:
+    | 'cohere-v4.0-pro' // ADR-0012 production lock; v3.5 retained for backwards-compat
     | 'cohere-v3.5'
     | 'voyage-rerank-2.5'
     | 'zeroentropy-zerank-1'
