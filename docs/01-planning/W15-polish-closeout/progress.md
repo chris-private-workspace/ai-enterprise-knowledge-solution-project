@@ -208,7 +208,7 @@ $ grep -r "\[oklch" frontend/
 
 ### Commit
 
-- `<hash>` feat(frontend,docs): W15 D3 F3 Responsive + a11y polish + CO_W14_F4_error_boundary token cleanup MILESTONE — entire frontend oklch=0
+- `60c812d` feat(frontend,docs): W15 D3 F3 Responsive + a11y polish + CO_W14_F4_error_boundary token cleanup MILESTONE — entire frontend oklch=0
 
 ---
 
