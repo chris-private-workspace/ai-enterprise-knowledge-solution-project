@@ -154,7 +154,7 @@ $ grep oklch frontend/app/admin/kb/page.tsx | wc -l
 
 ### Commit
 
-- `<TBD>` feat(frontend,docs): W14 D2 F2 V3 KB List card grid refactor
+- `23cc579` feat(frontend,docs): W14 D2 F2 V3 KB List card grid refactor
 
 ---
 
