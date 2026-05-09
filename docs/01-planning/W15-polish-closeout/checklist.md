@@ -1,7 +1,7 @@
 ---
 phase: W15-polish-closeout
 plan_ref: ./plan.md
-status: draft
+status: active
 last_updated: 2026-06-10
 ---
 
@@ -12,12 +12,12 @@ last_updated: 2026-06-10
 
 ## F1 — V5 Eval Console implementation
 
-- [ ] F1.1 `frontend/app/eval/page.tsx` rebuild — top filter bar(Eval set Select + Run + Run Single Button)+ replace W12 F4.5 baseline
-- [ ] F1.2 Run config card — LLM Select + Reranker Select + Top K Input + CRAG threshold Slider + Intent type Select per design ref §2.5 layout
-- [ ] F1.3 4-metric cards(R@5 / Faithfulness / ContextRelevancy / AnswerRelevancy)— score + PASS/FAIL Badge + threshold display per architecture.md v6 §5.6
-- [ ] F1.4 Failed queries table — query_id + category Badge + Inspect Link → V6 Debug View
-- [ ] F1.5 W4 Reranker Shootout table — 4-way comparison from W4-W6 stable baseline + recommendation(historical read-only display)
-- [ ] F1.6 Loading + empty state per design ref §3.4-§3.5
+- [x] F1.1 NEW `frontend/app/eval/page.tsx` + NEW `frontend/app/eval/layout.tsx`(admin shell wrap mirror `frontend/app/admin/layout.tsx` AuthProvider + QueryProvider + AdminShell)— top filter bar(Eval set Select + Run + Run Single Button + responsive flex);**deviation logged plan §7 changelog 2026-06-10 (D1)** — baseline mismatch(plan literal "rebuild from W12 F4.5 baseline" vs actual = W1 skeleton 15-line placeholder)→ effective NEW implementation per Karpathy §1.1 think-before-coding upfront verification;**5th occurrence of plan literal vs actual code grep verification gap pattern**(W13 F1.5 + W14 F1.1 + W14 F2.2 + W15 F1.1 baseline + W15 F1.3 metric naming;CO_W14_process_grep_verify call-out reinforced)
+- [x] F1.2 Run config card — LLM Select(gpt-5.5 / gpt-5.4-mini)+ Reranker Select(cohere-v4.0-pro / cohere-v3.5 / azure-builtin)+ Top K Input(default 5)+ CRAG threshold Slider(default 0.70)+ Intent type Select(auto / how_to / conceptual / lookup)per design ref §2.5 layout;DEFAULT_CONFIG const initialized from W6 production lock(gpt-5.5 + cohere-v4.0-pro + top_k=5 + crag=0.70 + intent=auto)
+- [x] F1.3 4-metric cards — **deviation logged plan §7 changelog 2026-06-10 (D1)** — schema(`backend/api/schemas/eval.py`)+ design ref §2.5 wireframe codes(R@5/FFul/CRct/IAss)agree on Recall@5 / Faithfulness / Correctness / Image Association(plan literal "Context Relevancy / Answer Relevancy" inconsistent with both;采 spec-aligned naming);MetricCard component shows score + PASS/FAIL Badge + threshold(R@5 ≥ 0.80 Gate 1 W2 末 + others ≥ 0.85 Tier 1 strict per W6 retro);**stub mitigation pattern** for backend 501(empty state Card + AlertCircle + Run CTA hint + ApiError.status === 501 → `toast.info("docs/eval-methodology.md")`)per W14 BackendStubNote pattern
+- [x] F1.4 Failed queries table — EvalReport.failed_queries → plain HTML `<table>` w/ query_id (mono) + query (line-clamp-2) + metric_failed Badges + Inspect Link → `/debug/{query_id}`;empty state w/ CheckCircle2 「No failed queries」;mirrors W14 F1.2 Failed ingestion table pattern + design ref §3.4 empty state
+- [x] F1.5 W4 Reranker Shootout table — **deviation logged plan §7 changelog 2026-06-10 (D1)** — no `reranker_shootout*` artifact file exists per Glob check + W4 Karpathy §1.2 simplicity drop = effective 2-way not "4-way";采 inline `RERANKER_SHOOTOUT` static const populated from W6 demo-prep.md §107-114 Q-A2 actual W6 D1 LIVE Azure 2-way data(Cohere v4.0-pro 1.000/0.841 RECOMMENDED + Azure built-in 0.882/0.743 Fallback + Voyage + ZeroEntropy null status='dropped' opacity-60 visual dim per W4 simplicity drop);3 status variants(recommended Badge bg-success/15 + fallback Badge bg-muted + dropped Badge bg-muted + row opacity-60)
+- [x] F1.6 Loading + empty state — Skeleton 4-card matching shape per design ref §3.5(`frontend/app/admin/kb/page.tsx` KbGridSkeleton precedent);empty state per design ref §3.4(AlertCircle + heading + Run CTA hint + stub note "Backend `/eval/run` is W4 stub — pending implementation per docs/eval-methodology.md");Failed queries empty state CheckCircle2 + "No failed queries";Reranker Shootout has no empty state(static data always present)
 
 ## F2 — V6 Debug View implementation
 
