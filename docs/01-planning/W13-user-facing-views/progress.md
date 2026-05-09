@@ -381,6 +381,69 @@ $ grep oklch frontend/app/login/page.tsx frontend/app/register/page.tsx frontend
 
 ---
 
+## Day 5 cont — F6 C13 ACS Email Verification Service integration(real-calendar 2026-06-10 same-day collapse cycle 2 of 4 cont)
+
+> **Calendar note**:user authorization option A "A:continue W13 D5 — F6 C13 ACS Email Verification Service integration"。Time tracking calibration:plan ~1 day budget vs actual ~45 min(lazy SDK import design + tenacity retry test setup + 4 mocked-SDK fixture variations)。
+
+### What landed
+
+| F# | Deliverable | Files | Status |
+|---|---|---|---|
+| F6.1 AcsEmailProvider class | UPDATE `backend/api/auth/email_provider.py`(AcsEmailProvider w/ lazy SDK import;ImportError → `EmailSendError("not installed")`;sync ACS SDK wrapped via `asyncio.to_thread`)| ✅ |
+| F6.2 Email templates | `_PLAIN_TEMPLATE` + `_HTML_TEMPLATE`(inline-styled,responsive;`max-width: 480px` + JetBrains Mono code display)+ `render_plain_text()` / `render_html()` helpers | ✅ |
+| F6.3 Settings ACS config | UPDATE `backend/storage/settings.py`(5 new fields:`feature_email_mock` default True / `acs_connection_string` / `acs_sender_address` default `noreply@dev.ekp-beta.ricoh.com` / `acs_request_timeout_s` 30s / `acs_max_retries` 3)| ✅ |
+| F6.4 Tenacity retry + fail-soft | tenacity `AsyncRetrying(stop=stop_after_attempt + wait=wait_exponential)` on `_TRANSIENT_EXCEPTION_TYPES`(OSError / TimeoutError);non-transient bypass retry;**register + resend routes try/except EmailSendError** + structlog warning(no 5xx propagation per V9 Step 2 UX consistency)| ✅ |
+| F6.5 Factory mock-mode toggle | `_build_provider_from_settings()` selects ConsoleEmailProvider when `feature_email_mock=True` OR `acs_connection_string.strip() == ""`(defensive Beta misconfiguration guard);singleton via module-level `_provider_instance` w/ `reset_provider_for_tests()` helper | ✅ |
+| F6.6 Tests | **12 new tests pass**(53 total in test_auth_self_register.py)— template rendering 2 / factory selection 3 / SDK-missing guard 1 / mocked-SDK happy + retry + permanent-fail + non-transient 4 / fail-soft register+resend 2 | ✅ |
+
+### Decisions
+
+1. **Lazy SDK import vs eager import**:`azure-communication-email` not installed in venv(R8 corp-proxy install blocker — same constraint that drove ADR-0016 for argon2-cffi);per Karpathy §1.2 simplicity-first + plan F6.5 design intent(mock mode is the active path Tier 1)— **import deferred to AcsEmailProvider.__init__**;module loads cleanly without SDK + ImportError surfaces as actionable EmailSendError("not installed") at instantiation time;tests use sys.modules monkeypatch to inject fake SDK
+2. **Sync SDK wrapped via asyncio.to_thread**:Azure Communication Email SDK is sync(`EmailClient.from_connection_string` + `client.begin_send` + `poller.result`);wrapping in `asyncio.to_thread` keeps FastAPI event loop unblocked;avoids importing the lesser-tested `azure.communication.email.aio` async variant for Tier 1 simplicity
+3. **Transient vs non-transient retry policy**:`_TRANSIENT_EXCEPTION_TYPES = (OSError, asyncio.TimeoutError, TimeoutError)` covers network / DNS / connection-refused / read-timeout — all retry-worthy;non-transient errors(ValueError configurations / 4xx auth failures)skip retry to surface fast;avoids burning latency on永遠-唔-fix bugs
+4. **Fail-soft on register + resend routes**:per F6.4 plan intent — register flow stays 201 + resend stays 200 even when email send fails;V9 Step 2「Check your inbox」+ Resend UI is consistent regardless of underlying delivery state;structlog warning captures ops failure for debugging without blocking user account creation;truthful 502 here would create UX confusion(user sees same outcome either way — no email)
+5. **Settings `feature_email_mock` default True**:Tier 1 dev safety — prevents accidental real ACS calls when no connection string set;Beta deploys explicitly flip to False + provide connection_string to engage AcsEmailProvider path
+6. **Module-level singleton with reset helper**:`_provider_instance` cached across requests so AcsEmailProvider's underlying EmailClient(HTTP client + auth state)reused;tests call `reset_provider_for_tests()` between scenarios to swap configs;FastAPI dependency_overrides bypass this entirely(testing pattern preserved)
+
+### Verification
+
+```
+$ cd backend && .venv/Scripts/python.exe -m pytest tests/test_auth_self_register.py
+53 passed in 34.34s   # 41 F5 + 12 F6
+
+$ cd backend && .venv/Scripts/python.exe -m pytest tests/test_auth_routes.py tests/test_auth_endpoints.py tests/test_e1_e5_e12_smoke.py tests/test_f1_7_mock_smoke.py
+26 passed in 4.73s   # 0 regression on W7+W8 baseline
+
+$ cd backend && .venv/Scripts/python.exe -m mypy --explicit-package-bases --ignore-missing-imports api/auth/email_provider.py api/routes/auth.py storage/settings.py
+Success: no issues found in 3 source files
+```
+
+✅ **53/53 F5+F6 tests pass**;**26/26 W7+W8 baseline regression 0 break**;**mypy strict clean** on all F6-modified files。
+
+### F6 test coverage detail
+
+| Test category | Count | Examples |
+|---|---|---|
+| Template rendering | 2 | render_plain_text / render_html placeholder substitution |
+| Factory selection | 3 | mock-enabled / connection-string-empty / connection-string-whitespace |
+| SDK guard | 1 | EmailSendError("not installed") on missing SDK |
+| Mocked-SDK behaviour | 4 | happy-path + transient retry + permanent retry exhaustion + non-transient fail-fast |
+| Fail-soft routes | 2 | register stays 201 + resend stays 200 when EmailSendError raised |
+| **Total NEW** | **12** | + 41 F5 tests = **53 self-register total** |
+
+### Carry-overs to W13 D5 cont(F7 closeout)
+
+- ⏳ **W13 D5 F7**:phase Gate verdict + retro 7 sections + W14-admin-views phase folder kickoff
+- 📝 **CO_F6a**:`pip install azure-communication-email` blocked by R8 corp proxy(same as ADR-0016 argon2-cffi blocker);**Beta hardening trigger** = retry install if proxy resolved + verify real ACS smoke post sender domain SPF/DKIM ready
+- 📝 **CO_F6b**:Background-task email send for Beta latency tuning(currently sync via `asyncio.to_thread` blocks request until SDK call completes;FastAPI BackgroundTasks would queue + return 201 immediately)
+- 📝 **CO_F6c**:Sender domain SPF/DKIM IT-side setup post Track A(non-blocker for Tier 1 dev mock mode)
+
+### Commit
+
+- `<TBD>` feat(backend,docs): W13 D5 F6 C13 ACS Email Verification Service + 12 new tests + fail-soft register/resend
+
+---
+
 ## Retro(填於 W13 D5 末)
 
 ### What worked

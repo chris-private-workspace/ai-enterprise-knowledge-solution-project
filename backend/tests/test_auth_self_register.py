@@ -21,6 +21,7 @@ overrides do not leak across files (parallel to test_auth_routes.py pattern).
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -31,7 +32,17 @@ from fastapi.testclient import TestClient
 
 from api.auth import users_repo
 from api.auth.dependency import get_current_user
-from api.auth.email_provider import EmailProvider, get_email_provider
+from api.auth.email_provider import (
+    AcsEmailProvider,
+    ConsoleEmailProvider,
+    EmailProvider,
+    EmailSendError,
+    _build_provider_from_settings,
+    get_email_provider,
+    render_html,
+    render_plain_text,
+    reset_provider_for_tests,
+)
 from api.auth.models import AuthenticatedUser
 from api.auth.security import (
     RESEND_COOLDOWN_SEC,
@@ -619,3 +630,298 @@ def test_logout_revokes_session_token(
         "/protected", headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 401
+
+
+# --- W13 D5 F6 — C13 ACS email provider integration -------------------------
+
+
+def test_render_plain_text_substitutes_placeholders() -> None:
+    body = render_plain_text(display_name="Alice", code="123456")
+    assert "Hi Alice," in body
+    assert "123456" in body
+    assert "EKP Team" in body
+
+
+def test_render_html_substitutes_placeholders() -> None:
+    body = render_html(display_name="Alice", code="123456")
+    assert "<!DOCTYPE html>" in body
+    assert "Hi Alice," in body
+    assert "123456" in body
+    # Subject lives in _SUBJECT not the HTML body, so no assertion on title.
+
+
+def test_factory_selects_console_when_mock_enabled() -> None:
+    reset_provider_for_tests()
+    provider = _build_provider_from_settings(
+        Settings(feature_email_mock=True, acs_connection_string="endpoint=x;accesskey=y")
+    )
+    assert isinstance(provider, ConsoleEmailProvider)
+
+
+def test_factory_selects_console_when_connection_string_empty() -> None:
+    """Defensive — Beta deploy with mock disabled but missing ACS config still
+    falls back to logging instead of 5xx-ing every register/resend."""
+    reset_provider_for_tests()
+    provider = _build_provider_from_settings(
+        Settings(feature_email_mock=False, acs_connection_string="")
+    )
+    assert isinstance(provider, ConsoleEmailProvider)
+
+
+def test_factory_selects_console_when_connection_string_whitespace() -> None:
+    reset_provider_for_tests()
+    provider = _build_provider_from_settings(
+        Settings(feature_email_mock=False, acs_connection_string="   ")
+    )
+    assert isinstance(provider, ConsoleEmailProvider)
+
+
+def test_acs_provider_raises_email_send_error_when_sdk_missing() -> None:
+    """In environments where azure-communication-email isn't installed (R8 corp
+    proxy blocker) AcsEmailProvider construction surfaces a clear actionable
+    EmailSendError rather than a stack trace deep in import resolution."""
+    # SDK is not installed in this venv (verified via .venv/Scripts/python.exe
+    # -c "import azure.communication.email" → ModuleNotFoundError pre-test).
+    if "azure.communication.email" in sys.modules:
+        pytest.skip("SDK was installed since last verification — skip this guard test")
+    with pytest.raises(EmailSendError, match="not installed"):
+        AcsEmailProvider(
+            connection_string="endpoint=https://test.communication.azure.com/;accesskey=fake",
+            sender_address="noreply@test.com",
+        )
+
+
+@pytest.fixture
+def mocked_acs_sdk(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
+    """Inject a fake azure.communication.email module into sys.modules so
+    AcsEmailProvider can be exercised without the real SDK installed.
+
+    Returns a list that captures every begin_send call's message dict so tests
+    can assert on the wire payload structure (sender / recipients / subject /
+    plainText / html).
+    """
+    import types
+
+    sent_messages: list[dict[str, Any]] = []
+
+    class FakePoller:
+        def result(self, timeout: float) -> None:
+            return None
+
+    class FakeEmailClient:
+        @classmethod
+        def from_connection_string(cls, conn_str: str) -> "FakeEmailClient":
+            return cls()
+
+        def begin_send(self, message: dict[str, Any]) -> FakePoller:
+            sent_messages.append(message)
+            return FakePoller()
+
+    azure_mod = types.ModuleType("azure")
+    azure_communication_mod = types.ModuleType("azure.communication")
+    azure_communication_email_mod = types.ModuleType("azure.communication.email")
+    azure_communication_email_mod.EmailClient = FakeEmailClient  # type: ignore[attr-defined]
+    azure_mod.communication = azure_communication_mod  # type: ignore[attr-defined]
+    azure_communication_mod.email = azure_communication_email_mod  # type: ignore[attr-defined]
+
+    monkeypatch.setitem(sys.modules, "azure", azure_mod)
+    monkeypatch.setitem(sys.modules, "azure.communication", azure_communication_mod)
+    monkeypatch.setitem(sys.modules, "azure.communication.email", azure_communication_email_mod)
+
+    return sent_messages
+
+
+@pytest.mark.asyncio
+async def test_acs_provider_happy_path_sends_via_sdk(
+    mocked_acs_sdk: list[dict[str, Any]],
+) -> None:
+    provider = AcsEmailProvider(
+        connection_string="endpoint=https://test.communication.azure.com/;accesskey=fake",
+        sender_address="noreply@dev.ekp-beta.ricoh.com",
+        timeout_s=5.0,
+        max_retries=3,
+    )
+    await provider.send_verification(
+        to_email="alice@example.com", code="654321", display_name="Alice"
+    )
+    assert len(mocked_acs_sdk) == 1
+    message = mocked_acs_sdk[0]
+    assert message["senderAddress"] == "noreply@dev.ekp-beta.ricoh.com"
+    assert message["recipients"]["to"][0]["address"] == "alice@example.com"
+    assert message["recipients"]["to"][0]["displayName"] == "Alice"
+    assert "Your EKP verification code" == message["content"]["subject"]
+    assert "654321" in message["content"]["plainText"]
+    assert "654321" in message["content"]["html"]
+
+
+@pytest.mark.asyncio
+async def test_acs_provider_retries_on_transient_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tenacity retries OSError up to max_retries; succeeds on later attempt."""
+    import types
+
+    attempts = {"n": 0}
+
+    class FakePoller:
+        def result(self, timeout: float) -> None:
+            return None
+
+    class FlakeyEmailClient:
+        @classmethod
+        def from_connection_string(cls, conn_str: str) -> "FlakeyEmailClient":
+            return cls()
+
+        def begin_send(self, message: dict[str, Any]) -> FakePoller:
+            attempts["n"] += 1
+            if attempts["n"] < 3:
+                raise OSError("simulated transient network error")
+            return FakePoller()
+
+    azure_mod = types.ModuleType("azure")
+    azure_communication_mod = types.ModuleType("azure.communication")
+    azure_communication_email_mod = types.ModuleType("azure.communication.email")
+    azure_communication_email_mod.EmailClient = FlakeyEmailClient  # type: ignore[attr-defined]
+    azure_mod.communication = azure_communication_mod  # type: ignore[attr-defined]
+    azure_communication_mod.email = azure_communication_email_mod  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "azure", azure_mod)
+    monkeypatch.setitem(sys.modules, "azure.communication", azure_communication_mod)
+    monkeypatch.setitem(sys.modules, "azure.communication.email", azure_communication_email_mod)
+
+    provider = AcsEmailProvider(
+        connection_string="endpoint=https://test.communication.azure.com/;accesskey=fake",
+        sender_address="noreply@test.com",
+        timeout_s=2.0,
+        max_retries=3,
+    )
+    await provider.send_verification(
+        to_email="alice@example.com", code="111111", display_name="Alice"
+    )
+    assert attempts["n"] == 3  # 2 failures + 1 success
+
+
+@pytest.mark.asyncio
+async def test_acs_provider_raises_email_send_error_after_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Persistent transient error → tenacity exhausts retries → EmailSendError."""
+    import types
+
+    class FailingEmailClient:
+        @classmethod
+        def from_connection_string(cls, conn_str: str) -> "FailingEmailClient":
+            return cls()
+
+        def begin_send(self, message: dict[str, Any]) -> Any:
+            raise OSError("persistent network failure")
+
+    azure_mod = types.ModuleType("azure")
+    azure_communication_mod = types.ModuleType("azure.communication")
+    azure_communication_email_mod = types.ModuleType("azure.communication.email")
+    azure_communication_email_mod.EmailClient = FailingEmailClient  # type: ignore[attr-defined]
+    azure_mod.communication = azure_communication_mod  # type: ignore[attr-defined]
+    azure_communication_mod.email = azure_communication_email_mod  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "azure", azure_mod)
+    monkeypatch.setitem(sys.modules, "azure.communication", azure_communication_mod)
+    monkeypatch.setitem(sys.modules, "azure.communication.email", azure_communication_email_mod)
+
+    provider = AcsEmailProvider(
+        connection_string="endpoint=https://test.communication.azure.com/;accesskey=fake",
+        sender_address="noreply@test.com",
+        timeout_s=1.0,
+        max_retries=2,
+    )
+    with pytest.raises(EmailSendError):
+        await provider.send_verification(
+            to_email="alice@example.com", code="222222", display_name="Alice"
+        )
+
+
+@pytest.mark.asyncio
+async def test_acs_provider_raises_immediately_on_non_transient_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """4xx-style errors (e.g. invalid sender) skip retry — surface fast."""
+    import types
+
+    attempts = {"n": 0}
+
+    class FailingEmailClient:
+        @classmethod
+        def from_connection_string(cls, conn_str: str) -> "FailingEmailClient":
+            return cls()
+
+        def begin_send(self, message: dict[str, Any]) -> Any:
+            attempts["n"] += 1
+            raise ValueError("invalid sender address")
+
+    azure_mod = types.ModuleType("azure")
+    azure_communication_mod = types.ModuleType("azure.communication")
+    azure_communication_email_mod = types.ModuleType("azure.communication.email")
+    azure_communication_email_mod.EmailClient = FailingEmailClient  # type: ignore[attr-defined]
+    azure_mod.communication = azure_communication_mod  # type: ignore[attr-defined]
+    azure_communication_mod.email = azure_communication_email_mod  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "azure", azure_mod)
+    monkeypatch.setitem(sys.modules, "azure.communication", azure_communication_mod)
+    monkeypatch.setitem(sys.modules, "azure.communication.email", azure_communication_email_mod)
+
+    provider = AcsEmailProvider(
+        connection_string="endpoint=https://test.communication.azure.com/;accesskey=fake",
+        sender_address="bad-sender",
+        timeout_s=1.0,
+        max_retries=3,
+    )
+    with pytest.raises(EmailSendError, match="invalid sender"):
+        await provider.send_verification(
+            to_email="alice@example.com", code="333333", display_name="Alice"
+        )
+    assert attempts["n"] == 1  # no retry on non-transient
+
+
+# --- F6.4 fail-soft on register + resend -------------------------------------
+
+
+class _RaisingEmailProvider:
+    """Test double simulating ACS outage so register/resend fail-soft can be
+    exercised end-to-end through the actual route handlers."""
+
+    async def send_verification(
+        self, *, to_email: str, code: str, display_name: str
+    ) -> None:
+        raise EmailSendError("simulated ACS outage")
+
+
+def test_register_fail_soft_when_email_send_fails(
+    app: FastAPI, client: TestClient
+) -> None:
+    """Register endpoint stays 201 even when email send raises — F6.4 plan
+    intent so user account is created + V9 Step 2 'Check your inbox' UI is
+    consistent regardless of ACS state."""
+    app.dependency_overrides[get_email_provider] = lambda: _RaisingEmailProvider()
+    response = client.post(
+        "/auth/register",
+        json={"email": "alice@example.com", "password": _VALID_PASSWORD, "display_name": _VALID_DISPLAY},
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["user"]["email"] == "alice@example.com"
+    # User record materialised in repo despite send failure — log shows warning.
+    assert users_repo.find_by_email("alice@example.com") is not None
+
+
+def test_resend_fail_soft_when_email_send_fails(
+    app: FastAPI, client: TestClient, email_capture: CapturingEmailProvider
+) -> None:
+    """Resend endpoint stays 200 even when email send raises — same F6.4
+    rationale as register fail-soft."""
+    _register(client)
+    user = users_repo.find_by_email("alice@example.com")
+    assert user is not None
+    users_repo._users[user.oid] = user.model_copy(  # noqa: SLF001
+        update={"last_resend_at": datetime.now(UTC) - timedelta(seconds=RESEND_COOLDOWN_SEC + 1)}
+    )
+    app.dependency_overrides[get_email_provider] = lambda: _RaisingEmailProvider()
+    response = client.post(
+        "/auth/resend-verification", json={"email": "alice@example.com"}
+    )
+    assert response.status_code == 200

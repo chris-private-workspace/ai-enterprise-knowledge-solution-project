@@ -22,9 +22,15 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+import structlog
+
 from api.auth import users_repo
 from api.auth.dependency import get_current_user
-from api.auth.email_provider import EmailProvider, get_email_provider
+from api.auth.email_provider import (
+    EmailProvider,
+    EmailSendError,
+    get_email_provider,
+)
 from api.auth.models import AuthenticatedUser
 from api.auth.security import (
     RESEND_COOLDOWN_SEC,
@@ -52,6 +58,8 @@ from api.schemas.errors import ErrorCodes
 from storage.settings import Settings, get_settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+_log = structlog.get_logger(__name__)
 
 CurrentUserDep = Annotated[AuthenticatedUser, Depends(get_current_user)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -190,11 +198,22 @@ async def register(
         display_name=payload.display_name,
     )
     assert record.verification_code is not None  # mypy: register() always populates
-    await email_provider.send_verification(
-        to_email=record.email,
-        code=record.verification_code,
-        display_name=record.display_name,
-    )
+    # F6.4 fail-soft — register flow stays green even if ACS is degraded; user
+    # sees V9 Step 2 "Check your inbox" + Resend Button regardless. Operations
+    # failure goes to structured log only so account creation isn't blocked.
+    try:
+        await email_provider.send_verification(
+            to_email=record.email,
+            code=record.verification_code,
+            display_name=record.display_name,
+        )
+    except EmailSendError as exc:
+        _log.warning(
+            "verification_email_send_failed",
+            stage="register",
+            user_oid=record.oid,
+            error=str(exc),
+        )
     return RegisterResponse(user=_to_public(record))
 
 
@@ -297,9 +316,20 @@ async def resend_verification(
             )
     updated = users_repo.regenerate_verification_code(user.oid)
     assert updated is not None and updated.verification_code is not None
-    await email_provider.send_verification(
-        to_email=updated.email,
-        code=updated.verification_code,
-        display_name=updated.display_name,
-    )
+    # F6.4 fail-soft — same rationale as register; user can press Resend again
+    # if delivery actually failed. Truthful 502 here would create UX confusion
+    # vs the exact same outcome (no email arrived) the user already perceives.
+    try:
+        await email_provider.send_verification(
+            to_email=updated.email,
+            code=updated.verification_code,
+            display_name=updated.display_name,
+        )
+    except EmailSendError as exc:
+        _log.warning(
+            "verification_email_send_failed",
+            stage="resend",
+            user_oid=updated.oid,
+            error=str(exc),
+        )
     return ResendVerificationResponse(cooldown_seconds=RESEND_COOLDOWN_SEC)

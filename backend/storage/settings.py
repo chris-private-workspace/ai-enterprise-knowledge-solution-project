@@ -118,6 +118,20 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = 50
     rate_limit_concurrent: int = 5
 
+    # W13 F6 — C13 Email Verification Service (Azure Communication Services per
+    # Q22 Resolved 2026-06-10 + ADR-0014 hybrid auth). `feature_email_mock=True`
+    # OR empty `acs_connection_string` falls back to ConsoleEmailProvider stub
+    # (logs verification code) — preserves R8 corp-proxy graceful path. Real
+    # ACS path requires `azure-communication-email` SDK installed; when it
+    # isn't, AcsEmailProvider raises EmailSendError clearly identifying the
+    # missing dep. Sender domain SPF/DKIM setup happens IT-side post Track A
+    # (Beta phase) — Tier 1 default points at dev.ekp-beta.ricoh.com.
+    feature_email_mock: bool = True
+    acs_connection_string: str = ""
+    acs_sender_address: str = "noreply@dev.ekp-beta.ricoh.com"
+    acs_request_timeout_s: float = 30.0
+    acs_max_retries: int = 3
+
     # W8 D2 F1.2 — Real Microsoft Entra ID JWT validation. Backend = resource
     # server only; frontend msal-react acquires tokens (W8 D3 F1.3). Empty
     # tenant_id falls back to msal_provider 503 fail-closed (W7 D1 baseline).

@@ -65,12 +65,12 @@ last_updated: 2026-06-10
 
 ## F6 — C13 ACS Email Verification Service integration
 
-- [ ] F6.1 `backend/api/auth/email_provider.py` create:ACS Email Client wrapper(`azure-communication-email` SDK installed + utility-lib per CLAUDE.md §5.2 H2)
-- [ ] F6.2 Email template:plain text + HTML alternative(simple template embedded;non template engine Tier 1 per ADR-0014)
-- [ ] F6.3 Sender domain config via env var:Tier 1 dev `noreply@dev.ekp-beta.ricoh.com`(SPF/DKIM 自 IT setup post Track A);Beta phase real `noreply@ekp-beta.ricoh.com` env switch
-- [ ] F6.4 Failure mode handling:ACS API 5xx → `tenacity` retry(已 utility-lib per CLAUDE.md §3.1);fail-soft graceful(register flow surface「verification email pending — please check inbox or resend」per V9 Step 2)
-- [ ] F6.5 Mock mode for dev:env var `FEATURE_EMAIL_MOCK=true` → log verification token to backend logs instead of sending(parallel to W7 D1 F1.2.1 mock auth pattern;dev workstation R8 + pre-IT-cred)
-- [ ] F6.6 Tests:pytest unit test mock send + verify token flow;real ACS smoke deferred Beta phase post sender domain SPF/DKIM ready
+- [x] F6.1 `backend/api/auth/email_provider.py` AcsEmailProvider class(EmailProvider Protocol parity);**lazy SDK import** `azure-communication-email`(R8 corp-proxy compatible — module loads even when SDK uninstalled);ImportError → `EmailSendError("not installed")` actionable hint
+- [x] F6.2 Email templates(simple constants — non template engine Tier 1):`_PLAIN_TEMPLATE`(text)+ `_HTML_TEMPLATE`(inline-styled responsive)+ `render_plain_text()` / `render_html()` placeholder substitution helpers
+- [x] F6.3 Sender domain config via Settings env vars:`acs_sender_address` default `noreply@dev.ekp-beta.ricoh.com`;`acs_connection_string` empty defaults → ConsoleEmailProvider fallback per F6.5;`acs_request_timeout_s` 30s + `acs_max_retries` 3 tunable
+- [x] F6.4 Failure mode handling:tenacity `AsyncRetrying` retries on `_TRANSIENT_EXCEPTION_TYPES`(OSError + asyncio.TimeoutError + TimeoutError);non-transient bypass retry surface immediately;**fail-soft on register + resend routes**(try/except EmailSendError + structlog warning + continue without 5xx propagation per V9 Step 2「Check your inbox」UX consistency)
+- [x] F6.5 Mock mode via `feature_email_mock=True` Settings(default True for safety);factory `_build_provider_from_settings` selects ConsoleEmailProvider when mock OR connection_string empty(defensive Beta misconfiguration guard);ConsoleEmailProvider logs verification code via structlog
+- [x] F6.6 Tests:**12 new tests pass**(template rendering 2 + factory selection 3 + SDK-missing guard 1 + mocked-SDK happy/retry/exhaustion/non-transient 4 + fail-soft register/resend 2);real ACS smoke deferred Beta post sender domain SPF/DKIM ready
 
 ## F7 — Phase Gate closeout + W14 phase folder kickoff
 
