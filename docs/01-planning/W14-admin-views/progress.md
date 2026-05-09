@@ -104,7 +104,7 @@ $ # 0 hits across both files (no docstring oklch mentions either)
 
 ### Commit
 
-- `<TBD>` feat(frontend,docs): W14 D1 F1 V2 Admin Dashboard refactor + CO_F5d-cont session-token mode + W14 active flip
+- `641b328` feat(frontend,docs): W14 D1 F1 V2 Admin Dashboard refactor + CO_F5d-cont session-token mode + W14 active flip
 
 ---
 
