@@ -440,7 +440,7 @@ Success: no issues found in 3 source files
 
 ### Commit
 
-- `<TBD>` feat(backend,docs): W13 D5 F6 C13 ACS Email Verification Service + 12 new tests + fail-soft register/resend
+- `9b5966c` feat(backend,docs): W13 D5 F6 C13 ACS Email Verification Service + 12 new tests + fail-soft register/resend
 
 ---
 
