@@ -260,7 +260,7 @@ $ pnpm type-check
 
 ### Commit
 
-- `<hash>` docs(planning): W14 D4 F4 cross-cutting verification — Stepper preserved + token audit pass + sidebar/UserMenu/Breadcrumb baseline preserved + CO_F4_error_boundary W15 follow-up
+- `a4213d0` docs(planning): W14 D4 F4 cross-cutting verification — Stepper preserved + token audit pass + sidebar/UserMenu/Breadcrumb baseline preserved + CO_F4_error_boundary W15 follow-up
 
 ---
 
