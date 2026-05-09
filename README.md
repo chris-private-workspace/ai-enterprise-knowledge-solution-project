@@ -130,7 +130,7 @@ ekp/
 | Image storage | Azure Blob(Local: Azurite emulator) |
 | Embedding | Azure OpenAI `text-embedding-3-large`(1024d MRL) |
 | Vector + BM25 | Azure AI Search Standard S1(multi-KB) |
-| Reranker | Cohere Rerank v3.5(W4 shootout vs Voyage / ZeroEntropy / Azure built-in) |
+| Reranker | Cohere Rerank v4.0-pro(W6 production lock per ADR-0012;v3.5 W3 baseline → v4.0-pro same-vendor upgrade;W4 shootout outcome Voyage / ZeroEntropy DROPPED Tier 1) |
 | LLM(synthesis) | Azure OpenAI `gpt-5.5` |
 | LLM(judge) | Azure OpenAI `gpt-5.4-mini` / `gpt-5.5-pro` |
 | Agentic | L2 CRAG;W5 stretch L3 routing |

@@ -455,7 +455,7 @@ uv run python -m eval.run_full_eval \
     --eval-set docs/eval-set-v0.yaml \
     --kb-id drive_user_manuals \
     --llm-model gpt-5-5 \
-    --reranker cohere-v3.5 \
+    --reranker cohere-v4.0-pro \
     --enable-crag \
     --output reports/eval_run_$(date +%Y%m%d_%H%M).json
 ```
@@ -693,7 +693,7 @@ W2–W3 iteration 用 GPT-5.4-mini 做 fast judge,**唔代表 W6 final 嘅信號
 
 **Run Date**: 2026-...
 **Eval Set**: docs/eval-set-v0.yaml(synthetic 30 + user 20 = 50 queries)
-**Pipeline Config**: spec v5 default + Cohere Rerank v3.5 + GPT-5.5 + CRAG
+**Pipeline Config**: spec v6 default + Cohere Rerank v4.0-pro + GPT-5.5 + CRAG
 
 ## Metrics(3-run mean ± stdev)
 | Metric | Value | W6 Target | W4 Threshold(within 5pp) | Pass? |
@@ -710,7 +710,7 @@ W2–W3 iteration 用 GPT-5.4-mini 做 fast judge,**唔代表 W6 final 嘅信號
 - Q027: ...
 
 ## Reranker Shootout(see reports/reranker_shootout_W4.yaml)
-Winner: Cohere v3.5(within 3pp of ZeroEntropy,vendor reliability win)
+Winner: Cohere v4.0-pro(W4 shootout narrowed 4-way → 2-way per Karpathy §1.2;W5 D1 v3.5 → v4.0-pro same-vendor upgrade;W6 D1 LIVE Azure 2-way reaffirmed via faith Δ -11.76pp + rel Δ -9.81pp WORSE per ADR-0012)
 
 ## Cost
 Total run cost: $X.XX

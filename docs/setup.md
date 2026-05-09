@@ -429,7 +429,7 @@ AZURE_BLOB_CONTAINER_SCREENSHOTS=ekp-kb-drive-screenshots
 # Cohere Rerank(direct API,W3 critical)
 # ----------------------------------------------------------------------------
 COHERE_API_KEY=<from-cohere-dashboard>
-COHERE_RERANK_MODEL=rerank-v3.5
+COHERE_RERANK_MODEL=rerank-v4.0-pro    # ADR-0012 W6 production lock
 
 # ----------------------------------------------------------------------------
 # (W4 only)Voyage / ZeroEntropy for reranker shootout
@@ -491,7 +491,7 @@ ENVIRONMENT=local                       # local / poc / beta / production
 
 ## 6. Cohere Rerank Setup
 
-Cohere v3.5 有兩條 onboarding path,**揀啱嗰條跟做**:
+Cohere v4.0-pro(W6 production lock per ADR-0012;v3.5 W3 baseline 已 upgrade)有兩條 onboarding path,**揀啱嗰條跟做**:
 
 ### 6.1 Path A:Direct API(POC W3 quickest start)
 

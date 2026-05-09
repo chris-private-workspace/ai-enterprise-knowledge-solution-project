@@ -29,7 +29,7 @@ backend/retrieval/                ← W2 D5 create
 ├── reranker/
 │   ├── __init__.py
 │   ├── base.py                   ← Reranker Protocol
-│   ├── cohere.py                 ← Cohere Rerank v3.5(W3 baseline)
+│   ├── cohere.py                 ← Cohere Rerank v4.0-pro(W6 production lock per ADR-0012;v3.5 W3 baseline)
 │   ├── voyage.py                 ← Voyage rerank(W4 shootout)
 │   ├── zeroentropy.py            ← ZeroEntropy(W4 shootout)
 │   ├── azure_semantic.py         ← Azure built-in semantic ranker(R6 fallback)
@@ -117,7 +117,7 @@ class Reranker(Protocol):
 | **Embedding query at retrieval time**(non pre-computed)| Query embedding cost ~50ms,small;allows query expansion / preprocessing without re-index |
 | **Hybrid retrieval `top=50`,rerank `top=5`** | Common pattern;50 candidates give reranker enough variety;5 final fits LLM context budget(~1500 token × 5 = 7500 token < GPT-5.5 limit) |
 | **Reranker behind Protocol abstraction**(W4 shootout swap) | Plug-and-play 4 rerankers;config flag切 without code change(R6 hot fallback to Azure semantic) |
-| **Cohere Rerank v3.5 baseline**(spec §3.2 H2) | Industry standard,well-documented,low-latency |
+| **Cohere Rerank v4.0-pro production lock**(spec §3.2 H2 + ADR-0012;v3.5 W3 baseline 已 upgrade) | Industry standard,well-documented,low-latency;same-vendor model upgrade preserves API contract backwards-compat |
 | **W4 reranker shootout**:Cohere / Voyage / ZeroEntropy / Azure semantic | Per `eval-methodology.md §7` + spec §6.3 Gate 2;data-driven Q21 resolution |
 | **Filter `enabled=true`**(via Azure Search filter clause) | Honor admin-toggled disabled chunks(per `§3.5` enabled field)without re-index |
 | **No query rewriting / expansion W2-W3**(reserve W4 if Gate 1 R@5 fails)| YAGNI;hybrid baseline 通常 sufficient for clear queries;reformulation 留 CRAG(C05) |

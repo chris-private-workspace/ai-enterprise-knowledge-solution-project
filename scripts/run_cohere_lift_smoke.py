@@ -2,7 +2,8 @@
 
 Runs the same N representative eval-set queries through TWO retrieval engines:
 1. Hybrid-only (no reranker) — W2 baseline
-2. Hybrid + Cohere Rerank v3.5 — W3 D1 baseline (Path A Marketplace per Q5)
+2. Hybrid + Cohere Rerank v4.0-pro — W6 production lock per ADR-0012 (Path A
+   Marketplace per Q5;v3.5 W3 D1 baseline → v4.0-pro same-vendor upgrade W5 D1)
 
 Emits per-query lift table:
 

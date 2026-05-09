@@ -264,7 +264,7 @@ Refs: docs/architecture.md §3.2
 |---|---|
 | Vector + BM25 | Azure AI Search Standard S1 |
 | Embedding | Azure OpenAI text-embedding-3-large |
-| Reranker(baseline) | Cohere Rerank v3.5(W4 shootout 後可換 Voyage / ZeroEntropy / Azure built-in) |
+| Reranker(baseline) | Cohere Rerank v4.0-pro(W6 production lock per ADR-0012 + Q21 Resolved;v3.5 W3 baseline → v4.0-pro same-vendor upgrade;Voyage / ZeroEntropy DROPPED Tier 1) |
 | LLM(synthesis) | Azure OpenAI GPT-5.5 |
 | LLM(judge) | Azure OpenAI GPT-5.4-mini / GPT-5.5 Pro |
 | Document parsing | Docling + python-pptx |
