@@ -267,58 +267,43 @@ Schema 已 store 兩個 fields(每 chunk record 加 ~20 bytes overhead × millio
 
 ## Implementation Deliverables(W16+ Phase 3)
 
+> **Status(2026-05-10 — Session 2 closeout)**:Session 1 = `cffb391`(backend Context Expander module);Session 2 = `cb15c3d`(Langfuse trace wiring + V6 9-stage frontend)。Audit `audit-W15-d5-vs-spec.md` Drift #3 → **FULLY CLOSED**(ledger #24)。Minor deviations from this contract are surgical equivalents — noted inline below。
+
 ### Code changes(backend Context Expander)
 
-- [ ] `backend/generation/context_expander.py` — NEW file ~100 lines
-  - `ExpandedChunk` dataclass:original + prev_context + next_context + expanded_text
-  - `async def expand_context(reranked_chunks, kb_id, searcher) -> list[ExpandedChunk]`
-  - Batch fetch prev/next chunks via single Azure Search call(`chunk_id in ('{id1}', '{id2}', ...)`)
-  - Edge case handling:first chunk(no prev)+ last chunk(no next)+ cross-doc boundary
-- [ ] `backend/generation/prompt_builder.py` — `build_prompt()` signature accept `list[ExpandedChunk]`(passes `expanded_text` to LLM)
-- [ ] `backend/generation/crag.py` — wire Context Expander between rerank + prompt build
-- [ ] (Optional)Feature flag `crag.enable_context_expansion`(default True)— A/B test capability post Beta
+- [x] `backend/generation/context_expander.py` — NEW(`cffb391`,243 lines)
+  - `ExpandedChunk` dataclass — actual shape `score + fields + prev_chunk_text + next_chunk_text + expansion_applied`(duck-typed compatible with `RetrievedChunk`;`fields` gains an `expanded_text` key when expansion applied)— functional equivalent of the contract's `original + prev_context + next_context + expanded_text`
+  - `async def expand_context(reranked_chunks, kb_id, searcher) -> tuple[list[ExpandedChunk], ExpansionStats]`(also returns `ExpansionStats` for observability)
+  - Batch fetch prev/next via single `HybridSearcher.fetch_by_chunk_ids()`(`search.in()` filter)
+  - Edge case handling:first chunk(no prev)+ last chunk(no next)+ cross-doc boundary + lookup miss + network error(graceful)
+- [x] `backend/generation/prompt_builder.py` — `build_prompt()` accepts the expanded chunks;`expanded_text or chunk_text` fallback dispatch(`cffb391`)
+- [x] `backend/generation/crag.py` — Context Expander wired into the re-retrieve→re-synthesis path(`cffb391`);`/query` route happy path wires it too(`api/routes/query.py` 2 sites)
+- [ ] (Optional,not done)Feature flag `crag.enable_context_expansion`(default True)— A/B test capability post Beta;defer until/unless a quality regression surfaces
 
 ### Code changes(frontend V6 9-stage expansion)
 
-- [ ] `frontend/app/debug/[traceId]/page.tsx` — 6 → 9 stages PipelineStageCollapsible
-  - Query Rewriter(currently implicit in CRAG)
-  - Re-retrieve(CRAG correction loop)
-  - **Context Expander NEW**(top-5 + per-chunk prev/next preview + expansion stats)
-- [ ] Per-stage data display:`expansion_count` / `boundary_skip_count` / `latency_ms`
+- [x] `frontend/app/debug/[traceId]/page.tsx` — 6 → 9 conceptual stages(`cb15c3d`):adds **Query Rewriter** / **Re-retrieve** / **Context Expander NEW**;each stage declares Langfuse observation-name prefixes, observations bucketed first-match(handles `retrieval.retrieve` ×2 on CRAG correction);stages with no observation render an inline note;status-field branching replaces the 501-stub-mitigation logic;`trace_url` CTA fallback `NEXT_PUBLIC_LANGFUSE_URL`
+- [x] Per-stage data display(`cb15c3d`)— Context Expander stage renders `TraceStage.details` key/value list(actual keys `requested_count` / `expanded_count` / `boundary_skip_count`)+ each observation row shows `latency_ms` / model / token counts / status
 
 ### Backend `/debug/trace/{trace_id}` extension(W16 F5 stub closure cascade)
 
-- [ ] Return per-stage data 包括 Context Expander stats(synergy with W16 F5 deliverable)
+- [x] Per-stage data 包括 Context Expander stats — implemented as:`emit_stage_metadata("generation.context_expansion", duration_ms + requested/expanded/boundary_skip)` in `expand_context()` + `langfuse_trace._extract_stage` reads `observation.metadata` → `TraceStage.details`(`cb15c3d`,builds on W16 F5.5 `/debug/trace` endpoint `1dbcdf3`)
 
 ### Tests
 
-- [ ] Unit tests `backend/tests/test_context_expander.py`(~10 cases):
-  - Basic 5-chunk expansion happy path
-  - First chunk no prev → skip prev
-  - Last chunk no next → skip next
-  - Cross-doc boundary(prev/next chunk in different doc)→ skip
-  - Empty top-5 → return empty list
-  - All chunks have prev/next → 5 expansions
-  - Mixed scenario(some have prev/next,some don't)
-  - Batch fetch latency assertion(< 50ms typical)
-  - kb_id parameter propagation(per ADR-0018 cross-ref)
-  - Feature flag disabled → return reranked_chunks as ExpandedChunk with no prev/next
-- [ ] Integration test:end-to-end query → expanded context → LLM synthesis → verify answer quality lift on test query
+- [x] Unit tests `backend/tests/test_context_expander.py`(`cffb391`,11 cases — happy path / first / last / cross-doc / empty / all-expand / mixed / latency / kb_id / fallback)+ `backend/tests/test_observe.py` ×3(`emit_stage_metadata`)+ `backend/tests/test_debug_trace.py` ×2(metadata→details)(`cb15c3d`)
+- [ ] (Not done — defer)Integration test:end-to-end query → expanded context → LLM synthesis → verify answer quality lift — requires live Azure OpenAI + a RAGAs subset run;W17+ candidate(stack with the RAGAs 4-metric full integration deferral per W16 plan §3)
 
 ### Documentation
 
-- [ ] `components/C05-generation.md` update(P1 Phase 4C):
-  - `last_updated` bump to 2026-05-09
-  - §1 internal architecture diagram add Context Expander step
-  - §2 Outputs add ExpandedChunk reference
-  - Cross-ref ADR-0020
-- [ ] (Optional)architecture.md §3.1 + §5.7 no amendment needed(spec already correct;reality catch-up only)
+- [ ] (Not done — P1 Phase 4C design-note refresh batch)`components/C05-generation.md` update:`last_updated` bump + §1 diagram add Context Expander step + §2 Outputs add ExpandedChunk reference + cross-ref ADR-0020
+- [x] architecture.md §3.1 + §5.7 — confirmed no amendment needed(spec already correct;reality caught up via code per Option A)
 
 ### Eval / observability
 
-- [ ] Langfuse trace tag stage `context_expansion`(per-stage cost / latency attribution)
-- [ ] Per-query expansion stats in trace metadata
-- [ ] (Optional)A/B test with `enable_context_expansion=False` baseline → measure quality delta(faithfulness / answer_relevancy / context_precision / context_recall via RAGAs subset run)
+- [x] Langfuse trace stage `generation.context_expansion`(`cb15c3d`;namespaced `generation.*` per the existing observation-name convention rather than the bare `context_expansion` in the contract)— per-stage latency attribution via `duration_ms` in metadata
+- [x] Per-query expansion stats in trace metadata(`requested_count` / `expanded_count` / `boundary_skip_count`)— `cb15c3d`
+- [ ] (Optional,not done)A/B test with `enable_context_expansion=False` baseline → measure quality delta(faithfulness / answer_relevancy / context_precision / context_recall via RAGAs subset run)— blocked on the (not-done)feature flag above
 
 ---
 

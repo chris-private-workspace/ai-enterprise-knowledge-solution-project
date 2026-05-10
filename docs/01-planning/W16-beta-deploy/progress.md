@@ -138,6 +138,16 @@ Per W15 retro decision empirical signal 9 cumulative occurrences + W16 D1 active
 - F3 Daily metric monitor + Q15 first weekly signal report — blocked F2
 - F4 User smoke first run(Playwright E2E baseline capture)— ADR-0017 R8 trigger candidate;blocked F4.1 install attempt
 
+### ADR-0020 Phase 3 Session 2 — landed Day 1(outside W16 plan F1-F5 scope;audit campaign tail)
+
+> Not a W16 plan deliverable — continuation of an approved ADR's implementation, tracked via `docs/adr/0020-…` §Implementation Deliverables + `audit-W15-d5-vs-spec.md` §10 ledger #24(同 Session 1 `cffb391` 嘅 pattern)。Recorded here per R2(commit-on-this-day ↔ progress entry)。
+
+- **`cb15c3d`** `feat(frontend,observability)` — V6 Debug View 6→9 conceptual stages(adds Query Rewriter / Re-retrieve / Context Expander)+ Context Expander Langfuse trace wiring(`emit_stage_metadata` at source + `_extract_stage` reads `observation.metadata`→`TraceStage.details` + `TraceStage.details` schema)+ `lib/api/debug.ts` contract sync to the live `/debug/trace` shape + status-field branching replaces 501-stub-mitigation
+- **Tests**:5 NEW(3 `test_observe.py` + 2 `test_debug_trace.py`)→ **583 passed + 7 skipped**(was 578+7;0 regressions);ruff clean;`tsc --noEmit` EXIT_CODE=0;eslint clean on changed files
+- **Browser smoke**(dev server,user-authorized this session)— `/debug/{id}` renders 9-stage scaffold + vendor tags + collapsible toggle(`aria-expanded`)+ error-banner branch(Azure dev backend still serves the old 501 stub)+ Open-in-Langfuse fallback URL;no SSR/layout breakage。Interactive visual/pixel verification deferred W16 F4(Playwright pixel baseline re-capture;R8 corp-proxy blocked)per ADR-0020 §C
+- **(this docs commit)** `docs(architecture)` — audit §10 ledger #24 + Drift #3 → **FULLY CLOSED**(4/5 fully closed;only #5 V4 Retrieval Testing tab P2 W17+ remaining)+ ADR-0020 §Implementation Deliverables checkboxes ticked + this progress entry
+- Pre-existing `frontend/app/admin/page.tsx` unused-import lint error observed(`CardTitle`)— NOT touched(out of scope per Karpathy §1.3;noted for W17+ housekeeping)
+
 ---
 
 ## Day 2 → Day 10 — _(W16 D2-D10 placeholders;F1-F4 sequence post Track A IT cred trigger;F5 closeout absorbed Day 1 per E.1 same-day collapse)_
