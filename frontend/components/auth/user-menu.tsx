@@ -1,13 +1,15 @@
 'use client';
 
 /**
- * C09 admin shell user menu — W12 D4 F4.2 rebuild with shadcn DropdownMenu.
+ * C09/C10 app-shell user menu — W12 D4 build with shadcn DropdownMenu;
+ * W18 F5: + a "Settings" link → /settings (per ADR-0024 §5.0 top-bar user menu).
  *
  * Avatar trigger (initials fallback) → dropdown with username + mock badge +
- * sign-out action. Wraps existing useAuthStore + useCurrentUser hooks.
+ * Settings link + sign-out action. Wraps existing useAuthStore + useCurrentUser hooks.
  */
 
-import { LogOut } from 'lucide-react';
+import { LogOut, Settings } from 'lucide-react';
+import Link from 'next/link';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -69,6 +71,13 @@ export function UserMenu() {
             ) : null}
           </div>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/settings">
+            <Settings className="mr-2 h-4 w-4" />
+            Settings
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void signOut()}>
           <LogOut className="mr-2 h-4 w-4" />

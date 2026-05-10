@@ -70,8 +70,8 @@ W18 does **NOT** address(stay W16 / Tier 2 / future): CO16 Track A IT cred + R-B
 | F1 `<AppShell>` | 1-1.5d | ~0.4d(this session) | NEW `components/nav/app-shell.tsx` — generalized from `admin-shell.tsx`;`tsc --noEmit` + `next lint` clean;`[oklch`=0;not yet wired into a layout (that's F2) — `(this commit)` |
 | F2 `(app)/` route group + login-gate | 1d | ~0.3d(this session) | NEW `app/(app)/layout.tsx` + `components/auth/login-gate.tsx`;root layout already chrome-free(verify-no-op);**F2.3 layout-removal deferred into F3**(inseparable from the page move);`tsc`+`lint` clean,`[oklch`=0,dev server up — `(this commit)` |
 | F3 move + re-route + links + Playwright | 1.5d | ~0.5d(this session) | 8 page moves into `app/(app)/` + `admin/error.tsx`→`(app)/error.tsx` + 4 layouts/page deleted + `admin-shell.tsx` deleted + 2 NEW pages(`dashboard` placeholder / `traces` index)+ all route literals + Playwright rename/update + **`.gitignore` `traces/`→`/traces/` fix**;`tsc`+`lint` clean,`[oklch`=0,curl smoke `:3001` → new routes 200 / `/admin*` 404 — **IA flip live** — `(this commit)` |
-| F4 `/dashboard` | 1d | — | — |
-| F5 `/settings` | 0.5d | — | — |
+| F4 `/dashboard` | 1d | ~0.3d(this session) | rewrote the F3 placeholder → 5 overview cards(KB summary off `GET /kb` / recent-queries CTA[Q6]/ latest-eval CTA / backend-liveness off `GET /health` / quick actions)— `'use client'` + `useQuery`;no new backend;`tsc`+`lint` clean,`[oklch`=0,`/dashboard` 200 — `(this commit)` |
+| F5 `/settings` | 0.5d | ~0.2d(this session) | NEW `(app)/settings/page.tsx`(Profile claims + `<ThemeToggle>` + Sign out)+ wired `<UserMenu>` "Settings" item(`asChild`+`<Link>`);`tsc`+`lint` clean,`[oklch`=0,`/settings` 200 — `(this commit)` |
 | F6 `<GlobalSearch>` | 0.5-1d | — | — |
 | F7 login/register → /dashboard + delete Landing | 0.5d | — | — |
 | F8 responsive/a11y + tests + dark-recheck + catalog | 1d | — | — |
@@ -179,6 +179,51 @@ W18 does **NOT** address(stay W16 / Tier 2 / future): CO16 Track A IT cred + R-B
 ### Next
 
 - F4 — `app/(app)/dashboard/page.tsx` real overview cards(KB summary off `GET /kb` / recent queries [or a CTA] / latest eval status off the last cached `POST /eval/run` [or a CTA] / system health off `GET /health` + component statuses / quick actions)— replaces the F3 placeholder;no new backend. + F5 — `app/(app)/settings/page.tsx`(profile display + sign-out + theme preference)+ wire the `<UserMenu>` "Settings" item to it — wait for the user's go-ahead(directive pattern: explicit per-step). **The shell is browser-visible now** — the user can click around `/dashboard` (placeholder), `/chat`, `/kb`, `/eval`, `/traces` on `:3001` and check the sidebar / focus-mode / hamburger / dark-mode.
+
+---
+
+## Day 4 — F4 `/dashboard` real overview + F5 `/settings`(2026-05-11)
+
+### Done — `(this commit)`
+
+**F4 — `/dashboard` real overview** (`frontend/app/(app)/dashboard/page.tsx` — rewrote the F3 placeholder)
+- `'use client'`(uses `@tanstack/react-query`). 5 cards in a responsive grid(`grid gap-4 sm:grid-cols-2 lg:grid-cols-3`):
+  1. **Knowledge bases** — `useQuery(['kb','list'], () => kbApi.list())`(→ `GET /kb`)→ `kbs.length` as a big number + a sub-line `Σtotal_documents` · `Σtotal_chunks` · `Σstorage_size_mb.toFixed(1) MB` + a `Button asChild variant="link"` → `/kb`. `<Skeleton>` while `isPending`;`text-destructive` "Couldn't load knowledge bases." on `isError`.
+  2. **Recent queries** — no backend source(Q6 real-query collection is Open per session-start §9)→ "Query history isn't collected yet (Q6)." + a CTA `Button asChild variant="link"` → `/chat`.
+  3. **Latest evaluation** — no cached `/eval/run` result endpoint exists → "No eval run cached. Run RAGAs to see Recall@5 / Faithfulness / Correctness." + a CTA → `/eval`.
+  4. **System health** — `useQuery(['health'], () => apiClient.get<{status:string}>('/health'), {retry:1})`. `/health` is the `{"status":"ok"}` liveness probe(no per-component statuses)→ a green `bg-success` dot "Backend operational" / a red `bg-destructive` dot "Backend unreachable" + a small note that per-component connectivity(Azure Search / OpenAI / Cohere / Langfuse)needs a richer `/health` endpoint(later tier — not W18 scope).
+  5. **Quick actions**(`sm:col-span-2`)— a `<QuickAction>` grid(`grid-cols-2 sm:grid-cols-4`):New KB → `/kb/new`(`Plus`)/ Upload doc → `/kb`(`Upload`)/ Run eval → `/eval`(`FlaskConical`)/ Open chat → `/chat`(`MessageSquare`). Each = `Button asChild variant="outline" className="h-auto flex-col gap-1.5 py-3"` wrapping a `<Link>` with the icon + a `text-xs` label.
+- **No new backend** — `GET /kb`(via `kbApi.list`)and `GET /health` are existing(W1/W2);there's no recent-query log or cached-eval-run endpoint, hence the two CTA cards. Used `apiClient.get<{status}>('/health')` directly rather than adding a `lib/api/health.ts`(one trivial call — Karpathy §1.2). File header docstring per §3.2.
+
+**F5 — `/settings`** (`frontend/app/(app)/settings/page.tsx` — NEW)
+- `'use client'`. 3 cards:
+  1. **Profile** — reads `useCurrentUser()`(the `AuthenticatedUser` from the Zustand auth store);shows `<ProfileRow>` ×3 — Username(`preferredUsername`,mono — this is the email-shaped id;`AuthenticatedUser` has no separate `email`/`displayName` field)、User ID(`oid`,mono)、Tenant(`tid`,mono);a `<Badge variant="outline">mock auth — dev mode</Badge>` when `user.isMock`;"Signing in…" while `user` is null.
+  2. **Preferences** — "Theme" label + the existing `<ThemeToggle>`(Light/Dark/System via next-themes — reused, not a new radio group).
+  3. **Session** — a `<Button variant="outline">` "Sign out" → `useAuthStore((s) => s.signOut)`(the same path the `<UserMenu>` Sign-out item uses;in mock dev mode this immediately re-signs-in, matching existing behaviour;in real MSAL it logs out).
+- **`<UserMenu>` wiring** — added a "Settings" item above the existing Sign-out item(with a `<DropdownMenuSeparator>` between):`<DropdownMenuItem asChild><Link href="/settings"><Settings className="mr-2 h-4 w-4"/>Settings</Link></DropdownMenuItem>`(the Radix recommended pattern for a navigation menu item — `asChild` + `<Link>`;no `useRouter` needed);imported `Settings` from lucide + `Link` from `next/link`;the menu docstring updated "C09 admin shell user menu" → "C09/C10 app-shell user menu … W18 F5: + a Settings link". File header docstring on the new page per §3.2. No separate "Profile" menu item(the ADR listed Profile/Settings/Sign out — the `<UserMenu>` label is already the profile glance and `/settings` shows the full profile, so a "Profile" item would be redundant).
+
+### Verification
+
+- `pnpm exec tsc --noEmit` → exit 0
+- `pnpm exec next lint` → "No ESLint warnings or errors"
+- `Grep '\[oklch'` across `frontend/` → **0**(milestone preserved)
+- `GET /dashboard` HTTP 200 + `GET /settings` HTTP 200 on the running `:3001` dev server(both pages render;the dashboard's data cards show loading → then data/error depending on whether the backend `:8000` is up — the page itself renders fine either way)
+- **Not done at F4/F5**(F8's job):a Vitest render-smoke for the dashboard layout(F8.4 — joins the `<AppShell>`+`<GlobalSearch>` test pass);the interactive in-shell click-through(user pre-Beta smoke).
+
+### Deviations from plan(R3)
+
+1. **F4.1「NEW」→ a rewrite** — F3 created `(app)/dashboard/page.tsx` as a placeholder so the AppShell links wouldn't 404;F4 rewrote it into the real overview. Net new file content, but not a "create".
+2. **F4.2(d) System health limited to backend liveness** — `architecture.md`'s & the ADR's "Azure Search / OpenAI / Cohere / Langfuse + component statuses" assumes a richer `/health`;the actual `GET /health` is `{"status":"ok"}`(an ACA liveness probe). Adding per-component health checks is backend work → out of W18's "no new backend" scope;the card shows backend up/down + a note. Future-tier item.
+3. **F4.2(b)(c) are CTAs, not data** — no recent-query log endpoint(Q6 Open)and no cached-eval-run endpoint exist;the cards are first-class empty-state CTAs(per the plan's PARTIAL-PASS allowance "if no cached source exists, the empty-state CTA *is* the v1 deliverable").
+4. **`apiClient.get('/health')` used directly** — not a new `lib/api/health.ts` module(one trivial typed call — Karpathy §1.2 minimum code).
+5. **F5 profile fields** — `AuthenticatedUser` = `{oid,tid,preferredUsername,isMock}`;no separate "display name" or "email" field(`preferredUsername` is the email-shaped id). Shown: Username(`preferredUsername`)/ User ID(`oid`)/ Tenant(`tid`)+ mock badge. Close to the ADR's "display name / email / oid" — the wire payload simply doesn't carry a distinct display name.
+6. **F5 theme preference = embedded `<ThemeToggle>`** — the existing component(Sun/Moon → Light/Dark/System dropdown), reused rather than building a new radio group(Karpathy §1.2;also sidesteps the next-themes SSR-hydration `theme===undefined` flash, which `<ThemeToggle>` already handles).
+7. **`<UserMenu>` Settings item = `asChild`+`<Link>`** — the plan said `router.push('/settings')`;implemented as the Radix navigation-menu-item pattern(`<DropdownMenuItem asChild><Link href="/settings">…`)— same effect, the recommended pattern, no `useRouter`. The Sign-out item stays `onSelect` (it's an action, not navigation).
+8. **No separate "Profile" `<UserMenu>` item** — redundant with the menu's display-name label + the `/settings` Profile card.
+
+### Next
+
+- F6 — `frontend/components/nav/global-search.tsx`(Cmd/Ctrl+K command palette — Tier 1 quick-jump:filter KB names + recent docs + recent traces + an「Ask in chat: …」action → `/chat?q=…`)+ mount it in `<AppShell>` and fill the F1 `handleOpenSearch` no-op stub + a small `chat/page.tsx` `?q=` read-on-mount tweak. **If a clean palette needs `cmdk` → stop-and-ask per H2 first**(the PARTIAL-PASS fallback = a shadcn-`Dialog`-based quick switcher, zero new dep). + F7 — login/register → `/dashboard`(was `/chat`)+ delete the V7 Landing markup + `app/page.tsx` → thin redirect(`/` → `/login` | `/dashboard`)+ keep `brand-panel.tsx` + orphan-check. — wait for the user's go-ahead(directive pattern: explicit per-step). The `<UserMenu>` "Settings" link is live now;clicking the avatar → Settings → `/settings`(profile + theme + sign-out)works.
 
 ---
 
