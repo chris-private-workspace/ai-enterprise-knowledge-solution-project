@@ -8,10 +8,11 @@
  * lives in Next.js searchParams (`?tab=documents`) so URLs are bookmark-friendly.
  *
  * Plan §7 changelog (D3) deviations:
- * - F3.2 Documents tab: backend GET /kb/{id}/documents returns 501 (W2 stub) —
- *   surface count + failed_documents list + Upload CTA + TODO note.
+ * - F3.2 Documents tab: (W14 D3 — backend stub) → W17 F4.1: now wired to the
+ *   real GET /kb/{id}/documents (W16 F5.1.1 / CO_F3a — Azure AI Search chunk
+ *   aggregation by doc_id); renders a doc table; empty index → Upload prompt.
  * - F3.3 Chunks tab: backend GET /kb/{id}/documents/{id}/chunks returns 501 —
- *   surface placeholder + TODO note.
+ *   surface placeholder + TODO note (still a stub — W2 ingestion + Track A).
  * - F3.4 Pipeline tab: read-only config visualization Tier 1 (no PATCH inline).
  * - F3.6 Settings: name + description display-only (kbApi.patchSettings only
  *   accepts Partial<KbConfig>; name/description backend endpoint not exposed).
@@ -77,6 +78,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApiError } from '@/lib/api-client';
+import { documentsApi, type DocumentSummary } from '@/lib/api/documents';
 import {
   kbApi,
   type FailureRecord,
@@ -231,6 +233,14 @@ export default function KbDetailPage() {
 // --- Documents tab -----------------------------------------------------------
 
 function DocumentsTab({ kb }: { kb: KbStatus }) {
+  // W17 F4.1 — wire the real GET /kb/{id}/documents (backend impl per W16 F5.1.1
+  // CO_F3a: Azure AI Search chunk aggregation by doc_id). Empty index → empty
+  // list (kb exists but no chunks ingested yet) → show the upload prompt.
+  const docs = useQuery<DocumentSummary[]>({
+    queryKey: ['kb', kb.kb_id, 'documents'],
+    queryFn: () => documentsApi.list(kb.kb_id),
+  });
+
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-3">
@@ -242,24 +252,112 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
         />
       </div>
 
-      <BackendStubNote stub="GET /kb/{id}/documents" issue="W2 listing implementation" />
-
       {kb.failed_documents.length > 0 && (
         <FailuresSection rows={kb.failed_documents} />
       )}
 
-      <div className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-center">
-        <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
-        <p className="mt-3 text-sm font-medium">Add a document</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Word, PDF, or PowerPoint — ingestion pipeline parses + chunks + embeds
-        </p>
-        <Button asChild className="mt-4">
-          <Link href={`/admin/kb/${kb.kb_id}/upload`}>
-            <Upload className="mr-2 h-4 w-4" />
-            Upload Document
-          </Link>
-        </Button>
+      <section className="space-y-3">
+        <header className="flex items-baseline justify-between">
+          <h2 className="text-base font-semibold tracking-tight">Documents</h2>
+          <span className="text-xs text-muted-foreground">
+            {docs.isLoading
+              ? 'Loading…'
+              : docs.isError
+                ? '—'
+                : `${docs.data?.length ?? 0} document${(docs.data?.length ?? 0) === 1 ? '' : 's'} indexed`}
+          </span>
+        </header>
+
+        {docs.isLoading ? (
+          <DocumentsSkeleton />
+        ) : docs.isError ? (
+          <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
+            Failed to load documents — backend unreachable or Azure AI Search not
+            configured. Error:{' '}
+            {String((docs.error as Error)?.message ?? 'unknown')}
+          </div>
+        ) : (docs.data?.length ?? 0) === 0 ? (
+          <div className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-center">
+            <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
+            <p className="mt-3 text-sm font-medium">No documents yet</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Word, PDF, or PowerPoint — ingestion pipeline parses + chunks + embeds
+            </p>
+            <Button asChild className="mt-4">
+              <Link href={`/admin/kb/${kb.kb_id}/upload`}>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Document
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <DocumentsTable rows={docs.data ?? []} />
+        )}
+      </section>
+    </div>
+  );
+}
+
+function DocumentsSkeleton() {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div
+          key={i}
+          className="h-12 animate-pulse rounded-md border border-border bg-muted/30"
+        />
+      ))}
+    </div>
+  );
+}
+
+function DocumentsTable({ rows }: { rows: DocumentSummary[] }) {
+  return (
+    <div className="overflow-hidden rounded-md border border-border">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium">Title</th>
+              <th className="px-3 py-2 text-left font-medium">Format</th>
+              <th className="px-3 py-2 text-right font-medium">Chunks</th>
+              <th className="px-3 py-2 text-left font-medium">Last indexed</th>
+              <th className="px-3 py-2 text-left font-medium">Doc id</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((doc) => (
+              <tr key={doc.doc_id} className="bg-background">
+                <td className="px-3 py-2">
+                  <span className="font-medium">{doc.doc_title || doc.doc_id}</span>
+                  {doc.tags.length > 0 && (
+                    <span className="ml-2 inline-flex gap-1">
+                      {doc.tags.slice(0, 3).map((t) => (
+                        <Badge key={t} variant="outline" className="text-[10px]">
+                          {t}
+                        </Badge>
+                      ))}
+                    </span>
+                  )}
+                </td>
+                <td className="px-3 py-2">
+                  <Badge variant="outline" className="text-xs uppercase">
+                    {doc.doc_format || '—'}
+                  </Badge>
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {doc.total_chunks.toLocaleString()}
+                </td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">
+                  {doc.last_indexed_at ? doc.last_indexed_at.slice(0, 10) : '—'}
+                </td>
+                <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                  {doc.doc_id}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

@@ -10,7 +10,7 @@ Path B (direct API api.cohere.com/v2) uses identical body schema; toggle
 via factory.py based on `settings.cohere_procurement_path`.
 
 Body:
-    {"model": "rerank-v4.0-pro", "query": "...", "documents": [...], "top_n": 5}
+    {"model": "Cohere-rerank-v4.0-pro", "query": "...", "documents": [...], "top_n": 5}
 Response:
     {"results": [{"index": int, "relevance_score": float}, ...]}
 
@@ -39,15 +39,17 @@ logger = structlog.get_logger(__name__)
 class CohereReranker:
     """Cohere Rerank v4.0-pro client — Marketplace (Path A) or direct API (Path B).
 
-    Default model = `rerank-v4.0-pro` per ADR-0012 W6 production lock; `rerank-v3.5`
-    accepted for backwards-compat (W3 D1 baseline) but no longer the production default.
+    Default model = `Cohere-rerank-v4.0-pro` (Azure Marketplace deployment name —
+    canonical per W17 F4.4 naming unification) per ADR-0012 W6 production lock;
+    `rerank-v3.5` accepted for backwards-compat (W3 D1 baseline) but no longer the
+    production default.
     """
 
     def __init__(
         self,
         endpoint: str,
         api_key: str,
-        model: str = "rerank-v4.0-pro",
+        model: str = "Cohere-rerank-v4.0-pro",
         timeout_s: float = 10.0,
         path: str = "A",
     ) -> None:

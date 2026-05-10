@@ -67,7 +67,11 @@ class Settings(BaseSettings):
     # Path B fallback (direct API api.cohere.com/v2) selected via cohere_path_b flag
     cohere_endpoint: str = ""  # Marketplace endpoint base (e.g. https://...models.ai.azure.com)
     cohere_api_key: str = ""
-    cohere_rerank_model: str = "rerank-v4.0-pro"  # ADR-0012 v3.5 → v4.0-pro same-vendor upgrade
+    # Canonical model identifier = the Azure Marketplace deployment name
+    # `Cohere-rerank-v4.0-pro` (matches the live `.env` COHERE_RERANK_MODEL).
+    # ADR-0012 v3.5 → v4.0-pro same-vendor upgrade. Path B (direct api.cohere.com)
+    # would need a Cohere-native name (e.g. `rerank-v3.5`) — out of scope here.
+    cohere_rerank_model: str = "Cohere-rerank-v4.0-pro"
     cohere_procurement_path: Literal["A", "B"] = "A"  # A=Marketplace, B=direct API
     cohere_request_timeout_s: float = 10.0
 

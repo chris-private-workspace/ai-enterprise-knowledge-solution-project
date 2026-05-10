@@ -25,7 +25,6 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import { kbApi, type FailureRecord, type KbStatus } from '@/lib/api/kb';
 import { cn } from '@/lib/utils';
