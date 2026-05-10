@@ -67,7 +67,7 @@ W18 does **NOT** address(stay W16 / Tier 2 / future): CO16 Track A IT cred + R-B
 | Deliverable | Planned | Actual | Variance / note |
 |---|---|---|---|
 | F0 Kickoff cascade | (D0, ~0.5d) | (this session) | ADR-0024→Accepted + README + ADR-0015 note + `architecture.md v6 §5` amendment(§5.0 added / §5.3 Dashboard / §5.9 Landing removed / §5.7 Traces / `/admin/*` flatten)+ W18 folder(plan/checklist/progress) — `(this commit)` |
-| F1 `<AppShell>` | 1-1.5d | — | — |
+| F1 `<AppShell>` | 1-1.5d | ~0.4d(this session) | NEW `components/nav/app-shell.tsx` — generalized from `admin-shell.tsx`;`tsc --noEmit` + `next lint` clean;`[oklch`=0;not yet wired into a layout (that's F2) — `(this commit)` |
 | F2 `(app)/` route group + login-gate | 1d | — | — |
 | F3 move + re-route + links + Playwright | 1.5d | — | — |
 | F4 `/dashboard` | 1d | — | — |
@@ -77,9 +77,39 @@ W18 does **NOT** address(stay W16 / Tier 2 / future): CO16 Track A IT cred + R-B
 | F8 responsive/a11y + tests + dark-recheck + catalog | 1d | — | — |
 | F9 closeout | 0.5d | — | — |
 
+---
+
+## Day 1 — F1 — `<AppShell>` component(2026-05-10)
+
+### Built — `frontend/components/nav/app-shell.tsx`(NEW)— `(this commit)`
+
+`<AppShell>` = the single chrome that will wrap **all authenticated views**(Dashboard / Chat / Knowledge Bases / Eval / Traces)— **top bar + collapsible left sidebar + main content slot**(per architecture.md v6 §5.0 / ADR-0024 D1). Generalized from the W12-W15 `<AdminShell>`(reuses its hamburger-collapse pattern + `<UserMenu>` + `<ThemeToggle>` + the token-class layout) rather than built from scratch.
+
+- **Top bar**(`<header sticky top-0 z-30 h-14>`):mobile hamburger(`md:hidden`, opens the off-canvas sidebar, `aria-expanded`)→ desktop focus-mode toggle(`PanelLeftClose`/`PanelLeftOpen`, `aria-pressed`, `aria-label` switches Collapse/Expand)→ **app name "EKP" → `/dashboard`**(no marketing tagline)→ **global-search trigger**(centred search-box-styled `<button>` with a `Ctrl K` `kbd` hint;`aria-label="Search (Ctrl+K)"`)→ right cluster:**disabled language toggle**(`<Languages>` icon, native `disabled` + `title="Multi-language (JP / ZH) — coming in a later tier"` — i18n stays Tier 2 per §11 / CLAUDE.md §5.4 H4)+ `<ThemeToggle>`(reused)+ `<UserMenu>`(reused).
+- **Cmd/Ctrl+K** — a `window` keydown listener(`(metaKey||ctrlKey) && key==='k'` → `preventDefault` → `handleOpenSearch()`);`handleOpenSearch` is a **no-op stub with a `// TODO(W18 F6)`** — W18 F6 mounts the real `<GlobalSearch>` palette here and fills the handler. The trigger button + the key binding are both wired now so F6 only supplies the implementation behind one callback.
+- **Left sidebar** — 5 flat module items(`/dashboard` `LayoutDashboard` / `/chat` `MessageSquare` / `/kb` `Database` / `/eval` `FlaskConical` / `/traces` `Activity`)via a `NavLinks` sub-component;active route via `usePathname()` + `isActiveRoute(pathname, href)`(exact or `startsWith(href + '/')`)→ `aria-current="page"` + the muted-bg highlight;`<nav aria-label="Primary">`. Desktop:`<aside sticky top-14 h-[calc(100dvh-3.5rem)] overflow-y-auto w-56 md:block>` — **hidden entirely when focus-mode (`collapsed`) is on**. Mobile:rendered inside a controlled shadcn `<Sheet side="left">`(opened by the top-bar hamburger;each `NavLinks` item gets an `onNavigate` that closes the sheet).
+- **Focus mode** — `const [collapsed, setCollapsed] = useState(false)`(SSR-stable default)+ a mount-time `useEffect` that reads `localStorage['ekp-sidebar-collapsed']`;`toggleCollapsed` writes it back. Collapsed = the desktop sidebar is not rendered → main goes full-width;the top-bar toggle(always present on desktop)brings it back.
+- **Main content** — `<main className="min-w-0 flex-1 overflow-x-hidden p-4 md:p-8">{children}</main>`.
+- **Tokens** — 100% token classes(`border-border` / `bg-background` / `bg-muted/40` / `bg-muted` / `text-muted-foreground` / `text-foreground`);**no hardcoded `oklch()`** — `Grep '\[oklch'` across `frontend/` = **0**(W15 milestone preserved). File header docstring per CLAUDE.md §3.2 / session-start §13 #8.
+
+### Verification
+
+- `pnpm exec tsc --noEmit` → exit 0(clean)
+- `pnpm exec next lint` → "No ESLint warnings or errors"
+- `Grep '\[oklch'` across `frontend/` → **0**(one accidental occurrence in the F1 docstring — "[oklch(...)]=0 milestone" — was reworded to "no hardcoded `oklch()` colour arbitrary-values" before commit)
+- **Not browser-tested at F1** — `<AppShell>` is not yet imported by any layout(F2 wires it into `app/(app)/layout.tsx`);`tsc` proves it compiles in isolation;the visual / interactive smoke comes with F2-F3. The existing `next dev` server on `:3001`(left running from a prior session)is unaffected — nothing imports `app-shell.tsx` yet so it isn't compiled by the dev server.
+
+### Deviations from plan(minor — Karpathy §1.2 simplicity)
+
+1. **F1.1「props for the active route + nav items」→ `children`-only.** `usePathname()` supplies the active route(same as `AdminShell`)and `NAV_ITEMS` is a module-level const — a single-shell app doesn't need configurable nav. No `<AppShell>` props beyond `children`.
+2. **F1.3「`<UserMenu>` menu: Profile / Settings → `/settings`」not added in F1.** F1 *reuses* the existing `<UserMenu>`(which has display name + `[mock]` badge + Sign out). Adding the "Settings → `/settings`" item is **W18 F5.2's job**(`/settings` doesn't exist until F5)— surfacing it here, not silently dropping it.
+3. **Language toggle a11y** — used native `disabled` + `title`(rather than `aria-disabled` + a click-interceptor). Rationale:a natively-`disabled` button is removed from the AT tab order, which is fine — multi-language genuinely doesn't exist in Tier 1;the "coming soon" affordance is for sighted users(`title` tooltip). F8.2 can revisit if a visible-but-announced "Tier 2" hint is wanted.
+4. **No breadcrumb in the top bar.** `<AdminShell>` had an auto-derived breadcrumb in its desktop header;the architecture.md §5.0 top-bar spec(app name + search + lang + theme + user)doesn't include one, so `<AppShell>` omits it. If deep-route wayfinding(`/kb/[id]`)wants it back, that's an in-page breadcrumb on those pages — a W18 F3 / F8 polish detail, not a shell concern.
+5. **Cmd/Ctrl+K hint shows `Ctrl K`**(not `⌘K`)— the team is Windows-primary;the keydown handler accepts `metaKey || ctrlKey` either way so Mac still works.
+
 ### Next
 
-- F1 — `<AppShell>` component(generalize `admin-shell.tsx`)— wait for the user's go-ahead(directive pattern: explicit per-step).
+- F2 — `app/(app)/layout.tsx` route group(`<AuthProvider><QueryProvider><AppShell>{children}</AppShell></QueryProvider></AuthProvider>`)+ login-gate guard + remove `app/admin/layout.tsx` / `eval/layout.tsx` / `debug/[traceId]/layout.tsx` / `admin/page.tsx` + root-layout chrome cleanup — wait for the user's go-ahead(directive pattern: explicit per-step).
 
 ---
 
