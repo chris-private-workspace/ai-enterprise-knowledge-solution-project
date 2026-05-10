@@ -43,7 +43,14 @@ import { getBearer } from './auth';
 
 const API_PREFIX = '/api/backend';
 
-function buildAuthHeader(): Record<string, string> {
+/**
+ * Authorization Bearer header for mock-auth / MSAL modes. Empty `{}` for the
+ * self-register cookie path (no Bearer — `credentials:'include'` carries the
+ * `ekp_session` cookie instead) and while the MSAL skeleton throws.
+ * Exported for raw-fetch callers that bypass `ApiClient` (`streamQuery`,
+ * `uploadDoc`) — they must spread this too, else mock-auth mode 401s.
+ */
+export function buildAuthHeader(): Record<string, string> {
   try {
     const bearer = getBearer();
     return { Authorization: `${bearer.scheme} ${bearer.token}` };

@@ -5,7 +5,7 @@
  * (POST /kb → POST /kb/{id}/documents).
  */
 
-import { ApiClient, getCsrfHeaders } from '../api-client';
+import { ApiClient, buildAuthHeader, getCsrfHeaders } from '../api-client';
 
 const client = new ApiClient();
 
@@ -70,7 +70,7 @@ export const kbApi = {
     const response = await fetch(`/api/backend/kb/${kbId}/documents`, {
       method: 'POST',
       credentials: 'include',
-      headers: { ...getCsrfHeaders() },
+      headers: { ...buildAuthHeader(), ...getCsrfHeaders() },
       body: form,
     });
     if (!response.ok) {
