@@ -210,8 +210,8 @@ Phase Gates             prep G1        G2   stretch  POC  Beta deploy testing 25
 | **Critical OQ** | Q3(resource availability — Resolved partial:endpoint+key delivered W1 D2 → root `.env`;tier+region confirm pending W2 D1) |
 | **Risks** | R3(Ricoh corp DNS intercept on MCR — Azure AI Search SDK calls 可能受影響,W2 D1 verify) |
 | **Owner** | AI(SDK script)、Chris(Q3 tier+region confirmation) |
-| **Status** | 🟡 Pending Q3 minor detail(tier + region confirm),否則 W2 D1 即可動 |
-| **Interface** | **Input**:`KbConfig` from C02 → **Output**:Azure AI Search index ready for indexing,index handle for C04 retrieval → **Side effect**:Azure AI Search service API calls(create / delete index) |
+| **Status** | ✅ Implemented(`ekp-kb-drive-v1` 1024d HNSW W2 D1;**CH-001 2026-05-12** added multi-KB lifecycle:`IndexPopulator.create_index_for_kb(kb_id)` PUT-create from `backend/indexing/schema.json` + `delete_index(kb_id)` DELETE fail-soft-on-404 + `delete_doc(kb_id, doc_id)` filter-then-batch-delete + `upload(records, kb_id=None)` BC sig ext for per-KB index routing;closes ADR-0018 Phase 3 upload-side) |
+| **Interface** | **Input**:`KbConfig` from C02 → **Output**:Azure AI Search index ready for indexing,index handle for C04 retrieval → **Side effect**:Azure AI Search service API calls(create / delete index + per-doc chunk batch ops) |
 
 ---
 
@@ -295,7 +295,7 @@ Phase Gates             prep G1        G2   stretch  POC  Beta deploy testing 25
 | **Critical OQ** | — |
 | **Risks** | H6 hard constraint:`api/routes/query.py` 必須 test coverage ≥ 80% |
 | **Owner** | AI |
-| **Status** | 🟢 W1 D1 18 stubs scaffold + 8 smoke tests written;W1 D2 KB router 5 endpoints wired to C02 ✅;F2 pytest deferred to post-pip-install window |
+| **Status** | ✅ Implemented(18 endpoints;`/query`+`/chat` SSE + `/auth/*` hybrid auth + W17 F2 httpOnly cookie+CSRF+`/auth/refresh` per ADR-0022 + admin auth;stub closure cascade DONE — `debug/trace/{id}` + KB doc listing W16 F5 + `eval/run`+`eval/shootout` real RAGAs W17 F3;**CH-001 2026-05-12** wired the 3 document routes — POST `/kb/{kb_id}/documents` (multipart → tempfile → orchestrator → IndexPopulator.upload(kb_id=)) + DELETE `/kb/{kb_id}/documents/{doc_id}` (IndexPopulator.delete_doc → 204/404/502) + POST `.../{doc_id}/reindex` (Decision A=(ii) replace-in-place: doc-exists 404 + doc_id-match 422 + atomic delete-then-ingest + 502 partial_failure) + POST `/kb` auto-provisions per-KB Azure index + DELETE `/kb` drops it (close CO_F3a + ADR-0018 Phase 3 upload-side; 24 backend tests in `tests/api/test_documents_route.py`) |
 | **Interface** | **Input**:HTTP requests → **Output**:JSON responses per Pydantic schema → **Side effect**:downstream Cn calls,structlog request log,Langfuse trace |
 
 ---

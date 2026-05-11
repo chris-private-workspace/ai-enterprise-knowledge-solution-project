@@ -2,7 +2,7 @@
 change_id: CH-001
 spec_ref: ./spec.md
 checklist_ref: ./checklist.md
-status: in-progress
+status: done
 last_updated: 2026-05-11
 ---
 
@@ -218,29 +218,118 @@ last_updated: 2026-05-11
 
 ---
 
-## Closeout(填於 status=done)
+## Day 4 — Phase 7 docs closeout(2026-05-11)
 
-### Acceptance verification(against spec §3 AC1-AC17)
-- _(verify each AC ✅ / ⚠️ partial / ❌ failed at closeout)_
+### Done
+- ✅ **T7.1** documents.py file-top docstring ── already CH-001-aware after Phase 2-4 commits;line 4 historical reference 「W16 F5.1.1 closure (CO_F3a): GET /kb/{kb_id}/documents — replaced 501 stub …」 retained as narrative provenance(NOT a stub itself per AC17 literal text:"the file no longer has any 501 stub")
+- ✅ **T7.2** Route docstrings ── POST upload / DELETE doc / POST reindex docstrings all written in Phase 2-4 commits;`routes/kb.py` POST/DELETE docstrings updated in Phase 1.5 commit `c2aca46`
+- ✅ **T7.3** `session-start.md §11` ── flipped **CO_F3a/b/c** line 285 from「per-doc upload/reindex/delete stays 501 stub — W2 ingestion + Track A」to「**per-doc upload/reindex/delete CLOSED by CH-001 2026-05-12**」(详 mechanics inline);line 301 「⏸ CO_F3a/b/c → W16 F5.1-F5.3」 changed to「✅ CO_F3a/b/c — GET docs/chunks/PATCH:W16 F5.1-F5.3 done;upload/delete/reindex:CLOSED by CH-001 2026-05-12」
+- ✅ **T7.4** `COMPONENT_CATALOG.md` ── C03 Indexing Service Status row appended:`create_index_for_kb` + `delete_index` + `delete_doc` + `upload(kb_id=)` BC ext + ADR-0018 Phase 3 upload-side closure note;C08 API Gateway Status row appended:3 document routes wired + POST/DELETE /kb auto-index-provisioning + 24 backend tests
+- ✅ **T7.5** `docs/adr/0018-multi-kb-kb-id-propagation.md` ── added a 「2026-05-12 (CH-001) — Phase 3 upload-side CLOSED」 inline block under `**Implementation timing**:` summarizing the upload-side mechanics + reiterating the **blob-container-side stays deferred**(R12 Azurite + W16+ Track A);**Status remains `Accepted`** pending blob-side closure ── per CH-001 spec §6.6 + R11
+- ✅ **T7.6** `grep -n 'HTTP_501\|501_NOT_IMPLEMENTED' backend/api/routes/documents.py` → **0 hits**(AC17 satisfied)
+- ✅ **T7.7** Day-4 closeout summary written(this entry)+ Closeout block below filled
+- ✅ **T7.8** Frontmatter `status: in-progress → done` on both `progress.md` + `checklist.md` + `spec.md` ── this commit
+
+### Decisions
+- **T7.1 retained narrative line in documents.py:4** ── Karpathy §1.3 surgical:the line documents the *history* of how `GET /kb/{kb_id}/documents` got real(W16 F5 closed listing 501 before CH-001 closed upload/delete/reindex 501s)。Stripping it would erase useful provenance。AC17 literal text:「the file no longer has any 501 stub」 ── the *stubs* are gone(grep `HTTP_501` = 0);retaining mention of "previously was a 501 stub" is honest documentation。
+- **ADR-0018 Status stays `Accepted`** ── per spec R11 + §6.6:upload-side closed but blob-container-side(`ekp-kb-{kb_id}-screenshots` per ADR-0005)still R12-Azurite-blocked。Flipping to `done` would mis-signal completion。
+- **No `components/C03-*.md` design note bump** ── per Cross-Cutting:「No new component design note bump required(C01 + C03 + C08 are already `v1-active` — only `Status` row appended」
+
+### Blockers
+- None.
+
+### Effort
+- Planned (Phase 7):~0.5h(T7.1-T7.8)
+- Actual:~0.5h(this session)
+- Variance:0
+
+### Commits
+| Hash | Subject |
+|---|---|
+| _(pending — this session)_ | docs(planning,adr,catalog): CH-001 Phase 7 closeout — CO_F3a flipped CLOSED + ADR-0018 Phase 3 upload-side closed + COMPONENT_CATALOG C03/C08 status + frontmatter done |
+
+---
+
+## Closeout(status=done)
+
+### Acceptance verification(against spec §3 AC1-AC22)
+
+| AC | Outcome | Notes |
+|---|---|---|
+| **AC1** | ✅ | POST .docx → 202 `{doc_id, status:"indexed", chunks_emitted, images_uploaded, images_deduped}`;unit-tested:`test_upload_happy_path_returns_202_indexed` |
+| **AC2** | ✅ | .pdf + .pptx parametrized(`test_upload_supports_pdf_and_pptx`) |
+| **AC3** | ✅ | .txt → 422 `validation.unsupported_format`(`test_upload_unsupported_format_returns_422`) |
+| **AC4** | ✅ | unknown kb_id → 404 + populator-never-awaited(`test_upload_unknown_kb_returns_404`) |
+| **AC5** | ✅ | `index_populator is None` → 503(`test_upload_no_populator_returns_503`) |
+| **AC6** | ✅ | parse/embed parametrized → 502 `ingestion.{stage}_failed` + index partial → 502 `ingestion.index_failed` |
+| **AC7** | ✅ | duplicate doc_id → 409 `document.duplicate` |
+| **AC8** | ✅ | DELETE 3 paths(204 / 404 `document.not_found` / 502 `index.delete_failed`)|
+| **AC9.1** | ✅ | reindex happy → 202 `reindexed` + delete_doc.assert_awaited_once |
+| **AC9.2** | ✅ | empty filename multipart → 422(FastAPI's own UploadFile validation fires first — route's `validation.file_required` defensive guard unreachable via HTTP, documented in the test)|
+| **AC9.3** | ✅ | mid-pipeline FailureRecord AFTER delete → 502 `reindex.partial_failure` |
+| **AC10** | ✅ | counter sync covered in 2 tests;**minimal scope**:`total_documents` + `total_chunks` + `last_indexed_at` + `failed_documents` — screenshots + storage_size_mb drift accepted(known follow-up)|
+| **AC11** | ✅ | `pytest tests/api/test_documents_route.py` → 24 passed |
+| **AC12** | ✅ | regression 46 prev + 24 new = 70 passed,zero regression;`pnpm test:unit` skipped(no frontend touch)|
+| **AC13** | ✅ | `mypy --strict` 0 errors on new test file(47 transitive errors = pre-existing baseline)、`ruff check` clean |
+| **AC14** | 🟡 user-deferred | Pipeline wizard end-to-end smoke = Phase 6 owned by the user — AI can't drive a browser headlessly(needs backend restart + `.env` Azure cred);same deferral pattern as W12-W18 pre-Beta smoke |
+| **AC15** | ✅ | session-start §11 CO_F3a flipped + ADR-0018 inline Phase 3 upload-side closure note + COMPONENT_CATALOG C03/C08 status updated |
+| **AC16** | ✅ | Conventional Commits + CC tags throughout:`671a925` `2c088cd` docs(planning) / `c2aca46` `b87ce77` feat(api,ingestion) / `c323e6b` test(api) / Phase-7 docs |
+| **AC17** | ✅ | `grep 'HTTP_501\|501_NOT_IMPLEMENTED' documents.py` → 0 hits |
+| **AC18** | ✅ | `test_post_kb_calls_create_index_for_kb` — POST /kb → 201 + create_index_for_kb awaited + GET → 200 |
+| **AC19** | ✅ | `test_post_kb_index_create_fail_rolls_back_returns_502` — 502 + GET → 404(storage rollback verified)|
+| **AC20** | ✅ | `test_delete_kb_calls_delete_index` — DELETE /kb → 204 + delete_index awaited |
+| **AC21** | ✅ | `test_delete_kb_index_already_gone_fail_soft_returns_204` — fail-soft on 404 |
+| **AC22** | ✅ | `test_upload_targets_per_kb_index_not_legacy` — `populator.upload.call_args.kwargs["kb_id"] == "drive_user_manuals"`(NOT `None`)|
+
+**Aggregate**:**21/22 ✅ + 1/22 🟡 user-deferred**(AC14 manual smoke — pre-Beta smoke deferral pattern per ADR-0017 R8 + headless-browser-not-AI-controllable);**No ❌ failed**。
 
 ### Effort summary
+
 | Day | Planned (h) | Actual (h) | Variance |
 |---|---|---|---|
-| Day 0 (kickoff) | 1.5 | 1.5 | 0 |
-| Day 1 (impl) | TBD | — | — |
+| Day 0 (kickoff + Decision A + B + spec v1.0→v1.1→v1.2) | 2.5 | 2.5 | 0 |
+| Day 1 (Phase 1 + 1.5 backend wiring + multi-KB) | 2.5 | 2.5 | 0 |
+| Day 2 (Phase 2/3/4 routes + counter-sync) | 3 | 2.5 | -0.5 |
+| Day 3 (Phase 5 — 24 tests) | 1.5-2 | 1 | -0.5 to -1 |
+| Day 4 (Phase 7 docs closeout) | 0.5 | 0.5 | 0 |
+| **Total** | **10-10.5** | **9** | **-1 to -1.5** |
+
+Vs spec §5 estimate(6-9h post Decision B):**actual 9h within upper bound**(Decision B scope expansion well-anticipated;`record_doc_event` Postgres-side SQL took ~30min extra but test-writing real-calendar collapse saved it back)。
 
 ### Lessons
-- **What worked**:_(fill at closeout)_
-- **What didn't / unexpected friction**:_(fill at closeout)_
-- **Carry-overs**:_(if any deferred to other tasks)_
+
+- **What worked**:
+  - **Spec → checklist → code → test → docs** sequence held per PROCESS.md §3 Change workflow;each Phase had a clean Day-N progress entry + ≥ 1 commit
+  - **Decision surfacing PRE-implementation**(A then B)── saved a CH-002 split + avoided over-broad Track A deferral
+  - **Karpathy §1.3 surgical re fail-soft** ── when strict-503 `_populator_or_503` broke the existing in-memory baseline test,fixed via `_get_populator -> IndexPopulator | None` + explicit fail-soft branches in both routes(deviation documented in route docstring + Day-1)── explicit-decision beats silent-drift
+  - **`_run_ingest_pipeline` SHARED helper** ── ~90% code reuse between POST upload + POST reindex
+  - **AsyncMock + factory pattern for orchestrator** ── `_orch_factory` returning MagicMock with `.ingest` AsyncMock attribute allowed clean `assert_awaited_once()` assertions without leaking the dataclass `__init__` contract into the test
+  - **Real-calendar collapse on test writing**(Day-3 1h vs planned 1.5-2h)── fixture pattern mirrored `test_documents_listing.py` + `_build_app` + KBService fixture
+- **What didn't / unexpected friction**:
+  - **FastAPI `UploadFile` validation pre-empts the route's `validation.file_required` guard** ── Day-3 test initially asserted `detail["code"] == "validation.file_required"` and hit `TypeError: list indices must be integers` because FastAPI returns multi-error list envelope;route's defensive guard is dead code via HTTP。Test fixed by just asserting `status_code == 422`(documented in test docstring);NOT refactored away per Karpathy §1.3 surgical — out of CH-001 scope
+  - **`mypy --strict` 1 type-arg warning on `_docx_files` return type** ── trivial fix(`dict[str, tuple[str, bytes, str]]`)
+  - **2 ruff I001 import-ordering** ── auto-fixed via `--fix`
+  - **Postgres-side `update_metrics` SQL** ── `GREATEST(0, …)` + `COALESCE` + JSONB `||` append in single statement took ~30 min extra
+- **Carry-overs**:
+  - 🚧 **Per-KB Azurite blob container provisioning**(`ekp-kb-{kb_id}-screenshots`)── R12 + W16+ Track A;ADR-0018 stays `Accepted` until blob-side closes
+  - 🚧 **`total_screenshots` + `storage_size_mb` counter drift** ── no per-doc size tracking;future-tier follow-up
+  - 🚧 **`scripts/run_populate_sanity.py` migrate to `populator.upload(kb_id=)`** ── spec §2.4 explicit out-of-scope;works as-is via BC default
+  - 🚧 **`test_index_populator.py` httpx-mocked unit tests**(T5.19)── deferred per Karpathy §1.2 simplicity-first;transitively covered via route-level tests
+  - 🚧 **Phase 6 manual smoke** ── owned by the user;headless browser not AI-controllable per ADR-0017 R8 umbrella
+  - 📝 **`HTTP_422_UNPROCESSABLE_ENTITY` Starlette 0.47+ rename to `_CONTENT`** ── 2 DeprecationWarnings at `documents.py:377` + FastAPI internal;follow-up surgical Change candidate
 
 ### Component design note status updates
-- **C01**(Ingestion):`v1-active`(orchestrator path now also exercised via HTTP route, not just `scripts/run_populate_sanity.py` — no spec/interface change → no version bump)
-- **C03**(Indexing):if `IndexPopulator.delete_doc` was added — note in components/C03-*.md;else no change
-- **C08**(API Gateway):`v1-active`(stub-cascade fully closed — POST/DELETE/reindex all real;append `Status` row note)
+- **C01**(Ingestion):`v1-active`(orchestrator path now also exercised via HTTP route — no spec/interface change → no version bump)
+- **C03**(Indexing):`v1-active` + `IndexPopulator` extended with 3 new methods + 1 BC sig ext;`COMPONENT_CATALOG.md` C03 Status row appended
+- **C08**(API Gateway):`v1-active`(stub-cascade fully closed:5 KB endpoints + GET docs + 3 document routes wired);`COMPONENT_CATALOG.md` C08 Status row appended
 
 ### CO_F3a status flip
-- session-start.md §11 — flip from "stays 501 stub — W2 ingestion + Track A" to **"CLOSED by CH-001 YYYY-MM-DD"**
+- `session-start.md §11`(line 285 + 301)flipped from「stays 501 stub」 to **「CLOSED by CH-001 2026-05-12」** per ADR-0018 Phase 3 upload-side ── Phase 7 T7.3 done
+
+### ADR status touch
+- **ADR-0018** Status stays `Accepted`(NOT `done`)── Phase 3 upload-side closed by CH-001 2026-05-12;Phase 3 blob-container-side stays deferred(R12 + W16+ Track A);inline note added under `**Implementation timing**:`
+- **No new ADR** created(per spec §6.5 — H1/H2 verified clean;Decision B = implementation of existing ADR-0018, not new architectural decision);next NNNN remains **0025**
+- **23 ADR landed total**(0001-0012 + 0014-0024;0013 reserved for AF3 fix)
 
 ---
 

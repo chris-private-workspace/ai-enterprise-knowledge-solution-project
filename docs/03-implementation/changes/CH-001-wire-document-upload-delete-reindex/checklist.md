@@ -1,7 +1,7 @@
 ---
 change_id: CH-001
 spec_ref: ./spec.md
-status: in-progress
+status: done
 last_updated: 2026-05-11
 ---
 
