@@ -1,7 +1,7 @@
 ---
 phase: W18-app-shell-ia
 plan_ref: ./plan.md
-status: active
+status: closed
 last_updated: 2026-05-11
 ---
 
@@ -103,28 +103,30 @@ last_updated: 2026-05-11
 
 ## F9 — Phase closeout + W19+ rolling-JIT trigger
 
-- [ ] F9.1 W18 phase Gate verdict(PASS / PARTIAL PASS / FAIL with explicit rationale per the W12-W15-W17 pattern)— in `progress.md`
-- [ ] F9.2 W18 `progress.md` Retro — 7 sections(What worked / What didn't & friction / Surprises / Decisions / Carry-overs to W19+ / Time tracking / Spec ref alignment)
-- [ ] F9.3 ADR-0024 status verified `Accepted`(landed at kickoff;verify-no-op)+ ADR-0024 "Implementation Deliverables" D1-D10 checkboxes ticked against the F1-F9 outcomes
-- [ ] F9.4 W18 `plan.md` + `checklist.md` + `progress.md` frontmatter `status: active` → `closed`
-- [ ] F9.5 W19+ phase folder **NOT pre-created**(rolling-JIT per CLAUDE.md §10 R1)— kickoff candidates noted in `progress.md` Retro(W16 F1-F4 if Track A IT cred lands / Tier 2 prep governance Q12 / Beta-launch readiness pass / the user's local-dev seed-KB convenience task)
-- [ ] F9.6 `session-start.md` hygiene catch-up — §3 C09/C10 status(in `<AppShell>`;URL flatten;`/dashboard`;`/settings`;V7 Landing removed)+ §10 W18 row(closed, Gate verdict)+ W19+ not-pre-created + §11 carry-overs + §12 milestones row + Last-Updated + Update-history;`COMPONENT_CATALOG.md` already touched in F8.6
-- [ ] F9.7 No new OQ expected(the multi-language affordance is a known §11 Tier 2 item, not a new OQ);if one surfaces → sync `decision-form.md` per R4
+> **F9 verdict = PASS**(2026-05-11 D7)— landed `(this commit)`. **W18 phase Gate = PASS WITH SMOKE-USER-DEFERRED CAVEAT**(all F0-F9 / ADR-0024 D1-D10 landed;`tsc`/`lint`/`[oklch`=0/`pnpm test:unit` 13/13/curl-route-smoke all green;the multi-viewport + dark-mode browser walkthrough + the full Playwright run + the interactive `<GlobalSearch>` click-through stay the user's pre-Beta smoke — R8 `npx playwright install chromium` blocked / CO_W15_F4_browser_binaries / ADR-0017;same shape as the W12-W15 caveat). 7-section retro in `progress.md` Day-7. ADR-0024 D1-D10 ticked + Status verified `Accepted`. W18 `plan/checklist/progress` frontmatter `active`→`closed`. `session-start.md` §3/§10/§11/§12 + Last-Updated + Update-history caught up. W19+ phase folder **NOT** created(rolling-JIT). No new OQ.
+
+- [x] F9.1 W18 phase Gate verdict = **PASS WITH SMOKE-USER-DEFERRED CAVEAT**(rationale in `progress.md` Day-7:all 9 deliverables landed + all 9 success-criteria met + no FAIL condition tripped;the caveat = the multi-viewport / dark-mode browser walkthrough + the full Playwright run + the interactive palette click-through are the user's pre-Beta smoke, R8-blocked browser binaries;the visible "未登入→/login" only appears in real MSAL per ADR-0024 §"the mock-auth caveat", by design)— `(this commit)`
+- [x] F9.2 W18 `progress.md` Retro — 7 sections written(What worked / What didn't & friction / Surprises / Decisions / Carry-overs to W19+ / Time tracking / Spec-ref alignment)— `(this commit)`
+- [x] F9.3 ADR-0024 status verified `Accepted`(2026-05-10;no-op at closeout)+ "Implementation Deliverables" D1-D10 checkboxes **all ticked**(F1=D1 / F2=D2+D7 / F3=D3 / F4=D4 / F5=D5 / F6=D6 / F7=D8 / F8=D9 / F0+F8.6+F9.6=D10)+ the section header updated("Implemented by the W18 phase … all D1-D10 landed — W18 closed 2026-05-11, Gate = PASS WITH SMOKE-USER-DEFERRED CAVEAT")— `(this commit)`
+- [x] F9.4 W18 `plan.md` + `checklist.md` + `progress.md` frontmatter `status: active` → `closed`(plan's `status` line keeps the active→closed transition note)— `(this commit)`
+- [x] F9.5 W19+ phase folder **NOT pre-created**(rolling-JIT per CLAUDE.md §10 R1)— kickoff candidates noted in `progress.md` Day-7("W19+ — NOT pre-created" section:W16 F1-F4 if Track A IT cred lands / Tier 2 prep governance Q12 / Beta-launch readiness pass / the user's local-dev seed-KB convenience task)— `(this commit)`
+- [x] F9.6 `session-start.md` hygiene catch-up — §3 C09 status(W12-W15 9 views → **W18(ADR-0024)**:all authenticated views in `<AppShell>`;URL flatten `/admin/*`→`/kb/*`;`/dashboard` post-login home;`/settings` added;V7 Landing removed→`/`redirect;login/register→`/dashboard`;`<GlobalSearch>` Cmd/Ctrl+K palette;`[oklch`=0 preserved)+ C10 status(chat view in `<AppShell>` now;reads `?q=` on mount;route `/chat` unchanged)+ §10 W18 row(closed 2026-05-11, Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT)+ W19+ not-pre-created note + §11 carry-overs("已知未解" header date + the rolling smoke-user-deferred backlog narrowed by W18 + the `<LoginGate>` `// TODO(W16)` + the dashboard "system health"/"recent queries" backend follow-ups)+ §12 milestones row(W18-app-shell-ia 2026-05-11;累計 16→17 phase closed)+ Last-Updated + Update-history;`COMPONENT_CATALOG.md` C09/C10 already touched in F8.6(verified, no further edit)— `(this commit)`
+- [x] F9.7 No new W18 OQ surfaced(the multi-language affordance is a known §11 Tier 2 disabled affordance, not a new OQ;no OQ status change)— `decision-form.md` untouched(R4 = no-op)— `(this commit)`
 
 ---
 
-## Cross-Cutting
+## Cross-Cutting(closed 2026-05-11 — W18 F9)
 
-- [ ] Each commit references `progress.md` Day-N entry(R2)— `docs(planning):` / `docs(adr):` housekeeping commits exempt(the F0 kickoff cascade = a `docs:` housekeeping-class commit)
-- [ ] Component tag in commit message per CC-1 — F1 = C09+C10+C11 / F2 = C09+C10+C11 / F3 = C09+C10 / F4 = C09(+C07/C02/C06 consumers) / F5 = C11+C09 / F6 = C09 / F7 = C09+C11 / F8 = cross-cutting + test harness + docs / F9 = governance
-- [ ] OQ status sync to `decision-form.md`(R4)— no new W18 OQ expected(the language toggle is a known §11 Tier 2 disabled affordance)
-- [ ] Risk register — no new W18 risk expected;the R8 `npx playwright install chromium` block(CO_W15_F4_browser_binaries / ADR-0017)is pre-existing and only affects F8.5's *run*, not the spec update
-- [ ] CLAUDE.md §5.1 H1 check — the IA restructure is **authorized by ADR-0024**(Accepted 2026-05-10);no other architectural change(F1-F8 implement what the ADR + the amended §5.0-§5.11 describe — re-layout + re-route + 2 view changes + Landing removal;NO §3/§4 component change — backend untouched)
-- [ ] CLAUDE.md §5.2 H2 check — frontend-only;no new dependency expected(F6 `<GlobalSearch>` — if `cmdk` is genuinely needed → stop-and-ask first;PARTIAL-PASS fallback = shadcn-`Dialog`-based, zero new dep);shadcn/ui + `tokens.ts` unchanged
-- [ ] CLAUDE.md §3.2 conventions — `tsc --noEmit` + `next lint` clean on all new/changed files;no `any` / no `@ts-ignore` without a comment;shadcn/ui only;design tokens via `tokens.ts`(no hardcoded colours — `[oklch`=0);App Router only;Server Components default(Client Components have `"use client"` + a comment)
-- [ ] CLAUDE.md §5.5 H5 — no secret committed;no hard-coded tenant/subscription/resource;the login-gate uses the existing auth context(no new credential store);no PII / no plaintext-prompt logging changed
-- [ ] CLAUDE.md §5.4 H4 — Tier 2 boundary held:the language toggle is a **disabled affordance only**(no i18n machinery);global search is **quick-jump only**(no semantic search-as-you-type);no GraphRAG / multi-agent / multi-tenancy / multi-modal / auto-sync / fine-tune leak
-- [ ] Karpathy §1.3 surgical — re-parent + re-route the W12-W15 views;do NOT rebuild their content;do NOT "順手" refactor adjacent code;clean up only W18's own orphans(deleted-Landing components, broken imports from the moves)
+- [x] Each commit references `progress.md` Day-N entry(R2)— `9395a80`(F0 kickoff = `docs:` housekeeping-class, exempt)→ `ec58e9d` F1 ↔ Day-1 / `13d044c` F2 ↔ Day-2 / `c691b19` F3 ↔ Day-3 / `6fa533b` F4+F5 ↔ Day-4 / `7a48106` F6+F7 ↔ Day-5 / `ea464c8` F8 ↔ Day-6 / `(this commit)` F9 ↔ Day-7(`docs(planning):` closeout, housekeeping-class)
+- [x] Component tag in commit message per CC-1 — F1 = C09+C10+C11 / F2 = C09+C10+C11 / F3 = C09+C10 / F4 = C09(+C07/C02/C06 consumers) / F5 = C11+C09 / F6 = C09(+C10 `?q=` read+C11 redirect targets) / F7 = C09+C11 / F8 = cross-cutting + test harness + docs / F9 = governance — each commit message carries its spine tag
+- [x] OQ status sync to `decision-form.md`(R4)— **no-op**:no new W18 OQ surfaced(the language toggle is a known §11 Tier 2 disabled affordance, not a new OQ);no OQ status change
+- [x] Risk register — **no new W18 risk**;the R8 `npx playwright install chromium` block(CO_W15_F4_browser_binaries / ADR-0017)is pre-existing and only affects F8.5's *run*, not the spec update / `tsc` compile-check / the Vitest tests
+- [x] CLAUDE.md §5.1 H1 check — the IA restructure was **authorized by ADR-0024**(Accepted 2026-05-10, before any W18 implement);no other architectural change(F1-F8 implement the amended §5.0-§5.11 — re-layout + re-route + 2 view changes + Landing removal;NO §3/§4 component change — backend untouched)
+- [x] CLAUDE.md §5.2 H2 check — frontend-only;**no new dependency**(F6 `<GlobalSearch>` built on the existing shadcn `Dialog` — the `cmdk` stop-and-ask path wasn't needed);shadcn/ui + `tokens.ts` unchanged
+- [x] CLAUDE.md §3.2 conventions — `tsc --noEmit` exit 0 + `next lint` "No ESLint warnings or errors" on all F1-F8 changes;no `any`;the one `eslint-disable-next-line jsx-a11y/no-autofocus` has a one-line rationale;shadcn/ui only;design tokens via `tokens.ts`(`[oklch`=0 across `frontend/`);App Router only;Client Components(`app-shell.tsx` / `global-search.tsx` / `login-gate.tsx` / dashboard / settings / chat)have `"use client"` + a docstring;server components(`(app)/layout.tsx` / `app/page.tsx`)stay server
+- [x] CLAUDE.md §5.5 H5 — no secret committed;no hard-coded tenant/subscription/resource;`<LoginGate>` uses the existing `useAuthStore` auth context(no new credential store);no PII / no plaintext-prompt logging changed
+- [x] CLAUDE.md §5.4 H4 — Tier 2 boundary held:the language toggle is a **disabled affordance only**(no i18n machinery — native `disabled` + `aria-label` + `title`);`<GlobalSearch>` is **quick-jump only**(Pages + KB names + "Ask in chat" — no semantic search-as-you-type across chunks);no GraphRAG / multi-agent / multi-tenancy / multi-modal / auto-sync / fine-tune leak
+- [x] Karpathy §1.3 surgical — re-parented + re-routed the W12-W15 views(`git mv` 94-99% renames;their content untouched — only the chat page's wrapper `<main>`→`<div>` because you can't nest `<main>` inside the shell's `<main>`);no "順手" refactor of adjacent code;cleaned up only W18's own orphans(`admin-shell.tsx` after the layouts removed;the V7 Landing markup deleted whole;the `visual-baseline.spec.ts` `/` test removed since the Landing it screenshotted is gone;the `.gitignore` `traces/`→`/traces/` fix the move surfaced)
 
 ---
 

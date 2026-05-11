@@ -4,7 +4,7 @@ name: "Unified Application Shell IA — <AppShell> (top bar + left sidebar + mai
 sprint_week: W18
 start_date: 2026-05-10              # real-calendar — kicked off at W17 closeout per the ADR-0024 acceptance cascade (Chris directive); independent of W16 F1-F4 (Track-A-blocked) and Tier 2 prep per ADR-0024 Q5
 end_date: 2026-05-24                # ~1-1.5 weeks per ADR-0024 (F3 route restructure is the largest; same-day / multi-day collapse possible per W12-W15 precedent — frontmatter is a window, not a commitment)
-status: active                     # `active` from kickoff 2026-05-10 — the Chris directive ("開 W18 phase folder + plan.md + amend architecture.md v6 §5 + ADR-0015 amended-by note") + ADR-0024 = Accepted IS the authorization (not the usual draft→active flip; same pattern as W17 D0); R1 satisfied once this plan.md is committed
+status: closed                     # `active` from kickoff 2026-05-10 (Chris directive + ADR-0024 Accepted = the authorization; same pattern as W17 D0) → `closed` 2026-05-11 (F9 closeout — phase Gate = PASS WITH SMOKE-USER-DEFERRED CAVEAT; all F0-F9 / ADR-0024 D1-D10 landed; see progress.md Day-7 Retro)
 spec_refs:
   - architecture.md v6 §5.0          # NEW Application Shell section (amended in at W18 kickoff per ADR-0024; this phase IMPLEMENTS it)
   - architecture.md v6 §5.2          # Chat — now rendered inside <AppShell>; path /chat (was /; ADR-0015 v6 move)

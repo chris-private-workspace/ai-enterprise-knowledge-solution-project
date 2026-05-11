@@ -2,7 +2,7 @@
 phase: W18-app-shell-ia
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active
+status: closed
 last_updated: 2026-05-11
 ---
 
@@ -320,4 +320,84 @@ W18 does **NOT** address(stay W16 / Tier 2 / future): CO16 Track A IT cred + R-B
 
 ---
 
-**Lifecycle reminder**:Phase 收尾寫 Retro（What worked / What didn't & friction / Surprises / Decisions / Carry-overs to W19+ / Time tracking / Spec ref alignment）。W19+ phase folder **唔會** pre-create（rolling-JIT per CLAUDE.md §10 R1）。
+## Day 7 — F9 closeout(2026-05-11)
+
+### W18 Phase Gate — **PASS WITH SMOKE-USER-DEFERRED CAVEAT**
+
+**Verdict rationale**(per the W12-W15-W17 pattern):
+
+- **All 9 deliverables landed**(F0 kickoff cascade + F1 `<AppShell>` + F2 `(app)/` route group + login-gate + F3 page-tree move/re-route/URL-flatten + F4 `/dashboard` overview + F5 `/settings` + `<UserMenu>` wiring + F6 `<GlobalSearch>` Cmd+K palette + `?q=` chat read + F7 login/register→`/dashboard` + V7 Landing removal + `/`→redirect + F8 responsive/a11y/Vitest/Playwright/dark-mode/catalog). ADR-0024 D1-D10 all checked(F1=D1 / F2=D2+D7 / F3=D3 / F4=D4 / F5=D5 / F6=D6 / F7=D8 / F8=D9 / F0+F8.6+F9.6=D10).
+- **Success-criteria checklist**(plan §3)— all 9 met:`<AppShell>` top bar + collapsible sidebar(5 modules)+ focus-mode + responsive hamburger + 100% tokens(F1)✓;`(app)/` route group + login-gate + old layouts removed + chrome-free root layout for auth pages + mock-auth smoke still works(F2)✓;all pages moved into `(app)/` + `/admin/*`→`/kb/*` + `/debug/*`→`/traces/*` + all internal links updated + Playwright route refs updated + grep-clean(F3)✓;`/dashboard` real overview cards + no new backend + empty-state CTAs first-class(F4)✓;`/settings` profile + sign-out + theme pref + `<UserMenu>` link(F5)✓;`<GlobalSearch>` Cmd+K palette + Tier-1 quick-jump(F6)✓;login/register→`/dashboard` + V7 Landing markup deleted + `/`→redirect + `brand-panel.tsx` kept(F7)✓;responsive + a11y pass + dark-mode `[oklch`=0 preserved + Vitest 13/13 + Playwright route updates + "shell present/absent" assertion + `COMPONENT_CATALOG.md` note(F8)✓;closeout + `session-start.md` hygiene + W19+ rolling-JIT trigger(F9)✓.
+- **No FAIL conditions tripped**(plan §3):no Tier 2 leak(the language toggle stays a disabled affordance;global search is quick-jump only — Pages + KB names + "Ask in chat",no semantic search-as-you-type);no view's *content* rebuilt(KB Detail's 5 tabs / Eval's metric cards / Traces' timeline / chat streaming+citations / auth-page split layout all re-parented unchanged — F3 only touched the chat page's wrapper `<main>`→`<div>` because you can't nest `<main>` inside the shell's `<main>`);the shadcn/ui foundation + `tokens.ts` visual identity unchanged(`[oklch`=0 held through the whole F1-F8 restructure);mock-auth dev path not broken(no infinite loop — the login-gate is a no-op when the mock provider auto-authenticates;`/`→307→`/login`→200 + all 5 module routes + `/settings` HTTP 200 on `:3001`);backend untouched(W18 is frontend-only — `/dashboard` consumes the existing `/health` + `/kb`);no `tsc`/`lint` regression(exit 0 / clean throughout)+ no `pnpm test:unit` regression(grew 1/3 → 4/13).
+- **The "SMOKE-USER-DEFERRED CAVEAT"**(why not a clean PASS — same shape as W12-W15):the multi-viewport browser walkthrough(`<AppShell>` at sm/md/lg/xl — hamburger drawer / focus-mode toggle / dashboard cards reflow / palette full-width)+ the dark-mode toggle visual check on the new surfaces + the full Playwright E2E *run* + the interactive `<GlobalSearch>` click-through(Cmd+K → type → arrow-nav → Enter / "Ask in chat" lands on `/chat` with the query pre-filled)are **the user's pre-Beta smoke**. Reason:`npx playwright install chromium` is R8-corp-proxy-blocked(ECONNRESET — CO_W15_F4_browser_binaries / ADR-0017),so a headless browser run isn't possible in this environment;the responsive *classes* + the a11y attributes + the updated specs + the `tsc` compile-check + the Vitest jsdom tests are the W18 deliverable, the visual/interactive check is the smoke half(accepted, per the W12-W15 "smoke-user-deferred" caveat shape). Additionally, the *visible* "未登入 → /login" login-gate behaviour only appears in real MSAL / production builds(in mock-auth dev the gate is a no-op) — this is by-design per ADR-0024 §"the mock-auth caveat", not a shortfall;a `// TODO(W16)` flags tightening once Q11 Track A cred is live.
+
+→ **PASS WITH SMOKE-USER-DEFERRED CAVEAT.** The IA restructure is complete and verified at the `tsc` / `lint` / `[oklch` / `pnpm test:unit` / curl-route-smoke level;the pixel-level + interactive-flow verification carries over to the user's pre-Beta walkthrough(the same backlog as W12-W15's CO_W15_F3_dark_mode_visual_verify + CO_W15_F4_interactive_flow_E2E — W18 narrows it but doesn't close it since the browser-binary install is still R8-blocked).
+
+### Retrospective(7 sections per PROCESS.md / session-start §13)
+
+**1. What worked**
+- **Generalizing `<AdminShell>` rather than building `<AppShell>` from scratch** — the hamburger-collapse / `<Sheet>` drawer / `<UserMenu>` / `<ThemeToggle>` / token-class layout were all reusable;F1 came in at ~0.4d against a 1-1.5d estimate.
+- **F2.3 deferred-into-F3**(removing the old per-section layouts atomically with the page move)— surfaced upfront in F2 as a think-before-coding deviation, not discovered mid-break;the F3 commit landed the IA flip in one atomic, never-broken step.
+- **`git mv` preserving file history** — the 8 page moves into `app/(app)/` show as 94-99% renames in `git log --follow`;the W12-W15 view content is traceable through the restructure.
+- **The shadcn-`Dialog`-based `<GlobalSearch>` over a `cmdk` dep** — Radix `Dialog` gave `role="dialog"`+`aria-modal`+focus-trap+Escape for free;the combobox/listbox/arrow-key layer was ~30 lines;no H2 stop-and-ask needed.
+- **Vitest jsdom tests for the new components** — `app-shell.test.tsx` + `global-search.test.tsx` + `dashboard.test.tsx` caught nothing broken but proved the nav semantics(`aria-current`)/ the palette filter logic / the dashboard structure render correctly;`pnpm test:unit` grew 1/3 → 4/13. Mocking `next/navigation` + `next/link` + the api modules was the standard pattern, no surprises.
+- **The `.gitignore` `traces/`→`/traces/` catch**(F3)— `git check-ignore` surfaced that the bare `traces/` pattern(for local Langfuse dumps)was about to shadow the new `app/(app)/traces/` route folder before it cost a broken deploy.
+
+**2. What didn't work / friction**
+- **The stale `.next/types/` build cache**(F3)— `tsc --noEmit` failed with "Cannot find module" for the *old* route tree(`app/admin/...` etc) because the generated type files in `.next/types/` were stale;`rm -rf frontend/.next/types` fixed it. Not a code error, but a 5-minute red herring — worth knowing for any future route restructure.
+- **The Bash tool's cwd persistence** — `cd frontend` persists between Bash calls, so git commands(which need the repo root)needed an explicit `cd` back;easy to forget(`pathspec did not match` once). Used `pnpm exec` / absolute paths to compensate.
+- **`/health` is just `{"status":"ok"}`** — the dashboard's "system health" card wanted per-component connectivity(Azure Search / OpenAI / Cohere / Langfuse)but the backend `/health` is an ACA liveness probe with no component statuses;the card shows backend-up/down + a "needs a richer endpoint" note. Not friction in W18(it's correctly out of "no new backend" scope)but a known follow-up shape.
+- **No "recent queries" / "cached eval run" backend source** — both dashboard cards became empty-state CTAs;same for the `<GlobalSearch>` "recent docs / recent traces" result types(dropped — would be N requests across all KBs / Q6 has no log). The Pages-results substitute for the palette is arguably better, but the dashboard's two CTA cards are placeholders waiting on a backend that doesn't exist yet(Q6 / no eval cache).
+
+**3. Surprises**
+- **The whole 8-deliverable implementation(F1-F8) collapsed into ~2.3d of actual effort against a ~7.5d plan-day budget** — the W12-W15-W17 "real-calendar collapse when momentum is clean" pattern held again. F1 ~0.4d / F2 ~0.3d / F3 ~0.5d / F4 ~0.3d / F5 ~0.2d / F6 ~0.3d / F7 ~0.2d / F8 ~0.4d. Reasons:the views were re-parented not rebuilt;`<AdminShell>` generalized cleanly;no new dependency;no backend work;the Vitest harness already existed(W17 F6).
+- **`app/page.tsx`'s "always → /login"** — the plan F7.3 allowed "if-authenticated → /dashboard" but there's no server-readable session in mock-auth(the auth store is client-side and `AuthProvider` only wraps `(app)/`);a server-component `redirect('/login')` is the honest Tier 1 behaviour, with the `(app)/` login-gate + MSAL handling re-entry. Cleaner than expected.
+- **`<UserMenu>` Settings as `asChild`+`<Link>`** — the plan said `router.push`;the Radix nav-menu-item pattern(`<DropdownMenuItem asChild><Link>`)is the recommended way and needs no `useRouter`. A small thing, but it's the kind of "the framework already has the idiomatic pattern" that's worth noticing.
+
+**4. Decisions**(the ones that'll matter later — see plan §7 changelog D0-D6 for the full list)
+- **`<AppShell>` is `children`-only**(no nav-items prop)— a single-shell app has one nav;`usePathname()` + a module-const `NAV_ITEMS`. If Tier 2 ever needs role-gated nav, that's a prop add then, not now.
+- **Login-gate = gate-screen + sign-in link, NOT auto-`redirect()`** — matches the existing `AuthProvider` anti-infinite-loop design;safer for Tier 1 where MSAL cred isn't live until W16 Track A. `// TODO(W16)` to tighten.
+- **`<GlobalSearch>` result types = Pages + KB names + "Ask in chat"**(recent-docs/recent-traces dropped — no cheap backend source);`?q=` chat handling = pre-fill only(not auto-send — the SSE/streaming logic stays untouched).
+- **`role="heading" aria-level={2}` on the W18 cards' `CardTitle`s**(dashboard + settings)rather than forking shadcn's `CardTitle` to be an `<h2>` element — ARIA-promote, don't churn the W12-W15 convention.
+- **Debug View → "Traces" rename**(`/debug/[traceId]` → `/traces/[traceId]`)— per the ADR-0024 §1 "Chris-to-confirm" minor;adopted(operations-facing module). `lib/api/debug.ts` + `debugApi` kept their names — the backend endpoint is still `GET /debug/trace/{id}`;only the frontend route changed.
+- **`COMPONENT_CATALOG.md` — only the `Status` rows touched** — the catalog's C09 `Scope` row's old `/admin/*` list + §11's hypothetical "C13 Workflow Engine" reference are W17+ housekeeping(flagged in session-start.md §3), out of W18 scope.
+
+**5. Carry-overs to W19+**
+- **CO_W15_F3_dark_mode_visual_verify(remainder)** + **CO_W15_F4_interactive_flow_E2E(partial)** — W18 F8 narrowed these(re-checked `[oklch`=0 through the restructure;added the "shell present/absent" Playwright assertion + the route-ref updates;wrote the Vitest component tests)but the *interactive 9-view-in-the-shell browser walkthrough* + the *full Playwright E2E run* are still the user's pre-Beta smoke — blocked on `npx playwright install chromium`(R8 corp proxy / CO_W15_F4_browser_binaries / ADR-0017). The "smoke-user-deferred" backlog rolls forward(same as W12-W15-W17).
+- **`// TODO(W16)` in `<LoginGate>`** — tighten the real-MSAL "definitively-unauthenticated" state to a `router.replace('/login')` once Q11 Track A cred wiring is live(W16 F1).
+- **Dashboard "system health" → a richer `/health`** — per-component connectivity(Azure Search / OpenAI / Cohere / Langfuse)needs a backend `/health` upgrade(currently a `{"status":"ok"}` liveness probe);out of W18's "no new backend" scope — a future-tier endpoint.
+- **Dashboard "recent queries" + "latest evaluation" cards** — currently empty-state CTAs;wired to a real query-log(Q6)/ a cached-eval-run endpoint when those exist.
+- **Vitest coverage** — W18 grew it 1/3 → 4/13;"deep component coverage"(every page-level component / form-validation edge cases / hook tests / MSW-mocked data-fetching)stays Tier 2 per `tests/unit/README.md`.
+- W18 does **NOT** address(unchanged from the plan §6 / session-start §11):CO16 Track A IT cred + R-B1(W16 F1 — W18 is frontend-only);CO17 🚧 F1.5b(Postgres-path runtime smoke, `pip install psycopg` R8-blocked)+ 🚧 F3.5b(RAGAs live-verify, Azure-key-bound)+ `npx playwright install chromium`(CO_W15_F4_browser_binaries);CO19 25% Beta cohort rollout(W16 F2);CO_F6a/b/c ACS email(Track A);CO_W15_F1_eval_set_v1(needs Chris SME labels per Q14);CO_W15_F3_aria_full_audit(Tier 2 full NVDA/JAWS/VoiceOver — W18 F8.2 = new-surface spot-check only);CO13/AF3(ADR-0013 reserved).
+
+**6. Time tracking**(see the Actual-vs-Planned-Effort table above)
+- Plan-day budget:F0 ~0.5d + F1 1-1.5d + F2 1d + F3 1.5d + F4 1d + F5 0.5d + F6 0.5-1d + F7 0.5d + F8 1d + F9 0.5d ≈ **8-9 plan-days**(window `start_date` 2026-05-10 → `end_date` 2026-05-24).
+- Actual:F0(kickoff session)+ F1 ~0.4d + F2 ~0.3d + F3 ~0.5d + F4 ~0.3d + F5 ~0.2d + F6 ~0.3d + F7 ~0.2d + F8 ~0.4d + F9(this session)≈ **~2.3d of effort over 2 calendar days**(2026-05-10 kickoff + 2026-05-11 F1-F9). Real-calendar collapse ≈ 4× under the plan-day budget — the W12-W15-W17 pattern. `end_date` 2026-05-24 was a window, not a commitment(per the frontmatter caveat).
+
+**7. Spec-ref alignment**
+- `architecture.md v6 §5` — amended at W18 kickoff(F0): NEW §5.0 Application Shell + §5.3 "Admin Dashboard"→"Dashboard"(real overview)+ §5.7 "Debug View"→"Traces" + §5.9 V7 Landing → REMOVED tombstone + §5.2 Chat in-shell note + `/admin/*`→`/kb/*` flatten + §5.10-§5.11 Login/Register redirect target — inline-tagged, doc version held(same convention as the §3.4 ADR-0023 / §3.7 ADR-0022 tags). The W18 implementation(F1-F8)matches the amended §5.0-§5.11.
+- ADR-0024 — `Accepted` 2026-05-10(verified, no-op at closeout); its "Implementation Deliverables" D1-D10 all checked against F1-F9. ADR-0015 — References carry the "amended by ADR-0024" note(F0).
+- ADR-0021(V4 Retrieval Testing tab + search-mode param)— the KB-detail 5-tab content moved into the shell unchanged(F3 re-parented, didn't rebuild). ADR-0022(cookie/Bearer dual-path)— the login-gate relies on it, unchanged. ADR-0014(hybrid auth)— the `/login` entry interplay, unchanged.
+- `COMPONENT_CATALOG.md` C09/C10 `Status` rows + `session-start.md` §3/§10/§11/§12 — updated at W18 closeout(F8.6 + F9.6).
+- `decision-form.md` — no new W18 OQ(the multi-language affordance is a known §11 Tier 2 disabled affordance, not a new OQ);no OQ status change. CLAUDE.md §5.1 H1 — the IA restructure was authorized by ADR-0024(Accepted before any W18 implement);no other architectural change(F1-F8 implement the amended §5.0-§5.11 — re-layout + re-route + 2 view changes + Landing removal;no §3/§4 component change — backend untouched).
+
+### W19+ — NOT pre-created(rolling-JIT per CLAUDE.md §10 R1)
+
+The W19+ phase folder is **not** created here. Kickoff is a post-W18-closeout decision. Likely candidates(for the next session to align on):
+- **W16 F1-F4** if the Track A IT cred populate event lands(`.env.production` + Azure subscription IDs + Cohere Marketplace billing + R-B1 closure + 25% Beta cohort rollout + daily metric monitor + Q15 weekly signal report + the cumulative user-smoke 3-step workflow `npx playwright install chromium` + `pnpm test:e2e:update-snapshots` + `pnpm test:e2e`).
+- **Tier 2 prep governance**(Q12 — Chris as Tier 2 GraphRAG / multi-agent / multi-tenancy decision owner;post-W12-production-launch trigger).
+- **A Beta-launch readiness pass**(consolidating the smoke-user-deferred backlog + the dashboard "system health"/"recent queries" backend follow-ups).
+- **The user's local-dev seed-KB convenience task**(`scripts/seed_dev_kb.py` or a one-liner — so `/dashboard`'s KB card / `<GlobalSearch>`'s KB results show something in dev without a manual upload).
+
+### Closeout housekeeping landed(`(this commit)`)
+
+- ADR-0024 D1-D10 checkboxes ticked(against F1-F9 outcomes)+ the "Implementation Deliverables" header updated("Implemented by the W18 phase … all D1-D10 landed — W18 closed 2026-05-11, Gate = PASS WITH SMOKE-USER-DEFERRED CAVEAT"). Status verified `Accepted`(no-op).
+- W18 `plan.md` + `checklist.md` + `progress.md` frontmatter `status: active` → `closed`.
+- W18 `checklist.md` — F9.1-F9.7 + the Cross-Cutting items ticked.
+- `session-start.md` hygiene catch-up — §3 C09/C10 status(in `<AppShell>`;URL flatten;`/dashboard`;`/settings`;V7 Landing removed;`<GlobalSearch>`)+ §10 W18 row(closed, Gate verdict)+ W19+ not-pre-created + §11 carry-overs(W18-closed items + the rolling smoke-user-deferred backlog)+ §12 milestones row(累計 16 → 17 phase closed)+ Last-Updated + Update-history.
+- `COMPONENT_CATALOG.md` C09/C10 `Status` rows — already updated in F8.6(verified, no further edit).
+- W19+ phase folder — **NOT** created(rolling-JIT).
+
+---
+
+**Lifecycle reminder**:Phase 已收尾（Gate = PASS WITH SMOKE-USER-DEFERRED CAVEAT；Retro 7 sections above）。W19+ phase folder **唔會** pre-create（rolling-JIT per CLAUDE.md §10 R1 — kickoff post-closeout）。
