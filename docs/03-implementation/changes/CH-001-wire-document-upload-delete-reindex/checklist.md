@@ -17,7 +17,7 @@ last_updated: 2026-05-11
 
 - [x] **T1.1** Read `backend/api/server.py` lifespan in full — existing pattern uses `__aenter__/__aexit__` on Azure clients;**`RetrievalEngine` already wraps the embedder** but doesn't expose it — added `app.state.embedder` separately for ingestion-path reuse — `(this commit)`
 - [x] **T1.2** Read `backend/indexing/populate.py` `IndexPopulator` full API — `delete_doc` absent → **added** (moved to T1.5.4 in Phase 1.5);`upload(chunks)` signature extended with `kb_id=None` BC param (T1.5.5) — `(this commit)`
-- [ ] **T1.3** Read `backend/kb_management/*` `KBService` API — confirmed methods for `create / list_all / get / delete / update_config / update_metadata` exist;**counter-sync methods MISSING**(no `record_doc_event` / `update_counters` etc) → **deferred to Phase 2** where the actual counter increment is needed(adding the storage Protocol method + InMemory + Postgres impls + KBService wrapper, ~30 min);minimal scope = only `total_documents` + `total_chunks` + `last_indexed_at` + `failed_documents`(skip `total_screenshots` + `storage_size_mb` — drift documented as a known future-tier follow-up per spec §6.7 ad-hoc)
+- [x] **T1.3** Read `backend/kb_management/*` `KBService` API — `create / list_all / get / delete / update_config / update_metadata` existed;**counter-sync methods added in Phase 2**:`KBStorageBackend.update_metrics(kb_id, *, documents_delta, chunks_delta, last_indexed_at, append_failure)` Protocol method + `InMemoryKBBackend` impl(model_copy)+ `PostgresKBBackend` impl(single UPDATE with `GREATEST(0, …)` arithmetic + JSONB `||` append)+ `KBService.record_doc_event` wrapper;minimal scope = `total_documents` + `total_chunks` + `last_indexed_at` + `failed_documents`(skip `total_screenshots` + `storage_size_mb` — drift documented as a known future-tier follow-up per progress.md Day-2)— `(this commit)`
 - [x] **T1.4** **Approach A confirmed** ── lifespan-init populator + per-request orchestrator(parser is per-file-extension via `select_parser`,chunker stateless,embedder shared with RetrievalEngine);one Azure REST client per app — `(this commit)`
 - [x] **T1.5** Wired `app.state.embedder` + `app.state.index_populator` + `app.state.ingestion_chunker` in `api/server.py` lifespan(populator `__aenter__/__aexit__` added;chunker `LayoutAwareChunker()` stateless construction unconditional);added `_ingestion_deps_or_503(request) -> _IngestionDeps`(NEW frozen dataclass)in `api/routes/documents.py` alongside the existing `_engine_or_503`;`mypy --strict` clean on the 3 new files(transitive errors in other unrelated files = pre-existing baseline) — `(this commit)`
 
@@ -36,36 +36,36 @@ last_updated: 2026-05-11
 
 ## Phase 2 — `POST /kb/{kb_id}/documents`(S2 + AC1-AC7, AC10)
 
-- [ ] **T2.1** Replace the 501 stub at `documents.py:72-82` — accept `UploadFile`,stream to `tempfile.NamedTemporaryFile(delete=False, suffix=<ext>)`(per spec R2 — no `await file.read()` whole into memory)
-- [ ] **T2.2** doc_id = slugify(filename stem) → regex `[a-z0-9-]+`(per S5);check kb_id with `_verify_kb_or_404`(per S6;already in the file);check duplicate doc_id within the kb via existing `RetrievalEngine.list_documents(kb_id)` aggregation;return **409** `code: "document.duplicate"` if dup
-- [ ] **T2.3** Call `select_parser(Path)` from `backend/ingestion/parsers/__init__.py`;catch its `ValueError` for unsupported extensions → **422** `code: "validation.unsupported_format"`(per AC3)
-- [ ] **T2.4** Call `IngestionOrchestrator.ingest(source, kb_id, doc_id, source_url=f"upload://{filename}")` → `IngestionResult`;branch on `result.failure`:`stage="parse"` → **502** `code: "ingestion.parse_failed"`;`stage="embed"` → **502** `code: "ingestion.embed_failed"`(per AC6)
-- [ ] **T2.5** Call `IndexPopulator.upload(result.chunks, kb_id=kb_id)`(per T1.5.5 — pass `kb_id` to target the per-KB index `ekp-kb-{kb_id}-v1`,NOT the legacy `ekp-kb-drive-v1`)→ `IndexUploadResult`;if `upload_result.failed > 0` → **502** `code: "ingestion.index_failed"` + the count;else proceed
-- [ ] **T2.6** Update KB counters via `KBService`(per S7 + AC10): `total_documents += 1`、`total_chunks += len(result.chunks)`、`last_indexed_at = now`、`storage_size_mb += file_size_mb`;失敗就 logged but non-fatal(counter drift is recoverable per spec R7)
-- [ ] **T2.7** Return **200 or 202** with `{doc_id, status: "indexed", chunks_emitted, images_uploaded, images_deduped}` per AC1
-- [ ] **T2.8** `finally:` clause unlinks the tempfile path(per S9);verify no leak on parse/embed/index failure paths
-- [ ] **T2.9** Error envelope helper — if not already in `backend/api/errors.py` or similar, add a small `make_api_error(code, message, hint, status)` to keep the 5+ error returns consistent
-- [ ] **T2.10** `_engine_or_503(request)`-style check for Azure cred — if `app.state.ingestion_orchestrator is None` or its embedder/populator is None → **503** `code: "azure.config_missing"`(per AC5)
+- [x] **T2.1** Replace the 501 stub at `documents.py:72-82` — accept `UploadFile`,stream to `tempfile.NamedTemporaryFile(delete=False, suffix=<ext>)`(per spec R2 — no `await file.read()` whole into memory)
+- [x] **T2.2** doc_id = slugify(filename stem) → regex `[a-z0-9-]+`(per S5);check kb_id with `_verify_kb_or_404`(per S6;already in the file);check duplicate doc_id within the kb via existing `RetrievalEngine.list_documents(kb_id)` aggregation;return **409** `code: "document.duplicate"` if dup
+- [x] **T2.3** Call `select_parser(Path)` from `backend/ingestion/parsers/__init__.py`;catch its `ValueError` for unsupported extensions → **422** `code: "validation.unsupported_format"`(per AC3)
+- [x] **T2.4** Call `IngestionOrchestrator.ingest(source, kb_id, doc_id, source_url=f"upload://{filename}")` → `IngestionResult`;branch on `result.failure`:`stage="parse"` → **502** `code: "ingestion.parse_failed"`;`stage="embed"` → **502** `code: "ingestion.embed_failed"`(per AC6)
+- [x] **T2.5** Call `IndexPopulator.upload(result.chunks, kb_id=kb_id)`(per T1.5.5 — pass `kb_id` to target the per-KB index `ekp-kb-{kb_id}-v1`,NOT the legacy `ekp-kb-drive-v1`)→ `IndexUploadResult`;if `upload_result.failed > 0` → **502** `code: "ingestion.index_failed"` + the count;else proceed
+- [x] **T2.6** Update KB counters via `KBService`(per S7 + AC10): `total_documents += 1`、`total_chunks += len(result.chunks)`、`last_indexed_at = now`、`storage_size_mb += file_size_mb`;失敗就 logged but non-fatal(counter drift is recoverable per spec R7)
+- [x] **T2.7** Return **200 or 202** with `{doc_id, status: "indexed", chunks_emitted, images_uploaded, images_deduped}` per AC1
+- [x] **T2.8** `finally:` clause unlinks the tempfile path(per S9);verify no leak on parse/embed/index failure paths
+- [x] **T2.9** Error envelope helper — if not already in `backend/api/errors.py` or similar, add a small `make_api_error(code, message, hint, status)` to keep the 5+ error returns consistent
+- [x] **T2.10** `_engine_or_503(request)`-style check for Azure cred — if `app.state.ingestion_orchestrator is None` or its embedder/populator is None → **503** `code: "azure.config_missing"`(per AC5)
 
 ## Phase 3 — `DELETE /kb/{kb_id}/documents/{doc_id}`(S3 + AC8)
 
-- [ ] **T3.1** Replace the 501 stub at `documents.py:85-92` — verify kb_id (`_verify_kb_or_404`);call `IndexPopulator.delete_doc(kb_id, doc_id)` (added in T1.5.4) → returns the count deleted
-- [ ] **T3.2** If `count == 0` → **404** `code: "document.not_found"`(per AC8 — clean idempotency story:DELETE on missing = 404, not 204)
-- [ ] **T3.3** If Azure delete errors → **502** `code: "index.delete_failed"`(per AC8)
-- [ ] **T3.4** Update KB counters via `KBService` — `total_documents -= 1`、`total_chunks -= count`、`last_indexed_at = now`;non-fatal on failure(same as T2.6)
-- [ ] **T3.5** Return **204** No Content per AC8(success path)
+- [x] **T3.1** Replace the 501 stub at `documents.py:85-92` — verify kb_id (`_verify_kb_or_404`);call `IndexPopulator.delete_doc(kb_id, doc_id)` (added in T1.5.4) → returns the count deleted
+- [x] **T3.2** If `count == 0` → **404** `code: "document.not_found"`(per AC8 — clean idempotency story:DELETE on missing = 404, not 204)
+- [x] **T3.3** If Azure delete errors → **502** `code: "index.delete_failed"`(per AC8)
+- [x] **T3.4** Update KB counters via `KBService` — `total_documents -= 1`、`total_chunks -= count`、`last_indexed_at = now`;non-fatal on failure(same as T2.6)
+- [x] **T3.5** Return **204** No Content per AC8(success path)
 
 ## Phase 4 — `POST /kb/{kb_id}/documents/{doc_id}/reindex`(S4 + AC9 — Decision A = (ii) replace-in-place)
 
-- [ ] **T4.1** Replace the 501 stub at `documents.py:95-102` — change the signature to accept `UploadFile`(same as POST upload);if missing → **422** `code: "validation.file_required"`(per AC9.2)
-- [ ] **T4.2** Verify kb_id + doc_id both exist(kb_id via `_verify_kb_or_404`,doc_id via `RetrievalEngine.list_documents(kb_id)` lookup)→ **404** `code: "document.not_found"` if doc_id missing
-- [ ] **T4.3** Slugify uploaded-file stem;if `!= doc_id` → **422** `code: "reindex.doc_id_mismatch"`(UX safety per spec §2.3 + AC9 ── 防呆「上錯 file」)
-- [ ] **T4.4** Call `IndexPopulator.delete_doc(kb_id, doc_id)`(reuse from T3)— records the deleted count for counter accounting
-- [ ] **T4.5** Run the same ingest path as POST(tempfile + `select_parser` + `IngestionOrchestrator.ingest` + `IndexPopulator.upload`)under the **same** `doc_id`
-- [ ] **T4.6** If mid-pipeline fails (after delete, before re-ingest succeeds) → **502** `code: "reindex.partial_failure"` + the FailureRecord;the KB is now in a deleted-but-not-re-ingested state(observable = "doc gone");actionable_hint:"retry via POST /kb/{kb_id}/documents with the same file"(per AC9.3)
-- [ ] **T4.7** Update KB counters via `KBService` — net is `total_chunks` from delete-count → new emit count;`last_indexed_at = now`;`total_documents` unchanged(same doc_id, just re-indexed)
-- [ ] **T4.8** Return **202** with `{doc_id, status: "reindexed", chunks_emitted, images_uploaded, images_deduped}` per AC9.1
-- [ ] **T4.9** Code dedup — if T2 and T4 share enough body, extract a `_run_ingest_pipeline(kb_id, doc_id, upload_file, source_url) → IngestionResponse | ApiError` helper to keep both routes thin(Karpathy §1.2 — only if it's clearly cleaner, not for the sake of it)
+- [x] **T4.1** Replace the 501 stub at `documents.py:95-102` — change the signature to accept `UploadFile`(same as POST upload);if missing → **422** `code: "validation.file_required"`(per AC9.2)
+- [x] **T4.2** Verify kb_id + doc_id both exist(kb_id via `_verify_kb_or_404`,doc_id via `RetrievalEngine.list_documents(kb_id)` lookup)→ **404** `code: "document.not_found"` if doc_id missing
+- [x] **T4.3** Slugify uploaded-file stem;if `!= doc_id` → **422** `code: "reindex.doc_id_mismatch"`(UX safety per spec §2.3 + AC9 ── 防呆「上錯 file」)
+- [x] **T4.4** Call `IndexPopulator.delete_doc(kb_id, doc_id)`(reuse from T3)— records the deleted count for counter accounting
+- [x] **T4.5** Run the same ingest path as POST(tempfile + `select_parser` + `IngestionOrchestrator.ingest` + `IndexPopulator.upload`)under the **same** `doc_id`
+- [x] **T4.6** If mid-pipeline fails (after delete, before re-ingest succeeds) → **502** `code: "reindex.partial_failure"` + the FailureRecord;the KB is now in a deleted-but-not-re-ingested state(observable = "doc gone");actionable_hint:"retry via POST /kb/{kb_id}/documents with the same file"(per AC9.3)
+- [x] **T4.7** Update KB counters via `KBService` — net is `total_chunks` from delete-count → new emit count;`last_indexed_at = now`;`total_documents` unchanged(same doc_id, just re-indexed)
+- [x] **T4.8** Return **202** with `{doc_id, status: "reindexed", chunks_emitted, images_uploaded, images_deduped}` per AC9.1
+- [x] **T4.9** Code dedup — if T2 and T4 share enough body, extract a `_run_ingest_pipeline(kb_id, doc_id, upload_file, source_url) → IngestionResponse | ApiError` helper to keep both routes thin(Karpathy §1.2 — only if it's clearly cleaner, not for the sake of it)
 
 ## Phase 5 — Tests(S10 + AC11-AC12)
 

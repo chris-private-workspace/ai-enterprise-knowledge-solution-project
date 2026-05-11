@@ -7,7 +7,7 @@ between in-memory and Postgres (ADR-0023) without touching service or route.
 from datetime import UTC, datetime
 from functools import lru_cache
 
-from api.schemas.kb import KbConfig, KbCreate, KbStatus
+from api.schemas.kb import FailureRecord, KbConfig, KbCreate, KbStatus
 from storage.settings import get_settings
 
 from .factory import make_kb_backend
@@ -51,6 +51,31 @@ class KBService:
     ) -> KbStatus:
         """W16 F5.2 CO_F3b — partial PATCH of name + description (Decision A.1)."""
         return await self._backend.update_metadata(kb_id, name=name, description=description)
+
+    async def record_doc_event(
+        self,
+        kb_id: str,
+        *,
+        documents_delta: int = 0,
+        chunks_delta: int = 0,
+        last_indexed_at: datetime | None = None,
+        append_failure: FailureRecord | None = None,
+    ) -> KbStatus:
+        """CH-001 — post-ingest counter sync (closes AC10).
+
+        Wraps `KBStorageBackend.update_metrics`. Use:
+        - On upload success → `documents_delta=+1, chunks_delta=+N, last_indexed_at=now`
+        - On delete success → `documents_delta=-1, chunks_delta=-M, last_indexed_at=now`
+        - On reindex success → `chunks_delta=(new_N - old_M), last_indexed_at=now`
+        - On ingest failure → `append_failure=FailureRecord(...), last_indexed_at=now`
+        """
+        return await self._backend.update_metrics(
+            kb_id,
+            documents_delta=documents_delta,
+            chunks_delta=chunks_delta,
+            last_indexed_at=last_indexed_at,
+            append_failure=append_failure,
+        )
 
 
 @lru_cache(maxsize=1)

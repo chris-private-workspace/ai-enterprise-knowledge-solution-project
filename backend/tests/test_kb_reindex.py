@@ -4,8 +4,10 @@ Per W16 plan F5.3 acceptance criteria + Decision B.1 (Azure cleanup defer
 Track A;in-memory baseline preserved). Coverage:
 - Happy path: kb_id valid → 202 ACCEPTED + task_id mock
 - KB not found: 404
-- Per-doc reindex still 501 (Karpathy §1.3 surgical: untouched scope verify)
-- DELETE behavior unchanged (Decision B.1 docstring annotation only)
+- Per-doc reindex returns 503 without Azure cred (CH-001 2026-05-12 closes
+  the W16 F5.3 501 stub via Decision A = (ii) replace-in-place — was 501)
+- DELETE behavior unchanged (Decision B.1 docstring annotation only; CH-001
+  Phase 1.5 fail-soft preserves the in-memory baseline when no Azure cred)
 """
 
 from __future__ import annotations
@@ -72,17 +74,31 @@ async def test_reindex_kb_not_found_returns_404(kb_service_empty: KBService) -> 
 
 
 @pytest.mark.asyncio
-async def test_per_doc_reindex_still_501_per_karpathy_surgical(
+async def test_per_doc_reindex_503_without_azure_per_ch001(
     kb_service_with_drive: KBService,
 ) -> None:
-    """Per Karpathy §1.3 surgical: F5.3 only adds per-KB reindex;per-doc
-    reindex `POST /kb/{kb_id}/documents/{doc_id}/reindex` (documents.py:41)
-    remains 501 stub (out of W16 F5 scope per W2 implementation reference)."""
+    """CH-001 (2026-05-12) — per-doc reindex (was 501 in W16 F5.3) is now real,
+    implementing Decision A = (ii) replace-in-place semantics.
+
+    Without lifespan-wired Azure ingestion deps in this test setup, the route
+    fails closed at `_ingestion_deps_or_503` → 503 azure.config_missing (the
+    OLD assertion was `== 501`;the new behaviour for the dev/no-cred path is
+    `== 503`).
+    """
     app = _build_app(kb_service_with_drive)
     client = TestClient(app)
 
-    resp = client.post("/kb/drive_user_manuals/documents/doc-A/reindex")
-    assert resp.status_code == 501
+    resp = client.post(
+        "/kb/drive_user_manuals/documents/doc-A/reindex",
+        files={
+            "file": (
+                "doc-A.docx",
+                b"\x00",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ),
+        },
+    )
+    assert resp.status_code == 503
 
 
 @pytest.mark.asyncio

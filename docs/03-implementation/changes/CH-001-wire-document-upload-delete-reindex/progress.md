@@ -111,6 +111,68 @@ last_updated: 2026-05-11
 
 ---
 
+## Day 2 — Phase 2 + 3 + 4 document routes + counter-sync(2026-05-11)
+
+### Done
+- ✅ **T1.3 (deferred from Day 1)** `backend/kb_management/storage.py` + `postgres_backend.py` + `service.py` ── added counter-sync infra:
+  - `KBStorageBackend.update_metrics(kb_id, *, documents_delta=0, chunks_delta=0, last_indexed_at=None, append_failure=None) -> KbStatus` Protocol method
+  - `InMemoryKBBackend.update_metrics` — read-modify-write via `kb.model_copy(update={...})`;`max(0, …)` floors prevent negative drift
+  - `PostgresKBBackend.update_metrics` — single SQL UPDATE with `GREATEST(0, total_documents + %s)` arithmetic + `COALESCE(%s, last_indexed_at)` overwrite + `failed_documents || %s::jsonb` JSONB array append(via `psycopg.types.json.Jsonb`)
+  - `KBService.record_doc_event` wrapper forwards to backend
+  - **Minimal scope** per progress.md Day-1 plan:tracks `total_documents` + `total_chunks` + `last_indexed_at` + `failed_documents`;**skips** `total_screenshots` + `storage_size_mb`(drift acceptable — no per-doc size tracking yet;documented as a known follow-up below)
+- ✅ **Phase 2 (T2.1-T2.10)** `POST /kb/{kb_id}/documents` (`api/routes/documents.py:upload_document`)
+  - `_slugify_doc_id(stem)` helper:lowercase + `re.sub(r"[^a-z0-9-]+", "-", …)` + collapse multi-dashes + strip leading/trailing → returns `""` on empty input → 422 `validation.invalid_doc_id`
+  - `_api_error(code, message, hint, http_status)` helper → builds the uniform `{code, message, actionable_hint}` envelope HTTPException matching the W7 D4 F4.1 error-handlers convention
+  - `_doc_exists_in_kb(engine, kb_id, doc_id)` helper:fail-open dup check via `RetrievalEngine.list_documents(kb_id)`(Azure errors → False so the upload still proceeds;worst case = `mergeOrUpload` action handles idempotently)
+  - `_run_ingest_pipeline(*, upload_file, kb_id, doc_id, deps, service)` SHARED helper(reused by POST + reindex):tempfile stream via `shutil.copyfileobj(file.file, tmp)` → `select_parser(tmp_path)` → `IngestionOrchestrator(parser, deps.chunker, deps.embedder, uploader=None).ingest(...)` → `deps.populator.upload(result.chunks, kb_id=kb_id)`(targets `ekp-kb-{kb_id}-v1`)→ on success `service.record_doc_event(documents_delta=+1, chunks_delta=succeeded, last_indexed_at=now)`;on `result.failure` → `record_doc_event(append_failure=…)` + 502 `ingestion.{stage}_failed`;`finally:` unlinks the tempfile
+  - Route handler:`_verify_kb_or_404` → `_ingestion_deps_or_503` → `_engine_or_503` → filename validation → `_slugify_doc_id` → `_doc_exists_in_kb` 409 dup check → `_run_ingest_pipeline` → 202 with `{doc_id, status:"indexed", chunks_emitted, images_uploaded, images_deduped}`
+  - 7 error codes wired:`validation.file_required` / `validation.invalid_doc_id` / `validation.unsupported_format` / `kb.not_found` / `document.duplicate` / `ingestion.{parse,embed,index}_failed`(per AC1-AC7)
+- ✅ **Phase 3 (T3.1-T3.5)** `DELETE /kb/{kb_id}/documents/{doc_id}` (`api/routes/documents.py:delete_document`)
+  - `_verify_kb_or_404` → `_ingestion_deps_or_503` → `deps.populator.delete_doc(kb_id, doc_id)` → return count
+  - `count == 0` → 404 `document.not_found`(clean idempotency:DELETE-on-missing surfaces an error, doesn't silently 204)
+  - Azure errors → 502 `index.delete_failed`
+  - Success → `service.record_doc_event(documents_delta=-1, chunks_delta=-count, last_indexed_at=now)` + 204 No Content
+- ✅ **Phase 4 (T4.1-T4.9)** `POST /kb/{kb_id}/documents/{doc_id}/reindex`(`api/routes/documents.py:reindex_document`)── Decision A = (ii) replace-in-place
+  - Signature changed to accept `UploadFile` body(was no body in stub)
+  - `_verify_kb_or_404` → `_ingestion_deps_or_503` → `_engine_or_503` → `_doc_exists_in_kb` (404 if doc missing) → slugify uploaded-file stem and verify `== doc_id` (422 `reindex.doc_id_mismatch` — UX safety against "uploaded wrong file")
+  - Atomic delete-then-ingest:`deps.populator.delete_doc(kb_id, doc_id)` → `service.record_doc_event(documents_delta=-1, chunks_delta=-deleted_count)` for the delete-half → `_run_ingest_pipeline(...)` reused
+  - Mid-pipeline failure(after delete, before re-ingest succeeds)→ re-wrap the pipeline's HTTPException as **502 `reindex.partial_failure`** with the actionable hint:「The old chunks are gone — retry via POST /kb/{kb_id}/documents with the same file.」(per AC9.3 + spec §4 R3)
+  - 202 with `{doc_id, status:"reindexed", chunks_emitted, images_uploaded, images_deduped}`
+- ✅ **`tests/test_kb_reindex.py`** updated:`test_per_doc_reindex_still_501_per_karpathy_surgical` (asserted `== 501`)renamed → `test_per_doc_reindex_503_without_azure_per_ch001`(asserts `== 503` in the no-Azure-cred dev/test setup — the natural fail-closed state via `_ingestion_deps_or_503`);file-top docstring updated with the CH-001 reference
+- ✅ `ruff check api/routes/documents.py kb_management/ indexing/populate.py` → **All checks passed!**
+- ✅ `mypy --strict --explicit-package-bases` clean on my 4 changed files(the 49 transitive errors in 14 other files are pre-existing baseline — unrelated)
+- ✅ `pytest backend/tests/{test_orchestrator,test_api_skeleton,test_documents_listing,test_kb_management,test_kb_reindex,test_multi_kb_routing}.py` → **46 passed**(including the rewritten reindex test)
+
+### Decisions
+- **Counter-sync min-scope**:`total_documents` + `total_chunks` + `last_indexed_at` + `failed_documents` only;**`total_screenshots` + `storage_size_mb` drift accepted**(no per-doc size tracking yet — adding it needs a new DB column or per-doc size storage,which is genuinely future-tier work). The dashboard's "X documents · Y chunks · Z.0 MB" will show 0 MB / 0 screenshots until that follow-up;documented in the storage Protocol docstring + this entry.
+- **Counter-sync failure = non-fatal**(per spec R7):`try/except` around every `record_doc_event` call in the routes;structlog.exception on failure but the user-facing response is still 202/204. Counter drift is recoverable via a future "rebuild counters from index" job;dropping the upload because the counter write failed would be worse UX.
+- **Tempfile cleanup ALWAYS runs**(spec S9): `tmp_path` declared outside the try, `finally:` unlinks if `tmp_path is not None and tmp_path.exists()`.OSError on unlink → log warning but don't propagate(the tempfile is in `tempfile.gettempdir()` and will be GC'd by the OS).
+- **`_run_ingest_pipeline` shared helper**(spec T4.9): DRY between POST upload and POST reindex(~90% common code:tempfile + select_parser + orchestrator + populator + counter-sync + 502 branches).Each route adds only its own pre-flight checks(POST: dup check;reindex: doc-exists check + doc_id-match safety check + pre-delete).
+- **Fail-open `_doc_exists_in_kb`**(spec T2.2): if `engine.list_documents` raises(Azure outage), allow upload to proceed.`IndexPopulator.upload` uses `@search.action: "mergeOrUpload"` which is idempotent per chunk_id,so the worst case is a re-overlay, not a corruption.
+- **Reindex doc_id-match safety check** is the spec §2.3 (ii) commitment;catches "user picked the wrong file" before destructive delete.Slugify both `{path_doc_id}` and `{uploaded_file_stem}` then compare → 422 `reindex.doc_id_mismatch` if mismatched.
+- **`scripts/run_populate_sanity.py` not migrated**(spec §2.4 explicit out-of-scope):W2-era script still uses `populator.upload(result.chunks)` with `kb_id=None` default,relying on `self.index_name = "ekp-kb-drive-v1"`. Works as-is.
+
+### Blockers
+- None at end of Day-2. Phase 5 (backend tests) + Phase 6 (manual smoke) + Phase 7 (docs closeout) remain.
+
+### Effort
+- Planned (Phase 2 + 3 + 4):~3h (T2.1-T4.9)
+- Actual:~2.5h (this session;real-calendar collapse pattern)
+- Variance:-0.5h
+
+### Commits
+| Hash | Subject |
+|---|---|
+| `c2aca46` | feat(api,ingestion): CH-001 Phase 1 + 1.5 — IndexPopulator multi-KB lifecycle + lifespan wiring + POST/DELETE /kb auto-provisioning (close ADR-0018 Phase 3 upload-side) |
+| _(pending — this session)_ | feat(api,ingestion): CH-001 Phase 2 + 3 + 4 — document routes wired (POST upload / DELETE doc / POST reindex replace-in-place) + KBService.record_doc_event counter-sync (close CO_F3a) |
+
+### Next
+- **Phase 5** T5.1-T5.22 ── NEW `backend/tests/api/test_documents_route.py` with monkeypatched orchestrator + populator + KBService(real Azure-call tests = `scripts/run_populate_sanity.py` territory, not in CI);target ~15 tests covering AC1-AC10 + AC18-AC22 + AC9.1-AC9.3 reindex paths + IndexPopulator unit tests
+- **Phase 6** T6.1-T6.6 ── manual smoke on `:3001` + `:8000`(user's pre-Beta walkthrough since I can't drive the browser:fresh KB create → upload doc → see chunks in the Documents tab → DELETE → verify gone;need user's Azure cred in `.env` for end-to-end)
+- **Phase 7** T7.1-T7.8 ── docs hygiene(file-top docstring removals + ADR-0018 timing row + COMPONENT_CATALOG C03/C08 + session-start §11 CO_F3a flip + grep `501` = 0 verify + progress closeout + frontmatter status → done)
+
+---
+
 ## Closeout(填於 status=done)
 
 ### Acceptance verification(against spec §3 AC1-AC17)

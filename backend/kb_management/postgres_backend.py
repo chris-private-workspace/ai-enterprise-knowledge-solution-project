@@ -23,6 +23,8 @@ JSONB columns hold the Pydantic-dumped `KbConfig` and `list[FailureRecord]`
 
 from __future__ import annotations
 
+from datetime import datetime
+
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
@@ -158,6 +160,55 @@ class PostgresKBBackend:
             await cur.execute(
                 f"UPDATE {_TABLE} SET {', '.join(sets)} WHERE kb_id = %s RETURNING {_COLS}",
                 tuple(params),
+            )
+            row = await cur.fetchone()
+        if row is None:
+            raise KBNotFoundError(f"KB '{kb_id}' not found")
+        return _row_to_kb(row)
+
+    async def update_metrics(
+        self,
+        kb_id: str,
+        *,
+        documents_delta: int = 0,
+        chunks_delta: int = 0,
+        last_indexed_at: datetime | None = None,
+        append_failure: FailureRecord | None = None,
+    ) -> KbStatus:
+        """CH-001 — post-ingest counter sync (read-modify-write on the kb_id row).
+
+        Same semantics as `InMemoryKBBackend.update_metrics`. Single
+        UPDATE with arithmetic for counters (floored at 0 via GREATEST),
+        COALESCE for last_indexed_at, JSONB array append for the failure
+        record. Returns the updated KbStatus or raises KBNotFoundError.
+        """
+        appended_failure_jsonb = (
+            Jsonb([append_failure.model_dump(mode="json")])
+            if append_failure is not None
+            else None
+        )
+        async with await self._connect() as conn, conn.cursor() as cur:
+            await cur.execute(
+                f"""
+                UPDATE {_TABLE} SET
+                    total_documents = GREATEST(0, total_documents + %s),
+                    total_chunks    = GREATEST(0, total_chunks    + %s),
+                    last_indexed_at = COALESCE(%s, last_indexed_at),
+                    failed_documents = CASE
+                        WHEN %s::jsonb IS NOT NULL THEN failed_documents || %s::jsonb
+                        ELSE failed_documents
+                    END
+                WHERE kb_id = %s
+                RETURNING {_COLS}
+                """,
+                (
+                    documents_delta,
+                    chunks_delta,
+                    last_indexed_at,
+                    appended_failure_jsonb,
+                    appended_failure_jsonb,
+                    kb_id,
+                ),
             )
             row = await cur.fetchone()
         if row is None:
