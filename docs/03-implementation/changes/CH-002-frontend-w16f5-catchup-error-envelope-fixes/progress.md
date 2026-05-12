@@ -65,11 +65,84 @@ status: in-progress     # in-progress | closed
 ### Commits
 | Hash | Subject |
 |---|---|
-| _(pending)_ | `feat(api): CH-002 Phase 1+2 — F5 hint key + F8 422 field detail + F2 tempfile basename + F6 CH-001 spec reconcile + tests` |
+| `69dbe1d` | `feat(api): CH-002 Phase 1+2 — F5 hint key + F8 422 field detail + F2 tempfile basename + F6 CH-001 spec reconcile + tests` |
 
 ---
 
-## Closeout（填於 status=closed）
+## Day 1 (cont. 2) — 2026-05-12 — Phase 3+4+5 (frontend) + Phase 6 (tests + closeout)
+
+### Done
+- **T3.x (F3 — Eval Console)** — discovered the page was **already wired** to `evalApi.run` (`useMutation` + `MetricCardsGrid` + `FailedQueriesCard`); F3 was a copy/dead-code fix, not a re-wire: removed the dead `if (err instanceof ApiError && err.status === 501)` branch (+ the now-orphan `ApiError` import); rewrote the empty-state copy ("eval-set-v0 is a W1 placeholder … eval-set-v1 pending Q14 SME labels"); updated the file-top doc comment; added a "Max main queries" number input (default 5) → `max_main_queries` arg (spec R2); added a "Running RAGAs eval — this can take a minute…" hint. `lib/api/eval.ts`: `EvalRunRequest` += `max_main_queries?`; NOTE comment updated.
+- **T4.x (F7 — Chunks tab)** — `kb/[id]/page.tsx` `ChunksTab` rewritten: doc `<Select>` from `documentsApi.list` (honours `?doc=`), `<ChunksTable>` rendering `ChunkSummary` rows (index/total · title · `›`-joined section path · disabled/low-value flag badges · chunk_id), loading/empty/error states; removed the `<BackendStubNote>` placeholder + the now-orphan `BackendStubNote` component. `lib/api/documents.ts`: `ChunkSummary` interface + `documentsApi.listChunks(kbId, docId)`; stale "per-doc routes remain 501 stubs" comment updated.
+- **T5.x (F10 — Settings/Identity)** — `kb/[id]/page.tsx` `SettingsTab` "Identity" section: `name` + `description` now editable inside a `<form>` + "Save identity" button → `metadataMutation` → `kbApi.patchMetadata` (true partial PATCH — only changed fields; "No changes to save" toast otherwise); invalidates `['kb', kbId]` + `['kb','list']` on success. `lib/api/kb.ts`: `kbApi.patchMetadata(kbId, {name?, description?})`. Removed the "read-only Tier 1 — PATCH lands W15+" copy; left the Pipeline-tab "Read-only Tier 1 view" copy untouched (that tab is intentionally read-only).
+- **T6.x** — `traces/[traceId]/page.tsx` confirmed already-wired (no change; AC13). New Vitest: `tests/unit/eval-page.test.tsx` (3) + `tests/unit/kb-detail.test.tsx` (2). `tests/unit/setup.ts` += `ResizeObserver` stub (Radix Slider on the eval page). Fixed a now-stale parenthetical in `tests/e2e/visual-baseline.spec.ts:69`.
+- **Gates** — `pnpm test:unit` → **18 passed / 6 files** (was 13 / 4); `pnpm type-check` → 0; `pnpm lint` → clean; `grep "\[oklch(" frontend/` → 0; `grep` stale-copy sweep → 0 user-facing hits (narrative file-top comments + test assertions only). `pytest tests/api/ tests/test_error_contract.py tests/test_e1_e5_e12_smoke.py tests/test_f1_7_mock_smoke.py tests/test_auth_self_register.py` → **111 passed**, 0 regression (error-handler blast radius).
+- (commit: `feat(frontend): CH-002 Phase 3+4+5+6 — eval/run wired (F3) + Chunks tab (F7) + Settings-Identity edit (F10) + Vitest`)
+
+### Decisions
+- F3 scope correction: the smoke-report observation "Run 掣只 toast.info('pending W4 backend')" was imprecise — the page already called `evalApi.run` and the toast was only the *501-error branch* (dead now). So F3 became copy + dead-code cleanup + the `max_main_queries` cap, not a re-wire. Surfaced upfront (Karpathy §1.1); checklist T3.x notes reflect the narrower scope.
+- F7 doc picker: `?doc=<doc_id>` is validated against the actual doc list before use (an unknown `?doc=` falls back to the first doc) — defensive against stale deep-links.
+- `ResizeObserver` polyfill went into the shared `tests/unit/setup.ts` (not just the eval test) — it's standard jsdom infra any future Radix-Slider/Select-using test needs; the W18 tests just hadn't hit it.
+- Vitest flake: `kb-detail` chunks test chains 3 mocked async resolutions (KB fetch → doc list → chunk list); `findByText`'s default 1000ms timeout flaked under the full-suite load → bumped to 5000ms for that one assertion.
+
+### Blockers
+- None for code. AC14 browser walkthrough = user pre-Beta smoke (R8 / CO_W15_F4 — `npx playwright install chromium` blocked) — not blocking closeout per the W15-W18 caveat pattern.
+
+### Effort
+- Planned (Phase 3-6): ~5h;Actual:~3h(F3 was smaller than scoped — already wired; F7/F10 + Vitest the bulk);Variance:−2h
+
+### Commits
+| Hash | Subject |
+|---|---|
+| _(pending)_ | `feat(frontend): CH-002 Phase 3+4+5+6 — eval/run wired (F3) + Chunks tab (F7) + Settings-Identity edit (F10) + Vitest` |
+| _(pending)_ | `docs(planning,catalog): CH-002 closeout` |
+
+---
+
+## Closeout（status=closed）
+
+### Acceptance verification
+
+| AC | Status | Evidence |
+|---|---|---|
+| AC1 (F3 — Run → 4 metrics, no "W4 stub" copy) | ✅ | `eval/page.tsx` Run → `evalApi.run` → `MetricCardsGrid`; empty-state copy rewritten; Vitest `eval-page.test.tsx` (2 tests); grep clean |
+| AC2 (F3 — `/eval/run` error → ApiError boundary) | ✅ | `onError` → `toast.error`; Vitest "surfaces a toast on eval-run failure" |
+| AC3 (F7 — Chunks tab fetches `.../chunks`, renders ChunkSummary, states) | ✅ | `ChunksTab` + `ChunksTable` + `documentsApi.listChunks`; loading/empty/error states; Vitest "lists a document's chunks" |
+| AC4 (F10 — Settings-Identity name/desc + Save → PATCH /kb/{id}, partial; Pipeline copy untouched) | ✅ | `SettingsTab` Identity form + `metadataMutation` + `kbApi.patchMetadata` (changed-fields-only); Vitest "renders editable name/description … PATCHes on save" |
+| AC5 (F5 — dup/unsupported/not_found/mismatch → non-null `actionable_hint`) | ✅ | `documents.py` `_api_error` key `"hint"`; `error_handlers.py:82` reads it; `test_ch002_f5_route_hint_surfaces_in_error_envelope` (4-param) |
+| AC6 (F8 — 422 message names field + constraint, not the input value) | ✅ | `error_handlers._redacted_loc_path`; `test_ch002_f8_validation_envelope_names_field_without_leaking_input` + `…_redacts_structured_input_value` |
+| AC7 (F2 — doc_title = real stem, traversal-safe) | ✅ | `_run_ingest_pipeline` writes `mkdtemp()/<Path(filename.replace("\\","/")).name>`; `test_ch002_f2_tempfile_named_after_original_basename` + `…_upload_filename_traversal_stripped` (3-param) |
+| AC8 (F6 — Option a: CH-001 spec AC4 reconcile note, status stays `done`) | ✅ | CH-001 `spec.md` §3 AC4 inline note + §7 changelog row; no code change; CH-001 frontmatter `status: done` unchanged |
+| AC9 (backend regression — all green, new tests cover AC5/AC6/AC7) | ✅ | `pytest tests/api/ tests/test_error_contract.py tests/test_e1_e5_e12_smoke.py tests/test_f1_7_mock_smoke.py tests/test_auth_self_register.py` → 111 passed; +10 CH-002 test cases (4 + 1 + 3 + 2) |
+| AC10 (`mypy --strict` 0 new errors; `ruff` clean) | ✅ | `ruff check` 4 changed files → clean; `mypy --strict --explicit-package-bases api/routes/documents.py api/error_handlers.py` → 0 errors on changed lines (≈50 reported = pre-existing transitive baseline, unchanged) |
+| AC11 (frontend — `pnpm test:unit` green; `tsc`/`lint` clean; `[oklch(`=0) | ✅ | `pnpm test:unit` 18/6; `pnpm type-check` 0; `pnpm lint` clean; `[oklch(` grep 0 |
+| AC12 (stale-stub-copy grep sweep → 0) | ✅ | sweep returns only narrative file-top comments (kept per provenance convention) + the new test files' `queryByText(...).toBeNull()` assertions; `visual-baseline.spec.ts:69` parenthetical fixed |
+| AC13 (`traces/[traceId]/page.tsx` checked) | ✅ | confirmed already-wired (W16 F5.5 / ADR-0020 / W18 F3); the "501 stub" mention is a historical narrative comment, not user-facing → no change |
+| AC14 (manual/Playwright browser walkthrough) | 🟡 user-deferred | backend curl smoke covered by pytest (AC5-AC8); the 3-frontend-flow browser walkthrough = user pre-Beta smoke — R8 `npx playwright install chromium` blocked / CO_W15_F4 / ADR-0017; consistent with the W15-W18 caveat pattern, not blocking closeout |
+
+**Verdict**: 13/14 ✅ + 1/14 🟡 (AC14 user-deferred, same umbrella as W15-W18). No ❌. CH-002 **CLOSED 2026-05-12**.
+
+### Effort summary
+| Day | Planned (h) | Actual (h) | Variance |
+|---|---|---|---|
+| Day 1 (triage + spec + checklist + progress) | 0.5 | 0.75 | +0.25 |
+| Day 1 cont. (Phase 1+2 backend) | 4.25 | 2 | −2.25 |
+| Day 1 cont. 2 (Phase 3-6 frontend + tests + closeout) | 5 | 3 | −2 |
+| **Total** | **~9.75** | **~5.75** | **−4** |
+
+(Under the spec §5 6-9h estimate's upper bound — F3 was already-wired so it collapsed to copy/dead-code; F5/F2 were near-trivial; F8 + the Vitest forward-ref/ResizeObserver debugging took the most actual time.)
+
+### Lessons
+- **What worked**: reading the target files before scoping (Karpathy §1.1) — caught that the eval page was already wired, so F3 didn't balloon; the `with_error_handlers=True` flag on `_build_app` let F5 be tested end-to-end without rewriting CH-001's 24 tests.
+- **What didn't / friction**: `from __future__ import annotations` + a function-local Pydantic model used as a FastAPI route param annotation → FastAPI's `get_type_hints` can't resolve the forward ref → the param gets mis-classified (`query.body — Field required`); fix = module-level model. `ResizeObserver` missing in jsdom (Radix Slider). mypy needs `--explicit-package-bases` (there's a `backend/__init__.py`). All one-time gotchas, now documented here.
+- **Carry-overs**: none new from CH-002. Out-of-scope items (F1 setup-doc / `settings.py` env_file, F4 favicon, F9 `/dashboard` 375px overflow → BUG-NNN, F11 chat focus-mode toggle → W18-impl verify) remain per spec §2.4 — separate handling.
+
+### Component design note status updates
+- C01 / C06 / C08 / C09 — no `components/Cn-*.md` design-note file exists for any of them (rolling JIT; none was created). No status bump. `COMPONENT_CATALOG.md` got a C08 + C09 status row appended (see closeout commit).
+
+---
+
+**End of CH-002 progress**
 
 ### Acceptance verification
 _(All §3 acceptance criteria from spec.md verified ✅ / partial ⚠️ / failed ❌ — fill at closeout)_

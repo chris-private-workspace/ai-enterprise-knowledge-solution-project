@@ -1,12 +1,25 @@
 /**
  * Vitest setup — registers `@testing-library/jest-dom` matchers (toBeInTheDocument,
- * toHaveClass, …) and auto-cleans the rendered DOM between tests. Loaded via
- * `vitest.config.ts` `test.setupFiles`. (W17 F6)
+ * toHaveClass, …), polyfills the browser APIs jsdom omits but Radix primitives
+ * touch (ResizeObserver — used by Slider / Select size hooks), and auto-cleans
+ * the rendered DOM between tests. Loaded via `vitest.config.ts` `test.setupFiles`.
+ * (W17 F6; ResizeObserver polyfill added CH-002 F3 — the Eval Console renders a
+ * Radix Slider.)
  */
 
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
+
+if (!('ResizeObserver' in globalThis)) {
+  class ResizeObserverStub {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+  (globalThis as unknown as { ResizeObserver: typeof ResizeObserverStub }).ResizeObserver =
+    ResizeObserverStub;
+}
 
 afterEach(() => {
   cleanup();

@@ -15,9 +15,10 @@
  * 2. Plan F1.3 "Context Relevancy / Answer Relevancy" — schema + design ref
  *    §2.5 wireframe agree on Correctness / Image Association; align with
  *    spec (4 metrics: R@5 / FFul / CRct / IAss).
- * 3. Plan F1.3 4-metric data display — backend /eval/run returns 501 stub →
- *    stub mitigation pattern (empty state + Run CTA + ApiError 501 →
- *    toast.info) per W14 BackendStubNote pattern.
+ * 3. Plan F1.3 4-metric data display — backend /eval/run is now real (RAGAs
+ *    4-metric integration landed W16 F5.4 + W17 F3); CH-002 F3 (2026-05-12)
+ *    removed the 501-stub error branch + the "W4 stub" empty-state copy.
+ *    The empty state is now just a "click Run to see results" CTA.
  * 4. Plan F1.5 "static JSON file" — no `reranker_shootout*` artifact exists;
  *    inline RERANKER_SHOOTOUT const populated from W6 demo-prep.md §107-114
  *    Q-A2 stakeholder Q&A actual W6 D1 LIVE Azure 2-way comparison data.
@@ -58,7 +59,6 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
-import { ApiError } from '@/lib/api-client';
 import {
   evalApi,
   type EvalReport,
@@ -143,6 +143,9 @@ interface RunConfig {
   top_k: number;
   crag_threshold: number;
   intent_type: string;
+  // CH-002 F3 / spec R2 — cap a synchronous browser eval run so it returns in
+  // seconds rather than minutes (LLM-judge cost is per main query).
+  max_main_queries: number;
 }
 
 const DEFAULT_CONFIG: RunConfig = {
@@ -151,6 +154,7 @@ const DEFAULT_CONFIG: RunConfig = {
   top_k: 5,
   crag_threshold: 0.7,
   intent_type: 'auto',
+  max_main_queries: 5,
 };
 
 export default function EvalConsolePage() {
@@ -165,12 +169,6 @@ export default function EvalConsolePage() {
       toast.success('Eval run complete');
     },
     onError: (err) => {
-      if (err instanceof ApiError && err.status === 501) {
-        toast.info('Eval run pending W4 backend implementation', {
-          description: 'docs/eval-methodology.md',
-        });
-        return;
-      }
       toast.error('Eval run failed', {
         description: err.message,
       });
@@ -183,6 +181,7 @@ export default function EvalConsolePage() {
       llm_model: config.llm_model,
       reranker: config.reranker,
       enable_crag: true,
+      max_main_queries: config.max_main_queries,
     });
   };
 
@@ -233,6 +232,11 @@ export default function EvalConsolePage() {
           <PlayCircle className="mr-2 h-4 w-4" />
           Run Single
         </Button>
+        {runMutation.isPending && (
+          <span className="text-xs text-muted-foreground">
+            Running RAGAs eval — this can take a minute…
+          </span>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-[280px_1fr]">
@@ -306,6 +310,25 @@ function RunConfigCard({
               onChange({ ...config, top_k: Number(e.target.value) || 1 })
             }
           />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="max-queries">Max main queries</Label>
+          <Input
+            id="max-queries"
+            type="number"
+            min={1}
+            max={50}
+            value={config.max_main_queries}
+            onChange={(e) =>
+              onChange({
+                ...config,
+                max_main_queries: Number(e.target.value) || 1,
+              })
+            }
+          />
+          <p className="text-xs text-muted-foreground">
+            Caps the run for a quick result — each main query runs an LLM judge.
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="crag">CRAG threshold</Label>
@@ -382,8 +405,10 @@ function MetricCardsGrid({
             the chosen eval set against the run config.
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
-            Backend `/eval/run` is W4 stub — pending implementation per
-            docs/eval-methodology.md
+            <span className="font-mono">eval-set-v0</span> is a W1 placeholder —
+            its reference answers are below the attention threshold, so expect
+            low correctness / faithfulness until <span className="font-mono">eval-set-v1</span>{' '}
+            (pending Q14 SME labels).
           </p>
         </div>
       </div>

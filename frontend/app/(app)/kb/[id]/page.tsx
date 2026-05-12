@@ -11,12 +11,15 @@
  * - F3.2 Documents tab: (W14 D3 — backend stub) → W17 F4.1: now wired to the
  *   real GET /kb/{id}/documents (W16 F5.1.1 / CO_F3a — Azure AI Search chunk
  *   aggregation by doc_id); renders a doc table; empty index → Upload prompt.
- * - F3.3 Chunks tab: backend GET /kb/{id}/documents/{id}/chunks returns 501 —
- *   surface placeholder + TODO note (still a stub — W2 ingestion + Track A).
+ * - F3.3 Chunks tab: CH-002 F7 (2026-05-12) — wired to the real
+ *   GET /kb/{id}/documents/{doc_id}/chunks (W16 F5.1.2); doc picker (from the
+ *   doc listing, honours ?doc=<doc_id>) + ChunkSummary table (index / title /
+ *   section path / flags / chunk_id). Was a 501-stub placeholder. Chunk body
+ *   text is not bulk-listed (use Retrieval Testing / /query for that).
  * - F3.4 Pipeline tab: read-only config visualization Tier 1 (no PATCH inline).
- * - F3.6 Settings: name + description display-only (kbApi.patchSettings only
- *   accepts Partial<KbConfig>; name/description backend endpoint not exposed).
- *   Config fields remain editable.
+ * - F3.6 Settings: CH-002 F10 (2026-05-12) — name + description are now
+ *   editable, saved via PATCH /kb/{id} (W16 F5.2 / CO_F3b — partial update);
+ *   KbConfig settings stay in PATCH /kb/{id}/settings. Was display-only.
  * - F3.8 Stepper rule-of-3 NOT triggered: Pipeline tab read-only display, not
  *   wizard state machine; inline retention preserved per W13 D4 decision.
  *
@@ -78,7 +81,11 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApiError } from '@/lib/api-client';
-import { documentsApi, type DocumentSummary } from '@/lib/api/documents';
+import {
+  documentsApi,
+  type ChunkSummary,
+  type DocumentSummary,
+} from '@/lib/api/documents';
 import {
   kbApi,
   type FailureRecord,
@@ -403,6 +410,30 @@ function FailuresSection({ rows }: { rows: FailureRecord[] }) {
 // --- Chunks tab --------------------------------------------------------------
 
 function ChunksTab({ kb }: { kb: KbStatus }) {
+  // CH-002 F7 — wired to the real GET /kb/{id}/documents/{doc_id}/chunks
+  // (W16 F5.1.2). Needs a doc_id, so: a doc picker from the doc listing
+  // (already-wired GET /kb/{id}/documents, W17 F4.1), honouring ?doc=<doc_id>.
+  const searchParams = useSearchParams();
+  const docs = useQuery<DocumentSummary[]>({
+    queryKey: ['kb', kb.kb_id, 'documents'],
+    queryFn: () => documentsApi.list(kb.kb_id),
+  });
+
+  const docList = docs.data ?? [];
+  const docParam = searchParams.get('doc');
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const effectiveDocId =
+    selectedDocId ??
+    (docParam && docList.some((d) => d.doc_id === docParam)
+      ? docParam
+      : (docList[0]?.doc_id ?? null));
+
+  const chunks = useQuery<ChunkSummary[]>({
+    queryKey: ['kb', kb.kb_id, 'chunks', effectiveDocId],
+    queryFn: () => documentsApi.listChunks(kb.kb_id, effectiveDocId as string),
+    enabled: !!effectiveDocId,
+  });
+
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -410,28 +441,130 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
         <StatCard label="Screenshots" value={kb.total_screenshots} />
       </div>
 
-      <BackendStubNote
-        stub="GET /kb/{id}/documents/{id}/chunks"
-        issue="W2 chunk listing implementation"
-      />
-
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Chunk inspection</CardTitle>
           <CardDescription>
-            Per-chunk drill-down(`chunk_id` / `section_path` / token count /
-            preview)+ click-to-expand modal — pending backend list endpoint.
+            Per-chunk metadata(<span className="font-mono">chunk_id</span> /{' '}
+            <span className="font-mono">section_path</span> / index / flags)for a
+            document. Chunk body text is not bulk-listed — use the Retrieval
+            Testing tab(or <span className="font-mono">/query</span>)to see the
+            text of a retrieved chunk.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground">
-            Use the Retrieval Testing tab to inspect retrieved chunks for a
-            specific query — citation cards surface the same{' '}
-            <span className="font-mono">chunk_id</span> /{' '}
-            <span className="font-mono">section_path</span> trace.
-          </p>
+        <CardContent className="space-y-4">
+          {docs.isLoading ? (
+            <DocumentsSkeleton />
+          ) : docs.isError ? (
+            <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
+              Failed to load documents — backend unreachable or Azure AI Search
+              not configured. Error:{' '}
+              {String((docs.error as Error)?.message ?? 'unknown')}
+            </div>
+          ) : docList.length === 0 ? (
+            <div className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+              No documents in this KB yet — upload one to inspect its chunks.
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Label
+                  htmlFor="chunks-doc"
+                  className="text-xs text-muted-foreground sm:w-24 sm:shrink-0"
+                >
+                  Document
+                </Label>
+                <Select
+                  value={effectiveDocId ?? undefined}
+                  onValueChange={setSelectedDocId}
+                >
+                  <SelectTrigger id="chunks-doc" className="w-full sm:w-96">
+                    <SelectValue placeholder="Select a document" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {docList.map((d) => (
+                      <SelectItem key={d.doc_id} value={d.doc_id}>
+                        {d.doc_title || d.doc_id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {chunks.isLoading ? (
+                <DocumentsSkeleton />
+              ) : chunks.isError ? (
+                <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
+                  Failed to load chunks. Error:{' '}
+                  {String((chunks.error as Error)?.message ?? 'unknown')}
+                </div>
+              ) : (chunks.data?.length ?? 0) === 0 ? (
+                <div className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+                  No chunks for this document.
+                </div>
+              ) : (
+                <ChunksTable rows={chunks.data ?? []} />
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function ChunksTable({ rows }: { rows: ChunkSummary[] }) {
+  return (
+    <div className="overflow-hidden rounded-md border border-border">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th scope="col" className="px-3 py-2 text-left font-medium">#</th>
+              <th scope="col" className="px-3 py-2 text-left font-medium">Title</th>
+              <th scope="col" className="px-3 py-2 text-left font-medium">Section path</th>
+              <th scope="col" className="px-3 py-2 text-left font-medium">Flags</th>
+              <th scope="col" className="px-3 py-2 text-left font-medium">Chunk id</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((c) => (
+              <tr key={c.chunk_id} className="bg-background">
+                <td className="px-3 py-2 tabular-nums text-xs text-muted-foreground">
+                  {c.chunk_index + 1}/{c.chunk_total}
+                </td>
+                <td className="px-3 py-2 font-medium">{c.chunk_title || '—'}</td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">
+                  {c.section_path.length > 0 ? c.section_path.join(' › ') : '—'}
+                </td>
+                <td className="px-3 py-2">
+                  <div className="flex flex-wrap gap-1">
+                    {!c.enabled && (
+                      <Badge variant="outline" className="text-[10px]">
+                        disabled
+                      </Badge>
+                    )}
+                    {c.low_value_flag && (
+                      <Badge
+                        variant="outline"
+                        className="bg-warning/15 text-warning-foreground border-transparent text-[10px]"
+                      >
+                        low-value
+                      </Badge>
+                    )}
+                    {c.enabled && !c.low_value_flag && (
+                      <span className="text-[10px] text-muted-foreground">—</span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                  {c.chunk_id}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -930,18 +1063,42 @@ function EndToEndQueryPanel({ kb }: { kb: KbStatus }) {
 function SettingsTab({ kb }: { kb: KbStatus }) {
   const queryClient = useQueryClient();
   const [config, setConfig] = useState<KbConfig>(kb.config);
+  const [name, setName] = useState(kb.name);
+  const [description, setDescription] = useState(kb.description);
 
   useEffect(() => {
     setConfig(kb.config);
-  }, [kb.config]);
+    setName(kb.name);
+    setDescription(kb.description);
+  }, [kb.config, kb.name, kb.description]);
+
+  function invalidateKb() {
+    queryClient.invalidateQueries({ queryKey: ['kb', kb.kb_id] });
+    queryClient.invalidateQueries({ queryKey: ['kb', 'list'] });
+  }
 
   const patchMutation = useMutation({
     mutationFn: (next: Partial<KbConfig>) =>
       kbApi.patchSettings(kb.kb_id, next),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kb', kb.kb_id] });
-      queryClient.invalidateQueries({ queryKey: ['kb', 'list'] });
+      invalidateKb();
       toast.success('Settings saved.');
+    },
+    onError: (err) => {
+      toast.error('Save failed.', {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    },
+  });
+
+  // CH-002 F10 — name + description are editable now; partial PATCH /kb/{id}
+  // (W16 F5.2 / CO_F3b). KbConfig stays in patchSettings.
+  const metadataMutation = useMutation({
+    mutationFn: (patch: { name?: string; description?: string }) =>
+      kbApi.patchMetadata(kb.kb_id, patch),
+    onSuccess: () => {
+      invalidateKb();
+      toast.success('Identity saved.');
     },
     onError: (err) => {
       toast.error('Save failed.', {
@@ -955,29 +1112,64 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
     patchMutation.mutate(config);
   }
 
+  function handleIdentitySubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    // True partial PATCH — only send the fields that actually changed.
+    const patch: { name?: string; description?: string } = {};
+    if (name !== kb.name) patch.name = name;
+    if (description !== kb.description) patch.description = description;
+    if (Object.keys(patch).length === 0) {
+      toast.info('No changes to save.');
+      return;
+    }
+    metadataMutation.mutate(patch);
+  }
+
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Identity</CardTitle>
           <CardDescription>
-            Display fields are read-only Tier 1 — backend `name` /
-            `description` PATCH lands W15+ per CO_W15 follow-up.
+            Display name + description — saved via PATCH /kb/&#123;id&#125;
+            (partial update; the KB id is immutable). Indexing config is below.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-1.5">
-            <Label>KB ID</Label>
-            <Input value={kb.kb_id} readOnly className="font-mono" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Display name</Label>
-            <Input value={kb.name} readOnly />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Description</Label>
-            <Input value={kb.description} readOnly />
-          </div>
+        <CardContent>
+          <form onSubmit={handleIdentitySubmit} className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="kb-id">KB ID</Label>
+              <Input id="kb-id" value={kb.kb_id} readOnly className="font-mono" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="kb-name">Display name</Label>
+              <Input
+                id="kb-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="kb-description">Description</Label>
+              <Input
+                id="kb-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+            <div className="pt-2">
+              <Button type="submit" disabled={metadataMutation.isPending}>
+                {metadataMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  'Save identity'
+                )}
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
 
@@ -1219,17 +1411,3 @@ function StatCard({
   );
 }
 
-function BackendStubNote({
-  stub,
-  issue,
-}: {
-  stub: string;
-  issue: string;
-}) {
-  return (
-    <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-      <span className="font-medium text-foreground">Backend status:</span>{' '}
-      <span className="font-mono">{stub}</span> — {issue} (501 stub).
-    </div>
-  );
-}

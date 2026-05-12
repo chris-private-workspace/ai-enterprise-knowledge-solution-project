@@ -62,6 +62,14 @@ export const kbApi = {
   patchSettings: (kbId: string, config: Partial<KbConfig>): Promise<KbStatus> =>
     client.patch<KbStatus>(`/kb/${kbId}/settings`, config),
 
+  // PATCH /kb/{id} — W16 F5.2 / CO_F3b: partial update of KB metadata
+  // (name + description only; KbConfig stays in patchSettings). Omitted fields
+  // preserve the existing value (true partial-PATCH semantics).
+  patchMetadata: (
+    kbId: string,
+    patch: { name?: string; description?: string },
+  ): Promise<KbStatus> => client.patch<KbStatus>(`/kb/${kbId}`, patch),
+
   uploadDoc: async (kbId: string, file: File): Promise<{ doc_id: string }> => {
     const form = new FormData();
     form.append('file', file);

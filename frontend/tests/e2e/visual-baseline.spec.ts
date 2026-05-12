@@ -66,7 +66,8 @@ test.describe('Visual baseline — pixel diff harness', () => {
     await expect(
       page.getByRole('heading', { name: /evaluation console/i }),
     ).toBeVisible();
-    // Empty 4-metric state (no eval runs yet — backend /eval/run is W4 stub)
+    // Empty 4-metric state — captured before any Run click (the backend
+    // /eval/run is real since W16 F5.4 / W17 F3; CH-002 F3 wired the page).
     await expect(page.getByText(/no eval runs yet/i)).toBeVisible();
     await expect(page).toHaveScreenshot('v5-eval-console.png', {
       fullPage: true,
