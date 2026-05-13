@@ -1,9 +1,19 @@
 """Application settings (per .env.example + architecture.md §4.3)."""
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# The single repo-root `.env` (gitignored) — `settings.py` lives at
+# `backend/storage/settings.py`, so `parents[2]` is the repo root. Pinning an
+# absolute path here (rather than a bare `".env"`) makes the settings load
+# CWD-independent: `uvicorn api.server:app` works the same whether launched from
+# the repo root, from `backend/`, or by a test runner. A `.env` next to the CWD
+# is still honoured as a *secondary override* (e.g. a `backend/.env` symlink, or
+# a per-invocation override) — listed last so its values win.
+_REPO_ROOT_ENV = Path(__file__).resolve().parents[2] / ".env"
 
 
 class Settings(BaseSettings):
@@ -14,7 +24,7 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(_REPO_ROOT_ENV, ".env"),  # repo-root .env (base) → CWD .env (override)
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,

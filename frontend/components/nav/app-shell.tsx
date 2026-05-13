@@ -127,12 +127,13 @@ export function AppShell({ children }: AppShellProps) {
           <Menu className="h-5 w-5" />
         </Button>
 
-        {/* Desktop: focus-mode (collapse sidebar) toggle */}
+        {/* Desktop: focus-mode toggle (collapses the left sidebar — ADR-0024 §5.0) */}
         <Button
           variant="ghost"
           size="icon"
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? 'Expand sidebar (exit focus mode)' : 'Collapse sidebar (focus mode)'}
           aria-pressed={collapsed}
+          title={collapsed ? 'Exit focus mode — show the sidebar' : 'Focus mode — hide the sidebar'}
           className="hidden h-9 w-9 md:inline-flex"
           onClick={toggleCollapsed}
         >

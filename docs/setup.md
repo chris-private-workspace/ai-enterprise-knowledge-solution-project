@@ -387,7 +387,9 @@ curl http://localhost:8000/kb
 
 ### 5.1 完整 Template
 
-EKP 用單一 `.env`(repo root)+ symlink 到 `backend/.env` 同 `frontend/.env.local`(或者 frontend 用 `NEXT_PUBLIC_*` prefix subset)。
+EKP 用**單一 `.env`(repo root)**。Backend 嘅 `Settings`(`backend/storage/settings.py`)用絕對路徑讀呢份 file,所以**唔需要** `backend/.env` symlink — `uvicorn api.server:app` 由 repo root、由 `backend/`、由 test runner 啟動都一樣讀到。Frontend 用 `NEXT_PUBLIC_*` prefix subset(`frontend/.env.local`,Next.js 慣例;可以由 repo-root `.env` 揀相關 var copy 過去,或直接放 `frontend/.env.local`)。
+
+> 仍想用 symlink?可以 —— 若 `backend/.env` 存在,佢會 **override** repo-root 嗰份(per-invocation override 用)。但唔係必須。
 
 `.env.example`(repo 入面)內容如下,setup 時 copy 為 `.env` 並填入真實 value:
 
@@ -639,9 +641,11 @@ curl -X POST http://localhost:8000/debug/embed-test \
 
 | 症狀 | 原因 | 解決 |
 |---|---|---|
+| 所有 auth-gated route 503 / `IndexPopulator None` / `feature_auth_mock` 仍係 `False` 即使 `.env` 已設啱 | `.env` 冇被讀到 — 通常因為 backend 由 `backend/` CWD 啟動,但 `.env` 喺 repo root | **由 2026-05-13 起唔再係問題**:`backend/storage/settings.py` 嘅 `env_file` 已 pin 去 repo-root `.env` 嘅絕對路徑(CWD-independent),由邊度啟動都讀到。`.env` 永遠係 repo root 嗰份(`.env.example` 隔離);若 `backend/.env` 同時存在,佢會 *override* repo-root 嗰份(symlink / per-invocation override 用)。舊版本嘅 workaround(由 repo root 起 + `--env-file ../.env` + `backend/.env` symlink)已唔需要 |
+| Docling 第一次 parse 一份 `.pdf` 慢幾分鐘(`POST /kb/{kb}/documents` duration ~4 分鐘)| 首次觸發 Docling 下載 layout / OCR models(RapidOCR PP-OCRv4 + docling-layout-heron + docling-models,~hundreds MB,from HuggingFace + ModelScope)| 等;只係 cold-start 一次。Tier 1 ingest 係 synchronous(background-task ingestion 屬 Tier 2 per CH-001 spec §2.4)|
 | Docling Docker image pull 慢 | First-time download ~2GB | 等;考慮 pre-build image 放公司 internal registry |
 | `python-docx` parse fail on complex equation | OOXML edge case(see E9) | Parser 應該 fallback 到 text representation,唔 abort |
-| Langfuse trace 唔出現 | API key 錯 / project 未 create | Langfuse UI create project → 拎新 keys → 更新 `.env` |
+| Langfuse trace 唔出現 / `/query` 嘅 `trace_id` 係空 string | `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` 未配(`.env` 可能只有 `LANGFUSE_HOST`)| Langfuse UI(`http://localhost:3000`)create project → 拎 public + secret keys → 填入 `.env`。未配時 `langfuse_sdk_status: not_configured`,`/query` graceful-degrade(`trace_id` 空),`/debug/trace/{id}` 只能驗 degrade path,`/feedback` 對 nonexistent trace → 400 |
 
 ---
 

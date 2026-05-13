@@ -389,16 +389,18 @@ Phase Gates             prep G1        G2   stretch  POC  Beta deploy testing 25
 
 Tier 2 features per `architecture.md §11`,plug 入 existing component slots:
 
+> **Component-ID note**(housekeeping 2026-05-13):Tier 1 嘅 13 components 係 **C01–C13**,當中 **C13 = Email Verification Service**(Azure Communication Services,per architecture.md v6 §3.7 + ADR-0014 — authoritative)。早期版本呢個表把 hypothetical "Workflow Engine" 標做 "C13",同 Tier 1 C13 撞 ID — 已更正:任何 Tier 2 新 component 由 **C14** 起順排(下表 Training Pipeline = C14、Workflow Engine = C15)。
+
 | Tier 2 Feature | Plug into | How |
 |---|---|---|
 | **GraphRAG / Knowledge Graph** | C04 Retrieval(alternative engine)+ C01 Ingestion(extra graph extraction step) | Retrieval 加 graph traversal mode,ingestion 加 entity / relation extraction 後寫 separate graph store |
 | **L4+ Multi-Agent Orchestration** | C05 Generation(orchestration layer 取代 single CRAG loop) | Custom CRAG → multi-agent system(LangGraph 或 custom),C05 internal change,interface 不變 |
-| **Workflow / Plugin Builder** | C09 Admin UI(new view) + new C13 Workflow Engine | 加 new component C13(workflow runtime)+ C09 加 builder UI |
+| **Custom LLM Fine-Tuning** | C05 Generation(replace base model)+ new **C14 Training Pipeline** | 加 new component C14(training data prep + fine-tune job)→ output model deployed,C05 swap deployment name |
+| **Workflow / Plugin Builder** | C09 Admin UI(new view) + new **C15 Workflow Engine** | 加 new component C15(workflow runtime)+ C09 加 builder UI。**注:唔係 C13** — C13 喺 Tier 1 已係 Email Verification Service |
 | **Multi-Tenancy** | C02 KB Manager(tenant_id column)+ C03 Indexing(tenant prefix in index name)+ C11 Identity(tenant claim) | 三個 component 各自加 tenant dimension,C08 加 tenant context middleware |
 | **Multi-Modal Retrieval(B 類純圖搜)** | C04 Retrieval(image embedding mode)+ C01 Ingestion(image embedding) | 加 image embedding model 入 C01,C04 加 image-only query path |
 | **Multi-Language(JP / ZH)** | C01 Ingestion(per-language analyzer)+ C04 Retrieval(per-language semantic config) | Language detection in C01,per-language index variants in C03 |
 | **Auto-Sync from External Source** | C01 Ingestion(scheduler trigger)+ C12 DevOps(scheduler infra) | 加 scheduled job runner(Azure Functions 或 Container Apps Jobs)→ trigger C01 ingestion |
-| **Custom LLM Fine-Tuning** | C05 Generation(replace base model)+ new C14 Training Pipeline | 加 new component C14(training data prep + fine-tune job)→ output model deployed,C05 swap deployment name |
 
 **架構 readiness invariant**:Tier 2 features **不應該** 需要 Tier 1 component 嘅 interface change(只係 internal evolve)。任何 Tier 2 feature plan 若需要 Tier 1 interface 改動 → STOP + ADR + re-evaluate decomposition。
 

@@ -71,7 +71,7 @@ EKP 嚴格按以下 13 component 組織代碼,**禁止跨 component 雜湊**:
 
 完整 spec:[`docs/02-architecture/COMPONENT_CATALOG.md`](../../02-architecture/COMPONENT_CATALOG.md) + per-component design notes `docs/02-architecture/components/Cn-*.md`(rolling JIT;C11 + C13 design notes pending)。
 
-> **Note**:`COMPONENT_CATALOG.md §11 Tier 2 trigger matrix` 仍引用 hypothetical "C13 Workflow Engine"(Tier 2 future);**Tier 1 actual C13 = Email Verification Service** per architecture.md v6 §3.7(authoritative)— catalog amendment 屬 W17+ housekeeping。
+> **Note**:**Tier 1 actual C13 = Email Verification Service**(ACS,per architecture.md v6 §3.7 + ADR-0014 — authoritative)。`COMPONENT_CATALOG.md §6 "Tier 2 Future Slots"` 早期版本把 hypothetical "Workflow Engine" 標做 "C13" 同呢個撞 ID — **已更正 2026-05-13**(Workflow Engine → C15、Training Pipeline → C14;任何 Tier 2 新 component 由 C14 起順排)。`architecture.md §11`(frozen content,§1-§14 content-lock)若仍有同樣字眼則照舊不動,以 §3.7 為準。
 
 ---
 
