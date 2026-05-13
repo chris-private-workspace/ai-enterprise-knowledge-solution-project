@@ -16,8 +16,13 @@
  *
  * User smoke usage:
  *   1. `! cd backend && .venv/Scripts/python.exe -m uvicorn api.server:app --port 8000`
- *   2. `! cd frontend && npx playwright install chromium` (one-time browser binary)
- *   3. `! cd frontend && pnpm test:e2e` (auto-starts pnpm dev)
+ *   2a. `! cd frontend && npx playwright install chromium` (one-time bundled-Chromium download), OR
+ *   2b. (R8 corp-proxy CDN block — ADR-0017 Plan B) skip the download and drive an
+ *       already-installed system Chrome/Edge instead:
+ *         `! cd frontend && PW_CHANNEL=chrome pnpm test:e2e`   (or `PW_CHANNEL=msedge`)
+ *       — `PW_CHANNEL` is unset by default (uses the bundled Chromium), so this is
+ *       purely an opt-in escape hatch; no CI behaviour change.
+ *   3. `! cd frontend && pnpm test:e2e`                 (auto-starts pnpm dev)
  *   4. `! cd frontend && pnpm test:e2e:update-snapshots` (capture pixel diff baseline)
  *
  * CI integration deferred to W16+ Beta hardening per plan §F4.5 PARTIAL PASS
@@ -28,6 +33,17 @@ import { defineConfig, devices } from '@playwright/test';
 
 const PORT = 3001;
 const BASE_URL = `http://localhost:${PORT}`;
+
+// ADR-0017 Plan B — `npx playwright install chromium` is blocked by the Ricoh
+// corp-proxy CDN (ECONNRESET at cdn.playwright.dev, confirmed 2026-05-09 + still
+// active 2026-05-13). If a system Chrome/Edge is already installed (it is, on the
+// corp-managed dev box), set `PW_CHANNEL=chrome` (or `msedge`) to have Playwright
+// drive that instead of the bundled Chromium. Unset → bundled Chromium (default).
+const PW_CHANNEL = process.env.PW_CHANNEL || undefined;
+// `video: 'retain-on-failure'` needs the ffmpeg binary, which lives in the same
+// blocked-CDN bucket as the Chromium download — so under Plan B (PW_CHANNEL set)
+// turn video off (trace + screenshot don't need ffmpeg, so those stay on).
+const PW_VIDEO = PW_CHANNEL ? ('off' as const) : ('retain-on-failure' as const);
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -48,12 +64,12 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: PW_VIDEO,
   },
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], channel: PW_CHANNEL },
     },
   ],
   webServer: {

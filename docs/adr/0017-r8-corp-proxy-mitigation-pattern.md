@@ -15,8 +15,8 @@ Cumulative occurrences:
 | 1 | W3 | Cohere — direct-API / Cohere-SDK path complications under the proxy | Path A Azure Marketplace + an `httpx` REST client (`retrieval/reranker/cohere.py`) — no `cohere` SDK dependency at all (Q5 Resolved / ADR-0012) |
 | 2 | W13 | `pip install argon2-cffi` (C-extension wheel) | Switched to `hashlib.scrypt` (Python stdlib) — **ADR-0016** |
 | 3 | W13 | `pip install azure-communication-email` (ACS SDK) | Lazy import inside `email_provider.py`; `feature_email_mock=true` / empty `acs_connection_string` → `ConsoleEmailProvider` stub; real ACS path raises a clear `EmailSendError` when the dep is missing (C13 / ADR-0014) |
-| 4 | W15 D5 | `npx playwright install chromium` (~300 MB browser binary CDN) | `ECONNRESET` at 0%; deferred to user smoke / personal Azure dev tier (CO17); `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` + system-Chrome `channel:'chrome'` workaround documented; `@playwright/test` itself (npm) installed fine — only the browser binary CDN is blocked |
-| 5 | W17 F1 | `pip install psycopg[binary]>=3.2` (3.6 MB binary wheel — ADR-0023 Postgres driver) | `IncompleteRead` then "Connection timed out" on retry; **this ADR's trigger**. Code shipped anyway (dep declared in `pyproject.toml`, lazily imported via `kb_management/factory.py` so an unset `DATABASE_URL` never touches it, in-memory path unaffected); local Postgres-path verification (CRUD tests + `mypy postgres_backend.py` + manual smoke) deferred to W18+ / a personal Azure dev tier per CO17 |
+| 4 | W15 D5 | `npx playwright install chromium` (~180 MB browser binary CDN `cdn.playwright.dev`) | `ECONNRESET` at 0%; deferred to user smoke / personal Azure dev tier (CO17); `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` + system-Chrome `channel:'chrome'` workaround documented; `@playwright/test` itself (npm) installed fine — only the browser binary CDN is blocked. **Resolved 2026-05-13 via Plan B** — see "Plan B realised" below: the E2E suite runs green (15/15) against the system-installed Chrome, the 4 pixel-diff baselines are captured |
+| 5 | W17 F1 | `pip install psycopg[binary]>=3.2` (3.6 MB binary wheel — ADR-0023 Postgres driver) | `IncompleteRead` then "Connection timed out" on retry; **this ADR's trigger**. Code shipped anyway (dep declared in `pyproject.toml`, lazily imported via `kb_management/factory.py` so an unset `DATABASE_URL` never touches it, in-memory path unaffected); local Postgres-path verification (CRUD tests + `mypy postgres_backend.py` + manual smoke) deferred to W18+ / a personal Azure dev tier per CO17. **Re-attempted 2026-05-13 — still blocked** (PyPI wheel download timed out, 5 retries; F1.5b stays deferred) |
 
 The session-start.md §11 / W15 retro flagged ADR-0017 as **reserved**, with a formalization trigger of "5th cumulative occurrence OR vendor-decision pivot needed". The W17 F1 `psycopg` block is the 5th — and was also a vendor-decision pivot point (resolved 2026-05-10: keep `psycopg`, don't pivot to sqlite3). So both halves of the trigger are met. This ADR formalizes the pattern so future dependency additions don't re-discover it ad hoc.
 
@@ -35,6 +35,16 @@ The session-start.md §11 / W15 retro flagged ADR-0017 as **reserved**, with a f
 7. **When a new dep is genuinely unavoidable, doesn't fit a stdlib/REST/lazy path, and its proxy-blocked install would block the work: STOP and ask** (per CLAUDE.md §5 / §13) — surface it as a vendor-decision pivot point.
 
 This ADR does **not** supersede any vendor lock (§3.2 stack stays as-is) and does **not** require IT to change the proxy — it is a coding-discipline ADR. An IT-side fix (an internal PyPI/npm mirror that the proxy whitelists) would make most of this moot, and is tracked separately (out of scope here).
+
+### Plan B realised — Playwright E2E via system Chrome (2026-05-13)
+
+Decision-rule #5 ("defer binary-heavy / CDN-fetched assets to a non-proxy environment; document the system-binary-channel workaround; accept PARTIAL-PASS") has now been **executed** for the Playwright browser binary, on the corp dev box itself — no non-proxy environment needed, because the box already has a corp-managed **Google Chrome** installed:
+
+- `frontend/playwright.config.ts` gained two opt-in env hooks: `PW_CHANNEL` (sets the chromium project's `channel`, e.g. `chrome`/`msedge`) and a derived `PW_VIDEO` (forced `'off'` when `PW_CHANNEL` is set, because `video:'retain-on-failure'` needs the **ffmpeg** binary which is in the same blocked `cdn.playwright.dev` bucket as the Chromium download). Both default to "unset" → bundled Chromium + video on, so **CI behaviour is unchanged**; this is purely a local escape hatch.
+- `PW_CHANNEL=chrome pnpm test:e2e` → **15/15 green** (`app-shell-path.spec.ts` + `golden-path.spec.ts` + `visual-baseline.spec.ts`), including the new BUG-002 "no horizontal overflow at 375px" regression test. Two pre-existing stale test-selectors surfaced (they'd never run before — no browser) and were fixed: `getByLabel(/password/i)` → `getByLabel('Password',{exact:true})` (the register form has both Password + Confirm-password); `getByText(/cohere v4\.0-pro/i)` → `getByRole('cell',…)` (3 mentions on `/eval`); a brittle `[class*="step"]` stepper locator → `getByText(/step 1 of 3/i)`.
+- `PW_CHANNEL=chrome pnpm test:e2e:update-snapshots` → the **4 pixel-diff baselines** committed under `frontend/tests/e2e/visual-baseline.spec.ts-snapshots/` (`v8-login` / `v9-register-step1` / `dashboard` / `v5-eval-console`, `*-chromium-win32.png`) — closes **CO_W15_F4_browser_binaries** + **CO_W15_F4_baseline_capture** (the W12-W18 "user pre-Beta browser smoke" backlog's automated portion).
+
+What's **still** R8-blocked (no Plan B): `pip install psycopg[binary]` (PyPI wheel — re-attempted 2026-05-13, timed out) → **F1.5b** Postgres-path runtime smoke + `mypy postgres_*` stays deferred per CO17; `playwright install ffmpeg` (Plan-B runs just turn video off); `playwright install chromium` itself (the bundled binary — the system-Chrome channel sidesteps needing it).
 
 ## Alternatives Considered
 
@@ -59,5 +69,7 @@ This ADR does **not** supersede any vendor lock (§3.2 stack stays as-is) and do
 - session-start.md §11 — ADR-0017 reservation + 5th-occurrence trigger; CO17 (personal Azure dev tier pattern)
 - `docs/01-planning/W15-polish-closeout/plan.md` §F4 risks (Playwright browser CDN — R8 occurrence #4)
 - `docs/01-planning/W17-beta-hardening/progress.md` Day 2 (the psycopg block + this decision)
+- `frontend/playwright.config.ts` — the `PW_CHANNEL` / `PW_VIDEO` Plan-B opt-ins (2026-05-13)
+- `frontend/tests/e2e/visual-baseline.spec.ts-snapshots/` — the 4 captured pixel-diff baselines (CO_W15_F4_baseline_capture closed)
 - CLAUDE.md §5.2 H2 (vendor / dependency constraint — dev-dep exception); §13 (when in doubt → ask)
 - `backend/api/server.py` — `truststore.inject_into_ssl()` (runtime HTTPS cert-store leg)

@@ -46,12 +46,14 @@ test.describe('Golden path — public + chat E2E', () => {
 
   test('V9 Register page renders 3-step wizard at step 1', async ({ page }) => {
     await page.goto('/register');
-    // Step 1 — account info form fields
+    // Step 1 — account info form fields. The register form has BOTH a "Password"
+    // and a "Confirm password" field, so target the password label exactly.
     await expect(page.getByLabel(/email/i)).toBeVisible();
-    await expect(page.getByLabel(/password/i, { exact: false })).toBeVisible();
-    // Stepper indicator visible
-    const stepperIndicator = page.locator('[class*="step"]').first();
-    await expect(stepperIndicator).toBeVisible();
+    await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
+    await expect(page.getByLabel(/confirm password/i)).toBeVisible();
+    // We're on step 1 of the 3-step wizard (the Stepper + the Step1 sub-header).
+    await expect(page.getByText(/step 1 of 3/i)).toBeVisible();
+    await expect(page.getByText('Account info')).toBeVisible();
   });
 
   test('V1 Chat page renders message input + send button', async ({ page }) => {

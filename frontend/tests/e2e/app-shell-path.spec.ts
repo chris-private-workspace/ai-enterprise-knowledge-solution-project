@@ -66,7 +66,12 @@ test.describe('App-shell path E2E — dashboard + KB + eval + traces flow', () =
       page.getByRole('button', { name: /run single/i }),
     ).toBeVisible();
     await expect(page.getByText(/no eval runs yet/i)).toBeVisible();
-    await expect(page.getByText(/cohere v4\.0-pro/i)).toBeVisible();
+    // "Cohere v4.0-pro" appears in 3 places (the Reranker <Select> value, the
+    // Shootout card description, the Shootout table row) — assert the table cell
+    // specifically so the locator is unambiguous (strict mode).
+    await expect(
+      page.getByRole('cell', { name: /cohere v4\.0-pro/i }),
+    ).toBeVisible();
     await expect(page.getByText(/recommended/i)).toBeVisible();
   });
 
