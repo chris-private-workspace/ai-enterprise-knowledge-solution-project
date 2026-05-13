@@ -153,14 +153,17 @@ export function AppShell({ children }: AppShellProps) {
         </Link>
 
         {/* Global search trigger (centre). Opens <GlobalSearch> (W18 F6); Cmd/Ctrl+K bound above. */}
+        {/* `min-w-0` on the button (so the header flex row can shrink it) + on the label span
+            (so `truncate` actually truncates within the button's own flex context) — without
+            these the label's intrinsic width pushes the top bar past a ≤375px viewport. (BUG-002) */}
         <button
           type="button"
           onClick={handleOpenSearch}
           aria-label="Search (Ctrl+K)"
-          className="mx-auto flex h-9 w-full max-w-md items-center gap-2 rounded-md border border-border bg-muted/40 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted"
+          className="mx-auto flex h-9 w-full min-w-0 max-w-md items-center gap-2 rounded-md border border-border bg-muted/40 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted"
         >
           <Search className="h-4 w-4 shrink-0" />
-          <span className="truncate">Search knowledge bases, traces…</span>
+          <span className="min-w-0 truncate">Search knowledge bases, traces…</span>
           <kbd className="ml-auto hidden shrink-0 rounded border border-border bg-background px-1.5 text-[10px] font-medium text-muted-foreground sm:inline-block">
             Ctrl K
           </kbd>

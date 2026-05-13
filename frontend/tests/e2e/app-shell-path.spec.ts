@@ -99,6 +99,18 @@ test.describe('App-shell path E2E — dashboard + KB + eval + traces flow', () =
     await expect(page).toHaveURL(/\/chat/);
   });
 
+  test('no horizontal overflow at a 375px viewport (BUG-002)', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    for (const path of ['/dashboard', '/chat', '/kb']) {
+      await page.goto(path);
+      // At <md the sidebar is the off-canvas drawer, so the top bar must fit 375w on its own.
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth,
+      );
+      expect(overflow, `${path} overflows by ${overflow}px at 375w`).toBeLessThanOrEqual(1);
+    }
+  });
+
   test('AppShell chrome is present on app routes and absent on the auth pages', async ({
     page,
   }) => {
