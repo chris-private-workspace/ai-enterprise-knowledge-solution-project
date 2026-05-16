@@ -79,7 +79,7 @@ W19 does **NOT** address(stay W16 / Tier 2 / parallel track):
 | F0 Kickoff cascade | ~0.3d | ~0.2d(this session) | F0.1 Phase folder + plan/checklist/progress — `(this commit)`;F0.2 `audit/.gitkeep` — `(this commit)`;F0.3 `docs/adr/README.md` 5 reserved slots(0025-0029) + Next NNNN advance 0025→0030 — `(this commit)`;F0.4 `session-start.md` §10 W19 row + W18+→W20+ shift + Last-Updated + Update-history entry — `(this commit)`;F0.5 verified no `architecture.md` amendment at kickoff(F3 ADR drafts propose,per-ADR amendments land in W20+ kickoffs)— `(this commit)` |
 | F1 Mockup `.jsx` audit | ~0.8d | ~0.4d(this session) | `audit/W19-mockup-jsx-audit.md` landed:per-route table 14 Tier 1 + 8 Tier 2 + shell + 5 foundation files;deviation summary D1–D11 with F3 ADR feed;Tier 2 leak audit(1 leak Sidebar Workspace switcher + 1 borderline Chat Conversation History);visual identity verify(tokens match,1 NEW `--info` token);mock data schema match(3 NEW schemas needed + RBAC family massive)。5 parallel Read batches over 22 files / 11K lines。**5 H1 ADRs confirmed**(0025–0029)+ **3 NEW ADR candidates surface**(0030 polish bundle / 0031 chat advanced / 0032 topbar additive)— F2/F3/F4 take it forward — `(this commit)` |
 | F2 Backend gap map | ~0.8d | ~0.4d(this session)| `audit/W19-backend-gap-map.md` landed:28 endpoints across 13 route files inventoried + 38 schemas across 11 schema files mapped + per-route table 14 Tier 1 × surface × endpoint × status × Wave × Cn × backend file:line evidence + cumulative work list by Wave/Cn with effort estimates per ADR-0026/0027 option set。21 ✅ supported(KB CRUD + Docs + Chunks + Retrieval Test + Eval + Trace + Feedback + Auth + Cost + Query)+ 7 🟡 partial(/health enrich + KbConfig multimodal + Archive KB + crag_* fields verify + auth/me verify + Pipeline viz + embedding preview)+ 13 🔴 missing(Recent queries + Latest eval cache + Conversations + KB Images + Chunking preview + Doc detail enriched + Settings × 3 + /users + RBAC + Audit log + Notifications + /traces list)+ 2 🟣 mock-only(Workspace switcher + Labs sidebar)。Wave A blocker count = 6 small + 2 NEW endpoints;Wave B = 2 NEW;Wave C = MASSIVE option set scope。**Recommend F3+F6 picks**:ADR-0026 Option C hybrid + ADR-0027 Option B minimal 3-role → Wave C ~7 backend days fits single phase。ADR-0030/0032 candidates absorb into Wave A scope without separate ADR;ADR-0031 NEW(Chat advanced + Conversation History) keep as 6th ADR — `(this commit)` |
-| F3 ADR drafts × 5 | ~1.2d | — | — |
+| F3 ADR drafts × 5 + NEW ADR-0031 | ~1.2d(plan)+ 0.2d(NEW) | ~0.5d(this session)| **6 ADR drafts landed**:0025 KB Detail 8-tab(consensus)+ 0026 Settings 6-tab(option set 岔口 2)+ 0027 /users Tier 1.5 RBAC(option set 岔口 1)+ 0028 /kb/new 5-step(consensus)+ 0029 /doc-detail 3-pane(route name pick)+ **NEW 0031 Chat advanced**(option set Conversation History scope per F2 §6 promotion)。ADR-0030 + ADR-0032 SKIPPED per F2 absorb-vs-promote。`docs/adr/README.md` 6 rows + Next NNNN 0030→0033 with 0030/0032 SKIPPED note — `(this commit)` |
 | F4 Wave breakdown | ~0.4d | — | — |
 | F5 Tier 2 catalog | ~0.5d | — | — |
 | F6 Closeout | ~0.3d(synthesis;Chris review = own time block)| — | — |
@@ -187,7 +187,42 @@ Backend gap map per Tier 1 route × surface × required endpoint × current stat
 
 ### Next
 
-- F3 — 5 ADR drafts(0025-0029)+ NEW ADR-0031 Chat advanced surfaces with option set;ADR-0026 + ADR-0027 carry option sets for Chris pick at F6
+- F4 — Wave breakdown consume F1+F2+F3 outputs → `audit/W19-wave-breakdown.md`
+- F5 — Tier 2 disabled-affordance catalog
+- F6 — Chris approval(3 option set picks:ADR-0026 + ADR-0027 + ADR-0031)+ route name pick for ADR-0029 + W20+ kickoff trigger
+
+---
+
+## Day 3 — F3 6 ADR drafts landed(2026-05-16)
+
+### Built — 6 NEW ADR drafts(Status `Proposed`) — `(this commit)`
+
+Per plan F3.1-F3.5(5 ADRs)+ F2 §6 recommendation(promote NEW ADR-0031 as 6th):
+
+| ADR | Title | Type | Recommended pick |
+|---|---|---|---|
+| 0025 | KB Detail 5→8 tabs expansion | Consensus | Accept as-is |
+| 0026 | Settings 6-tab hub + Connections backend | **Option set 岔口 2**(A/B/C) | **Option C hybrid**(per F2 §6 — ~5 backend days,no new dep) |
+| 0027 | /users Tier 1.5 RBAC NET NEW | **Option set 岔口 1**(A/B/C) | **Option B minimal 3-role**(per F2 §6 — `users.role` column add only,~5 backend days) |
+| 0028 | /kb/new 5-step + Multimodal Tier 1/2 split | Consensus | Accept + clarify `slide_screenshots` Tier 1 promotion |
+| 0029 | /doc-detail 3-pane layout | Consensus + **route name pick** | Recommend `/kb/[id]/docs/[docId]` |
+| **0031 NEW** | Chat advanced surfaces(Conversation History + 3 citation modes + image cards + FeedbackBar + CRAG strip)| **Option set on Conversation History scope** | **Option A localStorage-only Tier 1**(per F2 §6 + C10 §7 spec — 0 backend days) |
+
+### ADR README updated
+
+- 6 ADR rows added with full context cell summaries(scope + recommendation + Wave dep)
+- Status `Reserved (W19 F3)` → `Proposed`(or `Proposed (option set/route name — Chris pick at F6)`)
+- "Next NNNN" advances 0030→0033 with **ADR-0030 + ADR-0032 SKIPPED note**(per F2 §6 — Dashboard richer + Trace 3 viz + /traces list + Topbar/Sidebar additive folded into Wave A scope without separate ADR)
+
+### Deviations from plan(R3)
+
+- **F3 ADR draft count 5→6**(ADR-0031 NEW per F2 §6 recommendation)— plan §2 F3.1-F3.5 stable + F3.6 NEW added。Plan changelog entry added at F3 close:「F3 promoted ADR-0031 Chat advanced surfaces from F2 §6 recommendation;ADR-0030 + ADR-0032 SKIPPED per absorb-into-Wave A decision;net effect 5→6 ADRs」
+- F3 collapsed ~0.5d actual vs ~1.2d planned(W12-W18 real-calendar collapse pattern continues)
+- **3 strategic option-set decisions deferred to F6**(rolling JIT R5)— ADR-0026 + ADR-0027 + ADR-0031 await Chris pick;F4 + F5 + F6 implementable in parallel without blocking on picks
+
+### Next
+
+- F4 — Wave breakdown consuming F1+F2+F3 outputs → `audit/W19-wave-breakdown.md`
 
 ---
 
