@@ -118,26 +118,56 @@ def _emit_trace_safe(
 ) -> None:
     """Best-effort Langfuse trace emit — swallow every failure mode.
 
-    Three SDK API shapes considered(any one suffices;all skipped if absent):
-      - `client.trace(name=..., output=..., metadata=...)`(2.x baseline)
-      - Legacy positional / keyword variants captured via try/except
+    Two SDK API shapes considered(v2 checked first to preserve backward-compat
+    behavior for tests / pinned-v2 deployments;v4 fallback added 2026-05-15
+    because Langfuse SDK 4.x dropped `client.trace()` for the OpenTelemetry-style
+    `client.start_observation()` context-manager pattern):
+      - `client.trace(name=, output=, metadata=)` — v2 / v3 baseline
+      - `client.start_observation(name=, as_type='span', output=, metadata=)`
+        then `.end()` — v4+(OTel rewrite)
 
     Tracer must NEVER block the wrapped function path on observability error。
     Test coverage:`test_observe.py::test_trace_emit_failure_swallowed`。
     """
     if client is None:
         return
+
+    # v2 / v3 path
     trace_fn = getattr(client, "trace", None)
-    if not callable(trace_fn):
+    if callable(trace_fn):
+        try:
+            trace_fn(name=span_name, output=output, metadata=metadata)
+        except Exception as exc:  # noqa: BLE001 — observability never breaks the request path
+            _logger.warning(
+                "trace_emit_failed",
+                stage=span_name,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+                sdk_path="v2",
+            )
+        return
+
+    # v4+ path(OTel)
+    start_obs_fn = getattr(client, "start_observation", None)
+    if not callable(start_obs_fn):
         return
     try:
-        trace_fn(name=span_name, output=output, metadata=metadata)
+        obs = start_obs_fn(
+            name=span_name,
+            as_type="span",
+            output=output,
+            metadata=metadata,
+        )
+        end_fn = getattr(obs, "end", None)
+        if callable(end_fn):
+            end_fn()
     except Exception as exc:  # noqa: BLE001 — observability never breaks the request path
         _logger.warning(
             "trace_emit_failed",
             stage=span_name,
             error_type=type(exc).__name__,
             error_message=str(exc),
+            sdk_path="v4",
         )
 
 
@@ -286,30 +316,66 @@ def _emit_generation_safe(
     """
     if client is None:
         return
+
+    # v2 / v3 path
     gen_fn = getattr(client, "generation", None)
-    if not callable(gen_fn):
-        # Fallback to trace() when generation() not available — keeps cost
-        # attribution best-effort across SDK versions
-        _emit_trace_safe(client, gen_name, output={"status": metadata.get("status", "ok")}, metadata=metadata)
+    if callable(gen_fn):
+        kwargs: dict[str, Any] = {"name": gen_name, "metadata": metadata}
+        if model is not None:
+            kwargs["model"] = model
+        if input_tokens is not None and output_tokens is not None:
+            kwargs["usage"] = {
+                "input": input_tokens,
+                "output": output_tokens,
+                "unit": "TOKENS",
+            }
+        try:
+            gen_fn(**kwargs)
+        except Exception as exc:  # noqa: BLE001
+            _logger.warning(
+                "generation_emit_failed",
+                stage=gen_name,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+                sdk_path="v2",
+            )
         return
-    kwargs: dict[str, Any] = {"name": gen_name, "metadata": metadata}
-    if model is not None:
-        kwargs["model"] = model
-    if input_tokens is not None and output_tokens is not None:
-        kwargs["usage"] = {
-            "input": input_tokens,
-            "output": output_tokens,
-            "unit": "TOKENS",
+
+    # v4+ path:`start_observation(as_type='generation', usage_details=...)`(v4
+    # dropped the `usage` "unit": "TOKENS" suffix — now plain `usage_details`
+    # `Dict[str, int]`).
+    start_obs_fn = getattr(client, "start_observation", None)
+    if callable(start_obs_fn):
+        kwargs_v4: dict[str, Any] = {
+            "name": gen_name,
+            "as_type": "generation",
+            "metadata": metadata,
         }
-    try:
-        gen_fn(**kwargs)
-    except Exception as exc:  # noqa: BLE001
-        _logger.warning(
-            "generation_emit_failed",
-            stage=gen_name,
-            error_type=type(exc).__name__,
-            error_message=str(exc),
-        )
+        if model is not None:
+            kwargs_v4["model"] = model
+        if input_tokens is not None and output_tokens is not None:
+            kwargs_v4["usage_details"] = {
+                "input": int(input_tokens),
+                "output": int(output_tokens),
+            }
+        try:
+            obs = start_obs_fn(**kwargs_v4)
+            end_fn = getattr(obs, "end", None)
+            if callable(end_fn):
+                end_fn()
+        except Exception as exc:  # noqa: BLE001
+            _logger.warning(
+                "generation_emit_failed",
+                stage=gen_name,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+                sdk_path="v4",
+            )
+        return
+
+    # No usable API surface on the client — last-resort fallback to trace()
+    # (kept for SDK versions older than v2 or stubs in tests).
+    _emit_trace_safe(client, gen_name, output={"status": metadata.get("status", "ok")}, metadata=metadata)
 
 
 async def observe_streaming(

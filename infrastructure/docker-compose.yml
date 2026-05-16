@@ -172,6 +172,27 @@ services:
       LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
       # POC 階段 disable signup,manual create account 後 lock
       AUTH_DISABLE_SIGNUP: "false"   # 第一次 setup 後可改 true
+      # ----------------------------------------------------------------
+      # Bootstrap provisioning(per Langfuse self-host docs)— 2026-05-14
+      # ----------------------------------------------------------------
+      # Container 首次啟動會 idempotently 建 user / org / project / API keys。
+      # 用呢個 path 而唔行 UI signup 嘅原因:Langfuse v2 UI signup 喺 fresh DB
+      # 偶爾會 silently fail 喺 org-creation step(只 log `Signup: Error creating
+      # user`,無 stack),令 user 半 created 永遠無法 login。Provisioning env
+      # vars 係 self-host bootstrap 嘅 official path,deterministic 又可 reset。
+      #
+      # ⚠️ Local dev only — production deploy 用 secrets manager,**唔好** commit
+      # production password / keys。`Admin123456` + 下面兩條 dummy UUID keys 純
+      # local convenience;.env 入面 LANGFUSE_PUBLIC_KEY / SECRET_KEY 必須對應。
+      LANGFUSE_INIT_USER_EMAIL: "chris@ekp.local"
+      LANGFUSE_INIT_USER_NAME: "Chris"
+      LANGFUSE_INIT_USER_PASSWORD: "Admin123456"
+      LANGFUSE_INIT_ORG_ID: "ekp-tier-1-dev"
+      LANGFUSE_INIT_ORG_NAME: "EKP Tier 1 Dev"
+      LANGFUSE_INIT_PROJECT_ID: "ekp-tier-1-dev"
+      LANGFUSE_INIT_PROJECT_NAME: "EKP Tier 1 Dev"
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: "pk-lf-028c8ce0-48dc-412d-af05-4d4424b02fb0"
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: "sk-lf-1823b515-dd2a-4353-ad11-b235e1c51f11"
     volumes:
       - langfuse-uploads:/app/uploads
     healthcheck:
