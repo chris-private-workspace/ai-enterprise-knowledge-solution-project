@@ -280,6 +280,86 @@ Real-calendar collapse pattern continues — same 1.8-4× collapse band as W12-W
 
 ---
 
+## Day 3 — 2026-05-17 (continued, second commit)
+
+### F3b — `/chat` frontend advanced surfaces(landed)
+
+**Branch**:`main`(ahead of `origin/main` by 2 commits:`550111e` F2 + `b6cf4df` F3a backend)。
+**Commits this day**:`(this commit)` — F3 frontend half。Single F3b commit per W18 F3 cadence precedent。
+
+#### What landed
+
+- **F3.5 + F3.6 Conversation History sidebar + message persistence** —
+  - NEW `frontend/lib/api/conversations.ts` — typed client mirroring `backend/api/schemas/conversation.py`(`list` / `get` / `create` / `update` / `remove` / `appendMessage`)+ extends `ApiClient` with NEW `delete<T = void>` method for 204-No-Content endpoints(needed by `DELETE /conversations/{id}`)。
+  - NEW `frontend/components/chat/conversation-history.tsx` — left collapsible pane:`useQuery(['conversations', 'list'])` 30s staleTime + invalidate-on-mutation + "New chat" button + active-row highlight + double-click rename(inline `<input>` with Enter commit / Escape cancel / blur commit)+ hover-reveal delete icon → shadcn `<Dialog>` confirmation modal。401 graceful fallback("Sign in to keep your chat history.")。
+  - `frontend/app/(app)/chat/page.tsx` rewrite — `ensureConversation()` lazy-creates a conversation on first user send if none active(`POST /conversations` with `kb_id`)。`loadConversation(id)` hydrates from `GET /conversations/{id}` and remaps to local Message shape。Per-turn persistence:user prompt POSTed before the SSE stream;assistant turn POSTed after the `done` event with full content + collected citations。Both writes are best-effort `.catch(() => {})` so a transient 401 / network blip doesn't block the SSE render(on-page state is the source of truth for the active session)。
+- **F3.7 3 citation modes** — `inline` / `footnote` / `sidebar` toggle in the page `<ChatHeader>` (fieldset radio-style pills,`aria-pressed`-driven)。Persisted to `localStorage['ekp-citation-mode']`。Render branches:
+  - `inline` = existing 2-col CitationCard grid below the bubble(W3 preserved baseline)
+  - `footnote` = `<ol>` list with `<CitationPill>` indices + doc title summary line
+  - `sidebar` = right-side `<aside>` (lg-only) showing the latest assistant turn's citations
+- **F3.8 `<InlineImageCard>`** — thin extracted button wrapping `<img>` thumbnail + page-level modal click handler。CitationCard now uses it instead of inlined `<button><img>`。
+- **F3.9 `<ImageGallery>`** — aggregates `citations.embedded_images[0]` across ALL messages into a 3-col grid below the chat stream;click → page-level modal。
+- **F3.10 `<CitationPill>` hover popover** — `[n]` pill with 100ms hover-grace popover showing chunk title / doc title / section path / score + "Open source document →" deep-link。Built from a vanilla `<div>` positioned absolutely(no shadcn `<Popover>` primitive yet — Karpathy §1.2 add the primitive when a second use site appears)。
+- **F3.11 `<FeedbackBar>`** — thumbs up = one-shot write;thumbs down = inline disclosure with `<select>` tag dropdown(`inaccurate` / `incomplete` / `off-topic` / `other`)+ textarea + Send。Tag prefixed into the existing W8 `POST /feedback` `comment` field as `[tag] text…` — no backend schema change(Karpathy §1.2 / plan F3.11 literal "extends W17 thumbs UI")。Status state machine `idle → expanded → submitting → submitted / error`。
+- **F3.12 `<CragStrip>`** — small `Sparkles` + "CRAG triggered — N iteration(s)" chip rendered above assistant content。Dormant in the SSE path(stream is L3-only per architecture.md §3.5;the L2 CRAG loop only fires on non-stream `/query`)— wiring stays in place for Wave B+ L3 enable。`crag_reasoning` deliberately omitted per F3.13 deferral。
+
+#### Acceptance criteria status(per checklist.md)
+
+- [x] F3.5 NEW `frontend/lib/api/conversations.ts` + NEW `frontend/components/chat/conversation-history.tsx`;`useQuery` list + invalidate-after-mutation + "New chat" + double-click rename + delete-confirm modal + 401 graceful fallback
+- [x] F3.6 SSE streaming preserved exactly;`POST /conversations/{id}/messages` runs on the user turn + on the assistant `done` event;best-effort catch keeps the chat usable when persistence layer is unauthed/down
+- [x] F3.7 3 citation modes inline / footnote / sidebar + `localStorage['ekp-citation-mode']` persistence + `aria-pressed` toggle
+- [x] F3.8 NEW `frontend/components/chat/inline-image-card.tsx`;CitationCard now reuses it
+- [x] F3.9 NEW `frontend/components/chat/image-gallery.tsx`;aggregates `embedded_images[0]` across all messages into a 3-col grid
+- [x] F3.10 NEW `frontend/components/chat/citation-pill.tsx`;hover popover via `onMouseEnter`/`onMouseLeave` + 100ms grace + focus-visible support
+- [x] F3.11 NEW `frontend/components/chat/feedback-bar.tsx`;tag dropdown + comment + `POST /feedback` write with `[tag] text` prefix
+- [x] F3.12 NEW `frontend/components/chat/crag-strip.tsx`;dormant in Tier 1 stream path(L3-only)but wired for Wave B+
+- [x] F3.14 `pnpm exec tsc --noEmit` exit 0;`pnpm exec next lint` "No ESLint warnings or errors";`Grep '\[oklch'` across `frontend/` = **0**(W15→W18→W20 F1+F2+F3b milestone preserved)
+- [x] F3.15 Vitest **W20 baseline 6 files / 21 tests preserved**(no regression);F3b component tests scaffold deferred → F8.4 per plan F3.15 literal "(F8.4 batches)" + W18 F1→F8.4 / W20 F1.7→F8.4 precedent
+- [x] F3.16 File header docstrings on all 7 NEW files + the rewritten `chat/page.tsx`(per CLAUDE.md §3.2)
+
+#### Deviations(if any)
+
+| F# | Plan said | Actual | Why | Approver |
+|---|---|---|---|---|
+| F3.5 sidebar via AppShell focus-mode | "via `<AppShell>` focus-mode toggle pattern" | Local collapse pattern inside the chat page(separate `localStorage['ekp-chat-history-collapsed']`)— AppShell's own focus-mode collapses the AppShell sidebar, which is orthogonal to the chat-internal history pane | The AppShell collapse hides the *outer* nav;the chat history pane lives *inside* the chat page。Reusing the AppShell mechanism would require the page to read/write AppShell state(violates separation of concerns)。Same persistence pattern,distinct key | AI per Karpathy §1.3 surgical |
+| F3.10 popover primitive | "hover popover" implied a `<Popover>` primitive | Vanilla `<div>` toggled by `onMouseEnter`/`onMouseLeave` + 100ms grace + `onFocus`/`onBlur` keyboard a11y | shadcn `<Popover>` primitive not yet in this repo(only `<DropdownMenu>` + `<Dialog>` + `<Sheet>`)。Karpathy §1.2 — add the primitive only when a second use site appears。Single-use vanilla popover is ~20 lines of pure presentation | AI per Karpathy §1.2 simplicity |
+| F3.11 tag dropdown backend | Tag dropdown implied a new backend field | Tag prefixed into existing `comment` field as `[tag] text…` | Existing `FeedbackRequest.comment: str \| None` already exists from W8;adding a `tag` field would require Pydantic model change + DB migration + signal-report parser update。Karpathy §1.2 — prefix string parses correctly in any downstream tag-aware analytics | AI per Karpathy §1.2 + plan F3.11 literal "POST /feedback writes per existing W8 endpoint" |
+| F3.15 Vitest scaffolding | "tests batches (F8.4 batches)" | All NEW component tests deferred → F8.4(same as F1.7 + W18 F1)| Plan literal explicitly "(F8.4 batches)" — F8.4 collects 5 NEW test files together(notifications-menu + disabled-affordance + conversation-history + kb-new-wizard + kb-detail-tabs)for one test-infra commit。W20 baseline 21 tests preserved unchanged in F3b | Per plan F3.15 literal + F1.7 precedent |
+| Sidebar collapse `localStorage` key | Plan said "via AppShell focus-mode toggle pattern" | NEW key `ekp-chat-history-collapsed`(distinct from `ekp-sidebar-collapsed` which AppShell owns) | See F3.5 deviation above — separation of concerns | AI per Karpathy §1.3 |
+
+#### Decisions / new OQ / risk surfaced
+
+- **Best-effort persistence with `.catch(() => {})`** — the on-page Message state stays the source of truth for the active session;a 401 / network blip on the persistence layer doesn't block the SSE render or lose a turn from the user's perspective(refresh would lose the unpersisted tail, which is acceptable Tier 1 behaviour)。
+- **`<CragStrip>` dormant in Tier 1 SSE path** — wired but never renders because the SSE stream's `done` event doesn't carry CRAG fields and the streaming path is L3-only per architecture.md §3.5。Surfaces the L2 outcome when non-stream callers(eval / Wave B+ L3)write into the conversation。
+- **Citation-mode `sidebar` shows latest assistant turn only** — full-history right-pane (multi-turn aggregation) would compete with `<ImageGallery>` for footprint。Latest-turn matches Dify behaviour + matches the per-message focus that the `inline` mode also surfaces。Wave B+ may reconsider if user feedback wants multi-turn citation drawer。
+- **`<CitationPill>` doc deep-link** — currently points at `/kb/drive_user_manuals/docs/{doc_id}` because the single-KB POC's KB id is constant。Wave B+ multi-KB Q (W7+) will require the citation to carry `kb_id` (currently the schema doesn't — see existing `Citation` shape in `lib/api/query.ts`)。Flagged in component comment;not in scope for F3b。
+
+#### Actual vs Planned Effort
+
+| F | Planned | Actual | Δ |
+|---|---|---|---|
+| F3.5 Conversation History sidebar component + api/conversations.ts + ApiClient.delete | 90 min | ~50 min | -45% |
+| F3.6 chat/page.tsx rewrite for persistence + ensureConversation + loadConversation | 60 min | ~30 min | -50% |
+| F3.7 3 citation modes(inline / footnote / sidebar)+ ChatHeader toggle + localStorage | 45 min | ~25 min | -45% |
+| F3.8 InlineImageCard extract | 15 min | ~10 min | -33% |
+| F3.9 ImageGallery aggregate | 20 min | ~15 min | -25% |
+| F3.10 CitationPill hover popover(vanilla) | 30 min | ~20 min | -33% |
+| F3.11 FeedbackBar comment + tag + POST /feedback | 30 min | ~20 min | -33% |
+| F3.12 CRAG strip(no reasoning) | 15 min | ~10 min | -33% |
+| F3.14 + F3.16 verify(tsc + lint + [oklch + Vitest baseline)+ docstrings | 30 min | ~20 min | -33% |
+| Progress.md Day 3 second entry + commit | 30 min | ~25 min | -17% |
+| **F3b Day 3 frontend total** | **~6 hours**(2 plan-days frontend) | **~3.5 hours** | **-42%** |
+
+Real-calendar collapse pattern continues — F3 backend ~3h + F3 frontend ~3.5h = ~6.5h actual vs ~4 plan-days budget(W12-W18 + W20 F1/F2/F3a established collapse band 1.8-4×;F3 lands at ~5× collapse — within band)。
+
+#### Carry-overs to next Day-N
+
+- **F4 — `/kb` list polish + `/kb/new` 5-step wizard** per ADR-0028(C09 + C02 + C01)— next deliverable after F3b commit + push。Backend KbConfig extend(F4.1)+ orchestrator branches(F4.2)+ frontend list view toggle(F4.3)+ 5-step wizard(F4.4)。
+- **F8.4 Vitest scaffolding batch** — accumulating:`notifications-menu.test.tsx`(F1.7)+ `disabled-affordance.test.tsx`(F1.7)+ `conversation-history.test.tsx`(F3.15)+ `kb-new-wizard.test.tsx`(F4.7)+ `kb-detail-tabs.test.tsx`(F5.10)。Five files batched into a single F8.4 commit at end of phase。
+- **Wave B+ candidates**(unchanged from F3a Day 3 entry):`crag_reasoning` field in CRAG loop emitter;LLM-summarize conversation title;sidebar mode multi-turn aggregation;Citation `kb_id` field for multi-KB deep-link;real-I/O `/health` pings(F2 deferral)。
+
+---
+
 <!-- Day 3+ frontend entries to be appended. Template:
 
 ## Day N — YYYY-MM-DD

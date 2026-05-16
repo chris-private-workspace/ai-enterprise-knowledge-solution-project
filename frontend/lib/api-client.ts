@@ -161,6 +161,26 @@ export class ApiClient {
     }
     return response.json() as Promise<T>;
   }
+
+  /**
+   * DELETE — used by routes that return `204 No Content` (the body is empty,
+   * so we don't `.json()` it; the generic `T` is typically `void`). Callers
+   * that need a JSON response from DELETE can wrap this similarly.
+   */
+  async delete<T = void>(path: string): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: {
+        ...buildAuthHeader(),
+        ...getCsrfHeaders(),
+      },
+    });
+    if (!response.ok) {
+      throw await buildApiError(response);
+    }
+    return undefined as T;
+  }
 }
 
 export const apiClient = new ApiClient();
