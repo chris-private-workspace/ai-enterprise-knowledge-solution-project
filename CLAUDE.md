@@ -112,7 +112,7 @@ Multi-step task 要先講 plan:
 | **Risk-related decision / mitigation update** | [`docs/01-planning/RISK_REGISTER.md`](./docs/01-planning/RISK_REGISTER.md)(living)+ `docs/architecture.md §8`(frozen baseline)| 新 risk / status update 入 living register,§8 不動 |
 | Setup local dev environment | `docs/setup.md` | 包括 Azurite、Langfuse、docker-compose、env vars |
 | 寫 / 改 backend feature | `docs/architecture.md` §3 + §4 | RAG core + application architecture |
-| 寫 / 改 frontend feature | `docs/architecture.md` §5 + Dify ref(see §7) | UI specifications + visual identity policy |
+| 寫 / 改 frontend feature | **`references/design-mockups/DESIGN_README.md` + `PAGE_INVENTORY.md` FIRST**(high-fidelity click-through HTML prototype + per-route Cn mapping + Tier 1/2 boundary)→ `docs/architecture.md` §5 + Dify ref(see §7) | UI work first stop:open `references/design-mockups/EKP Platform.html` 喺 browser、click 入要實作嘅頁、inspect `ekp-page-*.jsx`;然後再睇 spec §5。Prototype 對 spec 有 3 處 design-stage expansion(KB Detail 5→8 tabs / Settings v1→6 tabs / `/users` NET NEW Tier 1.5)— 屬 proposal,implementation trigger H1 ADR(per §5.1)|
 | 加 / 改 API endpoint | `docs/api-contract.md`(W2 末 ready) | 在此之前用 `docs/architecture.md` §4.4 + §4.5 |
 | 加 vendor / 換 component | **STOP** — 必須先確認(see §5.2 Hard Constraint H2) | 寫 ADR `docs/adr/`(W2 末 framework ready) |
 | 改架構 / 違反 §3 / §4 設計 | **STOP** — 必須先確認(see §5.1 Hard Constraint H1) | 同 |
@@ -382,6 +382,10 @@ ADR 文件位置:`docs/adr/NNNN-short-title.md`,NNNN 係 4-digit zero-padded seq
 
 ## 7. Dify Reference Workflow(critical 重複強調)
 
+> **Disambiguation — `references/` 兩個子目錄不同性質**:
+> - **`references/dify/`** — **第三方 read-only reference**(license risk;H3 strict no-copy)— 本節 cover
+> - **`references/design-mockups/`** — **EKP 自有 high-fidelity HTML prototype**(2026-05-16 landed;design spec for `frontend/`)— 唔受 H3 限制,但**唔可以**直接 copy `ekp-page-*.jsx` stripped components 入 `frontend/`,必須用 shadcn/ui + Tailwind 重寫(per CLAUDE.md §3.2 H2)。入口:`references/design-mockups/DESIGN_README.md` + `PAGE_INVENTORY.md`。Frontend work 之前 **first stop**(per §2 routing)
+
 **Setup**(W1 Day 1):
 ```bash
 mkdir -p references && cd references
@@ -573,6 +577,7 @@ EKP Tier 1 — Strict Mode
 ---
 
 **End of CLAUDE.md**
+**Version 1.5 — 2026-05-16 design-mockups landed**(§2 routing「寫 / 改 frontend feature」加 `references/design-mockups/DESIGN_README.md` + `PAGE_INVENTORY.md` first-stop + 3 處 design-stage expansion 標註;§7 標題下加 disambiguation note 區分 `references/dify/`(third-party H3-bound)vs `references/design-mockups/`(EKP 自有 prototype,唔受 H3 但仍受 H2 — 唔可直接 copy stripped components,必須用 shadcn/ui 重寫))
 **Version 1.4 — 2026-05-16 housekeeping catch-up for accumulated W18+ state**(§0 spec v5→v6 frozen + Tier 1 trajectory 17-phase footnote;§2 12 modules→13 modules + decision-form 21→22 OQ;§5.1 H1 v5→v6;§5.2 H2 vendor table 加 Postgres ADR-0023 + ACS Email ADR-0014;§8 OQ count 21→22 + Q22 note + 17-Resolved-5-Open snapshot;§9 Sprint Awareness extended W1–W18 + W19+ with actual status / Gate verdicts / closed dates;§10.3 12 components / 21 OQ / W1-W12 → 13 / 22 / W1-W18 + W19+ rolling JIT;§10.4 W01-W12 example → W01-W18+;Appendix A Spec v5→v6)
 **Version 1.3 — added §10 Phase Planning Workflow + R1–R5 binding rules; renumbered §11–§14; §2 routing table + §12 self-verification updated**
 **Effective: from W1 Day 1**

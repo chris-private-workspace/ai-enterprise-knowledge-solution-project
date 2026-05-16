@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EKP — Enterprise Knowledge Platform</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="ekp-data.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="ekp-shell.jsx"></script>
+<script type="text/babel" src="ekp-page-dashboard.jsx"></script>
+<script type="text/babel" src="ekp-page-kb.jsx"></script>
+<script type="text/babel" src="ekp-page-kb-extras.jsx"></script>
+<script type="text/babel" src="ekp-page-kb-new.jsx"></script>
+<script type="text/babel" src="ekp-page-doc-detail.jsx"></script>
+<script type="text/babel" src="ekp-page-chat.jsx"></script>
+<script type="text/babel" src="ekp-page-trace.jsx"></script>
+<script type="text/babel" src="ekp-page-eval.jsx"></script>
+<script type="text/babel" src="ekp-page-misc.jsx"></script>
+<script type="text/babel" src="ekp-page-settings-tabs.jsx"></script>
+<script type="text/babel" src="ekp-page-users.jsx"></script>
+<script type="text/babel" src="ekp-page-auth.jsx"></script>
+<script type="text/babel" src="ekp-page-labs-1.jsx"></script>
+<script type="text/babel" src="ekp-page-labs-2.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+// ── Tweaks defaults ────────────────────────────────────────────────────────
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "light",
+  "density": "comfortable",
+  "retrievalViz": "bars",
+  "traceViz": "vertical",
+  "citationPlacement": "sidebar"
+}/*EDITMODE-END*/;
+
+// ── Root app ───────────────────────────────────────────────────────────────
+function App() {
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  // expose a global setter so deep child components (in-page viz selectors)
+  // can mutate tweaks without prop-drilling. This is a prototype convenience —
+  // not a pattern for the real Next.js codebase.
+  useEffect(() => { window.__setTweak = setTweak; }, [setTweak]);
+
+  // Apply theme class to html element
+  useEffect(() => {
+    document.documentElement.className = tweaks.theme === "dark" ? "dark" : "";
+    document.documentElement.setAttribute("data-density", tweaks.density);
+  }, [tweaks.theme, tweaks.density]);
+
+  // ── Pseudo-router (state-based) ──────────────────────────────────────────
+  // route shape: { name: "dashboard" | "chat" | "kb" | "kb-detail" | "kb-upload"
+  //                     | "trace-detail" | "traces" | "eval" | "settings", params: {...} }
+  const [route, setRoute] = useState({ name: "dashboard", params: {} });
+
+  // The route uses a richer hash format for doc-detail: doc-detail/{kbId}/{docId}.
+  // Our default hash-sync only knows about kb-detail's {name}/{kbId}/{tab} shape, so
+  // override here for the routes that use a different scheme.
+  useEffect(() => {
+    const sync = () => {
+      const h = window.location.hash.slice(1) || "dashboard";
+      const [name, ...rest] = h.split("/");
+      if (name === "doc-detail") {
+        setRoute({ name, params: { kbId: rest[0], docId: rest[1] } });
+      } else if (name === "trace-detail") {
+        setRoute({ name, params: { traceId: rest[0] } });
+      } else if (name === "kb-detail" || name === "kb-upload") {
+        setRoute({ name, params: { kbId: rest[0], tab: rest[1] } });
+      } else {
+        setRoute({ name, params: {} });
+      }
+    };
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+
+  const navigate = (name, params = {}) => {
+    setRoute({ name, params });
+    // friendly hashes for deeplinks
+    const hash = name === "kb-detail" ? `kb-detail/${params.kbId}${params.tab ? "/" + params.tab : ""}`
+              : name === "kb-upload" ? `kb-upload/${params.kbId}`
+              : name === "doc-detail" ? `doc-detail/${params.kbId}/${params.docId}`
+              : name === "trace-detail" ? `trace-detail/${params.traceId || "trace_2026_05_15_a7f4b2c1"}`
+              : name;
+    window.history.replaceState(null, "", "#" + hash);
+  };
+
+  const toggleTheme = () => setTweak("theme", tweaks.theme === "dark" ? "light" : "dark");
+
+  // Resolve current page + breadcrumbs
+  let page, breadcrumbs;
+  if (route.name === "dashboard") {
+    page = <PageDashboard onNavigate={navigate} />;
+    breadcrumbs = ["Dashboard"];
+  } else if (route.name === "chat") {
+    page = <PageChat tweaks={tweaks} onNavigate={navigate} />;
+    breadcrumbs = ["Chat"];
+  } else if (route.name === "kb") {
+    page = <PageKbList onNavigate={navigate} tweaks={tweaks} />;
+    breadcrumbs = ["Knowledge"];
+  } else if (route.name === "kb-new") {
+    page = <PageKbNew onNavigate={navigate} />;
+    breadcrumbs = ["Knowledge", "New KB"];
+  } else if (route.name === "kb-detail") {
+    const kb = window.MOCK_KBS.find((k) => k.kb_id === route.params.kbId) || window.MOCK_KBS[0];
+    page = <PageKbDetail kbId={route.params.kbId || "drive-manuals"} initialTab={route.params.tab} onNavigate={navigate} tweaks={tweaks} />;
+    breadcrumbs = ["Knowledge", kb.name];
+  } else if (route.name === "kb-upload") {
+    const kb = window.MOCK_KBS.find((k) => k.kb_id === route.params.kbId) || window.MOCK_KBS[0];
+    page = <PageUploadWizard kbId={route.params.kbId || "drive-manuals"} onNavigate={navigate} />;
+    breadcrumbs = ["Knowledge", kb.name, "Upload"];
+  } else if (route.name === "doc-detail") {
+    const kb = window.MOCK_KBS.find((k) => k.kb_id === route.params.kbId) || window.MOCK_KBS[0];
+    page = <PageDocDetail kbId={route.params.kbId || "drive-manuals"} docId={route.params.docId || "d365_fno_gl_v2.4"} onNavigate={navigate} />;
+    breadcrumbs = ["Knowledge", kb.name, "Document"];
+  } else if (route.name === "trace-detail") {
+    page = <PageTrace tweaks={tweaks} onNavigate={navigate} />;
+    breadcrumbs = ["Traces", "Trace detail"];
+  } else if (route.name === "traces") {
+    page = <PageTracesList onNavigate={navigate} tweaks={tweaks} />;
+    breadcrumbs = ["Traces"];
+  } else if (route.name === "eval") {
+    page = <PageEval onNavigate={navigate} tweaks={tweaks} />;
+    breadcrumbs = ["Eval"];
+  } else if (route.name === "settings") {
+    page = <PageSettingsRich theme={tweaks.theme} onToggleTheme={toggleTheme} />;
+    breadcrumbs = ["Settings"];
+  } else if (route.name === "users") {
+    page = <PageUsers onNavigate={navigate} tweaks={tweaks} />;
+    breadcrumbs = ["Users & access"];
+  } else if (route.name === "login") {
+    page = <PageLogin onNavigate={navigate} onToggleTheme={toggleTheme} theme={tweaks.theme} />;
+    breadcrumbs = null;
+  } else if (route.name === "register") {
+    page = <PageRegister onNavigate={navigate} onToggleTheme={toggleTheme} theme={tweaks.theme} />;
+    breadcrumbs = null;
+  } else if (route.name === "labs-graph-rag") {
+    page = <PageLabsGraphRag onNavigate={navigate} />;
+    breadcrumbs = ["Labs", "GraphRAG"];
+  } else if (route.name === "labs-agents") {
+    page = <PageLabsAgents onNavigate={navigate} />;
+    breadcrumbs = ["Labs", "Multi-Agent"];
+  } else if (route.name === "labs-languages") {
+    page = <PageLabsLanguages onNavigate={navigate} />;
+    breadcrumbs = ["Labs", "Multi-Language"];
+  } else if (route.name === "labs-voice") {
+    page = <PageLabsVoice onNavigate={navigate} />;
+    breadcrumbs = ["Labs", "Voice I/O"];
+  } else if (route.name === "labs-finetune") {
+    page = <PageLabsFineTune onNavigate={navigate} />;
+    breadcrumbs = ["Labs", "Fine-Tune"];
+  } else if (route.name === "labs-workflows") {
+    page = <PageLabsWorkflows onNavigate={navigate} />;
+    breadcrumbs = ["Labs", "Workflow Builder"];
+  } else if (route.name === "labs-personalization") {
+    page = <PageLabsPersonalization onNavigate={navigate} />;
+    breadcrumbs = ["Labs", "Personalization"];
+  } else if (route.name === "labs-tenancy") {
+    page = <PageLabsTenancy onNavigate={navigate} />;
+    breadcrumbs = ["Labs", "Multi-Tenancy"];
+  } else {
+    page = <PageDashboard onNavigate={navigate} />;
+    breadcrumbs = ["Dashboard"];
+  }
+
+  // Sidebar mapping route → active key
+  const sidebarRoute = route.name.startsWith("kb") ? "kb"
+                     : route.name.startsWith("trace") ? "traces"
+                     : route.name;
+
+  return (
+    <>
+      {breadcrumbs === null ? page : (
+        <AppShell
+          route={sidebarRoute}
+          onNavigate={navigate}
+          breadcrumbs={breadcrumbs}
+          theme={tweaks.theme}
+          onToggleTheme={toggleTheme}
+          focusMode={false}
+        >
+          {page}
+        </AppShell>
+      )}
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Theme">
+          <TweakRadio label="Mode" value={tweaks.theme}
+                      options={["light", "dark"]}
+                      onChange={(v) => setTweak("theme", v)} />
+        </TweakSection>
+
+        <TweakSection label="Density">
+          <TweakRadio label="Spacing" value={tweaks.density}
+                      options={["compact", "comfortable", "comfy"]}
+                      onChange={(v) => setTweak("density", v)} />
+        </TweakSection>
+
+        <TweakSection label="Retrieval Testing">
+          <TweakRadio label="Viz" value={tweaks.retrievalViz}
+                      options={["list", "bars", "heatmap"]}
+                      onChange={(v) => setTweak("retrievalViz", v)} />
+          <TweakButton label="→ Open Retrieval Testing tab"
+                       onClick={() => navigate("kb-detail", { kbId: "drive-manuals", tab: "retrieval-test" })} />
+        </TweakSection>
+
+        <TweakSection label="Trace 9-stage">
+          <TweakRadio label="Layout" value={tweaks.traceViz}
+                      options={[
+                        { value: "vertical",  label: "Vertical" },
+                        { value: "waterfall", label: "Waterfall" },
+                        { value: "flame",     label: "Flame" },
+                      ]}
+                      onChange={(v) => setTweak("traceViz", v)} />
+          <TweakButton label="→ Open Trace detail"
+                       onClick={() => navigate("trace-detail", { traceId: "trace_2026_05_15_a7f4b2c1" })} />
+        </TweakSection>
+
+        <TweakSection label="Chat citations">
+          <TweakRadio label="Placement" value={tweaks.citationPlacement}
+                      options={[
+                        { value: "sidebar", label: "Sidebar" },
+                        { value: "inline",  label: "Inline" },
+                        { value: "popover", label: "Popover" },
+                      ]}
+                      onChange={(v) => setTweak("citationPlacement", v)} />
+          <TweakButton label="→ Open Chat" onClick={() => navigate("chat")} />
+        </TweakSection>
+
+        <TweakSection label="Jump to">
+          <TweakButton label="Dashboard" secondary onClick={() => navigate("dashboard")} />
+          <TweakButton label="KB list" secondary onClick={() => navigate("kb")} />
+          <TweakButton label="New KB wizard" secondary onClick={() => navigate("kb-new")} />
+          <TweakButton label="Document detail" secondary onClick={() => navigate("doc-detail", { kbId: "drive-manuals", docId: "d365_fno_gl_v2.4" })} />
+          <TweakButton label="Images tab" secondary onClick={() => navigate("kb-detail", { kbId: "drive-manuals", tab: "images" })} />
+          <TweakButton label="Chunking Lab" secondary onClick={() => navigate("kb-detail", { kbId: "drive-manuals", tab: "chunking" })} />
+          <TweakButton label="Upload wizard" secondary onClick={() => navigate("kb-upload", { kbId: "drive-manuals" })} />
+          <TweakButton label="Eval console" secondary onClick={() => navigate("eval")} />
+          <TweakButton label="Traces list" secondary onClick={() => navigate("traces")} />
+          <TweakButton label="Settings" secondary onClick={() => navigate("settings")} />
+          <TweakButton label="Login page" secondary onClick={() => navigate("login")} />
+          <TweakButton label="Register page" secondary onClick={() => navigate("register")} />
+        </TweakSection>
+
+        <TweakSection label="Labs · Tier 2">
+          <TweakButton label="GraphRAG" secondary onClick={() => navigate("labs-graph-rag")} />
+          <TweakButton label="Multi-Agent" secondary onClick={() => navigate("labs-agents")} />
+          <TweakButton label="Multi-Language" secondary onClick={() => navigate("labs-languages")} />
+          <TweakButton label="Voice I/O" secondary onClick={() => navigate("labs-voice")} />
+          <TweakButton label="Custom Fine-Tune" secondary onClick={() => navigate("labs-finetune")} />
+          <TweakButton label="Workflow Builder" secondary onClick={() => navigate("labs-workflows")} />
+          <TweakButton label="Personalization" secondary onClick={() => navigate("labs-personalization")} />
+          <TweakButton label="Multi-Tenancy" secondary onClick={() => navigate("labs-tenancy")} />
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>

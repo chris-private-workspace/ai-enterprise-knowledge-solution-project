@@ -42,6 +42,7 @@ references/dify/
 references/*/
 !references/REFERENCE_USAGE.md
 !references/.gitkeep
+!references/design-mockups/
 
 
 # ----------------------------------------------------------------------------
