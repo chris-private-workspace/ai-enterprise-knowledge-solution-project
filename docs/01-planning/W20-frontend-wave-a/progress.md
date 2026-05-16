@@ -72,7 +72,71 @@ Per W19 F5 27-affordance Tier 2 catalog + `<DisabledAffordance>` shared componen
 
 ---
 
-<!-- Day 1+ entries to be appended by AI as F1-F9 land. Each entry follows the template:
+## Day 1 — 2026-05-16
+
+### F1 — `<AppShell>` topbar + sidebar polish per ADR-0032 absorbed scope(landed)
+
+**Branch**:`main`(post-W20 kickoff `40964b6`,now ahead of `origin/main` 1 commit)。
+**Commits this day**:`(this commit)` — single F1 commit covering F1.1+F1.2+F1.3+F1.4+F1.5。
+
+#### What landed
+
+- **F1.5** NEW `frontend/components/ui/disabled-affordance.tsx`(shared `<DisabledAffordance>` per W19 F5 §4 spec)— props `variant` ∈ {`p1-strict` default,`p3-preview`} + `reason` + `tier2Trigger?` + `showBadge?`(p3 only)+ `className?`;`aria-disabled="true"` + `title` + `aria-label`;p1-strict 用 `opacity-60 pointer-events-none`,p3-preview 用 `opacity-75` + 可選 inline `TIER 2` badge(`bg-accent/10 text-accent border-accent/30`)。Catalog §4 用 `bg-accent/12` → rounded 至 `bg-accent/10`(Tailwind default opacity step;視覺差異忽略;避免 one-off tailwind.config 擴展)。
+- **F1.1** NEW `frontend/components/nav/notifications-menu.tsx`(per ADR-0032 absorb)— `<DropdownMenu>` triggered by `<Bell>` + counter badge(absolute-positioned,`bg-destructive` semantic token);`useQuery(['notifications'])` off `GET /notifications` with `retry: false`(W19 F2 item 21 endpoint optional)+ refetchInterval 60s;404 → static `MOCK_NOTIFICATIONS` fallback(3 deterministic items);Mark all read button(disabled if no unread or backend absent → wrapped in `<DisabledAffordance>`);See all → `<DisabledAffordance>`(no `/notifications` route in Wave A scope);per-item relative time formatter(just now / Nm / Nh / Nd ago);unread-dot indicator + locally-marked-read state(`useState<Set<string>>`)。
+- **F1.2** AppShell topbar — **Workspace switcher disabled chip**(`<DisabledAffordance reason="Multi-workspace support — Tier 2 per architecture.md §11" tier2Trigger="multi-tenancy">` 包住 disabled `<button>` 顯示 `Briefcase` icon + `Ricoh · RAPO` label + `ChevronDown` icon;`hidden sm:inline-flex`)— fixes W19 F1 §2.3 leak。**Language toggle migrated** from inline `disabled`+`title` to `<DisabledAffordance reason="Multi-language (JP / ZH) — coming in a later tier" tier2Trigger="i18n machinery">`(W19 S1 catalog item consume shared component instead of ad-hoc disabled+title)。
+- **F1.3** AppShell sidebar — `NAV_ITEMS` 重組為 `NAV_SECTIONS`(`{ title, items }[]`)— Main(Dashboard / Chat / Knowledge Bases)+ Tools(Eval Console / Traces);NEW `NavGroupHeader` sub-component(`aria-hidden="true"` — visual-only,not separate landmark;`mt-3 px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground first:mt-0`);所有 5 個 nav item 仍喺單一 `<nav aria-label="Primary">` 入面(W18 Vitest baseline test 對 5 items / `aria-current="page"` / focus-mode toggle 不變)。
+- **F1.4** AppShell sidebar — **Labs section 不渲染**(W19 F5.4 Option C — prototype-only;`/labs/*` routes NOT 加入 `frontend/`);comment 標 future Tier 2 enablement = add a third `NavSection` behind env flag。
+- **F1 wire-in** Topbar 右 cluster 加 `<NotificationsMenu />` 喺 Language toggle 之前;language toggle 上面 docstring update reflect F1.1+F1.2+F1.3+F1.4。
+
+#### Acceptance criteria status(per checklist.md)
+
+- [x] F1.1 NEW `notifications-menu.tsx` — `<Bell>` trigger + DropdownMenu + counter badge + useQuery + mock fallback + Mark all read + See all → disabled affordance + file header docstring
+- [x] F1.2 Workspace switcher disabled affordance — `<DisabledAffordance>` 包住 disabled `<button>` + `Ricoh · RAPO` label + tooltip(W19 §2.3 leak fix);Language toggle migrated to `<DisabledAffordance>`
+- [x] F1.3 Sidebar Tools sub-section — NAV_SECTIONS structure(Main + Tools)+ `<NavGroupHeader>` sub-component(visual-only,`aria-hidden="true"`)
+- [x] F1.4 Labs section hidden(deliberate omission — no `/labs/*` routes in `frontend/`)
+- [x] F1.5 NEW `disabled-affordance.tsx` — shared per W19 F5 §4 spec + p1-strict / p3-preview variants + TIER 2 badge + file header docstring
+- [x] F1.6 Tokens 100%(`Grep '\[oklch'` across `frontend/` = **0** preserved);`pnpm exec tsc --noEmit` exit 0;`pnpm exec next lint` "No ESLint warnings or errors";`pnpm test:unit` 6 files/18 tests pass(W20 baseline post-CH-002 preserved — no regression)
+- [x] F1.7 File header docstrings on both NEW files;Vitest test scaffolding **deferred → F8.4** per plan F1.7 "(F8 carries full pass)"
+
+#### Deviations(if any)
+
+| F# | Plan said | Actual | Why | Approver |
+|---|---|---|---|---|
+| F1.5 catalog §4 spec | Badge uses `bg-accent/12` | Rounded to `bg-accent/10`(Tailwind default opacity step)| `12` 唔係 Tailwind default opacity scale(0/5/10/15/20/25/…),要 add 入 tailwind.config 先 work — Karpathy §1.2 simplicity (avoid one-off config extension;視覺差異 ~2% opacity 忽略)| AI Karpathy §1.2 self-judgment |
+| F1.7 Vitest test | Scaffolding for `<DisabledAffordance>` + `<NotificationsMenu>` at F1 | Deferred to F8.4(full pass)per plan literal | Plan F1.7 acceptance criterion 寫「(F8 carries full pass)」— F1 commits the component code;F8.4 batches the test files(same pattern as W18 F1→F8.4)| Plan §2 F1.7 + W18 precedent |
+| F1 sequencing | NotificationsMenu first per checklist order | DisabledAffordance landed first(shared component F1.5)| F1.1 NotificationsMenu's `See all →` consumes `<DisabledAffordance>` — F1.5 must land first(dependency order;not a scope deviation)| AI sequencing per Karpathy §1.4 |
+| Vitest baseline | W18 baseline 4 files/13 tests | Actual W20 baseline 6 files/18 tests(post-CH-002)| `session-start.md` §11 line 314 already noted "post-CH-002 6 files/18 tests";F1 preserves 18/18(no regression);F8.4 target should be 20+ tests | AI documentation accuracy |
+
+#### Decisions / new OQ / risk surfaced
+
+- **`<DisabledAffordance>` consumption grows** — F1 landed 3 call sites(Language toggle / Workspace switcher / NotificationsMenu See-all + Mark-all-read);Wave A targets ~10 affordances per W19 F5 §6 audit。Grep `<DisabledAffordance` count = the audit hook。
+- **`Briefcase` icon import** — new lucide icon added(workspace switcher visual hint);no new dep(lucide-react already in package.json per W18 baseline)。
+- **`apiClient.get<NotificationsResponse>('/notifications')` 404 silent** — endpoint not implemented backend-side;`retry: false` + mock fallback ensures topbar never breaks even in fully-offline dev。`query.isError` drives the Mark-all-read disabled affordance branch — graceful degradation pattern (W18 F4 dashboard precedent).
+
+#### Actual vs Planned Effort
+
+| F | Planned | Actual | Δ |
+|---|---|---|---|
+| F1.5 DisabledAffordance | 30 min | ~20 min | -33% |
+| F1.1 NotificationsMenu | 60 min | ~30 min | -50% |
+| F1.2 Workspace + Language migration | 30 min | ~25 min | -17% |
+| F1.3 NAV_SECTIONS + NavGroupHeader | 30 min | ~20 min | -33% |
+| F1.4 Labs hidden(deliberate omission)| 5 min | ~0 min(no code change)| -100% |
+| F1.6 Verify(tsc + lint + oklch + test:unit)| 15 min | ~3 min | -80% |
+| F1.7 docstrings + progress.md + commit | 30 min | ~15 min | -50% |
+| **F1 Day 1 total** | **~3 hours**(1 plan-day)| **~1.5 hours** | **-50%** |
+
+Real-calendar collapse pattern continues — W12-W18 1.8-4× collapse;F1 ~2× faster than 1 plan-day budget。
+
+#### Carry-overs to next Day-N
+
+- **F2 `/dashboard` real cards per ADR-0030 absorbed** — backend `/health` per-component connectivity payload(W19 F2 §3.1 item 1)+ frontend 5 cards + 4-stat strip rewrite。Day 2 focus。
+- **F8.4 Vitest test for `<DisabledAffordance>` + `<NotificationsMenu>`** — scaffolding deferred per F1.7 plan literal;F8 carries the full pass(target 6 → 8+ files / 18 → 20+ tests)。
+- **F8.1 multi-viewport browser smoke** — F1 surfaces NEW(workspace chip + notifications badge + Tools section header)need smoke at `sm` / `md` / `lg`;deferred to F8.1(R8 caveat per plan)。
+
+---
+
+<!-- Day 2+ entries to be appended by AI as F2-F9 land. Template:
 
 ## Day N — YYYY-MM-DD
 
@@ -88,7 +152,6 @@ Per W19 F5 27-affordance Tier 2 catalog + `<DisabledAffordance>` shared componen
 #### Acceptance criteria status (per checklist.md)
 
 - [x] F<n>.1 — ...
-- [x] F<n>.2 — ...
 
 #### Deviations(if any)
 

@@ -1,14 +1,28 @@
 'use client';
 
 /**
- * C09/C10 unified application shell — W18 F1 (per ADR-0024 + architecture.md v6 §5.0).
+ * C09/C10 unified application shell — W18 F1 (per ADR-0024 + architecture.md v6 §5.0);
+ * W20 F1 polish (per ADR-0032 absorbed scope):
+ *   - F1.1 + topbar `<NotificationsMenu>` between search and language toggle.
+ *   - F1.2 Topbar `<WorkspaceSwitcher>` disabled affordance (multi-tenancy is Tier 2
+ *     per architecture.md §11 — fixes the W19 F1 §2.3 leak where the prototype showed
+ *     an enabled workspace switcher).
+ *   - F1.2 Language toggle now wraps its `disabled` button in `<DisabledAffordance>`
+ *     (S1 in the W19 F5 catalog — every Tier 2 surface uses the shared component).
+ *   - F1.3 Left sidebar grouped into **Main** (Dashboard / Chat / Knowledge Bases) +
+ *     **Tools** (Eval Console / Traces) via `<NavGroupHeader>` — same `<nav>` landmark,
+ *     visual section headers only.
+ *   - F1.4 Labs section deliberately **NOT** rendered (W19 F5.4 Option C — prototype-only;
+ *     `/labs/*` routes never ship `frontend/`). Future Tier 2 enablement = add a third
+ *     NavSection here behind an env flag, no other change.
  *
  * Generalizes the W12-W15 `<AdminShell>` into the single chrome that wraps
  * **all authenticated views** (Dashboard / Chat / Knowledge Bases / Eval / Traces):
- *   - persistent top bar  : app name → /dashboard + global-search trigger (Cmd/Ctrl+K)
- *                           + disabled language toggle (i18n is Tier 2 §11) + ThemeToggle + UserMenu
- *   - collapsible left sidebar : the 5 functional modules; a "focus mode" toggle hides it
- *                                (persisted to localStorage) for chat-immersive use
+ *   - persistent top bar  : app name → /dashboard + workspace switcher (disabled) +
+ *                           global-search trigger (Cmd/Ctrl+K) + notifications +
+ *                           disabled language toggle (i18n is Tier 2 §11) + ThemeToggle + UserMenu
+ *   - collapsible left sidebar : the 5 functional modules grouped Main + Tools;
+ *                                a "focus mode" toggle hides it (persisted) for chat-immersive use
  *   - main content slot
  *   - responsive : the sidebar collapses to an off-canvas Sheet < md
  *
@@ -16,7 +30,7 @@
  * the top-bar search trigger + the Cmd/Ctrl+K listener both open the quick-jump palette.
  *
  * 100% design-token consumption (Tailwind classes wired to globals.css :root/.dark) —
- * no hardcoded `oklch()` colour arbitrary-values (W15 milestone preserved).
+ * no hardcoded `oklch()` colour arbitrary-values (W15 milestone preserved through W20 F1).
  */
 
 import Link from 'next/link';
@@ -24,6 +38,8 @@ import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Activity,
+  Briefcase,
+  ChevronDown,
   Database,
   FlaskConical,
   Languages,
@@ -37,8 +53,10 @@ import {
 
 import { UserMenu } from '@/components/auth/user-menu';
 import { GlobalSearch } from '@/components/nav/global-search';
+import { NotificationsMenu } from '@/components/nav/notifications-menu';
 import { ThemeToggle } from '@/components/nav/theme-toggle';
 import { Button } from '@/components/ui/button';
+import { DisabledAffordance } from '@/components/ui/disabled-affordance';
 import {
   Sheet,
   SheetContent,
@@ -52,19 +70,44 @@ const APP_NAME = 'EKP';
 /** localStorage key for the "focus mode" / sidebar-collapsed preference. */
 const SIDEBAR_COLLAPSED_KEY = 'ekp-sidebar-collapsed';
 
+/** Display name for the topbar workspace chip (single-tenant Tier 1 — fixed value). */
+const WORKSPACE_LABEL = 'Ricoh · RAPO';
+
 interface NavItem {
   href: string;
   label: string;
   Icon: typeof LayoutDashboard;
 }
 
-/** The 5 functional modules — flat list (sectioned headers are an optional W18 polish detail). */
-const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
-  { href: '/chat', label: 'Chat', Icon: MessageSquare },
-  { href: '/kb', label: 'Knowledge Bases', Icon: Database },
-  { href: '/eval', label: 'Eval Console', Icon: FlaskConical },
-  { href: '/traces', label: 'Traces', Icon: Activity },
+interface NavSection {
+  /** Section header label shown above the items (small caps, muted). */
+  title: string;
+  items: NavItem[];
+}
+
+/**
+ * The 5 functional modules grouped Main + Tools (W20 F1.3 per ADR-0032 absorb).
+ * Items still all render under a single `<nav aria-label="Primary">` — section
+ * headers are visual organization only, not separate landmarks.
+ *
+ * Labs section deliberately omitted (W20 F1.4 / F5.4 Option C — no `/labs/*` routes).
+ */
+const NAV_SECTIONS: NavSection[] = [
+  {
+    title: 'Main',
+    items: [
+      { href: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+      { href: '/chat', label: 'Chat', Icon: MessageSquare },
+      { href: '/kb', label: 'Knowledge Bases', Icon: Database },
+    ],
+  },
+  {
+    title: 'Tools',
+    items: [
+      { href: '/eval', label: 'Eval Console', Icon: FlaskConical },
+      { href: '/traces', label: 'Traces', Icon: Activity },
+    ],
+  },
 ];
 
 function isActiveRoute(pathname: string, href: string): boolean {
@@ -152,6 +195,25 @@ export function AppShell({ children }: AppShellProps) {
           {APP_NAME}
         </Link>
 
+        {/* W20 F1.2 Workspace switcher — disabled affordance (multi-tenancy is Tier 2 per §11).
+            Fixes the W19 F1 §2.3 leak where the prototype showed an enabled switcher. */}
+        <DisabledAffordance
+          reason="Multi-workspace support — Tier 2 per architecture.md §11"
+          tier2Trigger="multi-tenancy"
+          className="hidden sm:inline-flex"
+        >
+          <button
+            type="button"
+            disabled
+            aria-label={`Workspace: ${WORKSPACE_LABEL} (multi-workspace coming in a later tier)`}
+            className="flex h-9 items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 text-xs text-muted-foreground"
+          >
+            <Briefcase className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="truncate">{WORKSPACE_LABEL}</span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          </button>
+        </DisabledAffordance>
+
         {/* Global search trigger (centre). Opens <GlobalSearch> (W18 F6); Cmd/Ctrl+K bound above. */}
         {/* `min-w-0` on the button (so the header flex row can shrink it) + on the label span
             (so `truncate` actually truncates within the button's own flex context) — without
@@ -171,17 +233,26 @@ export function AppShell({ children }: AppShellProps) {
 
         {/* Right cluster */}
         <div className="flex shrink-0 items-center gap-1">
-          {/* Language toggle — disabled affordance; i18n (JP/ZH) is Tier 2 per architecture.md §11. */}
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled
-            aria-label="Language (multi-language coming soon)"
-            title="Multi-language (JP / ZH) — coming in a later tier"
-            className="hidden h-9 w-9 sm:inline-flex"
+          {/* W20 F1.1 NotificationsMenu (per ADR-0032 absorb; backend optional W19 F2 item 21) */}
+          <NotificationsMenu />
+
+          {/* W20 F1.2 Language toggle — now wrapped in <DisabledAffordance> (S1 in W19 F5 catalog).
+              i18n (JP/ZH) machinery is Tier 2 per architecture.md §11. */}
+          <DisabledAffordance
+            reason="Multi-language (JP / ZH) — coming in a later tier"
+            tier2Trigger="i18n machinery"
+            className="hidden sm:inline-flex"
           >
-            <Languages className="h-5 w-5" />
-          </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled
+              aria-label="Language (multi-language coming soon)"
+              className="h-9 w-9"
+            >
+              <Languages className="h-5 w-5" />
+            </Button>
+          </DisabledAffordance>
           <ThemeToggle />
           <UserMenu />
         </div>
@@ -221,6 +292,22 @@ export function AppShell({ children }: AppShellProps) {
   );
 }
 
+/** Visual-only section header rendered inside the same `<nav>` landmark (W20 F1.3). */
+function NavGroupHeader({ title }: { title: string }) {
+  return (
+    <div
+      // `aria-hidden` because this is purely visual organization; the section's
+      // items still get their own accessible names via <Link> labels. AT users
+      // navigating via the `<nav aria-label="Primary">` landmark hear the items
+      // flat, which matches the W18 baseline behaviour the test suite asserts.
+      aria-hidden="true"
+      className="mt-3 px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground first:mt-0"
+    >
+      {title}
+    </div>
+  );
+}
+
 function NavLinks({
   pathname,
   className,
@@ -232,26 +319,31 @@ function NavLinks({
 }) {
   return (
     <nav className={cn('flex flex-col gap-1', className)} aria-label="Primary">
-      {NAV_ITEMS.map(({ href, label, Icon }) => {
-        const active = isActiveRoute(pathname, href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={active ? 'page' : undefined}
-            onClick={onNavigate}
-            className={cn(
-              'flex min-h-[40px] items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-              active
-                ? 'bg-muted font-medium text-foreground'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-            )}
-          >
-            <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span className="truncate">{label}</span>
-          </Link>
-        );
-      })}
+      {NAV_SECTIONS.map((section) => (
+        <div key={section.title} className="flex flex-col gap-1">
+          <NavGroupHeader title={section.title} />
+          {section.items.map(({ href, label, Icon }) => {
+            const active = isActiveRoute(pathname, href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? 'page' : undefined}
+                onClick={onNavigate}
+                className={cn(
+                  'flex min-h-[40px] items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                  active
+                    ? 'bg-muted font-medium text-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="truncate">{label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      ))}
     </nav>
   );
 }
