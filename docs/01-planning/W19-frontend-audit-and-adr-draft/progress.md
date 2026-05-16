@@ -77,7 +77,7 @@ W19 does **NOT** address(stay W16 / Tier 2 / parallel track):
 | Deliverable | Planned | Actual | Variance / note |
 |---|---|---|---|
 | F0 Kickoff cascade | ~0.3d | ~0.2d(this session) | F0.1 Phase folder + plan/checklist/progress — `(this commit)`;F0.2 `audit/.gitkeep` — `(this commit)`;F0.3 `docs/adr/README.md` 5 reserved slots(0025-0029) + Next NNNN advance 0025→0030 — `(this commit)`;F0.4 `session-start.md` §10 W19 row + W18+→W20+ shift + Last-Updated + Update-history entry — `(this commit)`;F0.5 verified no `architecture.md` amendment at kickoff(F3 ADR drafts propose,per-ADR amendments land in W20+ kickoffs)— `(this commit)` |
-| F1 Mockup `.jsx` audit | ~0.8d | — | — |
+| F1 Mockup `.jsx` audit | ~0.8d | ~0.4d(this session) | `audit/W19-mockup-jsx-audit.md` landed:per-route table 14 Tier 1 + 8 Tier 2 + shell + 5 foundation files;deviation summary D1–D11 with F3 ADR feed;Tier 2 leak audit(1 leak Sidebar Workspace switcher + 1 borderline Chat Conversation History);visual identity verify(tokens match,1 NEW `--info` token);mock data schema match(3 NEW schemas needed + RBAC family massive)。5 parallel Read batches over 22 files / 11K lines。**5 H1 ADRs confirmed**(0025–0029)+ **3 NEW ADR candidates surface**(0030 polish bundle / 0031 chat advanced / 0032 topbar additive)— F2/F3/F4 take it forward — `(this commit)` |
 | F2 Backend gap map | ~0.8d | — | — |
 | F3 ADR drafts × 5 | ~1.2d | — | — |
 | F4 Wave breakdown | ~0.4d | — | — |
@@ -86,11 +86,54 @@ W19 does **NOT** address(stay W16 / Tier 2 / parallel track):
 
 ### Next
 
-- F0.3 — `docs/adr/README.md` reserve ADR-0025–0029 slots(Status: `Reserved (W19 F3)`)+ advance Next NNNN block 0025 → 0030
-- F0.4 — `session-start.md` §10 add W19 row(`active`) + Last-Updated + Update-history entry
-- F0.5 — confirm no `architecture.md` amendment at kickoff(verify by reading)
-- F1 — full mockup audit per `.jsx`(start with `ekp-shell.jsx` + `ekp-page-dashboard.jsx` + `ekp-page-kb.jsx`,then iterate)
-- await user feedback on the kickoff cascade if needed before F1 starts
+- F2 — backend gap map per route × endpoint × schema → `audit/W19-backend-gap-map.md`
+- F3 — 5 ADR drafts(0025-0029)with option sets for ADR-0026 + ADR-0027 strategic 岔口
+- F4 — Wave breakdown(W20-frontend-wave-a / W21-frontend-wave-b / W22-frontend-wave-c with mock+real auth concurrent ship per user 岔口 2 / Wave D Tier 2 hold)
+- F5 — Tier 2 disabled-affordance catalog(consume F1 §2.3 leak findings)
+- F6 — Chris approval + W20+ kickoff trigger
+
+---
+
+## Day 1 — F1 audit landed(2026-05-16)
+
+### Built — `audit/W19-mockup-jsx-audit.md` NEW — `(this commit)`
+
+Full audit of `references/design-mockups/` 22 files / 11K lines via 5 parallel Read batches:
+
+- **Batch 1 foundation**(`ekp-shell.jsx` + `ekp-data.jsx` + `styles.css` + `tweaks-panel.jsx` + `icons.jsx`) — IA chrome confirms ADR-0024 5-module sidebar + Cmd+K palette + flat URLs;tokens match `frontend/lib/theming/tokens.ts` per ADR-0015 W12 D2(Warm Charcoal + Coral Accent);tweaks panel confirmed design-time only(`__activate_edit_mode` postMessage host protocol)
+- **Batch 2 KB cluster**(dashboard + kb + kb-extras + kb-new) — KB Detail confirmed 8 tabs;Dashboard 4-stat strip + 5 cards bigger than spec;Chunking Lab + Images NEW tabs;5-step new-KB wizard with Tier 1/2 Multimodal split
+- **Batch 3 Views**(doc-detail + misc + chat + eval) — 3-pane doc detail with embedding vector preview;3-step kb-upload wizard COEXISTS with 5-step new-KB(re-ingest vs new);Chat with 3 citation placement modes + Conversation History sidebar Beta+ + SyntheticScreenshot mockups + FeedbackBar;Eval 4-metric + 5+2-dropped shootout + CRAG insight card
+- **Batch 4 Platform**(trace + settings-tabs + users + auth) — Trace 3 viz modes;Settings 6 tabs with 9-provider Connections + Identity & Auth Entra/MSAL + API Keys quotas + RBAC role mapping;Users 4 tabs with 3-role + 1-Tier2 + 5-area × 24-permission matrix + Entra group sync + Audit log;Auth Login + Register with brand panel + ACS verify-email step
+- **Batch 5 Labs**(labs-1 + labs-2) — 8 Tier 2 preview pages with consistent LabsHeader pattern(accent gradient banner + "NOT IMPLEMENTED" badge + Cn slot citation)
+
+### Key findings(see audit §2 for full table)
+
+**H1 architectural changes — 5 confirmed ADRs(plan F3.1–F3.5)**:
+- D1 ADR-0025 KB Detail 5→8 tabs(Images + Chunking Lab + Access — Access hard dep on ADR-0027)
+- D2 ADR-0026 Settings 6-tab + Connections backend(**岔口 2** option set:read-only / fully editable / hybrid)
+- D3 ADR-0027 /users Tier 1.5 RBAC(**岔口 1** option set:full RBAC / minimal 3-role / stage)
+- D4 ADR-0028 /kb/new 5-step + Multimodal Tier 1/2 split(coexists with 3-step re-ingestion `/kb-upload/[id]`)
+- D5 ADR-0029 /doc-detail 3-pane layout(route topology + embedding vector preview)
+
+**3 NEW ADR candidates surface**:
+- D6+D9+D11 → ADR-0030 candidate "Dashboard richer overview + Trace 3 viz + /traces list view"(polish bundle)— or absorb as Wave A/B scope without separate ADR(F4 decides)
+- D7 → ADR-0031 candidate "Chat advanced surfaces"(Conversation History Beta+ / 3 citation placement modes / FeedbackBar comment)
+- D8 → ADR-0032 candidate "Topbar + Sidebar additive"(NotificationsMenu / Workspace switcher disabled affordance / Sidebar Tools + Labs sections)
+
+**Tier 2 boundary audit**:✅ **most disabled affordances correct**(language toggle / Forgot password / Multimodal Vision options / Public KB visibility / Power User role / Custom roles / Anonymous API keys / etc)。🔴 **1 leak**:Sidebar Workspace switcher 未 add disabled state — Tier 2 multi-tenancy 應 disabled。🟡 **1 borderline**:Chat Conversation History 'BETA+' badge — localStorage Tier 1 OK,server-side persistence Tier 2 boundary 需 F5 explicit。
+
+**Backend gap signal**(feeds F2):3 missing schemas(Conversation / DocumentDetail outline / ChunkingComparison)+ 1 massive new schema family(RBAC `users` / `roles` / `role_permissions` / `groups` / `audit_log` + `kb_acl` per-KB ACL)。
+
+**Visual identity**:Tokens match;**1 NEW token** `--info: oklch(0.62 0.13 240)` to add to `frontend/lib/theming/tokens.ts` in Wave A。No Dify color leak per H3。`[oklch(...)]=0` hardcoded milestone:4 occurrences in mockup color-cycle placeholders are mockup-only,real `frontend/` impl uses ImageRef.blob_url so don't ship。
+
+### Deviations from plan(R3)
+
+- **F1 scope adjustment**:plan F1.1–F1.6 5 sub-items + F1.6 grep verification = expected ~0.8d;actual landed in single session ~0.4d。Same real-calendar collapse pattern as W12-W18(per session-start §12)。
+- **3 NEW ADR candidates surface during audit**(0030 / 0031 / 0032)— plan F3 5 ADRs(0025–0029)remains spec;the 3 NEW candidates noted in audit §2.2 with decision deferred to F4 Wave breakdown(可 absorb as Wave scope without ADR if smaller, or promote to ADR-0030+ if H1 weight)。**Plan changelog entry will be added at F4 close** documenting the absorb-vs-promote decision per ADR candidate。
+
+### Next
+
+- F2 — backend gap map per route × endpoint × schema(14 Tier 1 routes × Pydantic schema check vs `backend/api/schemas/*.py` + route check vs `backend/api/routes/*.py`)→ `audit/W19-backend-gap-map.md`
 
 ---
 
