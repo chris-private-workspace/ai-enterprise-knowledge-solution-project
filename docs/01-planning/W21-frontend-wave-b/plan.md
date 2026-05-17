@@ -3,8 +3,8 @@ phase: W21-frontend-wave-b
 name: "Frontend Wave B — Doc Detail 3-pane + Eval Console refactor + Traces list + Trace 3 viz (per ADR-0029 Option C `/kb/[id]/docs/[docId]` + ADR-0030 absorbed scope)"
 sprint_week: W21
 start_date: 2026-05-17              # real-calendar — kicked off post-W20 closeout (Chris directive「開 W21-frontend-wave-b kickoff」); independent of W16 F1-F4 (Track-A-blocked, parallel) and W22 Wave C (sequential, post-W21 close)
-end_date: 2026-05-24                # ~1 week per W19 F4 §2.3 (backend ~2 days + frontend ~6.5-7.5 days); real-calendar collapse pattern 1.8-12× — actual likely ~1-2 days per W12-W20 trajectory; frontmatter is a window, not a commitment
-status: active                      # `active` from kickoff 2026-05-17 (Chris directive at W20 F9 closeout post-push session + ADR-0029 Accepted + ADR-0030 absorbed = the authorization; same pattern as W20 D0 + W19 D0)
+end_date: 2026-05-17                # closed same-day partial — F1+F2 backend landed (commits 306dbe0 + 55f876b); F3-F8 frontend deferred to W22-frontend-presentation-rebuild per H7 enforcement after user-eye fidelity audit revealed fundamental W20 Wave A presentation drift (see progress.md retro)
+status: closed_partial              # F1+F2 backend KEPT; F3-F8 frontend DEFERRED to W22-frontend-presentation-rebuild; Phase Gate = PASS WITH PRESENTATION-LAYER-REBUILD-TRIGGERED CAVEAT (backend deliverables complete + green;  frontend deliverables fold into W22 with stricter fidelity discipline)
 spec_refs:
   - architecture.md v6 §5.5.2        # KB Detail Chunks tab (per ADR-0024 — unchanged) + NEW §5.5.2a Document Detail page 3-pane (per ADR-0029 Option C)
   - architecture.md v6 §5.6          # Eval Console (W17 F3 RAGAs 4-metric integration consumed)

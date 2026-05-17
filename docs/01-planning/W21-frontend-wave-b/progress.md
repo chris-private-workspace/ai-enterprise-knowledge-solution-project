@@ -2,8 +2,9 @@
 phase: W21-frontend-wave-b
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active
+status: closed_partial
 last_updated: 2026-05-17
+gate_verdict: "PASS WITH PRESENTATION-LAYER-REBUILD-TRIGGERED CAVEAT — F1+F2 backend landed green (commits 306dbe0 + 55f876b;99/99 backend pytest pass);F3-F8 frontend deferred to W22-frontend-presentation-rebuild per H7 enforcement (see Day 1 retro below)"
 ---
 
 # Phase W21 — Progress
@@ -283,4 +284,141 @@ Real-calendar collapse pattern continues(W12-W20 1.8-12× pattern;F1 -65% / F2 -
 
 ---
 
-**Lifecycle reminder**:呢份 progress.md `status=active`(2026-05-17,per kickoff)。每 Day-N entry append;retro 喺 F8 closeout 寫。Status flip `active`→`closed` at F8.4。
+## Day 1 — 2026-05-17(continued) — H7 enforcement + W21 partial-closeout retro
+
+### Trigger event:user-eye side-by-side fidelity audit revealed fundamental W20 presentation drift
+
+**Context**:F1 + F2 backend landed clean(`306dbe0` + `55f876b`)。F3 frontend(`/kb/[id]/docs/[docId]` 3-pane Doc Detail)即將開始。Per CLAUDE.md §3.2.1 mid-frontend cadence(「**寫前端 + 寫到一半 + 寫完之前**都應該打開 mockup 對住做」),user 提議先做一輪 W20 Wave A fidelity verify。
+
+**Setup**:
+- Frontend dev server running localhost:3001(W18 ADR-0024 `<AppShell>` + W20 Wave A 8 routes shipped)
+- Backend uvicorn running localhost:8000(99/99 pytest baseline)
+- NEW Python http.server :8080 serve `references/design-mockups/` folder(本 phase 創新環境設置 —— 之前 phases 都係 file:/// 開 mockup,but URL hash 唔好 paste;serve 之後 paste-friendly `http://localhost:8080/EKP%20Platform.html#dashboard` workflow)
+
+**User screenshot evidence(`/dashboard` side-by-side comparison)**:4 大 fundamental drift surfaced:
+| # | Mockup(canonical spec) | W20 Wave A implementation | H7 verdict |
+|---|---|---|---|
+| **TopBar** | Workspace identity「Ricoh > RAPO」+ workspace switcher chevron + search w/ Cmd+K hint + theme toggle + 用戶 full name「Chris Lai」 | 純 EKP logo + 搜尋 bar + bell + 首字 avatar,**完全冇 workspace switcher 結構 + 冇 theme toggle 露出 + 冇 user name** | **H7 violation — layout 結構唔同** |
+| **Left sidebar** | Section headers(WORKSPACE / NAVIGATE / TOOLS)+ Labs 整個 section(GraphRAG / Multi-Agent / Multi-Language / Fine-Tune / Workflow Builder / Personalization / Multi Tenancy)+ 底部 user card | 平鋪 6 個 link,**冇 section headers + Labs section 完全冇 + 冇 user card** | **H7 violation — IA + 內容缺失** |
+| **Main content** | "Welcome back, Chris" greeting + view-latest-eval CTA + Ask-the-KB CTA + **4-stat strip 包真實數字**(Documents 330 / Indexed 92.7% / Queries today / Total cost)+ **Knowledge bases table 連 sparklines** | 一律空 state + "Couldn't load knowledge bases" error + 4 個 empty card | **H7 violation — content shape 完全唔同** |
+| **Typography** | Font weight + size + letter-spacing + line-height 對齊 mockup design tokens(Warm Charcoal + Coral Accent oklch system per ADR-0015 W12 D2)| 通用 shadcn defaults,**冇對齊 Warm Charcoal + Coral Accent token system** | **H7 violation — typography token mismatch** |
+
+呢啲唔係 spot-deviation —— 係 **fundamental presentation layer drift**,跨越 layout / IA / content shape / typography 4 層。
+
+### 重要 finding — Automated gates ≠ fidelity gate
+
+W20 Phase Gate verdict 係「PASS WITH SMOKE-USER-DEFERRED CAVEAT」(2026-05-17 W20 F9 closeout `50b58fc`);所有 automated verify gate 都係 green:
+- `tsc --noEmit` exit 0
+- `next lint` clean(No ESLint warnings or errors)
+- `Grep '[oklch'` across `frontend/` = **0**(W15 milestone preserved through W17→W18→W20 + 9 commits)
+- `pnpm test:unit` Vitest 6→14 files / 21→37 tests 全部 pass
+- Backend pytest 59/59 pass
+
+**但呢 4 條 gate 都唔 measure presentation fidelity** —— `[oklch`=0 只保證冇 hard-coded oklch literal,唔保證 typography / spacing / content layout 對齊 mockup;`tsc` 只保證 TypeScript shape correct;`lint` 只保證 ESLint 規則 hold。**Visual drift 透過咗所有 automated verification**,留低 user-eye verify 做 "smoke-user-deferred"。等於 fidelity gate 變咗 optional / silently downgraded。
+
+W19 F1 mockup audit 5 batches(2026-05-16 `15aaca9`)抽 structural spec(component list / IA / 8 tabs / 27-affordance Tier 2 catalog / DisabledAffordance spec)—— **但 implementation 落地時冇逐頁逐 pixel 對齊 mockup**。Audit 同 implementation 之間嘅 fidelity-gate 缺失。
+
+### User explicit directive(2026-05-17)
+
+> **「我認為應該是重新地去建立和準備所有本項目的頁面,而且是根據 mockup 的所有頁面效果,因為我要的是 presentation layer 的一致,而不是把整個 frontend 架構重構」**
+
+Confirmed via AskUserQuestion 3-pick answers all Recommended:
+1. **即時 close W21 + kickoff W22-frontend-presentation-rebuild**(NOT「先 audit + retro 後 kickoff」+ NOT「inline fix W20 routes 作 W21 prerequisite」)
+2. **Page rebuild ordering**:**TopBar+Sidebar 先 → /dashboard → /chat → /kb → /kb-detail → 其他**(NOT「按 PAGE_INVENTORY linear」+ NOT「先 rebuild 3 critical pages MVP」)
+3. **Mockup primitive 用 shadcn primitive 重寫**(per H2 vendor lock — stripped components 不可 verbatim copy;mockup primitive 唔喺 shadcn → STOP+ask per H7 trigger)
+
+### Decision: rebuild not patch when fundamental drift
+
+**Preserve**(architectural / infrastructural layer):
+- Next.js App Router + `(app)/` route group structure
+- AppShell pattern(`<AppShell>` skeleton + login-gate)— **internal 重 build,external API unchanged**
+- shadcn/ui primitive + Tailwind tokens(`frontend/lib/theming/tokens.ts`)
+- API client layer(`frontend/lib/api/*.ts`)
+- Auth flow(`frontend/lib/auth/*`)— hybrid auth + cookie + CSRF + scrypt + ACS Email
+- Backend 28 endpoints + Pydantic v2 schemas + Postgres backing + W17 + W20 + W21 F1+F2 全部 KEEP unchanged
+- Vitest + Playwright test scaffold + `[oklch`=0 milestone discipline
+
+**Rebuild**(presentation layer):
+- 所有 `frontend/app/(app)/<route>/page.tsx` files(15+ pages — W20 8 routes + W21 4 planned + W18 `/settings` + `/traces/[traceId]` baseline)
+- AppShell 本身(TopBar + Sidebar + 主 wrap)— W18 ADR-0024 IA preserved at API level,internal 重 build 對齊 mockup
+- 對應 `frontend/components/` presentation files
+- 任何 inline styling that's hardcoded vs token-based
+
+**Why rebuild 而唔係 patch**:Localised spot-deviation 可以 inline fix;但**一旦 presentation layer 同 mockup 有 fundamental shape mismatch(top bar / sidebar / content layout 等 4 層同時 drift)**,正確處理 = **整頁 rebuild 對齊 mockup**,而唔係 patch 個別 visual issue。Patch 累積成 visual drift + patch 之間 inconsistency,等於追唔上;rebuild 一次過 align 整套 fidelity。Karpathy §1.3 surgical 仍然適用 — surgical 嘅 unit 係「整頁 presentation layer」,唔係「個別 token swap」。
+
+### W21 Phase Gate verdict
+
+**PASS WITH PRESENTATION-LAYER-REBUILD-TRIGGERED CAVEAT**
+
+- **Backend deliverables (F1+F2)**:**LANDED GREEN** — commits `306dbe0` + `55f876b`;9/9 F1 pytest + 14/14 F2 pytest + 99/99 backend regression;0 regression on W20 baseline;mypy strict shape verified per pytest;CC1-CC11 紀律 9 項全部 hold;C01+C03+C07 component spine clean
+- **Frontend deliverables (F3-F8)**:**DEFERRED to W22-frontend-presentation-rebuild** — F3-F8 [ ] items preserved unchanged in checklist.md per CLAUDE.md §10 sacred rule(un-checked 不可刪);W22 plan §2 將 W21 F3-F8 scope re-frame 入 page-by-page rebuild with stricter fidelity discipline
+- **Architecture impact**:**NONE** — 呢個係 H7 enforcement,**唔係**H1 architectural change;component spine C01-C13 不變;Next.js App Router + `(app)/` + AppShell pattern + shadcn/ui + Tailwind tokens + hybrid auth + Postgres backing 全部 preserved;W22 rebuild 限於 presentation layer
+- **OQ impact**:**NONE** — 冇新 OQ resolved / opened;Q1-Q22 status 保持
+
+### 7-section retro
+
+#### 1. What worked
+- **F1 + F2 backend cascade efficient**:6 commits day combined 70 min total(F1 ~63min + F2 ~80min including audit-pause);real-calendar collapse ~64% pattern 一致 with W12-W20 trajectory
+- **Defensive duck-typing in F2 aggregator**:`langfuse_trace_list.py` 6 helpers all guard for Langfuse SDK shape variations(`getattr` fallbacks / `isinstance` checks / multiple field name attempts)— 落地時 0 test required SDK version pin;W19 F1 backend gap map cross-ref verified end-to-end
+- **Mid-phase H7 cadence per CLAUDE.md §3.2.1**:User-initiated side-by-side audit hit BEFORE F3 frontend kickoff;saved 2-3 days wasted work(F3-F8 implementation would have layered on the same drift)
+- **AskUserQuestion 3-pick rapid alignment**:User confirmed all 3 Recommended options inside 1 turn → clean kickoff handoff to W22
+
+#### 2. What didn't work & friction
+- **F2 plan-text deviation noise**:F2.2 plan literal「Langfuse Postgres query layer per W17 F4」+「extend existing W18 baseline」are misleading paraphrases;actual = Langfuse SDK `fetch_traces` duck-typed fetcher(W17 F4 wired SDK access, not raw Postgres) + extend cumulative W8+W10+W16 baseline observability.py(W18 added nothing to that file)。Karpathy §1.1 think-before-coding 仍然 caught via plan §7 changelog,but pre-active flip grep verification 未 formalized — CO_W14_process_grep_verify cumulative 10+ occurrences now
+- **W20 Wave A fidelity gate gap**:呢個係本 phase 揭露嘅 critical process gap — automated gates 全綠但 presentation drift 滲透晒。verification cadence 嚴重 underweighted user-eye verify
+- **W19 F1 mockup audit-to-implementation gap**:Audit 5 batches 抽 component list + IA spec,but W20 implementation 落地時冇逐 pixel 對齊 mockup;audit output 變咗 component check-list 而唔係 fidelity reference
+
+#### 3. Surprises
+- **mockup HTML server :8080 setup**:新工作流 first time used —— Python `http.server` 8080 serve `references/design-mockups/` folder + paste-friendly URL hash routing。Future phases 可以複用作 standard fidelity-verification setup
+- **8080 + 3001 + 8000 三 server side-by-side workflow** efficient — user can quickly hash-route between mockup pages + URL-path between implementation pages,2 Chrome tab 即可 verify
+- **User explicit framing「presentation layer 一致,而不是 frontend 架構重構」**:Surgical scoping 嘅 clarity — preserve architecture + rebuild presentation。呢個 framing 防止 W22 scope creep(唔好順手 refactor backend / auth / state mgmt)
+
+#### 4. Decisions logged
+- **Rebuild not patch when fundamental drift**:Multi-axis presentation drift(layout + IA + content shape + typography 同時 mismatch)= entire page rebuild,not localised patch。Karpathy §1.3 surgical unit = page-level rebuild。Logged in `feedback_design_fidelity.md` permanent
+- **Page rebuild ordering = user-facing impact priority**:TopBar+Sidebar(cross-cutting,每頁出)→ /dashboard → /chat → /kb → /kb-detail → 其他;NOT「PAGE_INVENTORY linear」 NOR「3-page MVP first」per user pick
+- **shadcn primitive 重寫 mockup visual**:H2 vendor lock 規限技術;mockup primitive 唔喺 shadcn = STOP+ask per H7 trigger(per user pick + 一致 with §3.2.1 H7 §13 When-in-Doubt row)
+- **W21 partial-close NOT full-close**:F1+F2 backend deliverables real-shipped + green;F3-F8 frontend deliverables fold 入 W22;checklist.md [ ] items 保留;呢個 partial-close pattern 屬 new — 之前 W12-W20 都係 "all deliverables landed" 或者 "smoke-deferred caveat"。**Lesson**:phase scope split 至多 commit-day level OK,不能等到 phase end;但本 phase 嘅 driver(H7 fidelity audit)係 mid-phase emergent,partial-close 係 legitimate response
+
+#### 5. Carry-overs to W22-frontend-presentation-rebuild
+- **W21 F3 `/kb/[id]/docs/[docId]` 3-pane Doc Detail per ADR-0029 Option C** → W22 KB cluster rebuild scope
+- **W21 F4 `/eval` 6-section refactor per W17 F3 RAGAs** → W22 observability cluster rebuild scope
+- **W21 F5 `/traces` index list view per ADR-0030 absorbed** → W22 observability cluster rebuild scope(consumes F2 backend `GET /traces` shipped this phase)
+- **W21 F6 `/traces/[traceId]` 3 viz modes refactor** → W22 observability cluster rebuild scope
+- **W21 F7 cross-cutting** + **F8 closeout** → W22 cross-cutting + closeout 配對 task
+- **Embedding vector preview feasibility verify(per ADR-0029 §3 alt #3)** → W22 ChunkInspector rebuild time decide;same alt #3 trigger(if Azure Search vector exposure expensive → `<DisabledAffordance variant="p3-preview" showBadge>`)
+- **CO_W14_process_grep_verify 10+ cumulative** → W22 plan §7 will formalize 5-step pre-R1 active-flip grep verification(read plan literal → grep → surface mismatch → §7 changelog → adjust acceptance criteria)
+- **Rule-of-3 wizard primitive promotion DEFER preserved** — W22 has wizard surfaces(`/kb/new` 5-step + `/kb/[id]/upload` 3-step + `/register` 2-step)= W22 natural fit time to promote `frontend/components/ui/stepper.tsx` shared primitive
+
+#### 6. Time tracking
+| F | Planned | Actual | Δ |
+|---|---|---|---|
+| F0 kickoff cascade(W21 plan + spec amend + session-start) | 60 min(D0)| ~40 min | -33% |
+| F1 backend `GET /kb/{kb_id}/docs/{doc_id}` enriched | ~3 hours(1 plan-day) | ~63 min | -65% |
+| F2 backend `GET /traces` list | ~3.5 hours(1 plan-day) | ~80 min | -62% |
+| H7 audit + retro + W21 partial close + W22 kickoff cascade | unplanned(pivot)| ~90 min(估) | — |
+| **W21 actual real-calendar** | **~9 plan-day budget**(W19 F4 §2.3 estimate) | **~5 hours real**(~0.6 actual days) | **~88% collapse vs budget** |
+
+呢個 collapse 數字反映 W20 collapse ratio 大致延續,但本 phase 只 ship 咗 backend(F1+F2 ~2 plan-days);frontend 7 plan-days 全部 transfer 入 W22 with fidelity discipline。
+
+#### 7. Spec-ref alignment
+- **`docs/architecture.md v6 §5.5.2 / §5.5.2a / §5.6 / §5.7` amendments landed at W21 kickoff `236376d`** — 保留;**Wave B 4 routes 嘅 spec content unchanged**(只係 implementation 從 W21 推到 W22);W22 plan reuse same spec refs
+- **ADR-0029 Status Accepted Option C** — 保留;W22 plan §1 reuse ADR-0029 authorization for `/kb/[id]/docs/[docId]` 3-pane scope
+- **ADR-0030 SKIPPED-absorbed footnote** — 保留;W22 plan §1 reuse same absorbed-scope reasoning for `/traces` index + 3 viz modes
+- **W22 plan §0 cross-ref to this retro** + **W22 plan §6 carry-overs** 列哂上述 7-section retro 嘅 carry-over list
+
+---
+
+## Final Phase Gate verdict — RESTATED
+
+**PASS WITH PRESENTATION-LAYER-REBUILD-TRIGGERED CAVEAT**
+
+✅ Backend deliverables F1+F2 — 99/99 backend pytest;0 regression;H6 coverage ≥ 80% on new endpoints;commits `306dbe0` + `55f876b` shipped
+⏭️ Frontend deliverables F3-F8 — DEFERRED to W22-frontend-presentation-rebuild per H7 enforcement;preserved as un-checked `[ ]` items per CLAUDE.md §10 sacred rule
+🎯 Architectural impact:NONE
+🎯 OQ impact:NONE
+📝 Memory updated:`feedback_design_fidelity.md` empirical-finding section appended
+📝 W22 kickoff cascade landed same-session(this commit pair)
+
+---
+
+**Lifecycle reminder**:呢份 progress.md `status=closed_partial`(2026-05-17 partial-close per H7 enforcement)。F1+F2 ship complete + green;F3-F8 fold 入 W22 with stricter fidelity discipline。下個 phase reference = `docs/01-planning/W22-frontend-presentation-rebuild/`。

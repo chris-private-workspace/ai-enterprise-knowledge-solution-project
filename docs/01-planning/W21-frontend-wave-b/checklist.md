@@ -1,8 +1,9 @@
 ---
 phase: W21-frontend-wave-b
 plan_ref: ./plan.md
-status: active
+status: closed_partial
 last_updated: 2026-05-17
+closeout_note: "F1+F2 backend kept (commits 306dbe0 + 55f876b);F3-F8 frontend [ ] items DEFERRED to W22-frontend-presentation-rebuild per H7 enforcement after user-eye fidelity audit revealed fundamental W20 Wave A presentation drift. Deferred items are NOT deleted (per CLAUDE.md §10 sacred rule — un-checked [ ] preserved) — they fold into W22 with stricter fidelity discipline."
 ---
 
 # Phase W21 — Checklist

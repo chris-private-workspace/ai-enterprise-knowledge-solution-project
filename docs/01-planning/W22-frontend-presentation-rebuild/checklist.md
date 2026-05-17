@@ -1,0 +1,134 @@
+---
+phase: W22-frontend-presentation-rebuild
+plan_ref: ./plan.md
+status: active
+last_updated: 2026-05-17
+---
+
+# Phase W22 — Checklist
+
+> Atomic checkbox(每 item ≤ 0.5–2 hour effort)。Status:`active` from kickoff 2026-05-17(user directive post-W21 partial-close H7-enforcement audit + 3 AskUserQuestion Recommended picks = the authorization)。
+> 每 item done 後 `[ ]→[x]` + commit ref;延後項標 🚧 + reason(per CLAUDE.md §10 sacred rule — 唔可以刪未勾選 item)。
+> Deliverable ↔ ADR mapping:F0=W22 kickoff + W21 close governance / F1=ADR-0024 IA + ADR-0015 9-view + W19 F5 Tier 2 catalog / F2=ADR-0014 / F3=architecture.md §5 landing / F4=ADR-0031 + ADR-0024 / F5=ADR-0028 + Rule-of-3 wizard promote / F6=ADR-0025 + ADR-0028 + ADR-0029 / F7=W17 F3 + W21 F2 + ADR-0030 absorbed / F8=closeout governance。
+> **Per-page H7 verification gate**(applies F1-F7):每 F-deliverable acceptance criteria 已包含 `CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify + user-eye side-by-side verify`;NO「smoke-user-deferred」allowance for fidelity。
+
+## F0 — Kickoff cascade(W21 partial-close + W22 plan/checklist/progress + memory + session-start — landed at kickoff)
+
+- [ ] F0.1 W21 `plan.md` + `checklist.md` + `progress.md` frontmatter `active` → `closed_partial` + Day 1 H7-enforcement retro section appended(7-section retro)+ Gate verdict PASS WITH PRESENTATION-LAYER-REBUILD-TRIGGERED CAVEAT;F3-F8 [ ] items preserved per CLAUDE.md §10 sacred rule
+- [ ] F0.2 W22 `plan.md` + `checklist.md`(this file)+ `progress.md` created `status: active` 2026-05-17 kickoff
+- [ ] F0.3 `feedback_design_fidelity.md` memory empirical-finding section appended(2026-05-17 user-eye audit + rebuild-not-patch decision logged permanent)
+- [ ] F0.4 `session-start.md` 6 places synced — §3 C09/C10 status note(W22 rebuild target);§10 W21 closed_partial + W22 active row + W23+ not-pre-created;§11 NEW W21 partial-closeout block + H7 finding + W22 kickoff trigger;§12 milestones W21 row 累計 20 closed-or-partial + W22 active row;Last Updated;Update history entry
+- [ ] F0.5 NO `frontend/` code change at kickoff(per W19 F0 + W20 F0 + W21 F0 precedent — F0 是 governance cascade only)
+- [ ] F0.6 W21 partial-close + W22 kickoff cascade committed `(this commit)`
+
+## F1 — AppShell cross-cutting rebuild(TopBar + Sidebar + main wrap)
+
+- [ ] F1.1 Rebuild `frontend/components/layout/app-shell.tsx`(internal 重 build 對齊 mockup;file path preserved per Karpathy §1.3 surgical)
+- [ ] F1.2 Rebuild `frontend/components/layout/top-bar.tsx` — Workspace switcher chevron(「Ricoh > RAPO」+ `<DisabledAffordance>` per Tier 2)+ theme toggle visible + 用戶 full name display + search w/ Cmd+K hint visible
+- [ ] F1.3 Rebuild `frontend/components/layout/sidebar.tsx` — section headers「WORKSPACE / NAVIGATE / TOOLS」+ Labs section integrated(7 Tier 2 items with `<DisabledAffordance>`)+ user card footer
+- [ ] F1.4 `<DisabledAffordance>` shared component(W19 F5 spec / W20 F1.5 landed — preserved unchanged;consumed by Labs section + workspace switcher)
+- [ ] F1.5 Responsive — mobile drawer behavior per mockup(W18 ADR-0024 `<Sheet>` pattern preserved;internal rebuild)
+- [ ] F1.6 a11y — focus ring + aria landmarks(`role="banner"` / `role="navigation"` / `role="main"`)+ skip-to-content link per mockup
+- [ ] F1.7 Tokens 100%(`Grep '\[oklch'` across `frontend/` = 0 preserved);`tsc --noEmit` exit 0;`next lint` clean
+- [ ] F1.8 **CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify**(layout / spacing / typography / color tokens / interaction states / responsive / a11y)
+- [ ] F1.9 **User-eye side-by-side verify** before tick — mockup tab L `http://localhost:8080/EKP%20Platform.html#dashboard`(any route shows shell)+ impl tab R `http://localhost:3001/dashboard`;user explicit `[x]` only after eye-verify pass
+
+## F2 — /login + /register rebuild(auth surface)
+
+- [ ] F2.1 Rebuild `frontend/app/login/page.tsx` 對齊 `ekp-page-login.jsx PageLogin`(theme toggle visible + brand identity + form layout + CTA hierarchy)
+- [ ] F2.2 Rebuild `frontend/app/register/page.tsx` 對齊 `ekp-page-register.jsx PageRegister`(step indicator + email validation states + password requirements indicator + verify-email post-state)
+- [ ] F2.3 Preserve existing form submission handlers + `/auth/register` + `/auth/login` + `/auth/refresh` + `/auth/verify-email` endpoints(no backend change per CC6)
+- [ ] F2.4 Loading + error + success states all align mockup
+- [ ] F2.5 Tokens 100%;`tsc` + `lint` clean
+- [ ] F2.6 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify
+- [ ] F2.7 User-eye side-by-side verify before tick
+
+## F3 — /dashboard rebuild
+
+- [ ] F3.1 Rebuild `frontend/app/(app)/dashboard/page.tsx` 對齊 `ekp-page-dashboard.jsx PageDashboard`
+- [ ] F3.2 NEW components(若 mockup 用得到 — rebuild time 揭露)+ identify list at rebuild start:`<StatStrip>`(4-stat with delta chips)+ `<KbTableRow>` with sparkline + `<GreetingHeader>` + `<DashboardCTA>` button pair
+- [ ] F3.3 Preserve `GET /kb` + `GET /health` data hooks unchanged(W20 F2 baseline integration)
+- [ ] F3.4 Loading skeletons + error banners + empty states first-class
+- [ ] F3.5 Tokens 100%;`tsc` + `lint` clean
+- [ ] F3.6 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify
+- [ ] F3.7 User-eye side-by-side verify before tick
+
+## F4 — /chat rebuild
+
+- [ ] F4.1 Rebuild `frontend/app/(app)/chat/page.tsx` 對齊 `ekp-page-chat.jsx PageChat`(message list + composer + sidebar + citation modes + image surfaces)
+- [ ] F4.2 Rebuild 7 NEW Wave A components per mockup:`<ConversationHistory>` + `<InlineImageCard>` + `<ImageGallery>` + `<CitationPill>` + `<FeedbackBar>` + `<CragStrip>` + composer rewrite — preserve existing data hooks + SSE streamQuery + localStorage `ekp-citation-mode` persistence
+- [ ] F4.3 3 citation modes(inline / footnote / sidebar)preserved + toggle UI 對齊 mockup
+- [ ] F4.4 Preserve `useChat` SSE wiring + `/conversations` CRUD + `/feedback` tag-prefix integration(Wave A backend unchanged per CC6)
+- [ ] F4.5 Loading + error + empty states first-class
+- [ ] F4.6 Tokens 100%;`tsc` + `lint` clean
+- [ ] F4.7 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify
+- [ ] F4.8 User-eye side-by-side verify before tick
+
+## F5 — /kb list + /kb/new rebuild(KB cluster part 1)
+
+- [ ] F5.1 Rebuild `frontend/app/(app)/kb/page.tsx` 對齊 `ekp-page-kb.jsx PageKbList`(grid+table+filter polish)
+- [ ] F5.2 Rebuild `frontend/app/(app)/kb/new/page.tsx` 對齊 `ekp-page-kb.jsx PageKbNew`(5-step wizard per ADR-0028 + KbConfig +4 multimodal fields per Wave A)
+- [ ] F5.3 **Rule-of-3 wizard primitive promotion**(now Rule-of-4 with W22 wizard surfaces:F5.2 `/kb/new` 5-step + F6.2 `/kb/[id]/upload` 3-step + F2.2 `/register` 2-step + W13 verify-email)— extract shared `frontend/components/ui/stepper.tsx` + `<Stepper.Stage>` + `<Stepper.Field>` primitive;refactor all 4 wizard surfaces to consume
+- [ ] F5.4 Preserve `GET /kb` + `POST /kb` backend integration
+- [ ] F5.5 Tokens 100%;`tsc` + `lint` clean
+- [ ] F5.6 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify
+- [ ] F5.7 User-eye side-by-side verify before tick
+
+## F6 — /kb/[id] 7-tab + /kb/[id]/upload + /kb/[id]/docs/[docId] rebuild(KB cluster part 2 — folds W21 F3)
+
+- [ ] F6.1 Rebuild `frontend/app/(app)/kb/[id]/page.tsx` 對齊 `ekp-page-kb-detail.jsx PageKbDetail` 7-tab `-Access`(Documents + Chunks + Images + Chunking Lab + Pipeline + Retrieval Testing + Settings;Access tab disabled affordance — Wave C1 activates)
+- [ ] F6.2 Rebuild `frontend/app/(app)/kb/[id]/upload/page.tsx` 對齊 `ekp-page-kb-upload.jsx PageUploadWizard` 3-step(consume shared `<Stepper>` per F5.3)
+- [ ] F6.3 NEW route + rebuild `frontend/app/(app)/kb/[id]/docs/[docId]/page.tsx` 對齊 `ekp-page-doc-detail.jsx PageDocDetail` 3-pane(outline + chunks + inspector)— **W21 F3 deferred here**;consume W21 F1 backend `GET /kb/{kb_id}/docs/{doc_id}` enriched endpoint shipped(`306dbe0`)
+- [ ] F6.4 **Embedding vector preview feasibility verify**(per ADR-0029 §3 alt #3)— if `chunk.embedding_vector` retrievable via Azure Search `select=*,content_vector`,render 24-dim grid;else `<DisabledAffordance variant="p3-preview" showBadge reason="Embedding vector view: Tier 2 — request to enable" tier2Trigger="Azure Search vector field exposure">`。Decision at `<ChunkInspector>` rebuild time
+- [ ] F6.5 NEW components per mockup(rebuild time):`<DocumentOutline>` + `<ChunkList>` + `<ChunkInspector>` + `<ImageStripScroller>` + per-tab content components
+- [ ] F6.6 Preserve all backend integration:`GET /kb/[id]` + 7-tab endpoints(documents / chunks / images / pipeline / retrieval-testing / settings)+ W21 F1 doc-detail endpoint
+- [ ] F6.7 Tokens 100%;`tsc` + `lint` clean
+- [ ] F6.8 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify per sub-page(3 sub-pages = 3 verifies)
+- [ ] F6.9 User-eye side-by-side verify per sub-page before tick(3 verifies)
+
+## F7 — /eval + /traces index + /traces/[traceId] rebuild(observability cluster — folds W21 F4+F5+F6)
+
+- [ ] F7.1 Rebuild `frontend/app/(app)/eval/page.tsx` 對齊 `ekp-page-eval.jsx PageEval` 6 sections per W21 F4 plan(4-metric stat strip + Reranker Shootout table + Failed queries inspector + Recommendation card + Ops Metrics + CRAG Insight)
+- [ ] F7.2 Rebuild `frontend/app/(app)/traces/page.tsx` 對齊 `ekp-page-traces.jsx PageTracesList` 9-col table view(consume W21 F2 backend `GET /traces?filter=...&since=...&kb_id=...` shipped `55f876b`)
+- [ ] F7.3 Rebuild `frontend/app/(app)/traces/[traceId]/page.tsx` 對齊 `ekp-page-traces.jsx PageTraceDetail` 3 viz modes(vertical default + waterfall SVG + flame SVG)+ viz mode toggle `<ToggleGroup>` persisted to `localStorage['ekp-trace-viz-mode']`
+- [ ] F7.4 NEW typed clients:`frontend/lib/api/eval.ts` + `frontend/lib/api/traces.ts` consuming W17 F3 + W21 F2 backend
+- [ ] F7.5 NEW viz components:`frontend/components/traces/trace-viz-vertical.tsx`(extract W18 inline)+ `trace-viz-waterfall.tsx`(SVG ~80 lines)+ `trace-viz-flame.tsx`(SVG ~100 lines)
+- [ ] F7.6 Preserve W17 F3 RAGAs `POST /eval/run` + `POST /eval/shootout` backend integration
+- [ ] F7.7 **Ops Metrics + CRAG fields fallback decision**(per W21 plan §F4.6+F4.7 — verify field per W19 F2 line 118;if missing fields → `<DisabledAffordance>` "Ops metrics — Wave C+" / coverage-only display)
+- [ ] F7.8 Tokens 100%;`tsc` + `lint` clean
+- [ ] F7.9 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify per sub-page(3 sub-pages = 3 verifies)
+- [ ] F7.10 User-eye side-by-side verify per sub-page before tick(3 verifies)
+
+## F8 — /settings + cross-cutting closeout
+
+- [ ] F8.1 Rebuild `frontend/app/(app)/settings/page.tsx` 對齊 mockup baseline(W18 thin scope — profile + theme + sign-out;`<DisabledAffordance>` Tier 2 chips on Connections + API Keys + Audit log per Wave C2 future)
+- [ ] F8.2 W22 phase Gate verdict landed(PASS / PARTIAL PASS / FAIL with explicit rationale per W18-W21 pattern)
+- [ ] F8.3 W22 `progress.md` Retro — 7 sections(What worked / What didn't & friction / Surprises / Decisions / Carry-overs to W23+ / Time tracking / Spec-ref alignment)
+- [ ] F8.4 W22 `plan.md` + `checklist.md` + `progress.md` frontmatter `status: active` → `closed`
+- [ ] F8.5 W23+ phase folder **NOT pre-created** per CLAUDE.md §10 R1 rolling JIT — kickoff candidates noted in retro
+- [ ] F8.6 `session-start.md` hygiene catch-up — §3 C09/C10 W22 rebuild Status notes + §10 W22 closed row + §11 carry-overs(Wave C1+C2 / Track A IT cred / etc.) + §12 milestones row 累計 21 closed + Last-Updated + Update history
+- [ ] F8.7 Vitest expansion target — W21 baseline 14 files / 37 tests → W22 target **maintained**(rebuild doesn't add new test surface;adjust render-smoke tests to new component DOM)
+- [ ] F8.8 Playwright E2E update — `app-shell-path.spec.ts` + `golden-path.spec.ts` + `visual-baseline.spec.ts` capture NEW pixel baselines for ALL 15 rebuilt pages(`pnpm test:e2e:update-snapshots` via `PW_CHANNEL=chrome`);user pre-Beta smoke remains the interactive walkthrough
+- [ ] F8.9 `references/design-mockups/PAGE_INVENTORY.md` Cn mapping update — 15 rebuilt routes status flip「Implemented Wave A drift」→「Rebuilt W22 strict-fidelity」
+- [ ] F8.10 `docs/02-architecture/COMPONENT_CATALOG.md` C09 + C10 Status row appended — W22 rebuild milestone
+
+---
+
+## Cross-Cutting(must verify each commit + at closeout)
+
+- [ ] CC1 Each commit references `progress.md` Day-N entry(R2)
+- [ ] CC2 Component tag in commit message — F0=governance / F1=C09(layout)/ F2=C09(auth)/ F3=C09(landing)+ C02+C07 consume / F4=C10(chat)+ C04+C05+C07 consume / F5+F6=C09(KB cluster)+ C01+C02+C03 consume / F7=C09+C06+C07(observability)/ F8=C09(settings)+ governance
+- [ ] CC3 OQ status sync to `decision-form.md`(R4)— **no-op expected**:Q1-Q22 all stay current status(W22 doesn't resolve any new OQ);ADR-0017 occurrences if any new R8 hit → log(no install expected)
+- [ ] CC4 Risk register — R-W22-1 through R-W22-6 logged in plan §4;per-occurrence add to `RISK_REGISTER.md` if hit
+- [ ] CC5 CLAUDE.md §5.1 H1 check — W22 is H7 enforcement,NOT H1 architectural change(architecture / component spine / 8-view layout philosophy 全部 preserved;implementation 從「approximate」變「strict reproduction」係 H7 binding,唔係 H1 trigger);Tier 2 boundary held(C16/C17 still Wave C scope;Labs visible-disabled per W19 F5 catalog)
+- [ ] CC6 CLAUDE.md §5.2 H2 check — **no new dependency**(W22 uses existing shadcn primitives + Tailwind tokens + existing `psycopg` backing;NO Key Vault SDK / NO Entra Graph SDK — those are Wave C)
+- [ ] CC7 CLAUDE.md §3.2 frontend conventions — `tsc --noEmit` exit 0 + `next lint` "No ESLint warnings or errors";no `any`;shadcn/ui only;design tokens via `tokens.ts`(`[oklch`=0);App Router only;Server Components default;Client Components have `"use client"` + docstring
+- [ ] CC8 CLAUDE.md §3.1 backend conventions — N/A(W22 doesn't touch backend except integration verification);backend 99/99 pytest regression preserved at each W22 commit(no W22 commit may regress backend)
+- [ ] CC9 CLAUDE.md §5.5 H5 — no secret committed;no hardcoded tenant/subscription/resource;auth state read via existing W17 F2 cookie/CSRF baseline preserved
+- [ ] CC10 CLAUDE.md §5.4 H4 — Tier 2 boundary held:Labs section visible with `<DisabledAffordance>` per W19 F5 catalog;Workspace switcher disabled affordance;Embedding vector preview Tier 2 fallback per F6.4;Ops Metrics Tier 2 fallback per F7.7;no GraphRAG / no multi-agent / no multi-tenancy / no multi-modal-search / no auto-sync / no fine-tune leak
+- [ ] CC11 Karpathy §1.3 surgical — **preserve list** is explicit + locked:Next.js App Router + `(app)/` route group + AppShell pattern at API level + shadcn/ui + Tailwind tokens + `frontend/lib/api/*.ts` API client layer + `frontend/lib/auth/*` hybrid auth + state management + Vitest + Playwright + tokens.ts;**rebuild list** = presentation only(page.tsx files + presentation components + internal AppShell rebuild);**no 順手 refactor** of preserved layers
+- [ ] CC12 CLAUDE.md §3.2.1 H7 + §5.7 H7 — design fidelity gate at each F-deliverable(mockup 對齊 100% reproduction;唔對齊嘅地方 STOP+ask per §5.7 H7 trigger);**every F1-F7 acceptance criteria explicitly includes H7 7-item self-verify + user-eye side-by-side verify**;no fidelity-deferred allowance for the rebuild itself
+
+---
+
+**Lifecycle reminder**:呢份 checklist 衍生自 `plan.md` deliverables。新加 deliverable 必須先入 plan + §7 changelog,然後再加 checklist item。延後 item 標 🚧 + reason,**唔可以刪**未勾選 `[ ]`。
