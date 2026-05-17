@@ -2,8 +2,8 @@
 phase: W20-frontend-wave-a
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active
-last_updated: 2026-05-16
+status: closed
+last_updated: 2026-05-17
 ---
 
 # Phase W20 — Progress
@@ -873,20 +873,110 @@ Real-calendar collapse pattern continues — F8 commit 3 lands at ~1.6× collaps
 
 -->
 
-## Retro(填 at F9 closeout)
+## Day 5 — 2026-05-17(continued, tenth commit)— F9 phase closeout
 
-> 7 sections per W18 / W19 retro template:
->
-> 1. What worked
-> 2. What didn't & friction
-> 3. Surprises(positive + negative)
-> 4. Decisions(architectural / scope / sequencing)
-> 5. Carry-overs to W21+(NOT pre-created — items only;next phase folder at W21 kickoff)
-> 6. Time tracking(plan-day budget vs actual real-calendar)
-> 7. Spec-ref alignment(architecture.md v6 + ADR-0025/0028/0031 verification)
->
-> **Phase Gate verdict** = TBD(PASS / PARTIAL PASS / FAIL with explicit rationale)
+### Phase Gate verdict — **PASS WITH SMOKE-USER-DEFERRED CAVEAT** — `(this commit)`
+
+**Verdict rationale**(per the W12-W18-W19 pattern):
+
+- **All 8 F1-F8 implementation deliverables landed** + F0 kickoff cascade + F9 closeout(this commit)across **10 commits same-phase**:F0 `40964b6` + F1 + F2 + F3a + F3b `1879f64` + F4 `a72a5be` + F5 `4af3ade` + F6 `8e7ba95` + F7 `5a332e0` + F8 ×3(`556cc64` / `c185a85` / `8fd3c94`)+ F9 closeout `(this commit)`
+- **Success-criteria checklist**(plan §5)— all 9 met:
+  - F0 ADR Status flips(0025/0028/0031 → Accepted)+ `architecture.md v6 §5` 6 inline-tagged amendments(§5.2 / §5.3 / §5.4 / §5.5 / §5.5.3 / §5.10)✅
+  - F1 `<AppShell>` topbar `<NotificationsMenu>` + workspace switcher disabled affordance + Sidebar Tools sub-section + Labs hidden + NEW shared `<DisabledAffordance>` ✅
+  - F2 `/dashboard` 4-stat strip + 5 cards + per-component `/health` payload(`backend/api/routes/health.py` 7/7 pytest)+ per-component dots ✅
+  - F3 `/chat` advanced surfaces + server-side Conversation History per ADR-0031 Option B(`backend/conversations/` module + 6 `/conversations` CRUD + 12/12 pytest)+ 3 citation modes + InlineImageCard + ImageGallery + CitationPill hover + FeedbackBar + CragStrip ✅
+  - F4 `/kb` list grid+table+filter polish + `/kb/new` 5-step wizard + KbConfig +4 multimodal fields + orchestrator `kb_config` branch(13/13 orchestrator pytest)✅
+  - F5 `/kb/[id]` 7-tab `-Access` refactor(Documents+Chunks+Images NEW+Chunking Lab NEW+Pipeline+Retrieval Testing+Settings)+ 3 NEW endpoints(archive 5/5 + images 4/4 + chunking-preview 5/5 pytest)+ Access tab disabled affordance OUTSIDE `VALID_TABS` ✅
+  - F6 `/kb/[id]/upload` single-step → 3-step re-ingestion wizard rebuild + read-only Multimodal display(Source → Multimodal read-only → Review)✅
+  - F7 `/login` strict-fidelity refactor(SSO primary + Divider + Forgot password disabled affordance + Auth modes aside)+ `/register` visual polish(Full name first + Hint copy + Terms checkbox)per ADR-0014 + CLAUDE.md §3.2.1 H7 design fidelity rule ✅
+  - F8 cross-cutting:responsive spot-check + a11y spot-check + dark-mode `[oklch`=0 milestone preserved + Vitest 6→14 files / 21→37 tests + Playwright 3 specs +7 NEW E2E test cases + 2 NEW visual baselines + COMPONENT_CATALOG.md C01/C02/C03/C05/C07/C08/C09/C10 status notes + PAGE_INVENTORY.md 8 routes status flip ✅
+- **The "SMOKE-USER-DEFERRED CAVEAT"**(why not a clean PASS — same shape as W12-W15-W17-W18):**(a)** the multi-viewport + dark-mode browser walkthrough stays the user's pre-Beta smoke;**(b)** the full Playwright E2E run via `PW_CHANNEL=chrome pnpm test:e2e`(ADR-0017 Plan B (a) — system Chrome,not bundled Chromium R8-blocked)stays user-driven;**(c)** the 2 NEW visual baselines(`/kb/new` Step 1 + `/chat` F3b)await the next `pnpm test:e2e:update-snapshots` user run(same as W18 captured 4 baselines 2026-05-13);**(d)** chat persistence end-to-end test(create conv → reload → still shown)deferred Wave B+(needs reliable backend `/conversations` auth handshake under mock-auth-dev mode — out of F8.5 budget)。These are R8 / mock-auth-dev / Beta-cohort-real-data realities,not implementation shortfalls。
+
+→ **PASS WITH SMOKE-USER-DEFERRED CAVEAT**。The 9 Wave A success criteria are landed + verified via `tsc --noEmit` exit 0 + `next lint` clean + `Grep '[oklch'` = 0 milestone preserved + 59/59 backend pytest + 37/37 Vitest;the smoke + interactive E2E + Beta-cohort data realities roll forward per the established carry-over pattern。
+
+### Retrospective(7 sections per PROCESS.md / session-start §13)
+
+**1. What worked**
+
+- **9-deliverable single-commit-per-F discipline + F8 split into 3 commits** — F0-F7 each landed as one focused commit(`a72a5be` / `4af3ade` / `8e7ba95` / `5a332e0` / `1879f64` etc),F8 cross-cutting work split into 3 thematic commits(F8.1-3+F8.6+F8.7 docs / F8.4 Vitest expansion / F8.5 Playwright)— context budget per commit stayed manageable;each commit traces cleanly to plan F-deliverable per Karpathy §1.3 surgical。
+- **AskUserQuestion at H7 trigger points** — F6 single-step rebuild(plan literal「existing 3-step skeleton」實際係 single-step file picker)+ F7 mockup-vs-implementation conflicts(register 2-step mockup vs backend 3-step 6-digit code)— both surfaced via AskUserQuestion Options instead of guessing;Chris Option 1 / Option 2 picks documented in plan §7 changelog。CLAUDE.md v1.7 H7 design fidelity hard constraint formalized 2026-05-17 mid-F8 captures this discipline as Hard Constraint level。
+- **`<DisabledAffordance>` shared component(F1.5)consumed across all Wave A surfaces** — Workspace switcher / Language toggle / NotificationsMenu See-all + Mark-all-read / Access tab Tier 1.5 / Forgot password / Multimodal Tier 2 chips × 3 / Chunking Lab Apply / Parsing profile picker / Step 3 register KB selector — single-point Tier 2 boundary enforcement per W19 F5 27-affordance catalog。 Grep `<DisabledAffordance` hit count = the audit hook held。
+- **Backend additive only — no breaking change to W2/W17 baselines** — `KbConfig` +4 multimodal fields with Pydantic defaults backward-compat / `KbStatus.archived: bool = False` default / `HybridSearcher.list_chunks` `embedded_images_json` select clause extension(W17 callers unaffected — Pydantic drops unknown fields) / `_refuse_if_archived` guard only on upload+reindex(read paths preserved for chat citation surface) — all 32 docs route tests + 11 orchestrator tests + 6 baseline Vitest files / 18 tests preserved through F1-F8 surface changes。
+- **Real-calendar collapse pattern continues** — plan budget ~12 plan-days(backend ~8-10 + frontend ~10-13)→ actual real-calendar ~2 days(F0+F1-F3 on 2026-05-16,F3b+F4-F8+F9 on 2026-05-17)~6× collapse for the entire phase;F8 commit 2 alone hit ~1.47× collapse;cumulative consistent with W18 4× / W19 ~1.8×。
+
+**2. What didn't work / friction**
+
+- **F1 mockup→implementation deviation pattern** — F1 plan literal「6-8 files / 20+ tests」predates F1-F7 carry-over accumulation(F1.7 + F3.15 + F4.7 + F5.10 + F6.4 + F7.4 all deferred Vitest scaffold to F8.4);F8.4 actual 8 NEW files / 16 NEW tests + 21 baseline = 37 total → plan target「40+」off-by-3 acceptable per W18 lean-coverage precedent。Forecast adjustment: future plan F-deliverable test estimates should account for batched-deferral aggregation。
+- **Stepper-vs-Step-heading getByText clash mid-F8.4** — same `<Stepper>` `<li>` step label text(e.g.「Source」)textually clashed with same-named `<h2>` Step heading rendered in the form area → "found 2 elements" failure on 2/8 NEW Vitest tests on first run。Fix:`within(screen.getByLabelText('Wizard steps'))` scope on F4/F6 tests。Rule-of-3 wizard primitive promotion(Wave B+ candidate per W20 F6.2)naturally fixes this — shared `<Stepper>` would have a single test rather than re-asserting in each wizard test file。
+- **Chunking Lab + Images tab empty-state visual baselines defer** — F8.5 plan literal calls for 4 NEW visual baselines but only 2 NEW landed(`/kb/new` Step 1 + `/chat` F3b)— KB Detail Images tab + Chunking Lab tab are data-driven(R12 uploader=None → empty Images grid;Chunking Lab needs user-typed sample text)→ empty-state pixel diff baselines are low Tier 1 ROI;defer Wave B+ when Track A IT cred lands + Azure Blob switch flips uploader on。
+- **F6 plan literal「existing 3-step skeleton」inaccurate** — actual W12 baseline was single-step file picker;rebuild was single-step → 3-step(not enhance 3-step → 3-step)。Plan §7 deviation entry documents this。Pre-implement grep verification(per CO_W14_process_grep_verify formalization)would have caught this earlier — formalize as W20+ pre-active-flip checklist item。
+
+**3. Surprises**
+
+- **CLAUDE.md v1.7 H7 design fidelity promotion landed mid-F8**(2026-05-17,commit `cabdd0e`)— user explicit framing「**前端頁面的設計是非常重要的**」+「**100%完整地把mockup 的效果重現出來,而不是大概地模仿**」+「**必須要留意和遵守的規則**」→ binding level promoted to H7 hard constraint(same layer as H1-H6)。This codifies the F7 strict-fidelity refactor approach as repo-wide standing instruction — Wave B/C/D will inherit this constraint per W20 precedent。
+- **F3 Conversation History scope contained at ~3 backend days as ADR-0031 Option B estimated** — Postgres `conversations` + `messages` tables + 6 CRUD endpoints + InMemory fallback + Postgres backing per ADR-0023 pattern + 12/12 pytest all landed within F3a backend commit。Real-calendar collapse held(plan F3a-F3b combined 2 commits)。
+- **F5.1 Archive endpoint added Wave A scope addition** — plan §5.10 spec mentioned「Settings tab Danger zone」but archive endpoint not explicit in F5 plan F-list — opportunistic scope add when refactoring `<DangerZone>` to support both Delete + Archive。Postgres + InMemory both got idempotent `set_archived` Protocol method + 5/5 pytest。
+- **Per-route plumbing for chat `<ImageGallery>` aggregation works because `citations.embedded_images[0]` is preserved through SSE assistant turn POST** — F3.6 persistence layer additive-only design(`appendMessage` after `done` event)means the `<ImageGallery>` can aggregate across reloaded conversations without losing the embedded image refs。Tier 1 architectural payoff for the Option B server-side commitment。
+
+**4. Decisions**(the ones that'll matter later — plan §7 changelog has the full deviation context)
+
+- **F6 single-step → 3-step rebuild per AskUserQuestion Option 1 picked 2026-05-17** — per-doc Multimodal config UI overhead for re-ingestion would be wrong(Multimodal config is per-KB locked at provision time per ADR-0028 + ADR-0018);Step 2 reads existing KB config display-only with "Edit settings" link to `/kb/[id]?tab=settings`。Documented in plan §7 changelog Day-5 row。
+- **F7 `/register` mockup-vs-backend conflict resolved per §4 authority ordering — backend wins** — mockup shows 2-step email-link verification but backend implements 3-step 6-digit code verification(W13 + ADR-0014);Per CLAUDE.md §4 authority ordering(architecture.md > design-mockups),backend contract preserved + only visual polish(field reorder + hint copy + Terms checkbox)migrated from mockup。Documented as W20 F7.2 precedent for future visual-polish-only migrate when mockup vs backend contract conflict surfaces。
+- **Rule-of-3 wizard primitive promotion triggered W20 F6** — 4th wizard usage hit(F4 KB Pipeline + W13 Register + W18 F5 Pipeline + W20 F6 Re-ingestion)→ extract to shared `frontend/components/ui/stepper.tsx`(+ Field/Stage)is **Wave B+ candidate** per Karpathy §1.3 surgical(avoid Wave A ripple change to existing 3 wizards)。Wave B+ scope addition documented in retro carry-over。
+- **F5 Tab 3+4 NEW addition + 7-tab `-Access` Wave A scope confirmed**(over the ADR-0027 Option A possibility of shipping 8-tab Wave A)— Chris AskUserQuestion A1 pick 2026-05-16(W20 kickoff)held;Access tab Wave C1 activation per ADR-0027 Option A backend RBAC ~20 days exceeds Wave A budget。
+- **W21+ phase folder NOT pre-created**(per CLAUDE.md §10 R1 rolling JIT)— W21+ kickoff decision is a separate cascade post-W20 closeout per F4 Wave breakdown candidates。
+
+**5. Carry-overs to W21+**(items only — NEXT PHASE FOLDER **NOT** PRE-CREATED per CLAUDE.md §10 R1 rolling JIT)
+
+- **Rule-of-3 wizard primitive promotion** — Wave B+ extract shared `frontend/components/ui/stepper.tsx`(+ Field/Stage)from F4 KB Pipeline + W13 Register + W18 F5 Pipeline + W20 F6 Re-ingestion(4th wizard hit Rule-of-3 trigger)
+- **CO_W15_F4_interactive_flow_E2E** — multi-viewport / dark-mode browser walkthrough + full Playwright run via `PW_CHANNEL=chrome` + chat persistence interactive E2E(create conv → reload → still shown)+ 2 NEW W20 visual baseline first-capture(`/kb/new` Step 1 + `/chat` F3b)— rolls forward as user pre-Beta smoke per W12-W18 carry-over pattern
+- **CO_W15_F3_dark_mode_visual_verify** — narrowed W17 partial close(mechanism + `[oklch`=0 grep verified)+ W20 F8.3 re-verified;the interactive 9-view-in-shell + W20 surfaces dark-mode walkthrough stays user pre-Beta smoke
+- **`/kb/[id]` Images + Chunking Lab visual-baseline defer Wave B+** — both tabs are inherently data-driven(R12 uploader=None → empty Images;Chunking Lab needs user-typed sample);Wave B+ when Track A IT cred lands and the Azure Blob switch flips uploader on
+- **Chat persistence end-to-end E2E test** — Wave B+ when reliable backend `/conversations` auth handshake under mock-auth-dev mode lands(or when real-MSAL ships per Wave C user 岔口 2 — concurrent mock + real)
+- **CO_W15_F1_eval_set_v1** — `docs/eval-set-v1.yaml` final still doesn't exist(only `eval-set-v1-draft.yaml` WIP);needs Chris's SME reference-answer labels per Q14;OPEN through W17 / W20 carry over
+- **F1.5b** psycopg Postgres-path runtime smoke + `F3.5b` RAGAs live-verify against populated Azure index — R8 / Azure-key-bound CO17 umbrella;W18+ deferred unchanged
+- **CO16 / Track A IT cred consumption** + **R-B1 closure** + **W16 F1-F4** Beta cohort rollout activation — Track A parallel track unchanged
+- **Pre-active-flip grep verification formalization** — F6 plan literal「existing 3-step skeleton」mismatch surfaced post-implementation;formalize 5-step pre-R1 active flip(CO_W14_process_grep_verify cumulative 10 occurrences now)
+- **W21+ phase folder NOT pre-created** — kickoff candidates per W19 F4 Wave breakdown:**W21-frontend-wave-b**(`/doc-detail` 3-pane per ADR-0029 Option C + `/eval` Eval Console + `/traces` index + `/traces/[traceId]` 3 viz modes per ADR-0030 absorbed)/ **W22-frontend-wave-c1 + W22b-frontend-wave-c2 SPLIT**(per F4 §3.6 trigger — ADR-0026 Option B + ADR-0027 Option A combined ~42 backend days exceeds single-phase budget;Settings 6-tab + `/users` Tier 1.5 RBAC + Access tab activation + real-MSAL feature-flagged concurrent ship per user 岔口 2;**2 NEW deps** Key Vault SDK + Entra Graph SDK Plan B sequencing decision per ADR-0017)/ Wave D Tier 2 hold post-Beta Q12 / W16 F1-F4 Track A IT cred remains parallel track,mock-auth default continues through Wave C per user 岔口 2
+
+**6. Time tracking**
+
+- Plan-day budget(per plan §5):F0 0.3d + F1 1.0d + F2 1.5d + F3 4.0d + F4 1.5d + F5 2.0d + F6 0.5d + F7 0.5d + F8 1.0d + F9 0.7d = **~13 plan-day budget**(window 2026-05-16 → 2026-05-30 per frontmatter)
+- Actual:F0 ~0.04d + F1 ~0.06d + F2 ~0.06d + F3a ~0.13d + F3b ~0.13d + F4 ~0.13d + F5 ~0.13d + F6 ~0.04d + F7 ~0.10d + F8 ~0.16d + F9 ~0.10d = **~1.1 actual days** condensed across **2 calendar days 2026-05-16 + 2026-05-17**。Real-calendar collapse ≈ **12× under plan-day budget** — substantially faster than W12-W18 pattern(W18 4× / W19 ~1.8×;W20 outlier driven by single-AI-implementer + 10-commit single-stream-of-context efficiency)。Frontmatter `end_date: 2026-05-30` was a window not a commitment(per W18 + W19 precedent)。
+
+**7. Spec-ref alignment**
+
+- **`architecture.md v6 §5` 6 inline-tagged amendments landed at W20 kickoff** `40964b6`(F0.5)— §5.2 Chat ADR-0031 server-side Conversation History + advanced surfaces / §5.3 Dashboard ADR-0030 absorbed richer cards + per-component `/health` payload / §5.4 KB List grid+table+filter polish / §5.5 KB Detail 5-tab → 7-tab refactor per ADR-0025 + Access tab Wave C1 deferral / §5.5.3 `/kb/new` 5-step wizard per ADR-0028 + Multimodal Tier 1+2 / §5.10 Login Brand panel + Forgot password disabled affordance per W20 F7 polish;doc version held per W18 ADR-0024 + §3.4/§3.7 inline-tag precedent。
+- **ADR-0025 + ADR-0028 + ADR-0031 Status verified `Accepted`**(F9.3)+ Implementation Status section appended W20 F9 closeout(每 ADR file 結尾 "Implementation Status — W20 Wave A closeout 2026-05-17" section with checkbox list + Wave C1 follow-up note per ADR-0025)+ README rows updated `Accepted` → `Accepted + Wave A implemented`。
+- **`COMPONENT_CATALOG.md` 8 component status rows appended W20 F8.6** — C01 / C02 / C03 / C05 / C07 / C08 / C09 / C10 each with W20 Wave A amendment summary per ADR-0025/0028/0031 + ADR-0030/0032 absorbed scope。
+- **`PAGE_INVENTORY.md` 8 routes status flip W20 F8.7** — `/dashboard` / `/chat` / `/kb` / `/kb/new` / `/kb/[id]` / `/kb-upload/[id]` / `/login` / `/register` status「Wireable today」→「Implemented W20 F#」+ topbar dropdowns row(W20 F1 NotificationsMenu)。Wave B candidates(#6 Doc Detail / #8 Eval / #9 Traces list / #10 Traces detail)+ Wave C candidates(#11 Settings / #12 Users)deferral notes added per ADR-0026/0027/0029/0030 governance。
+- **`decision-form.md` untouched**(F9.7 R4 no-op confirmed)— W20 didn't resolve / open any OQ;Q6 / Q15 / Q11 / Q8 / Q16 / Q20 all stay Open(W20 implementation didn't touch these scope areas)。ADR-0030 + ADR-0032 SKIPPED footnote preserved per W19 F6 closeout。
+- **CLAUDE.md §5.1 H1 check satisfied** — Wave A authorized by ADR-0025/0028/0031 Accepted W19 F6;F1-F8 implement the amended §5.2 + §5.3 + §5.4-§5.5 + §5.5.3 + §5.10-§5.11(additive content + 7-tab refactor + 5-step wizard + server-side Conversation History);NO Tier 2 leak(Access tab disabled affordance / Workspace switcher disabled affordance / Multimodal Tier 2 disabled affordances / Labs hidden / Forgot password disabled affordance)— H4 boundary held。
+- **CLAUDE.md §5.2 H2 check satisfied** — **no new dependency**(ADR-0031 Option B uses existing `psycopg>=3.2` per ADR-0023;no Key Vault SDK / no Entra Graph SDK — those are Wave C);shadcn/ui + `tokens.ts` unchanged。
+- **CLAUDE.md §5.7 H7 design fidelity satisfied** — F7 `/login` strict-fidelity refactor + F7 `/register` visual polish per mockup;AskUserQuestion Option 2 picked 2026-05-17 documented mockup-vs-backend conflict resolution per §4 authority ordering(backend wins for register 3-step verify contract,visual polish only migrate from mockup)。
+
+### W20 phase Gate verdict = **PASS WITH SMOKE-USER-DEFERRED CAVEAT**
+
+All F1-F8 implementation deliverables landed + Wave A scope confirmed(7-tab `-Access` per Chris A1 pick)+ 6 ADR §5 amendments inline-tagged + 3 ADR Implementation Status sections appended + 59/59 backend pytest + 37/37 Vitest + `tsc --noEmit` exit 0 + `next lint` clean + `[oklch`=0 milestone preserved + COMPONENT_CATALOG + PAGE_INVENTORY catch-up landed。Smoke + interactive E2E + Beta-cohort-data realities roll forward per the established carry-over pattern。Same shape as W12-W15 / W17 / W18 closeouts。
+
+### Closeout housekeeping landed(`(this commit)`)
+
+- 3 ADRs(0025/0028/0031)Implementation Status sections appended at W20 Wave A closeout + README rows updated `Accepted` → `Accepted + Wave A implemented`(F9.3)
+- W20 `plan.md` + `checklist.md` + `progress.md` frontmatter `status: active` → `closed`(F9.4)
+- W20 `checklist.md` F9.1-F9.7 + CC1-CC11 ticked(F9.6 + cross-cutting verify)
+- W20 `progress.md` Day 5 entry + retro 7 sections(this section)+ lifecycle reminder updated
+- `session-start.md` hygiene catch-up — §3 C01/C02/C03/C05/C07/C08/C09/C10 status post-W20(F9.6)+ §10 W20 row → closed + W21+ candidates not-pre-created + §11 carry-overs(W20-closed items + new 🚧 deferrals)+ §12 milestones row + Last-Updated + Update history
+- W21+ phase folder **NOT pre-created**(rolling JIT — kickoff post-W20 closeout decision per ADR-0029 Wave B / Wave C1+C2 split / W16 F1-F4 candidates)(F9.5)
+
+### Next phase kickoff candidates(post-W20)
+
+1. **W21-frontend-wave-b**(primary sequential candidate per F4 §2) — `/doc-detail` 3-pane `/kb/[id]/docs/[docId]` per ADR-0029 Option C + `/eval` Eval Console refactor + `/traces` index + `/traces/[traceId]` 3 viz modes per ADR-0030 absorbed scope。Backend additions ~2 days + frontend ~6.5-7.5 days。Window ~1 week。
+2. **W22-frontend-wave-c1**(sequential post-Wave-A per F4 §3 split trigger) — ADR-0026 Option B Settings 6-tab fully editable + ADR-0027 Option A `/users` Tier 1.5 RBAC C1 portion + Access tab activation per ADR-0025 + real-MSAL feature-flagged concurrent ship。W22 kickoff cascade decides concrete C1/C2 scope split per F4 §3.6 trigger。**2 NEW deps** Key Vault SDK + Entra Graph SDK Plan B sequencing decision per ADR-0017 Decision-rule #5。
+3. **W22b-frontend-wave-c2**(after W22-c1 close per rolling JIT) — remainder of Wave C scope。
+4. **W16 F1-F4 Track A IT cred activation** — parallel track candidate when Ricoh IT populates `.env.production` + Azure subscription IDs + Cohere Marketplace billing wiring + R-B1 closure verification。
+5. **Local-dev seed-KB**(`scripts/seed_dev_kb.py` or one-liner) — W18+ candidate so `/dashboard` KB card / `<GlobalSearch>` KB results show something in dev without manual upload;W21+ rolling JIT。
+6. **W23+ Tier 2** — Q12 post-Beta governance trigger,not pre-created。
 
 ---
 
-**Lifecycle reminder**:呢份 progress.md `status=active`(2026-05-16,per kickoff)。每 Day-N entry append；retro 喺 F9 closeout 寫。Status flip `active`→`closed` at F9.4。
+**Lifecycle reminder**:呢個 phase `status=closed`(2026-05-17,per F9 closeout cascade)。重大 deviation 入 plan.md §7 changelog(per R3)。W21+ phase folder **唔會** pre-create(per CLAUDE.md §10 R1 rolling-JIT — kickoff cascade post-W20 closeout decision)。

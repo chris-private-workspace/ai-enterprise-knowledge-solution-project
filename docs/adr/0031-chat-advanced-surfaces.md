@@ -137,9 +137,25 @@ Adopt the **Chat advanced surfaces bundle** per prototype。Amend `architecture.
 - `COMPONENT_CATALOG.md` C10 Chat Interface UI row gets「ADR-0031 Chat advanced surfaces — Conversation History localStorage Tier 1 + citation modes + image cards」status note
 - `tests/unit/` Vitest scope:CitationPill hover popover + FeedbackBar comment reveal + CRAG strip rendering = 3 NEW test cases per W17 F6 baseline expansion
 
+## Implementation Status — W20 Wave A closeout(2026-05-17)
+
+**Implemented by `W20-frontend-wave-a` phase**(closed 2026-05-17,Gate **PASS WITH SMOKE-USER-DEFERRED CAVEAT**)— Option B server-side Conversation History shipped per Chris W19 F6 pick(promotes C10 §7 Tier 2 → Tier 1)。
+
+- [x] **Backend Conversation History server-side**(Option B) — NEW Pydantic schemas(7 models in `backend/api/schemas/conversation.py`)+ NEW module `backend/conversations/`(Protocol + `InMemoryConversationStore` + `PostgresConversationStore` per ADR-0023 + `make_conversation_store` factory)+ idempotent `CREATE TABLE IF NOT EXISTS` for `conversations` + `messages`(user-idx + conv-idx + CASCADE FK,no Alembic per W17 F1)+ 6 `/conversations` CRUD endpoints(`Depends(get_current_user)`-gated + cross-user 404 isolation)+ auto-title on first user message;**12/12 pytest pass**(coverage ≥ 80% per H6)— W20 F3.1 + F3.2 + F3.3 + F3.4
+- [x] **Frontend Conversation History sidebar** — NEW `lib/api/conversations.ts` + `<ConversationHistoryPanel>` left collapsible pane with `localStorage['ekp-chat-history-collapsed']` persistence + `useQuery` 30s staleTime + lazy `ensureConversation()` on first user send + double-click inline rename + shadcn `<Dialog>` delete confirmation + 401 graceful fallback;`ApiClient.delete<T = void>` added for 204-No-Content endpoints — W20 F3.5
+- [x] **3 citation placement modes** — `inline` / `footnote` / `sidebar` toggle in `<ChatHeader>` fieldset(aria-pressed pills)+ persisted to `localStorage['ekp-citation-mode']`;`inline` = 2-col CitationCard grid(W3 preserved)、`footnote` = `<ol>` w/ `<CitationPill>` indices + summary、`sidebar` = right `<aside>` (lg-only) — W20 F3.7
+- [x] **`<InlineImageCard>`**(NEW)— thin extracted button wrapping `<img>` thumbnail;CitationCard reuses it consuming existing W17 `ImageRef.embedded_images[0]` — W20 F3.8
+- [x] **`<ImageGallery>`**(NEW)— aggregates `citations.embedded_images[0]` across ALL conversation messages into 3-col grid below chat stream;click → `<ScreenshotModal>` with alt_text overlay(OCR text from W2 F3 screenshot pipeline)— W20 F3.9
+- [x] **`<CitationPill>`**(NEW)— `[n]` pill with vanilla popover(100ms hover-grace + `onFocus`/`onBlur` keyboard a11y)showing chunk title + doc title + section path + score + "Open source document →" deep-link;deviation = vanilla popover not shadcn `<Popover>` primitive(not yet in repo;Karpathy §1.2 add when 2nd use site)— W20 F3.10
+- [x] **`<FeedbackBar>`**(NEW)— thumbs-up one-shot write + thumbs-down inline disclosure with `<select>` tag dropdown(inaccurate / incomplete / off-topic / other)+ textarea + Send;tag prefixed into existing W8 `POST /feedback` `comment` field as `[tag] text…`(no backend schema change per Karpathy §1.2)— W20 F3.11
+- [x] **`<CragStrip>`**(NEW)— `<Sparkles>` + "CRAG triggered — N iteration(s)" chip;dormant Tier 1 SSE path(stream is L3-only per architecture.md §3.5)+ wiring in place Wave B+ L3 enable;`crag_reasoning` deliberately omitted per F3.13(Wave B+ candidate)— W20 F3.12 + F3.13(`backend/api/schemas/query.py` `crag_triggered` + `crag_iterations` already in place W4 baseline,no schema change)
+- [x] **SSE `streamQuery` preserved verbatim** — persistence layer additive only(`appendMessage` user POST before SSE + assistant POST with citations after `done`;both `.catch(() => {})` best-effort so transient blip doesn't block render)— W20 F3.6
+- [x] **`architecture.md v6 §5.2` amendment** — landed at W20 kickoff `40964b6`(inline-tagged §5.2 Chat ADR-0031 server-side Conversation History + advanced surfaces blockquote + InlineImageCard + ImageGallery + CitationPill + FeedbackBar + CRAG strip;doc version held)
+- [x] **C10 §7 Future Evolution promotion** — server-side Conversation History promoted from Tier 2 to Tier 1 per Option B(architecture.md §5.2 amendment reflects)
+
 ## References
 
-- `architecture.md v6 §5.2` Chat(spec basis per ADR-0024)+ C10 §7 Future Evolution(Conversation History Tier 1/2 schedule)
+- `architecture.md v6 §5.2` Chat(spec basis per ADR-0024;W20 amended for advanced surfaces)+ C10 §7 Future Evolution(Conversation History Tier 1 server-side per W20 F3 Option B)
 - `references/design-mockups/ekp-page-chat.jsx`(`PageChat` lines 72-132;ConversationHistoryPanel lines 136-220;ChatHeader lines 257-299;ChatThread lines 301-373;FeedbackBar lines 377-440;AnswerBody lines 443-500;CitationPill lines 516-578;InlineImageCard lines 581-618;ImageGallery lines 621-664;SourcesStrip lines 667-697;CitationPanel lines 799-828;SyntheticScreenshot lines 912-1065;ScreenshotModal lines 1068-1121;ChatComposer lines 1124-1150)
 - `references/design-mockups/ekp-data.jsx`(`MOCK_CONVERSATIONS` lines 449-547 with 8 conversations grouped today/yesterday/this-week/older + starred)
 - W19 F1 audit §2.1 D7(Chat advanced surfaces — 7 enhancements)

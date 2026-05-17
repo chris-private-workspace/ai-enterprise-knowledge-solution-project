@@ -55,9 +55,22 @@ Backend additions(per W19 F2 §3.2):
 - `architecture.md v6 §5.5` 5-tab → 8-tab is inline-tagged amendment(doc version held — per the ADR-0024 / ADR-0023 / ADR-0022 W17/W18 precedent)— amendment lands at `W20-frontend-wave-a` phase kickoff(per CLAUDE.md §10 R5 ADR-before-implementation)
 - `COMPONENT_CATALOG.md` C09 KB Detail row gets「8-tab per ADR-0025」status note at Wave A close
 
+## Implementation Status — W20 Wave A closeout(2026-05-17)
+
+**Implemented by `W20-frontend-wave-a` phase**(closed 2026-05-17,Gate **PASS WITH SMOKE-USER-DEFERRED CAVEAT**)— Wave A shipped **7-tab `-Access`** per Chris AskUserQuestion A1 pick 2026-05-16 + W19 F4 §3.6 trigger(ADR-0027 Option A full RBAC ~20 backend days 唔 fit Wave A budget → Access tab activates Wave C1)。
+
+- [x] **Documents + Chunks + Pipeline + Retrieval Testing + Settings**(5 tabs preserved per W14 baseline,Karpathy §1.3 surgical — no touch to existing tab logic)— W20 F5.4
+- [x] **Images tab(NEW)** — `<ImagesTab>` consumes `kbApi.listImages(kb_id, 200, 0)` + 3-col grid + click → shadcn `<Dialog>` modal with OCR text overlay + empty-state surfaces R12 uploader=None context — W20 F5.5
+- [x] **Chunking Lab tab(NEW)** — `<ChunkingLabTab>` textarea + Strategy + chunk_size + Preview → `kbApi.chunkingPreview(...)` + result chunks as expandable `<details>` blocks + "Apply" button wrapped in `<DisabledAffordance variant="p3-preview" showBadge>` Tier 2 chip("re-chunking pending")— W20 F5.6
+- [x] **Access tab disabled affordance** — 8th `<TabsTrigger value="access" disabled aria-disabled="true">` rendered **OUTSIDE** `VALID_TABS` array(`?tab=access` cannot route)+ wrapped in `<DisabledAffordance variant="p1-strict" reason="RBAC pending Wave C1 per ADR-0027 Option A backend" tier2Trigger="RBAC + audit log + group membership">` — W20 F5.8
+- [x] **Backend NEW**:`GET /kb/{kb_id}/images`(F5.2 — 4/4 pytest)+ `POST /chunking-preview`(F5.3 — 5/5 pytest)+ `POST /kb/{kb_id}/archive`(F5.1 — 5/5 pytest,Wave A scope addition for Settings Danger zone Archive)— 14 NEW backend tests
+- [x] **`architecture.md v6 §5.5` amendment** — landed at W20 kickoff `40964b6`(inline-tagged 7-tab refactor blockquote + Access tab Wave C1 deferral note;doc version held per ADR-0024 / §3.4 / §3.7 precedent)
+
+**Wave C1 follow-up**(NOT W20 scope):Access tab activation + `kb_acl` table + per-KB ACL CRUD endpoints per ADR-0027 Option A full RBAC(~20 backend days)— W22-frontend-wave-c1 candidate per F4 §3.6 split。
+
 ## References
 
-- `architecture.md v6 §5.5` KB Detail(5-tab original spec)
+- `architecture.md v6 §5.5` KB Detail(5-tab original spec → 7-tab refactor per W20 F5;Access tab Wave C1)
 - `references/design-mockups/ekp-page-kb.jsx`(`PageKbDetail` lines 140-235;8-tab navigation array lines 144-153)
 - `references/design-mockups/ekp-page-kb-extras.jsx`(`TabImages` lines 4-98 + `TabChunkingLab` lines 257-350)
 - `references/design-mockups/ekp-page-users.jsx`(`TabKbAccess` lines 390-519)

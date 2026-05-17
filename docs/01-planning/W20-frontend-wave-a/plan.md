@@ -4,7 +4,7 @@ name: "Frontend Wave A — Dashboard + Chat advanced + KB cluster (7-tab) + auth
 sprint_week: W20
 start_date: 2026-05-16              # real-calendar — kicked off post-W19 closeout (Chris pick AskUserQuestion 4 strategic decisions + 6 ADRs Accepted); independent of W16 F1-F4 (Track-A-blocked, parallel) and W21 Wave B (sequential)
 end_date: 2026-05-30                # ~1.5-2 weeks per W19 F4 §1.3 (backend ~8-10 days + frontend ~10-13 days; real-calendar collapse pattern 1.8-4× — actual likely ~3-5 days per W12-W18 trajectory; frontmatter is a window, not a commitment)
-status: active                      # `active` from kickoff 2026-05-16 (Chris directive at W19 F6 closeout + 6 ADRs Accepted = the authorization; same pattern as W17 D0 + W18 D0)
+status: closed                      # `closed` 2026-05-17 — Phase Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT per F9 closeout; F0-F8 all landed across 10 commits ending `8fd3c94` + F9 closeout commit; same shape as W12-W15 / W17 / W18
 spec_refs:
   - architecture.md v6 §5.0          # Application Shell (W18 ADR-0024) — topbar + sidebar polish per ADR-0032 absorb
   - architecture.md v6 §5.2          # Chat — advanced surfaces per ADR-0031

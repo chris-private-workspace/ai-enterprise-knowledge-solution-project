@@ -82,9 +82,23 @@ Adopt the **5-step `/kb/new` wizard + 3-step `/kb-upload/[id]` re-ingestion** du
 - `COMPONENT_CATALOG.md` C09 KB cluster row(new KB wizard + re-ingest wizard)+ C01 Ingestion row(KbConfig multimodal fields)scope notes
 - Prototype inconsistency fix(Step 1 of 4 → Step 1 of 5)is a small frontend mockup edit — not a real `frontend/` deliverable but worth documenting for Wave A implementer
 
+## Implementation Status — W20 Wave A closeout(2026-05-17)
+
+**Implemented by `W20-frontend-wave-a` phase**(closed 2026-05-17,Gate **PASS WITH SMOKE-USER-DEFERRED CAVEAT**)。
+
+- [x] **`/kb/new` 5-step wizard**(Source → Parsing → Chunking → Multimodal → Review)— Stepper `aria-current="step"` + `aria-label="Wizard steps"` landmark + per-step `validateStepN` gating(Step 4 Multimodal no validator,Step 5 file-picker validator)— W20 F4.4 + F4.5
+- [x] **Multimodal Step Tier 1 active** — 4 toggles via NEW `<ToggleRow>` + shadcn `<Switch>`:`extract_embedded_images`(active end-to-end via F4.2 orchestrator branch)+ `slide_screenshots`(forward-compat seam — uploader=None reality per R12)+ `dedup_strategy`(forward-compat)+ `return_images_in_chat`(query-time read)— W20 F4.1 + F4.4
+- [x] **Multimodal Step Tier 2 disabled affordances** — 3 `<DisabledAffordance variant="p3-preview" showBadge>` chips(caption generation / image clustering / provenance ledger — W19 F5 27-affordance catalog rows 18-20)— W20 F4.4
+- [x] **Step 2 Parsing Tier 2 disabled affordance** — `<DisabledAffordance tier2Trigger="parser profile picker">` placeholder Wave B+ Docling profile picker — W20 F4.4
+- [x] **`/kb/[id]/upload` 3-step re-ingestion wizard**(Source → Multimodal read-only → Review)— single-step → 3-step rebuild per F6 deviation entry(plan §7);Step 2 reads existing KB config via `kbApi.get(kbId)` displayed all `disabled` + `aria-readonly` + "Edit settings" link → `/kb/[id]?tab=settings` — W20 F6.1
+- [x] **Backend KbConfig extended** — 4 NEW Tier 1 multimodal fields(`extract_embedded_images: bool = False` + `slide_screenshots: bool = True` + `dedup_strategy: Literal['sha256','none'] = 'sha256'` + `return_images_in_chat: bool = False`)+ orchestrator `ingest()` accepts `kb_config: KbConfig | None`(when `extract_embedded_images=False` short-circuits `ScreenshotExtractor.extract` to empty list);13/13 orchestrator pytest pass — W20 F4.1 + F4.2
+- [x] **Rule-of-3 wizard primitive promotion trigger NOW hit**(4th wizard usage:F4 KB Pipeline + W13 Register + W18 F5 Pipeline + W20 F6 Re-ingestion)→ extract to shared `frontend/components/ui/stepper.tsx`(+ Field/Stage)**Wave B+ candidate**(avoid Wave A ripple change per Karpathy §1.3 surgical)— W20 F6.2
+- [x] **Tier 2 multimodal fields NOT added to backend schema**(disabled affordance frontend-only per H4 boundary policing)— Decision §4 honored
+- [x] **`architecture.md v6 §5.5.3` amendment** — landed at W20 kickoff `40964b6`(inline-tagged §5.5.3 `/kb/new` 5-step wizard + Multimodal Tier 1+2 blockquote;doc version held)
+
 ## References
 
-- `architecture.md v6 §5.5.3` Pipeline Wizard(3-step original spec)+ §3.3 Multi-format ingestion + §11 Tier 2 trigger matrix
+- `architecture.md v6 §5.5.3` Pipeline Wizard(3-step original spec → 5.5.3a 5-step new KB + 5.5.3b 3-step re-ingestion per W20 F4+F6)+ §3.3 Multi-format ingestion + §11 Tier 2 trigger matrix
 - `references/design-mockups/ekp-page-kb-new.jsx`(`PageKbNew` lines 6-101;StepIdentity lines 350-396;StepConfig lines 398-491;StepMultimodal lines 103-312;StepDefaults lines 493-538;StepReview lines 540-583)
 - `references/design-mockups/ekp-page-misc.jsx`(`PageUploadWizard` 3-step lines 4-67;StepDataSource lines 69-158;StepDocumentProcessing lines 160-235;StepExecute lines 237-305)
 - W19 F1 audit §2.1 D4(5-step wizard + Multimodal Tier 1/2 mix + `/kb-upload/[id]` coexistence)
