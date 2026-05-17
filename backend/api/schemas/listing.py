@@ -12,6 +12,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from api.schemas.query import ImageRef
+
 
 class DocumentSummary(BaseModel):
     """Doc-level metadata aggregated from chunks per kb_id (per F5.1.1)."""
@@ -70,6 +72,71 @@ class KbImagesResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# --------------------------------------------------------------------------- #
+# W21 F1 — `GET /kb/{kb_id}/docs/{doc_id}` enriched (per ADR-0029 Option C +
+# architecture.md v6 §5.5.2a Document Detail page).
+#
+# Powers the 3-pane Doc Detail view (outline left + chunks center + inspector
+# right). Schemas surface doc-level metadata + outline reconstruction from the
+# layout-aware chunker's `section_path` field + image_refs aggregated from
+# `embedded_images_json` (the W20 F5.2 + W17 F4.1 select-clause extension).
+#
+# Forward-compat seams (Tier 1 `None` per Karpathy §1.2 — wired when source data
+# lands): `parse_duration_ms` + `embed_duration_ms` (F1.3 — ingestion result
+# persistence Wave C+) / `size_kb` + `pages` + `language` / `total_tokens`
+# (list_chunks doesn't surface chunk_token_count yet).
+# --------------------------------------------------------------------------- #
+
+
+class OutlineNode(BaseModel):
+    """One heading in the doc outline reconstructed from chunk `section_path[]`.
+
+    `level` = `len(section_path)` (1-indexed depth). `title` = `section_path[-1]`.
+    `chunk_count` = number of chunks whose section_path matches this exact path.
+    `page` is None for Tier 1 (page-number tracking is a forward-compat seam —
+    the layout-aware chunker emits chunks without per-section page anchors today).
+    """
+
+    level: int
+    title: str
+    chunk_count: int
+    page: int | None = None
+
+
+class DocumentDetail(BaseModel):
+    """`GET /kb/{kb_id}/docs/{doc_id}` enriched response per ADR-0029.
+
+    Composed from `RetrievalEngine.list_documents(kb_id)` (doc-level row) +
+    `RetrievalEngine.list_chunks(kb_id, doc_id)` (chunk-level aggregation for
+    outline + image_refs + low_value count) + `KBService.get(kb_id)` (chunk_strategy
+    from KbConfig).
+
+    The 8 forward-compat seam fields (`source` / `size_kb` / `pages` / `language`
+    / `total_tokens` / `parse_duration_ms` / `embed_duration_ms` + `page` on
+    OutlineNode) carry `None` for Tier 1 — UI renders "—" + tooltip "Stage timing
+    — Wave C+ instrumentation" (per ADR-0029 §3 + plan §2 F3.6 contract).
+    """
+
+    doc_id: str
+    title: str                              # from list_documents `doc_title`
+    source: str | None = None               # forward-compat seam — Wave C+
+    source_url: str | None = None           # from list_documents row when ingestion captured it
+    file_type: str                          # from list_documents `doc_format` (e.g. "docx", "pdf", "pptx")
+    size_kb: int | None = None              # forward-compat seam — Wave C+
+    pages: int | None = None                # forward-compat seam — Wave C+ (chunker doesn't track page totals)
+    language: str | None = None             # forward-compat seam — Wave C+
+    chunk_strategy: str | None = None       # from KbConfig.chunk_strategy when KB resolvable
+    total_chunks: int                       # doc-level total from list_documents `total_chunks`
+    total_images: int                       # unique image count post-SHA256 dedup
+    total_tokens: int | None = None         # forward-compat seam — list_chunks doesn't surface chunk_token_count yet
+    low_value_chunks: int                   # count of chunks with low_value_flag=True
+    parse_duration_ms: int | None = None    # F1.3 forward-compat seam — ingestion result persistence Wave C+
+    embed_duration_ms: int | None = None    # F1.3 forward-compat seam — ingestion result persistence Wave C+
+    indexed_at: str                         # from list_documents `last_indexed_at` (ISO-8601 string)
+    outline: list[OutlineNode]              # reconstructed from chunks' section_path[] (sorted)
+    image_refs: list[ImageRef]              # aggregated from chunks' embedded_images_json (SHA256-deduped)
 
 
 # --------------------------------------------------------------------------- #

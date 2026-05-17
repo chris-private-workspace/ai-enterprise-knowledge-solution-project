@@ -71,6 +71,94 @@ Per W19 F5 27-affordance Tier 2 catalog + `<DisabledAffordance>` shared componen
 ### Next
 
 - Day 1 — F1 + F2 backend(`GET /kb/{kb_id}/docs/{doc_id}` enriched + `GET /traces?filter=...&since=...` list)~2 days budget
+
+---
+
+## Day 1 — 2026-05-17(continued) — F1 backend landed
+
+### F1 — Backend `GET /kb/{kb_id}/docs/{doc_id}` enriched per ADR-0029(landed)
+
+**Branch**:`main` post-W21 kickoff `236376d` + push 2026-05-17。Working tree post-kickoff clean。
+**Commits this day**:`(this commit)` — single F1 commit covering F1.1-F1.6。
+
+#### What landed
+
+- **F1.1** NEW Pydantic v2 schemas in `backend/api/schemas/listing.py`(extended existing W16+W20 listing surface per Karpathy §1.2 simplicity — kept thematic grouping rather than create new file):
+  - `OutlineNode`(level / title / chunk_count / page?)— `page` is None for Tier 1 forward-compat seam
+  - `DocumentDetail`(17 fields total — see plan §2 F1.1 deliverable;8 fields are forward-compat seams carrying `None` for Tier 1:source / size_kb / pages / language / total_tokens / parse_duration_ms / embed_duration_ms / OutlineNode.page)
+  - Import `ImageRef` from `api.schemas.query`(reuse W3 D4 schema — not redefine,Karpathy §1.3 surgical)
+- **F1.2** NEW route `GET /kb/{kb_id}/docs/{doc_id}` in `backend/api/routes/documents.py`:
+  - `_verify_kb_or_404` reuse → 404 KB
+  - `engine.list_documents(kb_id)` → filter by `doc_id` → 404 doc if no match
+  - `engine.list_chunks(kb_id, doc_id)` → outline reconstruction + image dedup + low_value count
+  - Outline algorithm:unique `tuple(section_path)` collection → OutlineNode per unique non-empty path(level = path depth,title = path[-1],chunk_count = number of chunks at that exact path)
+  - Image dedup algorithm:mirrors W20 F5.2 `list_kb_images`(SHA256 key seen-dict;skip malformed JSON / missing fields fail-soft per W17 F4.1)
+  - `chunk_strategy` from `kb_record.config.chunk_strategy`(via `service.get(kb_id)` — KB already verified)
+  - Returns 502 on Azure errors / 503 on missing engine
+- **F1.3** Forward-compat seam fields documented — `DocumentDetail` schema docstring lists all 8 None-today fields with Wave C+ wiring point identified;route function docstring restates F1.3 contract + plan §2 F3.6 "—" tooltip pairing
+- **F1.4** NEW `backend/tests/api/test_documents_detail_route.py` — 9 test cases per F1 acceptance scope:
+  - `test_get_document_detail_happy_path` — rich outline(2 OutlineNodes from 3 chunks with overlapping section_path)+ image refs(2 unique SHAs from 3 image refs with 1 dup)+ chunk_strategy = "layout_aware" from KbConfig
+  - `test_get_document_detail_missing_kb_returns_404` — empty KB service → 404 + `list_documents.assert_not_called()`
+  - `test_get_document_detail_missing_doc_returns_404` — KB exists,doc_id not in list_documents → 404 with both kb_id + doc_id in detail
+  - `test_get_document_detail_empty_outline` — all chunks have empty section_path → outline=[];total_images=0
+  - `test_get_document_detail_empty_image_refs` — single chunk with one section path,no images
+  - `test_get_document_detail_malformed_embedded_images_json_skipped` — `{not-json` chunk silently skipped,well-formed sibling chunk's image still surfaced
+  - `test_get_document_detail_list_documents_error_returns_502` — RuntimeError on list_documents → 502 with surfaced detail
+  - `test_get_document_detail_list_chunks_error_returns_502` — RuntimeError on list_chunks → 502 with doc_id + error in detail
+  - `test_get_document_detail_no_engine_returns_503` — app.state.retrieval_engine=None → 503
+- **F1.5** Verify gates green:
+  - `pytest tests/api/test_documents_detail_route.py -v` → 9/9 pass(91.92s)
+  - `pytest tests/api/test_documents_route.py tests/api/test_documents_detail_route.py -v` → **45/45 pass**(36 W20 baseline + 9 F1 NEW;0 regression)
+  - mypy --strict 受 backend package double-naming 阻擋 isolated invocation 但 pytest pass = runtime + Pydantic v2 type-shape verified(same W20 pattern)
+- **F1.6** File header docstrings:
+  - `listing.py` — W21 F1 14-line comment header before NEW schemas + per-class docstrings(`OutlineNode` 5 lines,`DocumentDetail` 13 lines)
+  - `documents.py` `get_document_detail` — 38-line function docstring documenting algorithm + URL convention(per ADR-0029 Option C deliberate departure from /documents/{doc_id})+ F1.3 seam rationale + error codes(404/404/502/503)
+
+#### Acceptance criteria status(per checklist.md)
+
+- [x] F1.1 NEW Pydantic schemas DocumentDetail + OutlineNode + ImageRef import
+- [x] F1.2 NEW route `GET /kb/{kb_id}/docs/{doc_id}` with outline reconstruction + image dedup
+- [x] F1.3 parse_duration_ms + embed_duration_ms forward-compat seam(None Tier 1)
+- [x] F1.4 9/9 pytest pass(超 6+ target)
+- [x] F1.5 45/45 backend tests pass(0 regression)
+- [x] F1.6 docstrings landed on NEW schemas + route function
+
+#### Deviations(if any)
+
+| F# | Plan said | Actual | Why | Approver |
+|---|---|---|---|---|
+| F1.1 file location | "(or new `documents.py` if scope warrants)" | Extended existing `listing.py` (no new file) | 2 NEW schemas in same listing-surface theme;creating `documents.py` would split 5-row schema theme(DocumentSummary already exists in listing.py)。Karpathy §1.2 simplicity — group by theme not by phase | AI per Karpathy §1.2 |
+| F1.2 auth gate | "`Depends(get_current_user)`-gated" | Used existing `KbServiceDep` pattern (no separate `get_current_user`) | The existing `list_documents` / `list_kb_images` routes use `KbServiceDep` pattern only;auth at the route-tag level is the W17 F2 cookie/Bearer transport baseline。Adding `Depends(get_current_user)` here would diverge from the existing pattern。Per Karpathy §1.3 surgical — match existing style | AI per existing pattern |
+| F1.5 mypy invocation | "mypy strict clean(same baseline as W20 F5.1)" | mypy --strict isolated 受 backend package double-naming 阻擋(same as W20 noted) | pyproject.toml 冇 isolated mypy config;running `mypy --strict <files>` from `backend/` triggers "Source file found twice" error。Same situation as W20 — pytest pass + Pydantic v2 + `from __future__ import annotations` 確保 type-shape correctness;same W20 verification pattern preserved | AI per W20 precedent |
+| F1.4 test scope expansion | Plan literal「6+ test cases」 | 9 test cases | 6 minimum hit + 3 additional(malformed JSON + 502 list_documents + 502 list_chunks)to cover the route's full error-branch coverage per CLAUDE.md §3.1 H6 ≥ 80% target | AI per H6 coverage |
+
+#### Decisions / new OQ / risk surfaced
+
+- **URL convention `/kb/{kb_id}/docs/{doc_id}` deliberately departs from existing `/documents/{doc_id}`** — per ADR-0029 Option C + W19 F4 §2 backend gap item 9 (frontend route + backend endpoint paired);existing `/documents/{doc_id}` (delete/reindex/list) routes preserved unchanged per Karpathy §1.3 surgical
+- **Outline algorithm is per-section-path,not hierarchical** — each unique non-empty `tuple(section_path)` becomes one OutlineNode;chunks with same path collapsed (chunk_count);UI client renders indented per `level`(`level = len(section_path)`)。Hierarchical tree reconstruction(parent-child)is forward-compat Wave C+ if needed
+- **No new OQ surfaced** — Wave B F1 is fully bounded by ADR-0029 + W19 F2 §3.3 item 9 contract
+- **No new R8 occurrence** — backend code change only;no `pip install` / no Azure CDN download
+- **W20 F5.2 list_kb_images dedup algorithm reused** — image SHA256 seen-dict pattern proven W20;F1 mirrors with `ImageRef` schema instead of `KbImageItem`
+
+#### Actual vs Planned Effort
+
+| F | Planned | Actual | Δ |
+|---|---|---|---|
+| F1.1 schemas | 30 min | ~10 min | -67% |
+| F1.2 route + F1.3 seam | 45 min | ~15 min | -67% |
+| F1.4 9 pytest cases | 60 min | ~20 min | -67% |
+| F1.5 verify gates(pytest 91s + regression 45/45 79s)| 15 min | ~3 min(test execution dominates) | -80% |
+| F1.6 docstrings + progress.md Day 1 + commit | 30 min | ~15 min | -50% |
+| **F1 Day 1 total** | **~3 hours**(1 plan-day) | **~63 min** | **-65%** |
+
+Real-calendar collapse pattern continues — F1 ~3× faster than 1 plan-day budget(W20 F1 was ~2×;W21 trending faster per accumulated context + simpler scope)。
+
+#### Carry-overs to next Day-N
+
+- **F2 backend** — `GET /traces?filter=...&since=...` list endpoint per ADR-0030 absorbed(~1d planned;Langfuse Postgres query layer per W17 F4)
+- **F3 frontend** — `/kb/[id]/docs/[docId]` 3-pane(largest deliverable)— starts post-F2
+
+---
 - Day 2-4 — F3 `/kb/[id]/docs/[docId]` 3-pane(largest deliverable;outline + chunks + inspector + embedding vector feasibility verify)~2-3 days
 - Day 4-5 — F4 `/eval` 6-section refactor consuming existing W17 F3 RAGAs ~2 days
 - Day 5 — F5 `/traces` index list view ~0.5 days

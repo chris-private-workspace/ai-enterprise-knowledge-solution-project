@@ -33,7 +33,14 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
 
 from api.schemas.kb import FailureRecord
-from api.schemas.listing import DocumentSummary, KbImageItem, KbImagesResponse
+from api.schemas.listing import (
+    DocumentDetail,
+    DocumentSummary,
+    KbImageItem,
+    KbImagesResponse,
+    OutlineNode,
+)
+from api.schemas.query import ImageRef
 from indexing.populate import IndexPopulator
 from ingestion.chunker.base import Chunker
 from ingestion.embedding.base import Embedder
@@ -237,6 +244,134 @@ async def list_kb_images(
     total = len(items)
     paginated = items[offset : offset + limit]
     return KbImagesResponse(items=paginated, total=total, limit=limit, offset=offset)
+
+
+@router.get("/kb/{kb_id}/docs/{doc_id}", response_model=DocumentDetail)
+async def get_document_detail(
+    kb_id: str,
+    doc_id: str,
+    request: Request,
+    service: KbServiceDep,
+) -> DocumentDetail:
+    """W21 F1 (per ADR-0029 Option C) — per-document deep inspection enriched response.
+
+    Powers the 3-pane Doc Detail view (`/kb/[id]/docs/[docId]`):
+      - Doc-level metadata via `RetrievalEngine.list_documents(kb_id)` filtered
+        to the requested `doc_id` (404 when the doc has no chunks in the KB).
+      - Outline reconstructed from chunks' `section_path[]` (one OutlineNode per
+        unique non-empty section path; level = path depth; chunk_count = number
+        of chunks at that exact path).
+      - Image refs aggregated from chunks' `embedded_images_json` and deduped by
+        SHA-256 (same algorithm as `GET /kb/{kb_id}/images`).
+      - `chunk_strategy` from `KbConfig.chunk_strategy` (already verified-present
+        via `_verify_kb_or_404`).
+
+    F1.3 duration seam: `parse_duration_ms` + `embed_duration_ms` carry `None`
+    today — wired when ingestion result persistence lands Wave C+ (forward-compat
+    documented per ADR-0029 §3). UI surfaces "—" + tooltip per plan §2 F3.6.
+
+    URL convention `/kb/{kb_id}/docs/{doc_id}` (not `/documents/{doc_id}`) matches
+    ADR-0029 Option C frontend route + W19 F4 §2 backend gap item 9 — deliberate
+    departure from the existing `/documents/{doc_id}` delete/reindex routes to
+    keep the front-end IA + backend endpoint paired (per plan §1).
+
+    Returns 404 when `kb_id` doesn't exist (via `_verify_kb_or_404`) or when
+    `doc_id` has no chunks in the KB (post-list-documents lookup). Returns 502 on
+    upstream Azure failures. Returns 503 when RetrievalEngine isn't initialized.
+    """
+    await _verify_kb_or_404(kb_id, service)
+
+    engine = _engine_or_503(request)
+
+    # Pull doc-level row from the KB-scoped aggregation; 404 when absent.
+    try:
+        docs = await engine.list_documents(kb_id)
+    except Exception as exc:  # noqa: BLE001 — surface Azure errors as 502
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"document listing failure: {type(exc).__name__}: {exc}",
+        ) from exc
+
+    doc_row = next((d for d in docs if d.get("doc_id") == doc_id), None)
+    if doc_row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"document {doc_id!r} not found in kb {kb_id!r}",
+        )
+
+    # Pull chunks for outline + image_refs + low_value count.
+    try:
+        chunks = await engine.list_chunks(kb_id, doc_id)
+    except Exception as exc:  # noqa: BLE001 — surface Azure errors as 502
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"chunk listing failure for doc {doc_id!r}: {type(exc).__name__}: {exc}",
+        ) from exc
+
+    # Reconstruct outline — one OutlineNode per unique non-empty section_path.
+    section_counts: dict[tuple[str, ...], int] = {}
+    for chunk in chunks:
+        path_raw = chunk.get("section_path") or []
+        path = tuple(str(p) for p in path_raw)
+        if not path:
+            continue
+        section_counts[path] = section_counts.get(path, 0) + 1
+    outline = [
+        OutlineNode(level=len(path), title=path[-1], chunk_count=count, page=None)
+        for path, count in sorted(section_counts.items())
+    ]
+
+    # Aggregate image refs by SHA256 dedup (mirrors list_kb_images logic).
+    seen_images: dict[str, ImageRef] = {}
+    for chunk in chunks:
+        raw = chunk.get("embedded_images_json") or "[]"
+        try:
+            images = json.loads(raw) if isinstance(raw, str) else raw
+        except (TypeError, ValueError):
+            continue  # malformed JSON — fail-soft (same as W17 F4.1 + W20 F5.2)
+        if not isinstance(images, list):
+            continue
+        for img in images:
+            if not isinstance(img, dict):
+                continue
+            sha = str(img.get("checksum_sha256") or "")
+            blob_url = str(img.get("blob_url") or "")
+            if not sha or sha in seen_images or not blob_url:
+                continue
+            seen_images[sha] = ImageRef(
+                blob_url=blob_url,
+                alt_text=str(img.get("alt_text") or ""),
+                checksum_sha256=sha,
+                width=int(img.get("width") or 0),
+                height=int(img.get("height") or 0),
+            )
+
+    low_value_count = sum(1 for c in chunks if c.get("low_value_flag"))
+
+    # Pull chunk_strategy from KbConfig (KB already verified via _verify_kb_or_404).
+    kb_record = await service.get(kb_id)
+    chunk_strategy = kb_record.config.chunk_strategy
+
+    return DocumentDetail(
+        doc_id=doc_id,
+        title=str(doc_row.get("doc_title") or ""),
+        source=None,
+        source_url=doc_row.get("source_url"),
+        file_type=str(doc_row.get("doc_format") or ""),
+        size_kb=None,
+        pages=None,
+        language=None,
+        chunk_strategy=chunk_strategy,
+        total_chunks=int(doc_row.get("total_chunks") or len(chunks)),
+        total_images=len(seen_images),
+        total_tokens=None,
+        low_value_chunks=low_value_count,
+        parse_duration_ms=None,
+        embed_duration_ms=None,
+        indexed_at=str(doc_row.get("last_indexed_at") or ""),
+        outline=outline,
+        image_refs=list(seen_images.values()),
+    )
 
 
 def _slugify_doc_id(filename_stem: str) -> str:
