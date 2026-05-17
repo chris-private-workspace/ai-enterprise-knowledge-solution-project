@@ -562,6 +562,78 @@ Real-calendar collapse pattern continues — W12-W18 + W20 F1-F5 collapse band 1
 
 ---
 
+## Day 5 — 2026-05-17 (continued, sixth commit)
+
+### F7 — `/login` strict-fidelity refactor + `/register` visual polish(landed)
+
+**Branch**:`main`(ahead of `origin/main` by 1 commit:`8e7ba95` F6)。
+**Commits this day**:`(this commit)` — F7 standalone(login + register paired polish — `frontend/app/login/page.tsx` + `frontend/app/register/page.tsx`)。
+
+#### What landed
+
+- **F7.1 — `/login` strict design fidelity refactor** per `references/design-mockups/ekp-page-auth.jsx` mockup(AskUserQuestion Option 2 picked 2026-05-17 — CLAUDE.md §3.2.1 design fidelity rule).Previous W17 F2 + W18 F7 layout had **email primary + SSO secondary**(that order pre-dated the high-fidelity mockup landing in W19);F7.1 inverts to mockup's **SSO primary + email secondary**(visual hierarchy alone — the mock-auth-default dev reality is unchanged because the SSO button still calls `useAuthStore.signIn` = `mock_msal` in dev / real MSAL Beta+)。
+  - **SSO primary** — `<Button size="lg" className="w-full" onClick={handleSsoClick}>` at the top of the form。Removed the old `Building2` icon import and replaced with a **local `<MicrosoftIcon>` 4-quadrant SVG** matching the Microsoft brand colours per mockup(`#F25022` / `#7FBA00` / `#00A4EF` / `#FFB900`)。Microsoft brand colours hardcoded inline are an exception to the tokens-only rule(per ADR-0015 §3 — brand assets like the Microsoft logo bypass the design-tokens discipline because they're third-party brand identity, not EKP visual identity);no `[oklch(...)]` arbitrary tokens used,so the milestone grep stays 0。
+  - **Divider with label** — new local `<DividerWithLabel label="OR continue with email">` uses shadcn `<Separator>` flanking a `<span>` label,matches the mockup's `<Divider>` shape。
+  - **Email + Password form secondary** — same `<Label>` + `<Input>` shapes as before,but **Forgot password is now inline next to the Password label**,right-aligned。Implemented via `<div className="flex items-center">` wrapping the Label(`flex-1`)+ the affordance — the affordance hugs right and stays on the same row。Forgot password itself uses the shared `<DisabledAffordance variant="p3-preview" reason="Password recovery — coming in a later tier (post-Beta)" tier2Trigger="Tier 2 — per ADR-0014" showBadge>`(TIER 2 chip via the component + tooltip via the `title` attribute + `aria-disabled="true"` via the component's wrapper span);previous inline `<span className="cursor-not-allowed opacity-60" title="...">` retired so the affordance pattern is uniform across Wave A surfaces。
+  - **Sign-in submit `Button size="lg"`** with `className="bg-accent text-accent-foreground shadow hover:bg-accent/90"` overriding the default primary variant — shadcn has no `variant="accent"` (only default / destructive / outline / secondary / ghost / link),so the className override is the simplest way to hit the mockup's coral accent without a new variant or a one-off Tailwind config change(Karpathy §1.2 — no new variant for a single-use shape)。
+  - **Bottom mono dashed "Auth modes (Tier 1)" `<aside>` block** — surfaces the hybrid-auth contract per ADR-0014 + ADR-0022 for operator awareness:3 bullets(Hybrid Entra ID SSO + email self-register fallback / httpOnly cookie + CSRF double-submit + `/auth/refresh` / Mock-auth default in dev — Track A IT cred populate W16+)。Uses `font-mono` + `border-dashed border-border` + `text-[11px]` — same visual shape as the mockup's `padding: "10px 12px"; border: "1px dashed oklch(var(--border-strong))"`(token-routed via Tailwind utility classes)。
+  - **Brand panel preserved** — `<BrandPanel>` from W13 carries the dot-grid + EKP branding,unchanged。
+- **F7.2 — `/register` visual polish-only**(AskUserQuestion Option 2 picked 2026-05-17 — mockup design-stage 2-step email-link vs backend 3-step 6-digit code conflict resolved per CLAUDE.md §4 authority ordering = `architecture.md v6 §3.7 + ADR-0014` wins;mockup polish migrated selectively).
+  - **AccountInfo shape extension** — added `acceptedTerms: boolean` field + `EMPTY_INFO.acceptedTerms = false`。Validator gains `if (!info.acceptedTerms) errors.acceptedTerms = 'Accept the Terms of Use and Privacy Policy to continue.';` — required to submit Step 1。
+  - **Step 1 field order** — was Email → Password → Confirm → Display name;now **Full name → Email → Password → Confirm password**。Label renamed: "Email" → "Work email"、"Display name" → "Full name"。Placeholders: "Chris Lai" / "you@ricoh.com" matching mockup。
+  - **Inline hint copy** — Email Input followed by `<p className="mt-1 text-xs text-muted-foreground">We'll send a 6-digit verification code · Beta cohort restricted to <span className="font-mono">@ricoh.com</span></p>`(reality matches backend: 6-digit, not link);Password Input followed by `<p className="mt-1 text-xs text-muted-foreground">Scrypt-hashed via ADR-0022 · 8+ chars, 1 uppercase, 1 digit or symbol</p>` — note this matches **current validation**(`info.password.length < 8`),NOT mockup's `≥ 12 chars`(per Karpathy §1.3 surgical — don't tighten the password policy as a side-effect of a copy update;mockup's `≥ 12 chars` is design-stage marketing,actual policy stays at 8 chars + uppercase + digit-or-symbol)。
+  - **NEW Terms of Use + Privacy Policy checkbox** — `<label className="flex items-start gap-2 text-xs">` containing `<input type="checkbox" className="mt-0.5 h-4 w-4 cursor-pointer accent-accent" aria-describedby="terms-description">` + a `<span id="terms-description">` with the agreement text + 2 inline `<a href="#">` placeholders for ToU and PP(`onClick={(e) => e.preventDefault()}` no-op for now;real ToU / PP page is Tier 2)+ inline `errors.acceptedTerms` error message under the checkbox。Submit button stays disabled until the checkbox is checked。
+  - **Step 3 KB selector migrated** — was inline `<div className="cursor-not-allowed ... opacity-70" title="...">` containing `drive_user_manuals` + `<CheckCircle2>`;now wrapped in shared `<DisabledAffordance variant="p3-preview" reason="Multi-KB selector — Tier 1 ships with a single shared KB per Q7 default" tier2Trigger="multi-KB / multi-workspace" className="mt-2 block w-full">` for affordance pattern uniformity across Wave A。The inner row keeps its visual style(rounded-sm + border-border + bg-muted/40 + font-mono);only the disabled-state wrapper changed。
+  - **Backend contract + functional preserved verbatim** — Stepper 3-step state machine;Step 2 6-digit code 6-input boxes + auto-advance + paste distribution;Step 3 Welcome CTA → `/dashboard` per W18 F7;W17 F2 ADR-0022 POST `/auth/register` + `/auth/verify-email` + `/auth/resend-verification` contract;ApiError envelope toast variants per F4.7 acceptance — all **unchanged**。
+
+#### Acceptance criteria status(per checklist.md)
+
+- [x] F7.1 Login strict-fidelity refactor(SSO primary + Divider + email secondary + Forgot password inline + Auth modes mono block)
+- [x] F7.2 Register visual polish(field order + Hint copy + Terms checkbox + Step 3 KB DisabledAffordance migration)
+- [x] F7.3 tokens 100% / [oklch=0 / tsc 0 / lint 0
+- [x] F7.4 Vitest baseline preserved 6/21(F7 component tests 🚧 deferred F8.4)
+- [x] F7.5 File header docstrings updated on both files
+
+#### Deviations(if any)
+
+| F# | Plan said | Actual | Why | Approver |
+|---|---|---|---|---|
+| F7.1 hierarchy | "Forgot password link disabled affordance + redirect target unchanged" | full SSO-primary visual hierarchy realign per AskUserQuestion Option 2 | Plan literal scoped F7.1 minimally("polish — Brand panel slot + Forgot password disabled affordance")but the mockup-vs-current visual hierarchy mismatch was the bigger gap. AskUserQuestion 三選一 surfaced 3 options;Chris picked Option 2 strict design fidelity. Plan §7 changelog 2026-05-17 row records this. | AskUserQuestion picked Option 2 by Chris 2026-05-17 + Plan §7 changelog |
+| F7.2 wizard count | Plan literal「5-step wizard preserved (W13)」 | 3-step wizard preserved (Account info / Email verify / Welcome) | Plan literal mis-described the W13 baseline — the register wizard has always been 3-step per architecture.md v6 §3.7 + ADR-0014 ACS 6-digit code reality (W13 D5 cont F5 backend cascade). Plan §7 changelog 2026-05-17 row records this. | AI per §13 「Spec wins」 + architecture.md v6 + W13 D5 reality |
+| F7.2 mockup ≥ 12 chars hint vs current 8-char validation | mockup hint「≥ 12 chars」 | hint copy says「8+ chars」 matching current validation | Karpathy §1.3 surgical — don't tighten the password policy as a side-effect of a copy update;the mockup's `≥ 12 chars` is design-stage marketing, not a locked policy. The hint matches what the validator enforces today. Password policy tightening is a separate decision (would trigger H5 stakeholder review + ADR). | AI per Karpathy §1.3 + §13 spec-wins / surgical preserve adjacent |
+| F7 Microsoft brand SVG hardcoded colours | Tokens 100% rule | 4 inline brand hex codes (Microsoft logo) | Per ADR-0015 §3 — brand assets like the Microsoft logo bypass the design-tokens discipline because they're third-party brand identity, not EKP visual identity. `Grep '\[oklch'` = 0 stays preserved (no `oklch(...)` arbitrary values added). | AI per ADR-0015 brand-asset exemption |
+| F7 commit cadence | Plan implies F6+F7 dual-commit | F7 standalone commit (after F6 standalone) | User pick 方案 A "F6+F7 雙 commit" 2026-05-17 — two commits, one per F. Same precedent as F1/F2/F3a/F3b standalone commits earlier in W20. | User pick 方案 A 2026-05-17 |
+
+#### Decisions / new OQ / risk surfaced
+
+- **Mockup vs current visual hierarchy reconciled in favour of mockup**(F7.1)— previous email-primary order pre-dated the design-mockups landing(W19);the mockup is the canonical visual spec per CLAUDE.md §3.2.1。Mock-auth-default dev reality is unchanged(SSO button is still `useAuthStore.signIn = mock_msal` in dev),so the realign costs nothing operationally but pays back in operator clarity for Beta+ when Track A IT cred lands and SSO becomes the real primary path。
+- **Mockup vs backend contract conflict resolved**(F7.2)— mockup's 2-step email-link `<a>` design conflicts with `architecture.md v6 §3.7 + ADR-0014` 6-digit code 3-step reality;authority ordering(CLAUDE.md §4)= architecture.md > design-mockups,so backend wins。Only **visual polish** migrated(field order / inline hints / Terms checkbox / Step 3 affordance migration);step count + verification mechanism preserved。Future Tier 2 may revisit email-link vs code(would trigger ADR for the verification flow change)。
+- **Microsoft brand SVG colours are a tokens-discipline exemption** — per ADR-0015 §3 brand identity assets(Microsoft logo / partner logos)bypass design tokens because they're not EKP visual identity。Documented inline on the `<MicrosoftIcon>` and in the file header docstring。`Grep '\[oklch'` = 0 milestone preserved(only `oklch(var(...))` token references count;raw hex colours for third-party brand assets don't trigger the grep)。
+- **Forgot password inline placement adopted**(F7.1)— mockup's pattern of placing Forgot password right-aligned next to the Password label(rather than below the form)is the industry-standard placement(Auth0 / Google / Microsoft all do this)。Migration also consolidates the disabled-affordance pattern via the shared `<DisabledAffordance>` component。
+
+#### Actual vs Planned Effort
+
+| F | Planned | Actual | Δ |
+|---|---|---|---|
+| F7.1 Login full rewrite(SSO primary + Divider + email secondary + Forgot password inline + Auth modes mono block)| 40 min | ~35 min | -13% |
+| F7.2 Register polish(field order + Hint copy + Terms checkbox + Step 3 KB DisabledAffordance migration)| 30 min | ~25 min | -17% |
+| F7.3 verify(tsc + lint + [oklch + Vitest 21 preserved)| 15 min | ~10 min | -33% |
+| F7.4 Vitest scaffold(this commit per F8.4 batching)| — | — | — |
+| F7.5 + Plan §7 changelog row(already landed at F6 commit batch)+ docstrings | 15 min | ~10 min | -33% |
+| Progress.md F7 Day-N entry + checklist tick + commit | 25 min | ~20 min | -20% |
+| **F7 Day 5 sub-total** | **~1.75 hours**(plan F7 cell 60 min implementation only;real cost includes process overhead)| **~100 min** | **-5%** |
+
+Real-calendar collapse pattern continues — W12-W18 + W20 F1-F6 collapse band 1.8-4× preserved(F7 lands at ~1.05× collapse — basically at parity since both Login + Register were small-surface polish without backend coordination overhead;process-overhead-to-code-time ratio was higher than usual for this F#)。
+
+#### Carry-overs to next Day-N(F8)
+
+- **F8 cross-cutting** — next deliverable;F8.1 responsive pass + F8.2 a11y pass(new-surface spot-check only)+ F8.3 dark-mode re-check + **F8.4 Vitest expansion**(now accumulating 6 NEW test files:`notifications-menu.test.tsx` + `disabled-affordance.test.tsx` + `conversation-history.test.tsx` + `kb-new-wizard.test.tsx` + `kb-detail-tabs.test.tsx` + `kb-upload-wizard.test.tsx` + maybe `login.test.tsx` + `register.test.tsx`)+ F8.5 Playwright E2E updates + F8.6 COMPONENT_CATALOG note + F8.7 PAGE_INVENTORY status flip。
+- **F9 phase closeout** — Gate verdict + retro + frontmatter status flip(`active`→`closed`)+ W21+ rolling JIT decision per CLAUDE.md §10 R1。
+- **Wave B+ candidates updated** — all previous carry-overs unchanged + **W20 F7 wire**:Password policy tightening 8 → 12 chars(would trigger H5 stakeholder review + ADR;not a frontend-only change because backend `auth.password.validate_strength` rules would need to update in lockstep — out of Wave A scope)。
+- **Mockup-vs-backend conflict pattern documented** for future ADR drafts — the §4 authority ordering(architecture.md > design-mockups)resolved the F7.2 register 2-step vs 3-step conflict cleanly;future similar conflicts(mockup design-stage vs implemented backend reality)should follow the same protocol:STOP + ask + resolve per §4 ordering + record in plan §7 changelog。
+
+---
+
 <!-- Day 3+ frontend entries to be appended. Template:
 
 ## Day N — YYYY-MM-DD

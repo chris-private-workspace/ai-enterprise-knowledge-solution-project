@@ -12,9 +12,10 @@
  *
  * Layout: V8 BrandPanel (shared) left + form area right (split via flex-col
  * md:flex-row). Stepper visual pattern parallel to W12 F4.9 Pipeline wizard
- * (active/done/pending state machine) — inlined per Karpathy §1.2 simplicity-
- * first; rule-of-3 pending if a 4th wizard usage emerges, extract to shared
- * `frontend/components/ui/stepper.tsx`.
+ * — inlined per Karpathy §1.2 simplicity-first. **W20 F6 promoted this to the
+ * 4th wizard usage** in `frontend/` (F4 KB Pipeline + W13 Register + W18 F5
+ * Pipeline + W20 F6 Re-ingestion) → rule-of-3 trigger hit; extract to shared
+ * `frontend/components/ui/stepper.tsx` is now a Wave B+ candidate.
  *
  * Step 2 6-digit verification code input: 6 separate boxes with auto-advance
  * focus + paste distribution (industry-standard verification UX per design ref
@@ -26,6 +27,18 @@
  * home) instead of `/chat` — the verify-email auto-login (ADR-0022) means Step 3
  * lands authenticated, so /dashboard resolves inside <AppShell>. The register
  * page itself stays OUTSIDE `app/(app)/` (no app chrome — BrandPanel split layout).
+ *
+ * W20 F7.2 (2026-05-17 visual polish per `references/design-mockups/ekp-page-auth.jsx`
+ * + CLAUDE.md §3.2.1 design fidelity, AskUserQuestion Option 2 picked):
+ *   · Step 1 field order: Full name → Email → Password → Confirm password
+ *   · Email + Password inline hint copy specificity (verification + scrypt
+ *     mechanism + Beta cohort @ricoh.com restriction surface for awareness)
+ *   · NEW Terms of Use + Privacy Policy checkbox (required to submit Step 1)
+ *   · Step 3 KB selector migrated to shared <DisabledAffordance variant=
+ *     "p3-preview" showBadge> (was inline cursor-not-allowed)
+ * Step count + 6-digit verification + backend contract preserved
+ * (mockup's 2-step email-link design conflicts with ADR-0014 + architecture.md
+ * v6 §3.7 backend reality — backend wins per CLAUDE.md §4 authority ordering).
  */
 
 import {
@@ -50,6 +63,7 @@ import { toast } from 'sonner';
 
 import { BrandPanel } from '@/components/auth/brand-panel';
 import { Button } from '@/components/ui/button';
+import { DisabledAffordance } from '@/components/ui/disabled-affordance';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/lib/api-client';
@@ -66,6 +80,7 @@ interface AccountInfo {
   password: string;
   confirmPassword: string;
   displayName: string;
+  acceptedTerms: boolean;
 }
 
 const EMPTY_INFO: AccountInfo = {
@@ -73,6 +88,7 @@ const EMPTY_INFO: AccountInfo = {
   password: '',
   confirmPassword: '',
   displayName: '',
+  acceptedTerms: false,
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -205,6 +221,8 @@ export default function RegisterPage() {
 
 function validateAccountInfo(info: AccountInfo): Record<string, string> {
   const errors: Record<string, string> = {};
+  if (!info.displayName.trim()) errors.displayName = 'Required.';
+
   if (!info.email) errors.email = 'Required.';
   else if (!EMAIL_PATTERN.test(info.email))
     errors.email = 'Invalid email format.';
@@ -220,7 +238,8 @@ function validateAccountInfo(info: AccountInfo): Record<string, string> {
   else if (info.confirmPassword !== info.password)
     errors.confirmPassword = 'Passwords do not match.';
 
-  if (!info.displayName.trim()) errors.displayName = 'Required.';
+  if (!info.acceptedTerms)
+    errors.acceptedTerms = 'Accept the Terms of Use and Privacy Policy to continue.';
 
   return errors;
 }
@@ -357,17 +376,37 @@ function Step1({
         </p>
       </header>
 
-      <Field label="Email" htmlFor="reg-email" error={errors.email}>
+      <Field
+        label="Full name"
+        htmlFor="reg-display-name"
+        error={errors.displayName}
+      >
+        <Input
+          id="reg-display-name"
+          autoComplete="name"
+          placeholder="Chris Lai"
+          value={info.displayName}
+          onChange={(e) => onChange({ ...info, displayName: e.target.value })}
+          disabled={isPending}
+          required
+        />
+      </Field>
+
+      <Field label="Work email" htmlFor="reg-email" error={errors.email}>
         <Input
           id="reg-email"
           type="email"
           autoComplete="email"
-          placeholder="you@example.com"
+          placeholder="you@ricoh.com"
           value={info.email}
           onChange={(e) => onChange({ ...info, email: e.target.value })}
           disabled={isPending}
           required
         />
+        <p className="mt-1 text-xs text-muted-foreground">
+          We&apos;ll send a 6-digit verification code · Beta cohort restricted to{' '}
+          <span className="font-mono">@ricoh.com</span>
+        </p>
       </Field>
 
       <Field label="Password" htmlFor="reg-password" error={errors.password}>
@@ -380,6 +419,9 @@ function Step1({
           disabled={isPending}
           required
         />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Scrypt-hashed via ADR-0022 · 8+ chars, 1 uppercase, 1 digit or symbol
+        </p>
         {showStrength && (
           <div className="mt-2 space-y-1">
             <div className="flex h-1 gap-1">
@@ -418,21 +460,43 @@ function Step1({
         />
       </Field>
 
-      <Field
-        label="Display name"
-        htmlFor="reg-display-name"
-        error={errors.displayName}
-      >
-        <Input
-          id="reg-display-name"
-          autoComplete="name"
-          placeholder="Chris L."
-          value={info.displayName}
-          onChange={(e) => onChange({ ...info, displayName: e.target.value })}
-          disabled={isPending}
-          required
-        />
-      </Field>
+      <div className="space-y-1">
+        <label className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={info.acceptedTerms}
+            onChange={(e) =>
+              onChange({ ...info, acceptedTerms: e.target.checked })
+            }
+            disabled={isPending}
+            className="mt-0.5 h-4 w-4 cursor-pointer accent-accent"
+            aria-describedby="terms-description"
+          />
+          <span id="terms-description">
+            I agree to the{' '}
+            <a
+              href="#"
+              className="text-accent hover:underline"
+              onClick={(e) => e.preventDefault()}
+            >
+              Terms of Use
+            </a>{' '}
+            and{' '}
+            <a
+              href="#"
+              className="text-accent hover:underline"
+              onClick={(e) => e.preventDefault()}
+            >
+              Privacy Policy
+            </a>{' '}
+            · I understand my queries are logged for evaluation (Langfuse) and
+            visible only to me.
+          </span>
+        </label>
+        {errors.acceptedTerms && (
+          <p className="text-xs text-destructive">{errors.acceptedTerms}</p>
+        )}
+      </div>
 
       <Button
         type="submit"
@@ -618,13 +682,17 @@ function Step3({
 
       <div className="rounded-md border border-dashed border-border bg-muted/30 p-4 text-left">
         <Label className="text-muted-foreground">Default knowledge base</Label>
-        <div
-          className="mt-2 flex cursor-not-allowed items-center justify-between rounded-sm border border-border bg-muted/40 px-3 py-2 text-sm opacity-70"
-          title="Single-KB POC per Q7 Tier 1 default — multi-KB selector W7+ Beta"
+        <DisabledAffordance
+          variant="p3-preview"
+          reason="Multi-KB selector — Tier 1 ships with a single shared KB per Q7 default"
+          tier2Trigger="multi-KB / multi-workspace"
+          className="mt-2 block w-full"
         >
-          <span className="font-mono">drive_user_manuals</span>
-          <CheckCircle2 className="h-4 w-4 text-success" />
-        </div>
+          <div className="flex w-full items-center justify-between rounded-sm border border-border bg-muted/40 px-3 py-2 text-sm">
+            <span className="font-mono">drive_user_manuals</span>
+            <CheckCircle2 className="h-4 w-4 text-success" />
+          </div>
+        </DisabledAffordance>
         <p className="mt-2 text-xs text-muted-foreground">
           Multi-KB selection arrives later — Tier 1 ships with a single shared KB.
         </p>
