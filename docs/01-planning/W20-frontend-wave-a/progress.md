@@ -634,6 +634,74 @@ Real-calendar collapse pattern continues — W12-W18 + W20 F1-F6 collapse band 1
 
 ---
 
+## Day 5 — 2026-05-17 (continued, seventh commit)
+
+### F8 commit 1 of 3 — F8.1+F8.2+F8.3 verify + F8.6+F8.7 docs(landed)
+
+**Branch**:`main`(ahead of `origin/main` by 0 commits at start of F8 — `5a332e0` F7 pushed last)。
+**Commits this day**:`(this commit)` — F8 commit 1 of 3 standalone(verification gates + governance docs):COMPONENT_CATALOG 8 component Status row appends + PAGE_INVENTORY 8 W20-route status flip + Wave B/C deferral notes。
+
+#### What landed
+
+- **F8.1 Responsive spot-check** — all new W20 surfaces verified code-level responsive(`sm:`/`md:`/`lg:`/`xl:` breakpoint utility usage on `<NotificationsMenu>` chips + `/dashboard` 4-stat strip grid + `/chat` Conversation History lg-only pane + `/kb/new` wizard step layout + `/kb/[id]` Radix `<TabsList>` overflow + `/kb/[id]/upload` 3-step wizard + `/login` + `/register` md-split layout)。Multi-viewport interactive browser smoke walkthrough = user pre-Beta smoke deferred(R8 caveat shape per W18 — same "smoke-user-deferred" carve-out continues across W20)。
+- **F8.2 a11y spot-check** — all new W20 surfaces verified aria/role usage:F6 upload 4 aria/role(aria-label / aria-current="step" / aria-readonly / aria-hidden);F7 login 2(aria-hidden Microsoft SVG + aria-label Auth modes aside);F7 register 2(aria-describedby Terms checkbox + Stepper aria-current);F1 `<NotificationsMenu>` Radix DropdownMenu role inherited;F1.5 `<DisabledAffordance>` aria-disabled+title+aria-label all set;F3b Conversation History `<nav aria-label="Primary">` landmark preserved;F4.4 wizard step `aria-label="Wizard steps"` + step indicator `aria-current="step"`;F5 Radix `<TabsList>`/`<TabsTrigger>` + Access tab `disabled` + `aria-disabled`。Full screen-reader audit Tier 2 / CO_W15_F3_aria_full_audit defer holds。
+- **F8.3 Dark-mode `[oklch`=0 re-check** — `Grep '\[oklch'` across `frontend/` = **0** preserved through F8.1-F8.3 verify(W15→W18→W20 F1-F7 milestone holds through 7 deliverables + 3 verify steps);next-themes mechanism unchanged。Dark-mode interactive 9-view walkthrough = user pre-Beta smoke per CO_W15_F3_dark_mode_visual_verify(W17 partial close — mechanism + grep verified)。
+- **F8.6 COMPONENT_CATALOG.md 8 component Status row appends** — surgical additive amendments per Karpathy §1.3:
+  - **C01 Ingestion Pipeline** — F4.2 `ingest(kb_config: KbConfig | None)` orchestrator branch + 3 forward-compat seams documented + 13/13 orchestrator pytests
+  - **C02 Knowledge Base Manager** — F5.1 `KbStatus.archived: bool = False` schema field + `KBStorageBackend.set_archived` Protocol method + idempotent `ALTER TABLE ADD COLUMN IF NOT EXISTS` on every Postgres connect(Alembic-free migration consistent with W17 F1)+ `KBService.archive` soft-flag + F4.1 KbConfig +4 multimodal Tier 1 fields
+  - **C03 Indexing Service** — F5.2 `HybridSearcher.list_chunks` select clause additively extended with `embedded_images_json`(W17 F4.1 callers unaffected — Pydantic silently drops)
+  - **C05 Generation Pipeline** — F3b CragStrip frontend wire on existing `EvalReport.crag_triggered`+`crag_iterations` schema fields(W4 lock,no backend change);`crag_reasoning` Wave B+ candidate per Karpathy §1.2
+  - **C07 Observability Stack** — F2.1 `/health` extracted from inline `server.py` into NEW `backend/api/routes/health.py` + extended payload `{status, components: {azure_search, azure_openai, cohere, langfuse, postgres}: {status, latency_ms, detail}}` + 7/7 pytest pass
+  - **C08 API Gateway** — **+10 NEW endpoints**(6 `/conversations` CRUD per ADR-0031 Option B + `POST /kb/{id}/archive` + `GET /kb/{id}/images` + `POST /chunking-preview` + `GET /health` extracted)— total endpoint count 18→28;`_refuse_if_archived` helper guards upload+reindex;59/59 backend pytests pass(archive 5 + images 4 + chunking-preview 5 + documents 32 + orchestrator 13)
+  - **C09 Admin Console UI** — F1-F7 Wave A full surface refactor narrative(7 surfaces);`<DisabledAffordance>` shared component spec(W19 F5)consumed across all Wave A surfaces;rule-of-3 wizard primitive promotion trigger note(4th wizard usage observed);Vitest 6/21 baseline preserved post-Wave A
+  - **C10 Chat Interface UI** — F3b advanced surfaces detail(Conversation History pane + 3 citation modes + image gallery + CitationPill popover + FeedbackBar + CragStrip wired-dormant per ADR-0031 Option B Tier 2→Tier 1 promotion)
+- **F8.7 PAGE_INVENTORY.md 8 W20-route status flip** — surgical `Wireable today` → `**Implemented W20 F#**`:**#1** `/dashboard`(F2)/ **#2** `/chat`(F3b)/ **#3** `/kb`(F4.3)/ **#4** `/kb/new`(F4.4)/ **#5** `/kb/[id]`(F5,Access disabled Wave C1)/ **#7** `/kb-upload/[id]` actual `/kb/[id]/upload`(F6)/ **#13** `/login`(F7.1)/ **#14** `/register`(F7.2)+ Topbar dropdowns row(F1 NotificationsMenu)。**Wave B candidates** Wave-deferred notes(#6 Doc Detail per ADR-0029 / #8 Eval / #9 Traces list / #10 Traces detail per ADR-0030 absorb split)+ **Wave C candidates** notes(#11 Settings 6-tab per ADR-0026 Option B / #12 Users 4-tab Tier 1.5 RBAC per ADR-0027 Option A,activates Access tab)。Cmd+K palette row updated(W18 F6 implemented;ADR-0024 reference preserved)。
+
+#### Acceptance criteria status(per checklist.md)
+
+- [x] F8.1 Responsive spot-check + user-smoke-deferred carve-out note
+- [x] F8.2 a11y spot-check across 9 new surfaces + full audit Tier 2 defer
+- [x] F8.3 `[oklch`=0 milestone re-check preserved
+- [x] F8.6 COMPONENT_CATALOG 8 component Status rows appended
+- [x] F8.7 PAGE_INVENTORY 8 routes status flip + Wave B/C deferral notes
+- [ ] F8.4 Vitest expansion 8 NEW test files 🚧 (commit 2 of 3)
+- [ ] F8.5 Playwright E2E updates 🚧 (commit 3 of 3)
+
+#### Deviations(if any)
+
+| F# | Plan said | Actual | Why | Approver |
+|---|---|---|---|---|
+| F8.7 「7 W20-implemented routes」 | Plan literal counts 7 | Actual 8 routes flipped(+ topbar dropdowns) | `/login` + `/register` count separately(2 routes);plus `/dashboard` + `/chat` + `/kb` + `/kb/new` + `/kb/[id]` + `/kb/[id]/upload` = 8 W20-touched routes;plus topbar dropdowns sub-row。Plan literal「7」miscounted login+register as 1 route。 | AI per actual reality |
+| F8 commit cadence | Plan implies F8 single commit (F8.1-F8.7 batched) | F8 decomposed into 3 commits (verify+docs / Vitest / Playwright) | F8.4 Vitest expansion(8 NEW test files,40+ tests target)+ F8.5 Playwright(R8 conditional via `PW_CHANNEL=chrome` ADR-0017 Plan B)both heavy — splitting reduces blast radius per commit + cleaner review per W20 commit precedent(F1/F2/F3a/F3b/F4/F5/F6/F7 all standalone)。Same Karpathy §1.4 multi-step plan precedent。 | AI per Karpathy §1.4 multi-step decomposition |
+
+#### Decisions / new OQ / risk surfaced
+
+- **W20 Wave A 8 W20-implemented routes consolidated source-of-truth update** — PAGE_INVENTORY.md row updates are authoritative for "what's done vs deferred";COMPONENT_CATALOG.md Status row appends document the per-component implementation detail;both reference the same ADR-0025/0028/0031 + ADR-0030/0032 absorbed scope。Future readers can grep either file to learn Wave A landed state without re-reading per-F# progress entries。
+- **Wave B/C deferral notes in PAGE_INVENTORY** explicit per route per ADR — #6 Doc Detail → Wave B per ADR-0029 Option C;#11 Settings → Wave C per ADR-0026 Option B;#12 Users → Wave C1 per ADR-0027 Option A(activates Access tab);#8 Eval / #9-#10 Traces → Wave B per ADR-0030 absorb split。Wave C SPLIT trigger per F4 §3.6 captured。
+- **3-commit F8 decomposition** — commit 1 verify + docs(this commit);commit 2 = F8.4 Vitest 8 NEW test files(40+ tests target);commit 3 = F8.5 Playwright(R8 conditional)。Decomposition rationale per Karpathy §1.4 multi-step goal-driven plan(verify success criteria per commit:tsc/lint/[oklch=0 → Vitest 40+/40+ pass → Playwright PW_CHANNEL=chrome green)。
+
+#### Actual vs Planned Effort
+
+| F | Planned | Actual | Δ |
+|---|---|---|---|
+| F8.1 responsive spot-check across 9 new surfaces | 30 min | ~15 min | -50% |
+| F8.2 a11y spot-check across 9 new surfaces | 30 min | ~15 min | -50% |
+| F8.3 [oklch=0 grep + tsc + lint verify | 10 min | ~5 min | -50% |
+| F8.6 COMPONENT_CATALOG 8 Status row appends | 90 min | ~55 min | -39% |
+| F8.7 PAGE_INVENTORY 8 routes flip + Wave B/C notes | 60 min | ~35 min | -42% |
+| Progress.md F8 commit-1 Day-N entry + checklist tick + commit | 30 min | ~20 min | -33% |
+| **F8 commit 1 sub-total** | **~4 hours**(plan F8.1+F8.2+F8.3+F8.6+F8.7 cumulative)| **~2.4 hours** | **-40%** |
+
+Real-calendar collapse pattern continues — F8 commit 1 lands at ~1.67× collapse(slightly below W20 1.8-4× band lower bound,driven by docs-touch-up vs code-shipping process overhead ratio being lighter than usual)。
+
+#### Carry-overs to next commit(F8 commit 2 = F8.4 Vitest)
+
+- **F8.4 Vitest expansion** — 8 NEW test files target(6 files/21 tests baseline → 14 files/40+ tests):`notifications-menu.test.tsx` + `disabled-affordance.test.tsx` + `conversation-history.test.tsx` + `kb-new-wizard.test.tsx` + `kb-detail-tabs.test.tsx` + `kb-upload-wizard.test.tsx` + `login.test.tsx` + `register.test.tsx`。Each file scaffold matches the W18 baseline(`dashboard.test.tsx` shape:render-smoke + key-interaction assertion + a11y attribute presence)。
+- **F8.5 Playwright E2E updates** — Wait for F8.4 done;F8.5 runs via `PW_CHANNEL=chrome pnpm test:e2e`(ADR-0017 Plan B — system Chrome binary,not bundled Chromium R8-blocked)。Update `app-shell-path.spec.ts` + `golden-path.spec.ts`(extend chat persistence)+ `visual-baseline.spec.ts`(re-baseline /dashboard + /chat + NEW snapshots for /kb/new step 1 + /kb/[id] Images tab + Chunking Lab tab)。
+- **F9 phase closeout** — after F8 done;Gate verdict + retro 7 sections + frontmatter `active`→`closed` + W21+ rolling JIT decision per CLAUDE.md §10 R1。
+
+---
+
 <!-- Day 3+ frontend entries to be appended. Template:
 
 ## Day N — YYYY-MM-DD
