@@ -157,6 +157,21 @@ Multi-step task 要先講 plan:
 - **Linter**:ESLint(Next.js default + Tailwind plugin)
 - **Formatter**:Prettier
 
+#### 3.2.1 Design Fidelity Rule(`references/design-mockups/` 100% reproduction)
+
+> **`references/design-mockups/` 係前端視覺 + 互動嘅 canonical spec。實作必須 100% 重現 mockup,唔可以「大概模仿」。**
+
+前端設計係本項目嘅 critical surface — implementation 對 mockup 必須做到 **完整重現**(complete reproduction),不是 approximate / similar / inspired-by。具體規則:
+
+- **shadcn/ui 規限 *技術*,唔規限 *fidelity***:用 shadcn primitives + Tailwind tokens 係 H2 要求(`references/design-mockups/` 嘅 stripped components 不可 verbatim copy),**但 visual output 必須 pixel-faithful match mockup**。換句話講:用 `<Button>` 唔等於可以改 size / padding / variant —— 要對齊 mockup 入面嗰個 button 嘅實際樣貌。
+- **必須逐項對齊**:layout 結構(`<div>` 階層 / flex / grid)、spacing(margin / padding / gap)、typography(`text-*` size / weight / leading)、color tokens(用 mockup 用嘅 token,唔可以「換相近顏色」)、interaction states(hover / focus / active / disabled / loading / empty / error)、responsive breakpoints(sm / md / lg / xl 行為)、a11y affordances(aria-* / role / focus-ring)
+- **唔肯定就開 mockup 對住做**:寫 / 改前端 page 之前 + 寫到一半 + 寫完之前,**都應該打開** `references/design-mockups/EKP Platform.html` 嘅對應頁面(URL hash 例:`#kb-detail/drive-manuals`)、inspect 對應 `ekp-page-*.jsx`,逐個 section 對齊。係 routing first-stop(§2)嘅延伸 — 唔係一次性 reference。
+- **Mockup detail 不清晰 / 唔可以用 shadcn 重現** → **STOP and ask**,**絕對唔可以自行 approximate**。例:mockup 有一個 custom popover 動效 shadcn 冇 primitive —— 唔好「用 dropdown 代替算」,要 surface 個 gap 等用戶決定(加 primitive / 寫 vanilla / 改 mockup)。
+- **Design-stage expansion 例外**:DESIGN_README 標明嘅 3 處 design-stage expansion(KB Detail 5→8 tabs / Settings v1→6 tabs / `/users` Tier 1.5)係 *proposal*,implementation 入 H1 ADR 流程(§5.1);ADR 確認 *scope* 之後,*visual fidelity* 仍然受呢條規則約束。
+- **完成前 self-verify**:每個 frontend task done 之前,§12 self-verification checklist 入面嘅「fidelity check」必須過(逐個 element 對齊 mockup;唔啱就 `🚧 deferred` + 記在 progress.md;唔可以靜靜噉差別交)。
+
+**Why**:前端係 user-facing surface,設計細節影響 stakeholder 對產品成熟度嘅判斷。「大概模仿」會累積成 visual drift,W12-W18 UI sprint cycle 已經花咗 4 phase 校正 visual identity(per ADR-0015 + W12 D2 tokens lock)。Mockup 係 single source of truth,re-introduce drift 就係退步。
+
 ### 3.3 共通
 
 - **Naming**:
@@ -519,6 +534,7 @@ Example:`W01-foundation/`、`W02-multi-format-ingestion/`、`W04-crag-eval-shoot
 - [ ] 對應 spec 嘅哪個 section?(quote section number)
 - [ ] 有冇 violate H1–H6?(若有,即係 task 未完)
 - [ ] 有冇 violate §1 Behavioral Baseline?(每行改動 trace 返 user request 嗎?)
+- [ ] **Frontend changes only — Design Fidelity check(per §3.2.1)**:有冇打開 `references/design-mockups/EKP Platform.html` 對應頁面對齊?layout / spacing / typography / color tokens / interaction states / responsive 全部 100% match 咗未?唔啱嘅地方有冇 surface(STOP+ask 或標 🚧 deferred + reason)?**「大概模仿」== task 未完**
 - [ ] Test 寫咗未?(若 critical module)
 - [ ] Linter / formatter run 過?
 - [ ] Commit message follow Conventional Commits?
@@ -569,6 +585,7 @@ EKP Tier 1 — Strict Mode
 ├─ Stack: Azure AI Search + OpenAI + Cohere + Next.js + FastAPI
 ├─ Tier 1 only: NO GraphRAG, NO multi-agent, NO multi-tenancy
 ├─ Dify: read-only reference, never copy code
+├─ Frontend: §3.2.1 design-mockups 100% reproduction (no approximation)
 ├─ Architectural change: STOP + ask + ADR
 ├─ New vendor: STOP + ask + ADR
 └─ When in doubt: ask, don't guess
@@ -577,6 +594,7 @@ EKP Tier 1 — Strict Mode
 ---
 
 **End of CLAUDE.md**
+**Version 1.6 — 2026-05-17 design fidelity rule explicit**(§3.2 加 NEW §3.2.1 Design Fidelity Rule —「`references/design-mockups/` 100% reproduction」明文化:shadcn/ui 規限 *技術*,唔規限 *fidelity*;layout / spacing / typography / color tokens / interaction states / responsive 全部要逐項對齊 mockup;唔肯定就開 `EKP Platform.html` 對住做;mockup detail 不清晰 → STOP+ask,唔可以自行 approximate;design-stage expansion 例外仍受 visual fidelity 約束;Why = 前端 user-facing surface,visual drift 累積就會退步,Mockup 係 single source of truth。§12 self-verification 加一條 frontend-only fidelity check —「大概模仿 == task 未完」)
 **Version 1.5 — 2026-05-16 design-mockups landed**(§2 routing「寫 / 改 frontend feature」加 `references/design-mockups/DESIGN_README.md` + `PAGE_INVENTORY.md` first-stop + 3 處 design-stage expansion 標註;§7 標題下加 disambiguation note 區分 `references/dify/`(third-party H3-bound)vs `references/design-mockups/`(EKP 自有 prototype,唔受 H3 但仍受 H2 — 唔可直接 copy stripped components,必須用 shadcn/ui 重寫))
 **Version 1.4 — 2026-05-16 housekeeping catch-up for accumulated W18+ state**(§0 spec v5→v6 frozen + Tier 1 trajectory 17-phase footnote;§2 12 modules→13 modules + decision-form 21→22 OQ;§5.1 H1 v5→v6;§5.2 H2 vendor table 加 Postgres ADR-0023 + ACS Email ADR-0014;§8 OQ count 21→22 + Q22 note + 17-Resolved-5-Open snapshot;§9 Sprint Awareness extended W1–W18 + W19+ with actual status / Gate verdicts / closed dates;§10.3 12 components / 21 OQ / W1-W12 → 13 / 22 / W1-W18 + W19+ rolling JIT;§10.4 W01-W12 example → W01-W18+;Appendix A Spec v5→v6)
 **Version 1.3 — added §10 Phase Planning Workflow + R1–R5 binding rules; renumbered §11–§14; §2 routing table + §12 self-verification updated**
