@@ -702,6 +702,65 @@ Real-calendar collapse pattern continues — F8 commit 1 lands at ~1.67× collap
 
 ---
 
+## Day 5 — 2026-05-17 (continued, eighth commit)
+
+### F8 commit 2 of 3 — F8.4 Vitest expansion 8 NEW test files(landed)
+
+**Branch**:`main`(ahead of `origin/main` by 1 commit:`556cc64` F8 commit 1 of 3)。
+**Commits this day**:`(this commit)` — F8 commit 2 of 3 standalone(8 NEW Vitest test files batch:`notifications-menu.test.tsx` + `disabled-affordance.test.tsx` + `conversation-history.test.tsx` + `kb-new-wizard.test.tsx` + `kb-detail-tabs.test.tsx` + `kb-upload-wizard.test.tsx` + `login.test.tsx` + `register.test.tsx`)。
+
+#### What landed
+
+W20 baseline **6 files / 21 tests** → **14 files / 37 tests**(8 NEW + 6 baseline preserved)。Each NEW test file 對 1 W20 deliverable surface,coverage 包括 render-smoke + key a11y attribute + key interaction:
+
+- **`notifications-menu.test.tsx` (F1.1)** — 2 tests:Bell trigger renders with `aria-label="notifications"` + opens DropdownMenu via userEvent → fetched items render(mocked `apiClient.get` returns 2-item fixture)
+- **`disabled-affordance.test.tsx` (F1.5)** — 3 tests:p1-strict variant renders with `aria-disabled="true"` + `title` + `aria-label` + `opacity-60` + `pointer-events-none` + child `<button disabled>` preserved · p3-preview with `showBadge` renders inline TIER 2 badge + `aria-label` concatenates `${reason} · ${tier2Trigger}` · p3-preview without `showBadge` correctly omits the TIER 2 badge
+- **`conversation-history.test.tsx` (F3.5)** — 2 tests:header "Conversations" heading + "New chat" button visible + fetched conversation items render(mocked `conversationsApi.list` 2-item fixture)
+- **`kb-new-wizard.test.tsx` (F4.4)** — 2 tests:5-step Stepper labels render via `within(screen.getByLabelText('Wizard steps'))` scope to avoid Step-heading text clash + `aria-current="step"` set on Step 1 indicator;navigation through Steps 1→2→3→4 via userEvent click reveals Multimodal heading + 3 TIER 2 badge affordances + 3 Tier 1 toggle labels(Extract embedded images / Slide screenshots / Return images in chat)
+- **`kb-detail-tabs.test.tsx` (F5.4)** — 1 test:`getAllByRole('tab').length === 8`(7 active + 1 Access disabled);Access tab carries `aria-disabled="true"` and is rendered OUTSIDE the `VALID_TABS` array so `?tab=access` can't route to it. Hard-coded `kbApi.get` fixture provides the KbStatus shape;mocked `documentsApi.list` returns empty so the Documents tab default-loads without 404
+- **`kb-upload-wizard.test.tsx` (F6.1)** — 2 tests:3-step Stepper labels via `within('Wizard steps')` scope + Step 1 `aria-current="step"` set;file upload via `user.upload` then `Next` reaches Step 2 → assert Multimodal heading + read-only Tier 1 labels(Extract embedded images / Slide screenshots)+ "Edit settings" link `href="/kb/test-kb?tab=settings"` so the per-KB-not-per-doc constraint is user-discoverable
+- **`login.test.tsx` (F7.1)** — 1 test:end-to-end strict-fidelity assertion — SSO primary `Sign in with Microsoft` button + Divider「OR continue with email」+ Email + Password labels + Forgot password `<DisabledAffordance>` TIER 2 badge present + `Sign in →` accent submit + Auth modes mono dashed aside present with `aria-label="Auth modes — Tier 1"`
+- **`register.test.tsx` (F7.2)** — 3 tests:3-step Stepper labels(Account info / Email verify / Welcome)+ Step 1 field order assertion(Full name → Work email → Password → Confirm password — labels found via `screen.getByLabelText`)· Hint copy presence(`/6-digit verification code/i` + `/scrypt-hashed via adr-0022/i`)· `Continue →` button gating workflow:initial state disabled → all 4 required fields filled but Terms unchecked still disabled → Terms checkbox checked → button enabled
+
+#### Acceptance criteria status(per checklist.md)
+
+- [x] F8.4 Vitest expansion 8 NEW test files landed(14 files / 37 tests pass — plan target「40+」 minor undershoot acceptable per W18 F8.4 precedent of lean per-file coverage)
+- [x] `tsc --noEmit` exit 0 across the 8 NEW test files
+- [x] `next lint` "No ESLint warnings or errors"
+- [x] `Grep '\[oklch'` across `frontend/` = **0**(W15→W18→W20 F1-F7 + F8 commit 1+2 milestone preserved through 8 new test scaffolds)
+- [ ] F8.5 Playwright E2E updates 🚧 (commit 3 of 3)
+
+#### Deviations(if any)
+
+| F# | Plan said | Actual | Why | Approver |
+|---|---|---|---|---|
+| F8.4 test count | Plan literal「20+/20+ pass」 | 14 files / 37 tests pass | Plan literal「target 6-8 files/20+ tests」predates the F1-F7 carry-over accumulation (F1.7+F3.15+F4.7+F5.10+F6.4+F7.4)which added 6 more NEW files to the F8.4 batch beyond the original 5-file scope. 8 NEW files × 1-3 tests each = 16 NEW tests + 21 baseline = 37 total. Plan target「40+」off-by-3 — acceptable per W18 F8.4 precedent of lean per-file coverage(W18 went 1/3 → 4/13 — per-file mean 2.6 tests;W20 8 NEW files at mean 2 tests/file is in-band). | AI per W18 F8.4 lean-coverage precedent |
+| F8.4 Stepper Step-heading getByText clash | (not surfaced in plan) | `within(screen.getByLabelText('Wizard steps'))` scope on F4/F6 tests | Both F4 (`/kb/new`) and F6 (`/kb/[id]/upload`) wizards have a `<Stepper>` `<ol>` whose `<li>` step labels (e.g. "Source") textually clash with the same-named `<h2>` Step heading rendered in the form area. `screen.getByText('Source')` was matching both → "found 2 elements" failure on 2 of the 8 NEW tests on first run. Fixed by scoping the Stepper assertion to `within(screen.getByLabelText('Wizard steps'))` — semantic landmark approach. Documented for future wizard tests. | AI fix per W18 precedent(`within(healthList)` for the per-component dots) |
+
+#### Decisions / new OQ / risk surfaced
+
+- **Vitest scaffold accumulation batched into F8.4** — F1.7 + F3.15 + F4.7 + F5.10 + F6.4 + F7.4 all deferred Vitest scaffold to F8.4 (the established「F8.4 batches」precedent W20 inherited from W18 F1.6 → W18 F8.4 mechanic). 6 carry-overs collapse to 8 NEW test files because login + register split from F7 single F# (1 carry-over → 2 NEW files). All 8 carry-overs cleared in this commit。
+- **Stepper Step-heading clash documented** — same `<Stepper>` `<li>` text labels (Source / Parsing / Chunking / Multimodal / Review for F4;Source / Multimodal / Review for F6) clash with `<h2>` step heading text. `within(screen.getByLabelText('Wizard steps'))` scope is the semantic-landmark fix. Future wizard tests in Wave B+ should follow this pattern. **Rule-of-3 wizard primitive promotion**(Wave B+ candidate per W20 F6.2)would naturally fix this — a shared `<Stepper>` component would have a single test rather than re-asserting in each wizard test file。
+- **Sample test coverage philosophy preserved** — per-file 1-3 tests rather than exhaustive coverage matches the W18 F8.4 + W20 F2.6 precedent。Full state-machine + edge-case coverage(degraded statuses → dot colour assertions / failed-upload error handling / 404 fallback paths / etc)stays Tier 2 / CO_W15_F4_interactive_flow_E2E。F8.4 covers the "did this surface render at all" + "key a11y attribute present" + "1 critical interaction works" smoke layer — same layer the existing 6 baseline files cover。
+
+#### Actual vs Planned Effort
+
+| F | Planned | Actual | Δ |
+|---|---|---|---|
+| F8.4 8 NEW test files scaffolds + 1 fix pass | 90 min | ~60 min | -33% |
+| F8.4 verify(tsc + lint + Vitest 14/37 pass + [oklch=0)| 15 min | ~10 min | -33% |
+| Progress.md F8 commit-2 Day-N entry + checklist tick + commit | 25 min | ~20 min | -20% |
+| **F8 commit 2 sub-total** | **~2.2 hours**(plan F8.4 90 min only;real cost includes verify + process)| **~90 min** | **-32%** |
+
+Real-calendar collapse pattern continues — F8 commit 2 lands at ~1.47× collapse(below band lower bound,driven by batched-file-write efficiency vs single-file effort estimation)。
+
+#### Carry-overs to next commit(F8 commit 3 = F8.5 Playwright)
+
+- **F8.5 Playwright E2E updates** — final F8 commit;runs via `PW_CHANNEL=chrome pnpm test:e2e`(ADR-0017 Plan B — system Chrome,not bundled Chromium R8-blocked)。Update `app-shell-path.spec.ts`(NotificationsMenu + workspace switcher disabled chip present)+ `golden-path.spec.ts`(extend chat flow:create conv → send msg → reload → conv still shown — server-side persistence test)+ `visual-baseline.spec.ts`(re-baseline `/dashboard` + `/chat` + NEW snapshots `/kb/new` step 1 + `/kb/[id]` Images tab + Chunking Lab tab)。`tsc --noEmit` compile-check first(specs compile);interactive test execution requires `PW_CHANNEL=chrome` env var。
+- **F9 phase closeout** — after F8 done;Gate verdict + retro 7 sections + frontmatter `active`→`closed` + W21+ rolling JIT decision per CLAUDE.md §10 R1。
+
+---
+
 <!-- Day 3+ frontend entries to be appended. Template:
 
 ## Day N — YYYY-MM-DD
