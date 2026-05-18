@@ -2,11 +2,21 @@
 
 /**
  * C09 topbar notifications menu — W22 F1-pivot direct-copy from mockup
- * `references/design-mockups/ekp-shell.jsx:136-189` NotificationsMenu
- * (per CLAUDE.md §5.7 H7 strict fidelity 2026-05-18 user audit — rebuild
- * not patch when fundamental drift).
+ * `references/design-mockups/ekp-shell.jsx:86-189` PopMenu + NotificationsMenu
+ * (per CLAUDE.md §5.7 H7 strict fidelity 2026-05-18 user audit).
  *
- * Structure mirrors mockup `<PopMenu width=380>`:
+ * Implementation note — Radix DropdownMenu replaced with mockup-faithful
+ * portal pattern (2026-05-18 fidelity fix #2). The original Radix wrapper
+ * applied Floating UI positioning via transform on an ancestor wrapper,
+ * which made `position: fixed` inside the popover anchor to that
+ * transformed ancestor instead of the viewport — defeating the mockup's
+ * `right: 66` viewport-anchored gutter pattern. Mockup `ekp-shell.jsx:14-22`
+ * uses a plain `document.addEventListener('click', ...)` + `.closest()`
+ * exclusion check on `[data-popmenu-trigger]` for click-outside; we mirror
+ * that exact pattern so the popover's `position: fixed; right: 66` resolves
+ * against the actual viewport.
+ *
+ * Structure mirrors mockup `<PopMenu width={380} right={66}>`:
  *   - Header: "Notifications" + "X unread" subtitle + "Mark all read" right
  *   - Body: 5 notification rows; per-row 26x26 icon box (kind-coloured) +
  *           title + body + mono timestamp + 6x6 unread accent dot; unread
@@ -14,17 +24,11 @@
  *   - Footer: "Alert rules in Dashboard → System health" left +
  *             "Notification settings →" right
  *
- * shadcn `<DropdownMenu>` Radix wrapper preserved for accessibility (keyboard
- * trap + focus return + portal positioning). Inner content uses mockup CSS
- * classes + inline styles 1:1 (per memory `feedback_design_fidelity.md`
- * rule #2 — direct-copy mockup JSX inside shadcn shell shell).
- *
  * Backend `GET /notifications` is OPTIONAL per W19 F2 item 21 — Wave A ships
  * with `MOCK_NOTIFICATIONS` fallback; when the endpoint 404s the mock data
  * stays visible so the topbar surface is consistent across dev / Beta states.
  *
- * Icon mapping per memory rule #3 (mechanical SVG-path match, NOT semantic
- * guess; mockup `references/design-mockups/icons.jsx`):
+ * Icon mapping per memory rule #3 (mechanical SVG-path match):
  *   IcCheck (`m5 12 5 5L20 7`)          → lucide `Check`
  *   IcZap (`M13 2 4 14h7l-1 8 9-12h-7z`) → lucide `Zap`
  *   IcAlert (triangle + bang)            → lucide `AlertTriangle`
@@ -43,13 +47,9 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { apiClient } from '@/lib/api-client';
 
 type NotificationKind =
@@ -137,13 +137,41 @@ const ICON_FOR: Record<NotificationKind, { Icon: LucideIcon; colorVar: string }>
 export function NotificationsMenu() {
   const [locallyReadIds, setLocallyReadIds] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Avoid portal hydration mismatch — only render after mount on the client.
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Click-outside + Escape close — mockup `ekp-shell.jsx:14-22` pattern.
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      const target = e.target as Element | null;
+      if (!target) return;
+      if (
+        !target.closest('.topbar-popmenu') &&
+        !target.closest('[data-popmenu-trigger="notifications"]')
+      ) {
+        setOpen(false);
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('click', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('click', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
 
   const query = useQuery<NotificationsResponse>({
     queryKey: ['notifications'],
     queryFn: () => apiClient.get<NotificationsResponse>('/notifications'),
-    // Endpoint is OPTIONAL per W19 F2 item 21 — don't hammer it on failure.
     retry: false,
-    // Light polling so the badge stays warm without being a websocket.
     refetchInterval: 60_000,
   });
 
@@ -161,195 +189,212 @@ export function NotificationsMenu() {
     setLocallyReadIds(new Set(items.map((it) => it.id)));
   };
 
-  return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="btn btn-ghost btn-icon btn-sm"
-          aria-label={
-            unreadCount > 0
-              ? `Notifications — ${unreadCount} unread`
-              : 'Notifications'
-          }
-          title="Notifications"
-          style={{ position: 'relative' }}
-        >
-          <Bell size={15} />
-          {unreadCount > 0 && (
-            <span
-              aria-hidden="true"
-              style={{
-                position: 'absolute',
-                top: 4,
-                right: 4,
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                background: 'oklch(var(--accent))',
-                border: '1.5px solid oklch(var(--background))',
-              }}
-            />
-          )}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="topbar-popmenu p-0"
+  const popover = (
+    <div
+      className="topbar-popmenu"
+      role="menu"
+      aria-label="Notifications"
+      style={{
+        // Mockup `ekp-shell.jsx:86-101` PopMenu — viewport-anchored absolute
+        // positioning. With createPortal to document.body, `position: fixed`
+        // resolves against viewport (no transformed ancestor).
+        position: 'fixed',
+        top: 'calc(var(--topbar-h) - 4px)',
+        right: 66,
+        width: 380,
+        background: 'oklch(var(--popover))',
+        border: '1px solid oklch(var(--border))',
+        borderRadius: 'var(--radius-md)',
+        boxShadow: 'var(--shadow-lg)',
+        zIndex: 50,
+        overflow: 'hidden',
+        animation: 'pop-in 0.14s var(--ease)',
+      }}
+    >
+      {/* Header — mockup ekp-shell.jsx lines 153-160 */}
+      <div
         style={{
-          width: 380,
-          // Mockup `ekp-shell.jsx:86-101` PopMenu uses viewport-anchored
-          // absolute positioning (`right: 66` from topbar container = viewport
-          // since topbar spans full width), NOT Radix trigger-anchored align.
-          // Override Floating UI positioning to match mockup line 152
-          // `<PopMenu width={380} right={66}>`.
-          position: 'fixed',
-          top: 'calc(var(--topbar-h) - 4px)',
-          right: 66,
-          left: 'auto',
-          bottom: 'auto',
-          transform: 'none',
+          padding: '10px 14px',
+          borderBottom: '1px solid oklch(var(--border))',
+          display: 'flex',
+          alignItems: 'center',
         }}
       >
-        {/* Header — direct copy mockup ekp-shell.jsx lines 153-160 */}
-        <div
-          style={{
-            padding: '10px 14px',
-            borderBottom: '1px solid oklch(var(--border))',
-            display: 'flex',
-            alignItems: 'center',
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>Notifications</div>
-            <div className="text-xs muted">
-              {unreadCount === 0
-                ? 'All caught up'
-                : `${unreadCount} unread`}
-            </div>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>Notifications</div>
+          <div className="text-xs muted">
+            {unreadCount === 0 ? 'All caught up' : `${unreadCount} unread`}
           </div>
-          <div className="spacer" />
-          <button
-            type="button"
-            className="btn btn-ghost btn-xs"
-            onClick={handleMarkAllRead}
-            disabled={unreadCount === 0}
-          >
-            Mark all read
-          </button>
         </div>
+        <div className="spacer" />
+        <button
+          type="button"
+          className="btn btn-ghost btn-xs"
+          onClick={handleMarkAllRead}
+          disabled={unreadCount === 0}
+        >
+          Mark all read
+        </button>
+      </div>
 
-        {/* Body — direct copy mockup ekp-shell.jsx lines 161-183 */}
-        <div style={{ maxHeight: 420, overflowY: 'auto' }}>
-          {items.length === 0 ? (
-            <div className="text-xs muted" style={{ padding: '24px 14px', textAlign: 'center' }}>
-              No notifications yet.
-            </div>
-          ) : (
-            items.map((n) => {
-              const isUnread = n.unread && !locallyReadIds.has(n.id);
-              const { Icon, colorVar } = ICON_FOR[n.kind];
-              return (
-                <Link
-                  key={n.id}
-                  href={n.href}
-                  onClick={() => setOpen(false)}
+      {/* Body — mockup ekp-shell.jsx lines 161-183 */}
+      <div style={{ maxHeight: 420, overflowY: 'auto' }}>
+        {items.length === 0 ? (
+          <div
+            className="text-xs muted"
+            style={{ padding: '24px 14px', textAlign: 'center' }}
+          >
+            No notifications yet.
+          </div>
+        ) : (
+          items.map((n) => {
+            const isUnread = n.unread && !locallyReadIds.has(n.id);
+            const { Icon, colorVar } = ICON_FOR[n.kind];
+            return (
+              <Link
+                key={n.id}
+                href={n.href}
+                onClick={() => setOpen(false)}
+                style={{
+                  display: 'flex',
+                  gap: 10,
+                  padding: '10px 14px',
+                  borderBottom: '1px solid oklch(var(--border))',
+                  background: isUnread
+                    ? 'oklch(var(--accent) / 0.04)'
+                    : 'transparent',
+                  textDecoration: 'none',
+                  color: 'inherit',
+                }}
+              >
+                <div
                   style={{
-                    display: 'flex',
-                    gap: 10,
-                    padding: '10px 14px',
-                    borderBottom: '1px solid oklch(var(--border))',
-                    background: isUnread
-                      ? 'oklch(var(--accent) / 0.04)'
-                      : 'transparent',
-                    textDecoration: 'none',
-                    color: 'inherit',
+                    width: 26,
+                    height: 26,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'oklch(var(--muted))',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
                   }}
                 >
+                  <Icon
+                    size={13}
+                    className={colorVar ? undefined : 'muted'}
+                    style={colorVar ? { color: colorVar } : undefined}
+                  />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div
                     style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: 'var(--radius-sm)',
-                      background: 'oklch(var(--muted))',
-                      display: 'grid',
-                      placeItems: 'center',
-                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
                     }}
                   >
-                    <Icon
-                      size={13}
-                      className={colorVar ? undefined : 'muted'}
-                      style={colorVar ? { color: colorVar } : undefined}
-                    />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span
+                      style={{
+                        fontSize: 12.5,
+                        fontWeight: 500,
+                        flex: 1,
+                        minWidth: 0,
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      {n.title}
+                    </span>
+                    {isUnread && (
                       <span
+                        aria-hidden="true"
                         style={{
-                          fontSize: 12.5,
-                          fontWeight: 500,
-                          flex: 1,
-                          minWidth: 0,
-                          lineHeight: 1.35,
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          background: 'oklch(var(--accent))',
+                          flexShrink: 0,
                         }}
-                      >
-                        {n.title}
-                      </span>
-                      {isUnread && (
-                        <span
-                          aria-hidden="true"
-                          style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: '50%',
-                            background: 'oklch(var(--accent))',
-                            flexShrink: 0,
-                          }}
-                        />
-                      )}
-                    </div>
-                    <div
-                      className="text-xs muted"
-                      style={{ marginTop: 2, lineHeight: 1.4 }}
-                    >
-                      {n.body}
-                    </div>
-                    <div
-                      className="text-xs muted mono"
-                      style={{ marginTop: 4 }}
-                    >
-                      {n.at}
-                    </div>
+                      />
+                    )}
                   </div>
-                </Link>
-              );
-            })
-          )}
-        </div>
+                  <div
+                    className="text-xs muted"
+                    style={{ marginTop: 2, lineHeight: 1.4 }}
+                  >
+                    {n.body}
+                  </div>
+                  <div
+                    className="text-xs muted mono"
+                    style={{ marginTop: 4 }}
+                  >
+                    {n.at}
+                  </div>
+                </div>
+              </Link>
+            );
+          })
+        )}
+      </div>
 
-        {/* Footer — direct copy mockup ekp-shell.jsx lines 184-188 */}
-        <div
-          style={{
-            padding: '8px 14px',
-            borderTop: '1px solid oklch(var(--border))',
-            background: 'oklch(var(--muted) / 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-          }}
+      {/* Footer — mockup ekp-shell.jsx lines 184-188 */}
+      <div
+        style={{
+          padding: '8px 14px',
+          borderTop: '1px solid oklch(var(--border))',
+          background: 'oklch(var(--muted) / 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        <span className="text-xs muted">
+          Alert rules in Dashboard → System health
+        </span>
+        <div className="spacer" />
+        <Link
+          href="/settings"
+          onClick={() => setOpen(false)}
+          className="btn btn-ghost btn-xs"
         >
-          <span className="text-xs muted">
-            Alert rules in Dashboard → System health
-          </span>
-          <div className="spacer" />
-          <Link
-            href="/settings"
-            onClick={() => setOpen(false)}
-            className="btn btn-ghost btn-xs"
-          >
-            Notification settings →
-          </Link>
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          Notification settings →
+        </Link>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      <button
+        type="button"
+        className="btn btn-ghost btn-icon btn-sm"
+        data-popmenu-trigger="notifications"
+        aria-label={
+          unreadCount > 0
+            ? `Notifications — ${unreadCount} unread`
+            : 'Notifications'
+        }
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="Notifications"
+        style={{ position: 'relative' }}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <Bell size={15} />
+        {unreadCount > 0 && (
+          <span
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              top: 4,
+              right: 4,
+              width: 7,
+              height: 7,
+              borderRadius: '50%',
+              background: 'oklch(var(--accent))',
+              border: '1.5px solid oklch(var(--background))',
+            }}
+          />
+        )}
+      </button>
+      {mounted && open && createPortal(popover, document.body)}
+    </>
   );
 }
