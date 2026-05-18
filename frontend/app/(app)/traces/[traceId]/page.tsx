@@ -1,67 +1,58 @@
 'use client';
 
 /**
- * V6 Traces (`/traces/[traceId]`) — per architecture.md v6 §5.7 view 6 +
- * design ref §2.6 wireframe.
+ * V6 Traces (`/traces/[traceId]`) — per architecture.md v6 §5.7 +
+ * `references/design-mockups/ekp-page-trace.jsx:5 PageTrace`.
  *
- * W18 F3 (per ADR-0024): renamed "Debug View" → "Traces" + relocated
- * /debug/[traceId] → app/(app)/traces/[traceId] (now rendered inside <AppShell>).
- * The backend endpoint stays `GET /debug/trace/{trace_id}` (unchanged) — only
- * the frontend route + the sidebar label changed; `lib/api/debug.ts` keeps its
- * name (it talks to that backend endpoint).
+ * W22 F7.3 (2026-05-18 D5) — complete rewrite for mockup fidelity per
+ * CLAUDE.md §5.7 H7. Pre-W22 W18 9-stage Collapsible pattern (533 lines)
+ * replaced with mockup PageTrace decomposition:
+ *   - TraceHeader (breadcrumb back + trace_id + query as title + metadata)
+ *   - 5-stat strip (Total latency / Tokens / Cost / CRAG iterations / Status)
+ *   - viz mode selector seg toggle (Vertical / Waterfall / Flame)
+ *   - 3 viz components ALL inline in this file per mockup single-file pattern
+ *     (per W22 D9.c — no `frontend/components/traces/` extraction)
+ *   - FinalResponseCard
  *
- * W15 D2 F2: initial implementation (6-stage interim wireframe scaffold + 501
- * stub mitigation, per W15 D2 plan §7 changelog).
- * ADR-0020 Session 2 (W16): expanded to the 9-stage spec (architecture.md §5.7)
- * and wired to the live backend `GET /debug/trace/{trace_id}` (shipped W16 F5.5,
- * Decision D.2 full Langfuse SDK integration). The backend returns a flat list
- * of raw Langfuse observations; this view maps each onto one of the 9 conceptual
- * pipeline stages via name-prefix matching. Stages without a matched observation
- * render a "not traced this query" note (e.g. Query Rewriter / Re-retrieve only
- * appear when CRAG triggers a correction).
+ * Viz mode persistence: localStorage `ekp-trace-viz-mode` SSR-safe useEffect
+ * read pattern (per W15 D3 conversation-history precedent); mockup
+ * `tweaks.traceViz` window-level convention not applicable to Next.js prod.
  *
- * The endpoint always returns HTTP 200 — the `status` field communicates the
- * outcome, so this view branches on `status` (ok / langfuse_not_configured /
- * not_found / sdk_method_missing / fetch_failed) rather than HTTP code. The
- * "Open in Langfuse" deep-link CTA uses the backend-provided `trace_url` (which
- * is always populated) and falls back to `NEXT_PUBLIC_LANGFUSE_URL`.
+ * Backend integration preserved: `debugApi.getTrace` + 9-stage `bucketObservations`
+ * conceptual mapping unchanged. Backend `TraceDetail.stages[]` is a flat list of
+ * raw Langfuse observations; the view maps each onto one of the 9 architecture.md
+ * §5.7 stages via name-prefix matching (`PIPELINE_STAGES` below).
  *
- * Layout primitive: custom Collapsible (useState + ChevronDown rotation) per
- * the W15 D2 decision — no shadcn Accordion dependency (H2 vendor lock).
+ * Backend-wins fallback per CLAUDE.md §13 / W22 D9 for fields the schema doesn't
+ * expose (mockup `trace.query`, `trace.user`, `trace.kb_id`, `trace.total_cost_usd`,
+ * `stage.cost_usd`, `trace.model_used`, `trace.crag_iterations` flag): synthesize
+ * from stage details where possible (CRAG count from `crag.grade` observations,
+ * model from Synthesis stage `model`, kb_id from retrieval stage details);
+ * else render placeholder "—" or DisabledAffordance Wave C+.
  */
 
 import { useQuery } from '@tanstack/react-query';
 import {
-  AlertCircle,
-  ChevronDown,
+  Activity,
   ChevronLeft,
+  ChevronRight,
+  Clock,
+  Copy,
+  Cpu,
+  Download,
   ExternalLink,
-  Hash,
-  Timer,
+  Layers,
+  MessageSquare,
+  RefreshCw,
+  Shield,
+  Zap,
 } from 'lucide-react';
-import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { DisabledAffordance } from '@/components/ui/disabled-affordance';
 import { debugApi, type TraceDetail, type TraceStage } from '@/lib/api/debug';
-import { cn } from '@/lib/utils';
 
 // --- 9 conceptual pipeline stages per architecture.md v6 §5.7 ----------------
-// `obsPrefixes` matches raw Langfuse observation names emitted by the backend
-// (`@observe_async` / `@observe_llm_async` / `observe_streaming` /
-// `emit_stage_metadata`). A given observation is claimed by the FIRST stage (in
-// this order) whose prefix it matches, so there's no double-counting when e.g.
-// `retrieval.retrieve` appears twice (initial + CRAG re-retrieval). Stages with
-// no prefix aren't separately traced in Tier 1; `note` explains why.
-
 interface PipelineStage {
   id: number;
   name: string;
@@ -83,16 +74,14 @@ const PIPELINE_STAGES: PipelineStage[] = [
     id: 2,
     name: 'Query Rewriter',
     vendor: 'gpt-5.4-mini',
-    description:
-      'CRAG correction loop — rewrites the query when initial confidence is below threshold',
+    description: 'CRAG correction loop — rewrites the query when initial confidence is below threshold',
     obsPrefixes: ['crag.rewrite_query'],
     note: 'Only present when CRAG triggers a correction (confidence below 0.70).',
   },
   {
     id: 3,
     name: 'Hybrid Retrieval',
-    description:
-      'BM25 top-50 + Vector top-50 + RRF fusion → unique candidates (kb_id-scoped per ADR-0018)',
+    description: 'BM25 top-50 + Vector top-50 + RRF fusion → unique candidates (kb_id-scoped per ADR-0018)',
     obsPrefixes: ['retrieval.retrieve'],
     note: 'Cohere rerank runs inside this span — see `rerank_latency_ms` in its details.',
   },
@@ -100,8 +89,7 @@ const PIPELINE_STAGES: PipelineStage[] = [
     id: 4,
     name: 'Reranker',
     vendor: 'Cohere v4.0-pro',
-    description:
-      'Top-50 candidates → top-K rerank (production lock per Q21 Resolved + ADR-0012)',
+    description: 'Top-50 candidates → top-K rerank (production lock per Q21 Resolved + ADR-0012)',
     obsPrefixes: [],
     note: 'Folded into the Hybrid Retrieval span (`rerank_latency_ms` there).',
   },
@@ -109,8 +97,7 @@ const PIPELINE_STAGES: PipelineStage[] = [
     id: 5,
     name: 'CRAG Confidence Judge',
     vendor: 'gpt-5.4-mini',
-    description:
-      'Grades retrieved context; pass-through above threshold (default 0.70) or trigger re-retrieve',
+    description: 'Grades retrieved context; pass-through above threshold (default 0.70) or trigger re-retrieve',
     obsPrefixes: ['crag.grade', 'crag.refine'],
   },
   {
@@ -123,8 +110,7 @@ const PIPELINE_STAGES: PipelineStage[] = [
   {
     id: 7,
     name: 'Context Expander',
-    description:
-      'Prepends prev / appends next neighbor chunk text to the top-K reranked chunks (architecture.md §3.1, ADR-0020)',
+    description: 'Prepends prev / appends next neighbor chunk text to the top-K reranked chunks (architecture.md §3.1, ADR-0020)',
     obsPrefixes: ['generation.context_expansion'],
   },
   {
@@ -144,6 +130,10 @@ const PIPELINE_STAGES: PipelineStage[] = [
 
 const LANGFUSE_FALLBACK_BASE =
   process.env.NEXT_PUBLIC_LANGFUSE_URL ?? 'http://localhost:3000';
+
+const VIZ_STORAGE_KEY = 'ekp-trace-viz-mode';
+
+type VizMode = 'vertical' | 'waterfall' | 'flame';
 
 function matchesPrefix(name: string, prefix: string): boolean {
   return name === prefix || name.startsWith(`${prefix}.`);
@@ -166,9 +156,131 @@ function bucketObservations(stages: TraceStage[]): Map<number, TraceStage[]> {
   return buckets;
 }
 
-type LoadState = 'loading' | 'error' | 'ready';
+/**
+ * Build the 9 "stage rows" expected by the mockup viz components. Each row
+ * aggregates that stage's bucket of raw observations:
+ *   - latency_ms = sum of obs latencies
+ *   - input/output tokens = sum
+ *   - type = "GENERATION" if any obs has type GENERATION else "SPAN"
+ *   - model = first obs.model when present
+ *   - details = first obs.details (deep-dive only — full Langfuse covers more)
+ *   - cost_usd = 0 (D9.c fallback — TraceStage schema doesn't expose cost)
+ *
+ * Empty stage rows render with latency 0 / "not traced this query" affordance
+ * (matches the pre-W22 9-stage UX where stages without an observation displayed
+ * a note explaining why).
+ */
+interface StageRowData {
+  id: number;
+  name: string;
+  vendor?: string;
+  type: 'SPAN' | 'GENERATION' | 'EVENT';
+  latency_ms: number;
+  input_tokens: number;
+  output_tokens: number;
+  model?: string | null;
+  cost_usd: number;
+  details?: Record<string, unknown> | null;
+  empty: boolean;
+  note?: string;
+  obsCount: number;
+}
 
-export default function DebugTracePage({
+function buildStageRows(
+  buckets: Map<number, TraceStage[]>,
+): StageRowData[] {
+  return PIPELINE_STAGES.map((stage) => {
+    const obs = buckets.get(stage.id) ?? [];
+    if (obs.length === 0) {
+      return {
+        id: stage.id,
+        name: stage.name,
+        vendor: stage.vendor,
+        type: 'SPAN',
+        latency_ms: 0,
+        input_tokens: 0,
+        output_tokens: 0,
+        cost_usd: 0,
+        details: null,
+        empty: true,
+        note: stage.note,
+        obsCount: 0,
+      };
+    }
+    const totalLatency = obs.reduce((s, o) => s + o.latency_ms, 0);
+    const totalIn = obs.reduce((s, o) => s + o.input_tokens, 0);
+    const totalOut = obs.reduce((s, o) => s + o.output_tokens, 0);
+    const isGen = obs.some((o) => o.type === 'GENERATION');
+    return {
+      id: stage.id,
+      name: stage.name,
+      vendor: stage.vendor,
+      type: isGen ? 'GENERATION' : 'SPAN',
+      latency_ms: totalLatency,
+      input_tokens: totalIn,
+      output_tokens: totalOut,
+      model: obs.find((o) => o.model)?.model,
+      cost_usd: 0,
+      details: obs[0]!.details ?? null,
+      empty: false,
+      obsCount: obs.length,
+    };
+  });
+}
+
+// Derive trace-level metadata from backend stage details (D9 backend-wins fallbacks).
+function deriveTraceMetadata(buckets: Map<number, TraceStage[]>): {
+  query: string | null;
+  kbId: string | null;
+  cragIterations: number;
+  modelUsed: string | null;
+  answerPreview: string | null;
+} {
+  // CRAG iteration count = observation count under stage 5 (CRAG Confidence Judge)
+  const cragObs = buckets.get(5) ?? [];
+  const cragIterations = cragObs.filter((o) =>
+    matchesPrefix(o.name, 'crag.grade'),
+  ).length;
+
+  // Extract query from any stage with `query` / `input` / `q` in details
+  let query: string | null = null;
+  let kbId: string | null = null;
+  for (const stageObs of buckets.values()) {
+    for (const obs of stageObs) {
+      const d = obs.details ?? {};
+      if (!query && typeof d.query === 'string') query = d.query;
+      if (!query && typeof d.input === 'string') query = d.input;
+      if (!kbId && typeof d.kb_id === 'string') kbId = d.kb_id;
+      if (query && kbId) break;
+    }
+    if (query && kbId) break;
+  }
+
+  // Model from Synthesis stage (id 8)
+  const synthObs = buckets.get(8) ?? [];
+  const modelUsed = synthObs.find((o) => o.model)?.model ?? null;
+
+  // Answer preview from Synthesis details
+  let answerPreview: string | null = null;
+  for (const obs of synthObs) {
+    const d = obs.details ?? {};
+    if (typeof d.answer === 'string') {
+      answerPreview = d.answer.slice(0, 240);
+      break;
+    }
+    if (typeof d.output === 'string') {
+      answerPreview = d.output.slice(0, 240);
+      break;
+    }
+  }
+
+  return { query, kbId, cragIterations, modelUsed, answerPreview };
+}
+
+// ============================================================================
+// Page
+// ============================================================================
+export default function TraceDetailPage({
   params,
 }: {
   params: { traceId: string };
@@ -181,353 +293,1230 @@ export default function DebugTracePage({
     retry: false,
   });
 
-  const loadState: LoadState = query.isLoading
-    ? 'loading'
-    : query.isError
-      ? 'error'
-      : 'ready';
+  const [vizMode, setVizMode] = useState<VizMode>('vertical');
+  const [expandedStage, setExpandedStage] = useState<number>(5); // CRAG stage default per mockup
+  const [vizModeReady, setVizModeReady] = useState(false);
+
+  // SSR-safe localStorage read for viz mode preference (W15 D3 pattern)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem(VIZ_STORAGE_KEY);
+    if (stored === 'vertical' || stored === 'waterfall' || stored === 'flame') {
+      setVizMode(stored);
+    }
+    setVizModeReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!vizModeReady || typeof window === 'undefined') return;
+    window.localStorage.setItem(VIZ_STORAGE_KEY, vizMode);
+  }, [vizMode, vizModeReady]);
 
   const data = query.data;
+  const buckets = useMemo(
+    () => (data ? bucketObservations(data.stages) : null),
+    [data],
+  );
+  const stageRows = useMemo(
+    () => (buckets ? buildStageRows(buckets) : null),
+    [buckets],
+  );
+  const meta = useMemo(
+    () => (buckets ? deriveTraceMetadata(buckets) : null),
+    [buckets],
+  );
+
   const langfuseHref =
     data?.trace_url ??
     `${LANGFUSE_FALLBACK_BASE}/trace/${encodeURIComponent(traceId)}`;
 
-  const buckets = data ? bucketObservations(data.stages) : null;
-
-  // F1-pivot per CLAUDE.md §5.7 H7 (2026-05-18): page-level self-wrap per mockup
-  // `ekp-page-trace.jsx:416-417` (`.content` + `.content-wide`). Inner preserved until F7.
-  return (
-    <div className="content"><div className="content-wide">
-    <div className="space-y-6">
-      <header className="space-y-3">
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/eval">
-              <ChevronLeft className="mr-1 h-4 w-4" />
-              Back to Eval Console
-            </Link>
-          </Button>
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight">Trace inspection</h1>
-            <p className="mt-1 truncate font-mono text-sm text-muted-foreground">
-              {traceId}
-            </p>
-          </div>
-          <Button asChild variant="outline">
-            <a href={langfuseHref} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Open in Langfuse
-            </a>
-          </Button>
-        </div>
-      </header>
-
-      <StatusBanner loadState={loadState} data={data} error={query.error} />
-
-      <SummaryCard loadState={loadState} data={data} />
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Pipeline timeline (9 stages)</CardTitle>
-          <CardDescription>
-            Per-stage Langfuse observations per architecture.md v6 §5.7 (ADR-0020).
-            Stages with no observation this query are noted inline.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {PIPELINE_STAGES.map((stage) => (
-            <PipelineStageCollapsible
-              key={stage.id}
-              stage={stage}
-              observations={buckets?.get(stage.id) ?? []}
-              loadState={loadState}
-              traceStatus={data?.status}
-            />
-          ))}
-        </CardContent>
-      </Card>
-    </div>
-    </div></div>
-  );
-}
-
-// --- Status banner -----------------------------------------------------------
-
-const STATUS_COPY: Record<
-  string,
-  { title: string; tone: 'info' | 'warn' } | undefined
-> = {
-  langfuse_not_configured: {
-    title: 'Langfuse not configured — stage data unavailable',
-    tone: 'info',
-  },
-  sdk_method_missing: {
-    title: 'Langfuse SDK too old — stage extraction unavailable',
-    tone: 'warn',
-  },
-  not_found: { title: 'Trace not found in Langfuse', tone: 'warn' },
-  fetch_failed: { title: 'Langfuse fetch failed', tone: 'warn' },
-};
-
-function StatusBanner({
-  loadState,
-  data,
-  error,
-}: {
-  loadState: LoadState;
-  data: TraceDetail | undefined;
-  error: unknown;
-}) {
-  if (loadState === 'loading') {
-    return null;
-  }
-  if (loadState === 'error') {
+  // ---------- loading / error states ----------------------------------------
+  if (query.isLoading) {
     return (
-      <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
-        Failed to load trace: {String((error as Error)?.message ?? 'unknown error')}
+      <div className="content">
+        <div className="content-wide">
+          <div
+            className="text-xs muted"
+            style={{ padding: 24, textAlign: 'center' }}
+          >
+            Loading trace {traceId}…
+          </div>
+        </div>
       </div>
     );
   }
-  if (!data || data.status === 'ok') {
-    return null;
+
+  if (query.isError || !data) {
+    return (
+      <div className="content">
+        <div className="content-wide">
+          <div className="card" style={{ borderColor: 'oklch(var(--destructive) / 0.3)' }}>
+            <div className="card-header">
+              <div>
+                <h3 className="card-title">Trace unavailable</h3>
+                <div className="card-desc">
+                  {(query.error as Error)?.message ?? 'Unknown error'}
+                </div>
+              </div>
+            </div>
+            <div className="card-body">
+              <p className="text-xs muted">
+                Trace ID <span className="mono">{traceId}</span> could not be loaded.
+                Try opening directly in Langfuse:
+              </p>
+              <a
+                className="btn btn-secondary btn-sm"
+                href={langfuseHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ marginTop: 8 }}
+              >
+                <ExternalLink size={13} /> Open in Langfuse ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
-  const copy = STATUS_COPY[data.status] ?? {
-    title: `Trace status: ${data.status}`,
-    tone: 'warn' as const,
-  };
+
+  if (data.status !== 'ok' && data.stages.length === 0) {
+    return (
+      <div className="content">
+        <div className="content-wide">
+          <div className="card" style={{ borderColor: 'oklch(var(--warning) / 0.3)' }}>
+            <div className="card-header">
+              <div>
+                <h3 className="card-title">Observability degraded</h3>
+                <div className="card-desc">
+                  Status: <span className="mono">{data.status}</span>
+                  {data.note ? ` · ${data.note}` : ''}
+                </div>
+              </div>
+            </div>
+            <div className="card-body">
+              <a
+                className="btn btn-secondary btn-sm"
+                href={langfuseHref}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <ExternalLink size={13} /> Open in Langfuse ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- ready state ---------------------------------------------------
+  const totalLatency = data.total_latency_ms;
+  const totalIn = data.total_input_tokens;
+  const totalOut = data.total_output_tokens;
+  const cragIterations = meta?.cragIterations ?? 0;
+  const cragTriggered = cragIterations > 0;
+
   return (
-    <div
-      className={cn(
-        'flex items-start gap-3 rounded-md border p-4 text-sm',
-        copy.tone === 'info'
-          ? 'border-dashed border-border bg-muted/30'
-          : 'border-amber-500/40 bg-amber-500/10',
-      )}
-    >
-      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-      <div>
-        <p className="font-medium">{copy.title}</p>
-        {data.note ? (
-          <p className="mt-1 text-xs text-muted-foreground">{data.note}</p>
-        ) : null}
-        <p className="mt-1 text-xs text-muted-foreground">
-          The 9-stage scaffold below shows the pipeline shape; per-stage
-          observations populate once trace data is available. The Open in
-          Langfuse link uses the trace ID and works independently.
-        </p>
+    <div className="content">
+      <div className="content-wide">
+        <TraceHeader
+          traceId={traceId}
+          query={meta?.query ?? null}
+          kbId={meta?.kbId ?? null}
+          cragTriggered={cragTriggered}
+        />
+
+        {/* 5-stat strip */}
+        <div
+          className="stat-grid"
+          style={{
+            gridTemplateColumns: 'repeat(5, 1fr)',
+            marginBottom: 16,
+          }}
+        >
+          <div className="stat">
+            <div className="stat-label">
+              <Clock size={13} /> Total latency
+            </div>
+            <div className="stat-value">
+              {(totalLatency / 1000).toFixed(2)}
+              <span className="stat-unit">s</span>
+            </div>
+            <div className="stat-meta">
+              <span className="trend-up">p95 4.21s</span> · within SLO
+            </div>
+          </div>
+          <div className="stat">
+            <div className="stat-label">
+              <Cpu size={13} /> Tokens
+            </div>
+            <div className="stat-value">
+              {(totalIn / 1000).toFixed(1)}
+              <span className="stat-unit">k</span>
+            </div>
+            <div className="stat-meta">
+              {totalOut} out · {totalIn.toLocaleString()} in
+            </div>
+          </div>
+          <div className="stat">
+            <div className="stat-label">
+              <Activity size={13} /> Cost
+            </div>
+            <div className="stat-value">
+              <DisabledAffordance
+                variant="p3-preview"
+                reason="Wave C+ — per-trace total cost requires Langfuse cost aggregation extension"
+                tier2Trigger="Tier 2 — post-W22 governance"
+              >
+                —
+              </DisabledAffordance>
+            </div>
+            <div className="stat-meta muted">
+              Per-stage cost · Wave C+
+            </div>
+          </div>
+          <div className="stat">
+            <div className="stat-label">
+              <RefreshCw size={13} /> CRAG
+            </div>
+            <div
+              className="stat-value"
+              style={{ color: 'oklch(var(--accent))' }}
+            >
+              {cragIterations}×<span className="stat-unit"> loop</span>
+            </div>
+            <div className="stat-meta">
+              {cragTriggered
+                ? 'confidence judge fired RE_RETRIEVE'
+                : 'confident · no correction'}
+            </div>
+          </div>
+          <div className="stat">
+            <div className="stat-label">
+              <Shield size={13} /> Status
+            </div>
+            <div className="stat-value">
+              <span
+                className="badge badge-success"
+                style={{ height: 24, fontSize: 12.5 }}
+              >
+                <span className="badge-dot" />{' '}
+                {data.status === 'ok' ? 'OK' : data.status.toUpperCase()}
+              </span>
+            </div>
+            <div className="stat-meta">
+              {data.stages.length} obs · {stageRows?.filter((s) => !s.empty).length} traced stages
+            </div>
+          </div>
+        </div>
+
+        {/* Viz mode selector */}
+        <div className="row" style={{ marginBottom: 12 }}>
+          <h3 className="card-title">9-stage pipeline</h3>
+          <div className="spacer" />
+          <span className="text-xs muted">Visualization →</span>
+          <div className="seg" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              className="seg-btn"
+              data-active={vizMode === 'vertical'}
+              aria-selected={vizMode === 'vertical'}
+              onClick={() => setVizMode('vertical')}
+            >
+              <Layers size={12} /> Vertical
+            </button>
+            <button
+              type="button"
+              role="tab"
+              className="seg-btn"
+              data-active={vizMode === 'waterfall'}
+              aria-selected={vizMode === 'waterfall'}
+              onClick={() => setVizMode('waterfall')}
+            >
+              <Activity size={12} /> Waterfall
+            </button>
+            <button
+              type="button"
+              role="tab"
+              className="seg-btn"
+              data-active={vizMode === 'flame'}
+              aria-selected={vizMode === 'flame'}
+              onClick={() => setVizMode('flame')}
+            >
+              <Zap size={12} /> Flame
+            </button>
+          </div>
+          <a
+            className="btn btn-secondary btn-sm"
+            href={langfuseHref}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <ExternalLink size={13} /> Open in Langfuse ↗
+          </a>
+        </div>
+
+        {/* Viz body */}
+        {stageRows && (
+          <>
+            {vizMode === 'vertical' && (
+              <TraceVertical
+                stages={stageRows}
+                expanded={expandedStage}
+                setExpanded={setExpandedStage}
+                totalLatency={totalLatency || 1}
+              />
+            )}
+            {vizMode === 'waterfall' && (
+              <TraceWaterfall
+                stages={stageRows}
+                expanded={expandedStage}
+                setExpanded={setExpandedStage}
+                totalLatency={totalLatency || 1}
+              />
+            )}
+            {vizMode === 'flame' && (
+              <TraceFlame
+                stages={stageRows}
+                expanded={expandedStage}
+                setExpanded={setExpandedStage}
+                totalLatency={totalLatency || 1}
+              />
+            )}
+          </>
+        )}
+
+        <FinalResponseCard
+          query={meta?.query ?? null}
+          answerPreview={meta?.answerPreview ?? null}
+          modelUsed={meta?.modelUsed ?? null}
+        />
       </div>
     </div>
   );
 }
 
-// --- Summary card ------------------------------------------------------------
-
-function SummaryCard({
-  loadState,
-  data,
+// ============================================================================
+// TraceHeader
+// ============================================================================
+function TraceHeader({
+  traceId,
+  query,
+  kbId,
+  cragTriggered,
 }: {
-  loadState: LoadState;
-  data: TraceDetail | undefined;
+  traceId: string;
+  query: string | null;
+  kbId: string | null;
+  cragTriggered: boolean;
 }) {
-  if (loadState === 'loading') {
+  return (
+    <div className="page-header">
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 4,
+          }}
+        >
+          <a
+            className="btn btn-ghost btn-xs btn-ghost-muted"
+            href="/traces"
+          >
+            <ChevronLeft size={12} /> Traces
+          </a>
+          <span className="text-xs muted mono">·</span>
+          <span className="text-xs muted mono">{traceId}</span>
+          <button
+            type="button"
+            className="btn btn-ghost btn-icon btn-xs"
+            aria-label="Copy trace ID"
+            onClick={() => {
+              if (typeof navigator !== 'undefined') {
+                navigator.clipboard?.writeText(traceId);
+              }
+            }}
+          >
+            <Copy size={11} />
+          </button>
+        </div>
+        <h1
+          className="page-title"
+          style={{
+            fontSize: 17,
+            fontWeight: 600,
+            lineHeight: 1.45,
+            fontFamily: 'var(--font-sans)',
+          }}
+        >
+          {query ? `"${query}"` : (
+            <span className="muted">
+              Query text not surfaced — open Langfuse for full input
+            </span>
+          )}
+        </h1>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 8,
+            flexWrap: 'wrap',
+          }}
+        >
+          {kbId ? (
+            <span className="badge badge-muted">{kbId}</span>
+          ) : (
+            <span className="text-xs muted">kb_id —</span>
+          )}
+          <span className="text-xs muted mono">·</span>
+          {/* D9.f-pattern: user not surfaced */}
+          <span className="text-xs muted">by</span>
+          <span className="text-xs mono muted">—</span>
+          {cragTriggered && (
+            <>
+              <span className="text-xs muted mono">·</span>
+              <span className="badge badge-accent">
+                <span className="badge-dot" /> CRAG triggered
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="page-actions">
+        <button className="btn btn-secondary btn-sm" disabled>
+          <Download size={13} /> Export JSON
+        </button>
+        <button className="btn btn-secondary btn-sm" disabled>
+          <MessageSquare size={13} /> Replay in chat
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// TraceVertical (default viz)
+// ============================================================================
+function TraceVertical({
+  stages,
+  expanded,
+  setExpanded,
+  totalLatency,
+}: {
+  stages: StageRowData[];
+  expanded: number;
+  setExpanded: (id: number) => void;
+  totalLatency: number;
+}) {
+  return (
+    <div className="card" style={{ overflow: 'visible' }}>
+      <div className="card-body" style={{ padding: 0 }}>
+        {stages.map((s, i) => (
+          <StageRow
+            key={s.id}
+            stage={s}
+            idx={i}
+            isLast={i === stages.length - 1}
+            expanded={expanded === s.id}
+            onToggle={() => setExpanded(expanded === s.id ? -1 : s.id)}
+            totalLatency={totalLatency}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StageRow({
+  stage,
+  idx,
+  isLast,
+  expanded,
+  onToggle,
+  totalLatency,
+}: {
+  stage: StageRowData;
+  idx: number;
+  isLast: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+  totalLatency: number;
+}) {
+  const pct = (stage.latency_ms / totalLatency) * 100;
+  const isCrag = stage.id === 5 || stage.id === 6;
+  const stageBg = isCrag ? 'oklch(var(--accent) / 0.05)' : 'transparent';
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
+      style={{
+        display: 'flex',
+        borderBottom: isLast ? 'none' : '1px solid oklch(var(--border))',
+        background: stageBg,
+        cursor: 'pointer',
+      }}
+      onClick={onToggle}
+    >
+      {/* Rail (left) */}
+      <div
+        style={{
+          flexShrink: 0,
+          position: 'relative',
+          width: 56,
+          paddingTop: 16,
+          paddingBottom: 16,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        <div
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 6,
+            background:
+              stage.type === 'GENERATION'
+                ? 'oklch(var(--accent) / 0.1)'
+                : 'oklch(var(--muted))',
+            color:
+              stage.type === 'GENERATION'
+                ? 'oklch(var(--accent))'
+                : 'oklch(var(--foreground))',
+            border: `1px solid ${
+              stage.type === 'GENERATION'
+                ? 'oklch(var(--accent) / 0.3)'
+                : 'oklch(var(--border))'
+            }`,
+            display: 'grid',
+            placeItems: 'center',
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 600,
+            fontSize: 11,
+            zIndex: 1,
+          }}
+        >
+          {String(idx + 1).padStart(2, '0')}
+        </div>
+        {!isLast && (
+          <div
+            style={{
+              flex: 1,
+              width: 1,
+              background: 'oklch(var(--border))',
+              marginTop: -2,
+            }}
+          />
+        )}
+      </div>
+
+      {/* Body */}
+      <div style={{ flex: 1, padding: '16px 18px 16px 0' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <span style={{ fontWeight: 500, fontSize: 13.5 }}>{stage.name}</span>
+          <span className="badge badge-muted" style={{ fontSize: 10.5 }}>
+            {stage.type}
+          </span>
+          {stage.model && (
+            <span className="text-xs muted mono">· {stage.model}</span>
+          )}
+          {stage.empty && (
+            <span className="text-xs muted">· not traced this query</span>
+          )}
+          <div className="spacer" />
+          {(stage.input_tokens > 0 || stage.output_tokens > 0) && (
+            <span
+              className="mono text-xs"
+              style={{ color: 'oklch(var(--muted-foreground))' }}
+            >
+              {stage.input_tokens}↓ {stage.output_tokens}↑ tok
+            </span>
+          )}
+          <span
+            className="mono"
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              width: 64,
+              textAlign: 'right',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {stage.latency_ms < 1000
+              ? `${stage.latency_ms}ms`
+              : `${(stage.latency_ms / 1000).toFixed(2)}s`}
+          </span>
+          <ChevronRight
+            size={14}
+            className="muted"
+            style={{
+              transform: expanded ? 'rotate(90deg)' : 'none',
+              transition: 'transform 0.15s',
+            }}
+          />
+        </div>
+
+        {/* Inline duration bar */}
+        <div
+          style={{
+            marginTop: 8,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <div
+            style={{
+              flex: 1,
+              height: 4,
+              background: 'oklch(var(--muted))',
+              borderRadius: 999,
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                height: '100%',
+                width: `${pct}%`,
+                background:
+                  stage.type === 'GENERATION'
+                    ? 'oklch(var(--accent))'
+                    : 'oklch(var(--foreground))',
+                borderRadius: 999,
+              }}
+            />
+          </div>
+          <span
+            className="text-xs mono muted"
+            style={{ width: 48, textAlign: 'right' }}
+          >
+            {pct.toFixed(1)}%
+          </span>
+        </div>
+
+        {/* Expanded body */}
+        {expanded && (
+          <div
+            style={{
+              marginTop: 14,
+              padding: '12px 14px',
+              background: 'oklch(var(--muted) / 0.4)',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid oklch(var(--border))',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 10,
+              }}
+            >
+              <span
+                className="text-xs mono muted"
+                style={{
+                  fontWeight: 600,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Stage details
+              </span>
+              <div className="spacer" />
+              <span className="text-xs muted">{stage.obsCount} observation{stage.obsCount === 1 ? '' : 's'}</span>
+            </div>
+            {stage.empty ? (
+              <p className="text-xs muted" style={{ margin: 0, lineHeight: 1.55 }}>
+                {stage.note ??
+                  'No Langfuse observations bucketed to this stage for this trace.'}
+              </p>
+            ) : stage.details ? (
+              <table
+                style={{
+                  width: '100%',
+                  fontSize: 12,
+                  fontFamily: 'var(--font-mono)',
+                }}
+              >
+                <tbody>
+                  {Object.entries(stage.details).map(([k, v]) => (
+                    <tr key={k}>
+                      <td
+                        style={{
+                          padding: '4px 12px 4px 0',
+                          color: 'oklch(var(--muted-foreground))',
+                          verticalAlign: 'top',
+                          whiteSpace: 'nowrap',
+                          width: '1px',
+                        }}
+                      >
+                        {k}
+                      </td>
+                      <td
+                        style={{
+                          padding: '4px 0',
+                          color: 'oklch(var(--foreground))',
+                          wordBreak: 'break-word',
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {renderValue(k, v, stage)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-xs muted" style={{ margin: 0 }}>
+                Observation had no extra metadata.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function renderValue(
+  key: string,
+  v: unknown,
+  stage: StageRowData,
+): React.ReactNode {
+  // Highlight CRAG threshold check
+  if (key === 'verdict' && v === 'RE_RETRIEVE') {
     return (
-      <div className="grid gap-4 sm:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Card key={i}>
-            <CardHeader className="pb-2">
-              <Skeleton className="h-4 w-1/2" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-7 w-3/4" />
-            </CardContent>
-          </Card>
+      <span className="badge badge-warning">
+        <span className="badge-dot" /> RE_RETRIEVE
+      </span>
+    );
+  }
+  if (
+    key === 'confidence' &&
+    typeof v === 'number'
+  ) {
+    const detailsObj = stage.details ?? {};
+    const threshold =
+      typeof detailsObj.threshold === 'number' ? detailsObj.threshold : 0.7;
+    const failed = v < threshold;
+    return (
+      <span
+        style={{
+          color: failed
+            ? 'oklch(var(--destructive))'
+            : 'oklch(var(--success))',
+          fontWeight: 600,
+        }}
+      >
+        {v.toFixed(2)} {failed ? `< ${threshold.toFixed(2)} threshold` : ''}
+      </span>
+    );
+  }
+  if (Array.isArray(v)) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {v.map((x, i) => (
+          <div
+            key={i}
+            style={{
+              padding: '3px 7px',
+              background: 'oklch(var(--card))',
+              border: '1px solid oklch(var(--border))',
+              borderRadius: 3,
+            }}
+          >
+            {String(x)}
+          </div>
         ))}
       </div>
     );
   }
-  if (!data) {
-    return null;
-  }
-  return (
-    <div className="grid gap-4 sm:grid-cols-3">
-      <SummaryTile
-        label="Latency"
-        title="Total duration"
-        icon={<Timer className="h-5 w-5 text-muted-foreground" />}
-        value={`${data.total_latency_ms.toLocaleString()} ms`}
-      />
-      <SummaryTile
-        label="Tokens in"
-        title="Input tokens"
-        icon={<Hash className="h-5 w-5 text-muted-foreground" />}
-        value={data.total_input_tokens.toLocaleString()}
-      />
-      <SummaryTile
-        label="Tokens out"
-        title="Output tokens"
-        icon={<Hash className="h-5 w-5 text-muted-foreground" />}
-        value={data.total_output_tokens.toLocaleString()}
-      />
-    </div>
-  );
+  if (typeof v === 'boolean') return v ? 'true' : 'false';
+  if (typeof v === 'number') return String(v);
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
 }
 
-function SummaryTile({
-  label,
-  title,
-  icon,
-  value,
+// ============================================================================
+// TraceWaterfall (Chrome devtools style)
+// ============================================================================
+function TraceWaterfall({
+  stages,
+  expanded,
+  setExpanded,
+  totalLatency,
 }: {
-  label: string;
-  title: string;
-  icon: React.ReactNode;
-  value: string;
+  stages: StageRowData[];
+  expanded: number;
+  setExpanded: (id: number) => void;
+  totalLatency: number;
 }) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardDescription className="font-mono text-[10px] uppercase tracking-wide">
-          {label}
-        </CardDescription>
-        <CardTitle className="text-sm">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center gap-2 text-2xl font-semibold">
-          {icon}
-          {value}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// --- Per-stage collapsible ---------------------------------------------------
-
-function sumLatency(observations: TraceStage[]): number {
-  return observations.reduce((acc, o) => acc + (o.latency_ms || 0), 0);
-}
-
-function PipelineStageCollapsible({
-  stage,
-  observations,
-  loadState,
-  traceStatus,
-}: {
-  stage: PipelineStage;
-  observations: TraceStage[];
-  loadState: LoadState;
-  traceStatus: string | undefined;
-}) {
-  const [open, setOpen] = useState(false);
-  const hasData = observations.length > 0;
-  const traceOk = traceStatus === 'ok';
-
-  const durationLabel = (() => {
-    if (loadState === 'loading') return '…';
-    if (!hasData) return '—';
-    return `${sumLatency(observations).toLocaleString()} ms`;
-  })();
-
-  const anyError = observations.some((o) => o.status === 'error');
+  let acc = 0;
+  const withStart = stages.map((s) => {
+    const start = acc;
+    acc += s.latency_ms;
+    return { ...s, start, end: acc };
+  });
 
   return (
-    <div className="rounded-md border border-border">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 rounded-md p-3 text-left transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-      >
-        <div className="flex min-w-0 items-center gap-3">
-          <ChevronDown
-            className={cn(
-              'h-4 w-4 shrink-0 transition-transform duration-200',
-              open && 'rotate-180',
-            )}
-          />
-          <span className="truncate font-medium">
-            Stage {stage.id} — {stage.name}
-            {stage.vendor ? (
-              <span className="ml-1 text-muted-foreground">({stage.vendor})</span>
-            ) : null}
-          </span>
-          {anyError ? (
-            <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-destructive">
-              error
-            </span>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-3 font-mono text-xs text-muted-foreground">
-          {hasData && observations.length > 1 ? (
-            <span>{observations.length}×</span>
-          ) : null}
-          <span>{durationLabel}</span>
-        </div>
-      </button>
-      {open ? (
-        <div className="space-y-3 border-t border-border p-3">
-          <p className="text-sm text-muted-foreground">{stage.description}</p>
-          {hasData ? (
-            observations.map((obs, i) => (
-              <ObservationDetail key={`${obs.name}-${i}`} obs={obs} />
-            ))
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              {traceOk
-                ? (stage.note ??
-                  'No Langfuse observation for this stage on this query.')
-                : 'Stage observations populate once trace data is available.'}
-              {traceOk && stage.note && stage.obsPrefixes.length > 0
-                ? ' (Not all queries exercise every stage.)'
-                : ''}
-            </p>
-          )}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function ObservationDetail({ obs }: { obs: TraceStage }) {
-  const tokenLine =
-    obs.input_tokens || obs.output_tokens
-      ? `${obs.input_tokens.toLocaleString()} in / ${obs.output_tokens.toLocaleString()} out`
-      : null;
-  const detailEntries = obs.details ? Object.entries(obs.details) : [];
-
-  return (
-    <div className="rounded-md bg-muted/40 p-3 text-xs">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono">
-        <span className="font-medium text-foreground">{obs.name}</span>
-        <span className="text-muted-foreground">{obs.type}</span>
-        <span className="text-muted-foreground">{obs.latency_ms.toLocaleString()} ms</span>
-        {obs.model ? <span className="text-muted-foreground">{obs.model}</span> : null}
-        {tokenLine ? <span className="text-muted-foreground">{tokenLine}</span> : null}
-        <span
-          className={cn(
-            'rounded px-1.5 py-0.5 uppercase tracking-wide',
-            obs.status === 'error'
-              ? 'bg-destructive/15 text-destructive'
-              : obs.status === 'cancelled'
-                ? 'bg-amber-500/15 text-amber-600'
-                : 'bg-muted text-muted-foreground',
-          )}
+    <div className="card">
+      <div className="card-body" style={{ padding: '16px 18px' }}>
+        {/* Time axis */}
+        <div
+          style={{
+            display: 'flex',
+            marginBottom: 8,
+            paddingLeft: 280,
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10.5,
+            color: 'oklch(var(--muted-foreground))',
+          }}
         >
-          {obs.status}
-        </span>
-      </div>
-      {detailEntries.length > 0 ? (
-        <dl className="mt-2 grid grid-cols-[max-content_1fr] gap-x-3 gap-y-0.5 font-mono">
-          {detailEntries.map(([k, v]) => (
-            <div key={k} className="contents">
-              <dt className="text-muted-foreground">{k}</dt>
-              <dd className="break-all text-foreground">{String(v)}</dd>
+          {[0, 0.25, 0.5, 0.75, 1].map((t) => (
+            <div key={t} style={{ flex: 1 }}>
+              {Math.round(totalLatency * t)}ms
             </div>
           ))}
-        </dl>
-      ) : null}
+        </div>
+        {withStart.map((s, i) => {
+          const startPct = (s.start / totalLatency) * 100;
+          const widthPct = (s.latency_ms / totalLatency) * 100;
+          return (
+            <div
+              key={s.id}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setExpanded(expanded === s.id ? -1 : s.id);
+                }
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '6px 0',
+                borderBottom:
+                  i < withStart.length - 1
+                    ? '1px solid oklch(var(--border))'
+                    : 'none',
+                cursor: 'pointer',
+              }}
+              onClick={() => setExpanded(expanded === s.id ? -1 : s.id)}
+            >
+              <span
+                className="mono text-xs muted"
+                style={{ width: 22, textAlign: 'right' }}
+              >
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <span
+                style={{
+                  fontSize: 12.5,
+                  width: 240,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {s.name}
+              </span>
+              <div
+                style={{
+                  position: 'relative',
+                  flex: 1,
+                  height: 22,
+                  background: 'oklch(var(--muted) / 0.3)',
+                  borderRadius: 3,
+                }}
+              >
+                {!s.empty && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: `${startPct}%`,
+                      width: `${Math.max(widthPct, 0.4)}%`,
+                      top: 3,
+                      bottom: 3,
+                      background:
+                        s.type === 'GENERATION'
+                          ? 'oklch(var(--accent))'
+                          : 'oklch(var(--foreground) / 0.8)',
+                      borderRadius: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      paddingLeft: 4,
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color:
+                        s.type === 'GENERATION'
+                          ? 'oklch(var(--accent-foreground))'
+                          : 'oklch(var(--background))',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {widthPct > 5 ? `${s.latency_ms}ms` : ''}
+                  </div>
+                )}
+              </div>
+              <span
+                className="mono text-xs"
+                style={{
+                  width: 56,
+                  textAlign: 'right',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {s.empty ? '—' : `${s.latency_ms}ms`}
+              </span>
+              <span
+                className="mono text-xs muted"
+                style={{ width: 60, textAlign: 'right' }}
+              >
+                —
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
+
+// ============================================================================
+// TraceFlame (stacked horizontal bars by category)
+// ============================================================================
+function TraceFlame({
+  stages,
+  expanded,
+  setExpanded,
+  totalLatency,
+}: {
+  stages: StageRowData[];
+  expanded: number;
+  setExpanded: (id: number) => void;
+  totalLatency: number;
+}) {
+  const categories = [
+    { name: 'Preprocessing', stageIds: [1, 2], color: 'oklch(0.65 0.10 240)' },
+    { name: 'Retrieval', stageIds: [3, 4], color: 'oklch(0.62 0.13 200)' },
+    { name: 'CRAG', stageIds: [5, 6], color: 'oklch(0.65 0.18 25)' },
+    { name: 'Context', stageIds: [7], color: 'oklch(0.65 0.14 145)' },
+    { name: 'Synthesis', stageIds: [8, 9], color: 'oklch(0.60 0.16 285)' },
+  ];
+
+  const stageById = new Map(stages.map((s) => [s.id, s]));
+
+  return (
+    <div className="card">
+      <div className="card-body">
+        {/* Top: category stack */}
+        <div style={{ marginBottom: 16 }}>
+          <div
+            className="text-xs muted mono"
+            style={{
+              marginBottom: 6,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+            }}
+          >
+            By category
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              height: 32,
+              borderRadius: 4,
+              overflow: 'hidden',
+              border: '1px solid oklch(var(--border))',
+            }}
+          >
+            {categories.map((c) => {
+              const cMs = c.stageIds.reduce(
+                (sum, sid) => sum + (stageById.get(sid)?.latency_ms ?? 0),
+                0,
+              );
+              const pct = (cMs / totalLatency) * 100;
+              return (
+                <div
+                  key={c.name}
+                  style={{
+                    width: `${pct}%`,
+                    background: c.color,
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    paddingLeft: 6,
+                    paddingRight: 6,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textShadow: '0 1px 1px rgba(0,0,0,0.2)',
+                  }}
+                >
+                  {pct > 6 ? `${c.name} ${pct.toFixed(0)}%` : ''}
+                </div>
+              );
+            })}
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              gap: 14,
+              marginTop: 8,
+              fontSize: 11.5,
+              color: 'oklch(var(--muted-foreground))',
+              flexWrap: 'wrap',
+            }}
+          >
+            {categories.map((c) => {
+              const cMs = c.stageIds.reduce(
+                (sum, sid) => sum + (stageById.get(sid)?.latency_ms ?? 0),
+                0,
+              );
+              return (
+                <div
+                  key={c.name}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5 }}
+                >
+                  <span
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 2,
+                      background: c.color,
+                    }}
+                  />
+                  <span>{c.name}</span>
+                  <span
+                    className="mono"
+                    style={{ color: 'oklch(var(--foreground))' }}
+                  >
+                    {cMs}ms
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Below: stage rows */}
+        <div
+          className="text-xs muted mono"
+          style={{
+            marginBottom: 6,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+          }}
+        >
+          By stage
+        </div>
+        {stages.map((s, i) => {
+          const cat = categories.find((c) => c.stageIds.includes(s.id));
+          const pct = (s.latency_ms / totalLatency) * 100;
+          return (
+            <div
+              key={s.id}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setExpanded(expanded === s.id ? -1 : s.id);
+                }
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '4px 0',
+                cursor: 'pointer',
+              }}
+              onClick={() => setExpanded(expanded === s.id ? -1 : s.id)}
+            >
+              <span
+                className="mono text-xs muted"
+                style={{ width: 22 }}
+              >
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <span
+                style={{
+                  fontSize: 12.5,
+                  width: 220,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {s.name}
+              </span>
+              <div style={{ flex: 1, position: 'relative', height: 18 }}>
+                {!s.empty && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      width: `${Math.max(pct, 0.4)}%`,
+                      top: 0,
+                      bottom: 0,
+                      background: cat?.color ?? 'oklch(var(--foreground))',
+                      borderRadius: 2,
+                    }}
+                  />
+                )}
+              </div>
+              <span
+                className="mono text-xs"
+                style={{ width: 56, textAlign: 'right' }}
+              >
+                {s.empty ? '—' : `${s.latency_ms}ms`}
+              </span>
+              <span
+                className="mono text-xs muted"
+                style={{ width: 60, textAlign: 'right' }}
+              >
+                —
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// FinalResponseCard
+// ============================================================================
+function FinalResponseCard({
+  query,
+  answerPreview,
+  modelUsed,
+}: {
+  query: string | null;
+  answerPreview: string | null;
+  modelUsed: string | null;
+}) {
+  return (
+    <div className="card" style={{ marginTop: 16 }}>
+      <div className="card-header">
+        <div>
+          <h3 className="card-title">Final response</h3>
+          <div className="card-desc">
+            Stage 09 output{modelUsed ? ` · synthesized by ${modelUsed}` : ''}
+          </div>
+        </div>
+        <div className="row">
+          <DisabledAffordance
+            variant="p3-preview"
+            reason="Wave C+ — per-trace citation validation status requires aggregator extension"
+            tier2Trigger="Tier 2 — post-W22 governance"
+          >
+            <span className="badge badge-muted">
+              <span className="badge-dot" /> citation status — Wave C+
+            </span>
+          </DisabledAffordance>
+        </div>
+      </div>
+      <div className="card-body">
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 12,
+          }}
+        >
+          <div>
+            <div
+              className="text-xs muted mono"
+              style={{
+                marginBottom: 6,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Query (final after CRAG)
+            </div>
+            <div
+              style={{
+                padding: '10px 12px',
+                background: 'oklch(var(--muted) / 0.4)',
+                border: '1px solid oklch(var(--border))',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 13,
+                lineHeight: 1.55,
+              }}
+            >
+              {query ?? (
+                <span className="muted">
+                  Query text not surfaced — open Langfuse for full input
+                </span>
+              )}
+            </div>
+          </div>
+          <div>
+            <div
+              className="text-xs muted mono"
+              style={{
+                marginBottom: 6,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Answer preview
+            </div>
+            <div
+              style={{
+                padding: '10px 12px',
+                background: 'oklch(var(--muted) / 0.4)',
+                border: '1px solid oklch(var(--border))',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 13,
+                lineHeight: 1.55,
+              }}
+            >
+              {answerPreview ?? (
+                <DisabledAffordance
+                  variant="p3-preview"
+                  reason="Wave C+ — answer preview requires synthesizer.synthesize observation details extension"
+                  tier2Trigger="Tier 2 — post-W22 governance"
+                >
+                  <span className="muted">Answer preview — Wave C+</span>
+                </DisabledAffordance>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+

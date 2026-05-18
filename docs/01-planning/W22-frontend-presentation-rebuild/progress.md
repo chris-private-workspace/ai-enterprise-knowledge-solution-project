@@ -408,6 +408,134 @@ Plan §7 changelog D4 row + plan §1 ADR mapping + plan §2 F6 spec ref + F6.1 +
 
 ---
 
+## Day 5 — 2026-05-18 — F6.9 user-eye verify pass + F7 kickoff
+
+### F6.9 user-eye verify pass(landed)
+
+User confirmed 2026-05-18 D5:F6 KB cluster 3 sub-pages side-by-side verify pass — `localhost:3001/kb/{id}` / `localhost:3001/kb/{id}/upload` / `localhost:3001/kb/{id}/docs/{docId}` 並排 mockup hash routes,顯示效果可以接受。Checklist F6.9 flipped `[ ]→[x]`(per W21 retro NO「smoke-user-deferred」allowance for fidelity)。**F6 phase-gate closed — F7 observability cluster unblocked**。
+
+### F7 kickoff — pre-active-flip 5-step audit findings(D9.a-D9.x)
+
+Per D1/D8 process amendment recursive(3rd cumulative application after W22 F4 ChatHeader 7 signals + F6 KB cluster 5 signals),F7 kickoff first did mockup-vs-plan-vs-codebase grep before any implementation:
+
+| # | Finding | Resolution |
+|---|---|---|
+| **D9.a** | Plan + checklist F7 references `references/design-mockups/ekp-page-traces.jsx`(plural) — file 唔存在 | Actual = `references/design-mockups/ekp-page-trace.jsx`(singular)。**Both `PageTrace`(detail line 5) + `PageTracesList`(line 410) live in same file** per mockup single-file pattern(same convention as `ekp-page-kb.jsx` housing PageKbList + PageKbDetail) |
+| **D9.b** | Plan F7.3 mockup function name「`PageTraceDetail`」cited 多 | Actual mockup function name = `PageTrace`(no Detail suffix)。Window export `window.PageTrace = PageTrace`(line 484);spec ref should cite `ekp-page-trace.jsx:5 PageTrace` |
+| **D9.c** | Plan F7.5 NEW viz components `frontend/components/traces/trace-viz-{vertical,waterfall,flame}.tsx` extraction(violation of mockup single-file pattern) | Mockup PageTrace 內含 **7 inline functions** all within same file:`TraceHeader`(80-116)+ `TraceVertical`(119-131)+ `StageRow`(133-212)+ `renderValue`(214-238)+ `TraceWaterfall`(241-299)+ `TraceFlame`(302-374)+ `FinalResponseCard`(376-407)。Per H7 mockup wins + Karpathy §1.2 + D8.c precedent → **DROP extraction;all viz functions inline within `page.tsx`** |
+| **D9.d** | Plan F7.1 mockup MetricCard labels「Recall@5 / Faithfulness / Ans Relevancy / Ctx Precision」vs backend `EvalReport` 4-metric「recall_at_5 / faithfulness / correctness / image_association」 | Per §13 When-in-Doubt **backend wins**(architecture.md > design-mockups);**use W2-era 4-metric labels per existing `eval/page.tsx` W15 F1 Deviation #2 precedent already established**(R@5 / FFul / CRct / IAss);mockup label drift = pre-W17 RAGAs spec snapshot;visual polish-only migrate per W20 F7.2 precedent |
+| **D9.e** | Mockup OpsMetricsCard 3rd row「Context recall」+ uses `ev.eval_set_id` + `ev.eval_set_size` + `ev.finished_at` — backend `EvalReport` schema 不 expose 呢啲 fields | (i)`context_recall` → render `<DisabledAffordance>` placeholder「Context recall — Wave C+」per F7.7 fallback decision;(ii)`eval_set_id` / `eval_set_size` 用 page state(`evalSetId` reactive + `EvalRunRequest.eval_set_id`)+ `failed_queries.length + passed_queries_inferred` 計算;(iii)`finished_at` 用 client-side timestamp `new Date()` when report received 或 mutation `isSuccess` timestamp;ShootoutReport DOES expose `eval_set_id` + `finished_at` — use those for shootout-card subtitle |
+| **D9.f** | Backend `TraceSummary` schema 不 expose `user` field — mockup PageTracesList 9-col table 第 2 column 係「User」 | Per §13 backend-wins + visual polish-only migrate(W20 F7.2 precedent)→ **render placeholder "—" in User column**(preserve 9-col mockup-faithful structure;backend extension to surface user identity = Wave C+ scope);log decision in plan §7 changelog;9 columns retained = Trace / User(placeholder) / KB / Query / CRAG / Latency / Cost / When / chev-shrink |
+| **D9.g** | Plan F7.4 NEW typed clients「`frontend/lib/api/eval.ts` + `frontend/lib/api/traces.ts`」— `eval.ts` 已存在 W15 F1 + CH-002 F3 RAGAs integration | `eval.ts` already exists w/ `evalApi.run` + `evalApi.shootout` per W15 D1 F1 + CH-002 F3 + W17 F3 RAGAs;**ONLY `traces.ts` NEW**(consume W21 F2 backend `GET /traces` per `backend/api/routes/debug.py:42`);schema mirror `TraceSummary` + `TraceListResponse` per `backend/api/schemas/observability.py:124-167`(W21 F2.1) |
+| **D9.h** | Plan F7.3 viz mode persistence「`localStorage['ekp-trace-viz-mode']`」— mockup uses `tweaks.traceViz`(window-level tweaks)not localStorage | Mockup approach(window-level tweaks `window.__setTweak`)係 mockup framework convention,not 適用 Next.js production codebase;**preserve plan localStorage approach**(`ekp-trace-viz-mode` key,default `vertical`,SSR-safe useEffect read pattern per W15 D3 conversation-history localStorage precedent);no plan deviation needed |
+| **D9.i** | Existing implementations status 對比 mockup decomposition | `/eval/page.tsx` 648 lines W15 D1 F1 + W17 F3 RAGAs(2-col Run config + 4-metric card + shootout table)— **fundamental layout drift vs mockup**(mockup top stat-grid + 2-col 1.6fr/1fr below);`/traces/page.tsx` 55 lines W18 thin baseline(single Input + Open button)— **完全 absent vs mockup 9-col table**;`/traces/[traceId]/page.tsx` 533 lines W18 9-stage Collapsible + debug.ts client — **fundamental decomposition drift vs mockup**(mockup has TraceHeader + 5-stat + viz mode toggle + 3 viz modes + FinalResponseCard);**complete rebuild not patch** per H7 + W22 D0 precedent |
+
+### F7 plan + checklist patched per D9(landed `(this commit)`)
+
+Per D1/D8/D9 process amendment recursive(NOW 3rd cumulative confirmed application — `feedback_design_fidelity.md` empirical-finding section 將會 append per W22 close cascade)+ CO_W14_process_grep_verify formalization,plan §7 changelog 加 D5 row + plan §2 F7 spec refs + ADR mapping + checklist F7.1-F7.10 全部 patched 對應 D9 findings:
+
+- **§1 ADR mapping** F7 row file path correction(`ekp-page-traces.jsx` → `ekp-page-trace.jsx`;detail function rename `PageTraceDetail` → `PageTrace`)
+- **§2 F7.1 spec ref** preserves「6 sections」framing(4-metric stat strip + Reranker Shootout + Failed Queries + Recommendation + Ops Metrics + CRAG Insight)+ explicit D9.d backend 4-metric label override + D9.e missing-field fallback
+- **§2 F7.2 spec ref** preserves「9-col table」+ explicit D9.f User column placeholder
+- **§2 F7.3 spec ref** updated `PageTrace`(not `PageTraceDetail`)+ D9.c **DROP** viz extraction `<DisabledAffordance>` violating Karpathy §1.2 + D8.c precedent → all 7 inline functions within `page.tsx`(`TraceHeader` + `TraceVertical` + `StageRow` + `renderValue` + `TraceWaterfall` + `TraceFlame` + `FinalResponseCard`)
+- **§2 F7.4 NEW typed clients** narrowed to **ONLY `traces.ts` NEW**(`eval.ts` already exists W15 + CH-002 F3 + W17 F3);schema mirror `TraceSummary` + `TraceListResponse`
+- **§2 F7.5 NEW viz components** DELETE entire section per D9.c — replaced w/ note「all 3 viz inline within `/traces/[traceId]/page.tsx` per mockup single-file pattern」
+- **checklist F7.1-F7.10** 全部 mirror plan §2 D9 patches
+
+**Process meta**:D9 audit = D1 process amendment recursive 第 3 次成功 catch(累計 hit:D1=W22 F4 ChatHeader 7 signals / D8=W22 F6 KB cluster 5 signals / D9=W22 F7 observability cluster 9 signals);**memory `feedback_design_fidelity.md` empirical-finding section 將會 append 第 3 條 mid-phase recursive catch evidence** at W22 F8 closeout cascade。Recursive enforcement working as designed per CO_W14_process_grep_verify formalization。
+
+#### F7 cluster rebuild landed `(this commit)` — F7.1+F7.2+F7.3+F7.4+F7.6+F7.7+F7.8+F7.9
+
+> **D6 in-session correction(pre-commit)**:user-eye `/traces` audit before commit caught「Success」button dropped during F7.2 D5 initial implementation;previous decision「drop Success per §13 backend-wins」over-extended §13 scope(§13 covers data contract conflicts not visual element removal)→ restored 4-button seg + Success client-side post-filter per H7 + W20 F7.2 precedent;commit 內 inclusive(plan §7 D6 row + checklist F7.2 + this Day 5 deviations 表 row 全部 REVERSED-marked)。Anti-pattern logged for memory `feedback_design_fidelity.md` empirical-finding append at F8 closeout(4th cumulative pattern after D1/D8/D9)。
+>
+> **D7 in-session correction(pre-commit)**:user-eye `/eval` screenshot audit before commit caught **eval-set `<select>` element** 顯示喺 `Run eval suite` 左邊 — mockup `ekp-page-eval.jsx:19-23` page-actions **只有 3 button 冇 select**。Previous F7.1 implementation preserve 咗 pre-W22 `[evalSetId, setEvalSetId]` reactive picker + 將 select 加入 page-actions slot,過度 preserve pre-W22 UI element 而 mockup 唔存在嗰個 element。Fix:hardcode `EVAL_SET_ID = 'eval-set-v0'` + `EVAL_SET_SIZE = 30` const module-scope;remove state + select element;eval-set switch surface deferred Wave C+(per CO_W15_F1 Q14 SME labels — when v1 lands surface picker in Settings tab or env var)。D7 = 5th cumulative empirical-finding pattern + **same-category sub-pattern as D1 W22 F4 ChatHeader「inherited W20 surface not in mockup」**;anti-pattern catalog now contains 2 instances of「preserve pre-W22 UI element that mockup doesn't have」(D1 ChatHeader Citations seg-toggle + D7 evalSetId select)→ deserves explicit naming喺 memory append at F8 closeout cascade。**Process meta — emerging anti-pattern category**:default behavior「preserve W18 baseline」per W22 plan §0 Preserve list needs cross-check「mockup 有冇對應 visual element」before preserve decision;若 mockup 唔有 → drop + log as scope deferral,not「preserve for backward compatibility」。
+
+
+**Branch**:`main` post-D5 F6.9 user-eye verify pass(F6 cluster `093ff89`)。**Commits this day**:`(this commit)` — F7 cluster rebuild(/eval + /traces + /traces/[traceId] + traces.ts NEW + eval.ts ShootoutReport extension + plan/checklist/progress patches)。
+
+**`frontend/app/(app)/eval/page.tsx`** — 648→~810 lines complete rewrite per H7:
+- Top-level `EvalConsolePage()` w/ `useState` eval-set-v0/v1 + `setReport` + `setShootoutReport` + `setFinishedAt` + `setMetricFilter`
+- `useMutation` ×2 for `evalApi.run` + `evalApi.shootout`(now typed `Promise<ShootoutReport>` per F7.4 client extension)
+- `page-header` 3-action(Run eval suite / Export / Reranker shootout)+ eval-set select
+- `stat-grid` repeat(4) `MetricCard` ×4 using backend `EvalReport` labels(R@5 / FFul / CRct / IAss per D9.d + W15 F1 Deviation #2 precedent)+ target thresholds 0.95/0.92/0.85/0.85 + Above/Below target chip
+- 2-col 1.6fr/1fr grid:
+  - **Left**:`RerankerShootoutCard` (7-col table w/ DeltaCell vs cohere-v3.5 baseline + WINNER row tint + LOCKED badge for cohere-v4.0-pro per ADR-0012 + BASELINE badge for cohere-v3.5 + SKIPPED row faded + Started/Finished/Eval set footer)+ `FailedQueriesCard`(metric-filter select + per-query metric_failed badges + Expected/Got 2-col grid + ExternalLink to /traces/{query_id})
+  - **Right**:`RecommendationCard`(static ADR-0012 lock text + 5-row delta table)+ `OpsMetricsCard`(P95 latency + Avg cost / query OK chips + Context recall DisabledAffordance Wave C+ row per D9.e)+ `CragInsightCard`(trigger rate + RE_RETRIEVE / confident split bar + 0.70 NON-STICKY threshold note)
+- RunConfig drawer dropped per H7 mockup-wins(mockup PageEval 唔有 RunConfig drawer)— Tier 2 future-Wave-C considerations
+
+**`frontend/app/(app)/traces/page.tsx`** — 55→~310 lines complete rewrite per H7:
+- Top-level `TracesPage()` w/ `useQuery(tracesApi.list)` keyed on `(statusFilter, since)` + `useMemo` items + `useMemo` filtered(client-side search)+ time-window `useMemo` → ISO since
+- `page-header` 3-action(Filter / Export / Open Langfuse ↗ → `NEXT_PUBLIC_LANGFUSE_URL` env)
+- Filter row:input-search-wrap + 3-button seg(All / Error / CRAG triggered — **Success button dropped per backend `?filter=` only supports 3 values** + Karpathy §1.2 simplicity)+ time-window select(24h/7d/30d)
+- `table-wrap` 9-col table:Trace mono(link)/ User placeholder "—" per D9.f / KB badge / Query truncated(link)/ CRAG badge `× loop`/ Latency / Cost / When relative / chev-shrink Link
+- Showing-N-of-total footer + Langfuse degraded status surface(when `query.data.status !== 'ok'`)
+
+**`frontend/app/(app)/traces/[traceId]/page.tsx`** — 533→~1010 lines complete rewrite per H7:
+- Top-level `TraceDetailPage()` w/ `useQuery(debugApi.getTrace)` + `useState` vizMode/expandedStage/vizModeReady + 2 `useEffect` SSR-safe localStorage read/write `ekp-trace-viz-mode`
+- **Preserved** pre-W22 architecture:`PIPELINE_STAGES` 9-stage conceptual mapping per architecture.md §5.7 + `bucketObservations` first-match-wins + `LANGFUSE_FALLBACK_BASE` env fallback
+- **NEW** synthesizers:`buildStageRows`(aggregate per-stage observation totals — latency / tokens / type / model / details / empty / obsCount)+ `deriveTraceMetadata`(synthesize trace-level `query`/`kbId`/`cragIterations`/`modelUsed`/`answerPreview` from stage details per §13 backend-wins + W22 D9 fallback for `TraceDetail` schema not exposing these directly)
+- **All 7 viz functions inline** within page.tsx per D9.c + Karpathy §1.2 + D8.c precedent:`TraceHeader`(breadcrumb back + trace_id + Copy + query-as-title + KB badge + user placeholder + CRAG triggered badge)+ `TraceVertical`(default — calls StageRow ×9)+ `StageRow`(28px rail circle GENERATION-coral / SPAN-muted + inline duration bar + Expanded body w/ details table + keyboard-accessible Enter/Space)+ `renderValue`(CRAG verdict RE_RETRIEVE badge + confidence threshold check + Array list / boolean / number / object fallback)+ `TraceWaterfall`(time axis paddingLeft 280 + per-stage position bar + cost column placeholder)+ `TraceFlame`(category stack `Preprocessing/Retrieval/CRAG/Context/Synthesis` w/ category bg colors + legend + by-stage rows)+ `FinalResponseCard`(2-col grid query / answer preview w/ DisabledAffordance Wave C+ for missing answer + citation status badge Wave C+)
+- 3-button viz mode seg w/ aria-selected + Open Langfuse link external
+- 5-stat strip:Total latency(real)+ Tokens(real)+ Cost DisabledAffordance Wave C+ per D9-fallback(TraceStage 不 expose cost_usd)+ CRAG iterations(synthesized from `crag.grade` obs count)+ Status badge
+
+**`frontend/lib/api/traces.ts`** — NEW 70 lines `(this commit)`:
+- `TraceSummary` + `TraceListResponse` + `TraceListParams` types mirror `backend/api/schemas/observability.py:124-167`
+- `tracesApi.list({ filter, since, kb_id, limit, offset })` consumes `GET /traces` per `backend/api/routes/debug.py:42`(W21 F2 shipped `55f876b`)
+- `buildQuery` helper omits default values to keep URL clean
+
+**`frontend/lib/api/eval.ts`** — 53→78 lines extension `(this commit)`:
+- NEW `ShootoutReport` + `RerankerShootoutEntry` interfaces mirroring `backend/api/schemas/eval.py:34-47`
+- `evalApi.shootout()` typed `Promise<ShootoutReport>` per F7.4 D9.g narrow scope(previous `Promise<unknown>` weakened consumer typing)
+
+#### Verify gates(F7.6 + F7.8)
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | ✅ EXIT=0(all 3 files + 2 client extensions) |
+| `next lint` | ✅ "✔ No ESLint warnings or errors"(initial `react-hooks/exhaustive-deps` warning on /traces useMemo → fixed wrapping `items` in own useMemo) |
+| `Grep '\[oklch'` across `app/` + `components/` | ✅ 0 hits(milestone preserved through F7 rebuild — all `oklch(var(--foo))` via CSS function form within `style={{}}` or class refs) |
+| Backend pytest 99/99 | ✅ Trivially preserved(F7 touches no backend file) |
+| Existing Vitest 14 files / 37 tests | ⚠ Render-smoke tests may break per F7.1+F7.3 complete rewrite — need re-verify at F8.7 |
+
+#### H7 self-verify per sub-page(F7.9 — 3 sub-pages × 7 items = 21 verifies)
+
+| Sub-page | Layout | Spacing | Typography | Color tokens | Interaction states | Responsive | A11y |
+|---|---|---|---|---|---|---|---|
+| /eval | ✅ stat-grid + 1.6fr/1fr | ✅ 16/18/12 mockup | ✅ page-title/card-title/text-xs/mono | ✅ 全 oklch(var(--foo)) | ✅ badge variants + WINNER row tint + seg-btn | ✅ content-wide | ✅ aria-label selects + DisabledAffordance aria-disabled |
+| /traces | ✅ page-header + filter row + table | ✅ mockup-faithful | ✅ page-title + table mono | ✅ 全 token | ✅ seg-btn + cursor:pointer + Link nav | ✅ flex-wrap filter | ✅ role=tab + aria-selected + aria-label |
+| /traces/[traceId] | ✅ header + 5-stat + viz toggle + viz body + FinalResponse | ✅ 28px rail + 56 rail-width + 16/18 | ✅ page-title 17 + mono trace_id | ✅ 全 token + Tier 2 DA | ✅ seg-btn + Enter/Space keyboard + click expand | ✅ content-wide + Final 1fr/1fr | ✅ role=button tabIndex + aria-selected |
+
+#### Deviations(documented per Karpathy §1.4)
+
+| F# | Plan said | Actual | Why | Approver |
+|---|---|---|---|---|
+| F7.1 | mockup MetricCard labels Recall@5/Faithfulness/Ans Relevancy/Ctx Precision | backend EvalReport labels R@5/FFul/CRct/IAss | §13 backend-wins + W15 F1 Deviation #2 precedent (W2-era 4-metric); mockup labels = pre-W17 RAGAs snapshot | AI per D9.d + §13 |
+| F7.1 | mockup ev.context_recall in OpsMetricsCard 3rd row | DisabledAffordance Wave C+ placeholder | `EvalReport` schema doesn't expose `context_recall` field; visual polish-only migrate per W20 F7.2 | AI per D9.e + §13 |
+| F7.1 | mockup uses `ev.eval_set_size` 184 | hardcoded 30/50 from selection ~~initially~~ → **hardcode 30 module-const per D7 `(this commit)`** | EvalReport doesn't expose eval_set_size; mockup uses MOCK var; backend wins;**REVERSED D7**:eval-set selection itself dropped(not in mockup page-actions)so just hardcode v0 size 30 | AI per D9.e + D7 |
+| F7.1 | mockup page-actions = 3 buttons only(no select) | ~~added pre-W22 eval-set picker `<select>` to page-actions~~ → **3 button only per D7 `(this commit)`** | **REVERSED 2026-05-18 D7 post user-eye pre-commit screenshot audit**:F7.1 implementation 過度 preserve pre-W22 `evalSetId` reactive state + select 入 page-actions slot,mockup `page-actions` 只有 3 button 冇 select;per H7 strict reading + D1 W22 F4 ChatHeader「inherited W20 surface not in mockup」precedent → hardcode `EVAL_SET_ID = 'eval-set-v0'` + `EVAL_SET_SIZE = 30` module-const;remove `[evalSetId, setEvalSetId]` state + remove select element;eval-set switch surface deferred Wave C+(per CO_W15_F1 Q14 SME labels — when v1 lands surface picker in Settings tab or env var,**唔係** page-actions) | AI per D7 user-eye audit + H7 enforcement |
+| F7.2 | mockup 4-button seg (All/Success/Error/CRAG) | ~~3-button seg (All/Error/CRAG)~~ → **4-button seg restored per D6 H7 fidelity correction `(this commit)`** | **REVERSED 2026-05-18 D6 post user-eye pre-commit audit**:user-eye `/traces` audit caught the missing Success button before commit landed;previous「drop Success per §13 backend-wins」decision was over-extending §13(§13 covers data contract conflicts not visual element removal);per H7 + W20 F7.2 visual-polish-only migrate precedent → restore 4-button seg + add Success as client-side post-filter on top of backend `?filter=all`(`status === 'ok' && crag_iterations === null`);Showing-N-of-total reflects filtered count(visual fidelity wins over count-accuracy);anti-pattern logged for memory `feedback_design_fidelity.md` empirical-finding append at W22 F8 closeout cascade — **「over-extending §13 backend-wins to drop visual element」≠「§13 backend-wins for data contract conflict」**;§13 covers `mockup expects field X that backend doesn't return → backend wins on field` not `mockup has visual button N that backend filter mode doesn't have → drop button` | AI per D6 user-eye audit + H7 enforcement |
+| F7.2 | mockup `t.user` 2nd column | "—" placeholder | TraceSummary schema doesn't expose user; visual polish-only migrate; preserve 9-col mockup-faithful structure | AI per D9.f + §13 |
+| F7.3 | mockup `trace.total_cost_usd` | DisabledAffordance Wave C+ | TraceDetail schema doesn't expose cost; per-trace cost aggregation requires Wave C+ Langfuse extension | AI per D9 fallback + §13 |
+| F7.3 | mockup `stage.cost_usd` per waterfall/flame row | "—" placeholder | TraceStage schema doesn't expose cost_usd | AI per §13 |
+| F7.3 | mockup `trace.query` / `trace.kb_id` / `trace.user` | synthesized from stage details where present else "—" / "kb_id —" / muted "—" | TraceDetail doesn't expose; derive via deriveTraceMetadata; mockup `trace.user` no backend pivot | AI per W22 D9 |
+| F7.3 | mockup `trace.crag_iterations` | derived from `crag.grade` obs count | TraceDetail doesn't expose; computed via deriveTraceMetadata | AI per W22 D9 |
+| F7.3 | mockup FinalResponseCard `citation_validate_passed 5/5` badge + `2 embedded images` badge | DisabledAffordance Wave C+ placeholder | TraceDetail doesn't expose citation status; Wave C+ aggregator extension | AI per D9 fallback |
+
+#### Acceptance criteria status(per checklist.md)
+
+- [x] F7.1-F7.9 all landed `(this commit)`
+- [ ] F7.10 user-eye side-by-side verify pending(3 routes × mockup tab + impl tab)
+
+#### Carry-overs to Day 6+
+
+- **F7.10 user-eye verify** — 3 routes side-by-side per F6.9 pattern:`localhost:3001/eval` / `/traces` / `/traces/{traceId}` vs mockup hash routes;outcome may surface secondary H7 deviation per F4 ChatHeader / F6 audit pattern(post-ship fidelity audit)
+- **F8** /settings baseline + cross-cutting closeout ~0.5-1 day:phase Gate verdict + 7-section retro + Vitest re-verify post-F6+F7 rewrites + Playwright pixel baseline capture for all 15 rebuilt pages + PAGE_INVENTORY + COMPONENT_CATALOG update + memory `feedback_design_fidelity.md` D5 empirical-finding append(3rd recursive catch evidence)
+- **Vitest render-smoke test re-verify** post-F7 complete rewrites(F8.7 acceptance gate — test count may shift but coverage not regress)
+
+---
+
+---
+
 <!-- Day 5+ entries appended as F7-F8 land. Template:
 
 ## Day N — YYYY-MM-DD

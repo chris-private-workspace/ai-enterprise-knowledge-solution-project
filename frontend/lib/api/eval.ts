@@ -45,9 +45,32 @@ export interface EvalRunRequest {
   max_main_queries?: number;
 }
 
+/**
+ * W22 F7.4 — Typed shootout response per backend `api/schemas/eval.py`
+ * `ShootoutReport` (W16 F5.4 CO_W15_F1 multi-reranker comparison).
+ * Promotes the previous `Promise<unknown>` shootout return type to a
+ * full Pydantic-mirror so the W22 F7.1 mockup-aligned
+ * `RerankerShootoutCard` can consume entries by name (W22 D9.g).
+ */
+export interface RerankerShootoutEntry {
+  reranker: string;
+  skipped: boolean;
+  skip_reason: string;
+  report: EvalReport | null;
+}
+
+export interface ShootoutReport {
+  eval_set_id: string;
+  started_at: string;
+  finished_at: string;
+  rerankers: RerankerShootoutEntry[];
+  winner: string | null;
+}
+
 export const evalApi = {
   run: (payload: EvalRunRequest): Promise<EvalReport> =>
     client.post<EvalReport>('/eval/run', payload),
 
-  shootout: (): Promise<unknown> => client.post<unknown>('/eval/shootout', {}),
+  shootout: (): Promise<ShootoutReport> =>
+    client.post<ShootoutReport>('/eval/shootout', {}),
 };

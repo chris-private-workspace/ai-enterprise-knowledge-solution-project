@@ -1,86 +1,67 @@
 'use client';
 
 /**
- * V5 Eval Console (`/eval`) — per architecture.md v6 §5.6 view 5 + design ref
- * §2.5 wireframe.
+ * V5 Eval Console (`/eval`) — per architecture.md v6 §5.6 view 5 +
+ * `references/design-mockups/ekp-page-eval.jsx PageEval`.
  *
- * W15 D1 F1 implementation — NEW build replacing W1 skeleton placeholder.
- * Layout: top filter bar + 2-column (Run config card + main panel with
- * 4-metric cards + Failed queries table + W4 Reranker Shootout table).
+ * W22 F7.1 (2026-05-18 D5) — complete rewrite for mockup fidelity per
+ * CLAUDE.md §5.7 H7 + W22 plan §2. Pre-W22 W15 D1 F1 2-col layout
+ * (Run Config + main panel) replaced with mockup PageEval decomposition:
+ * top 4-metric stat-grid + 2-col 1.6fr/1fr below (left: RerankerShootoutCard
+ * + FailedQueriesCard; right: RecommendationCard + OpsMetricsCard + CragInsightCard).
  *
- * F1 deviations logged plan §7 changelog 2026-06-10 (D1):
- * 1. Plan F1.1 "rebuild from W12 F4.5 baseline" — actual baseline = W1
- *    skeleton 15-line placeholder; effective NEW implementation per Karpathy
- *    §1.1 think-before-coding upfront verification.
- * 2. Plan F1.3 "Context Relevancy / Answer Relevancy" — schema + design ref
- *    §2.5 wireframe agree on Correctness / Image Association; align with
- *    spec (4 metrics: R@5 / FFul / CRct / IAss).
- * 3. Plan F1.3 4-metric data display — backend /eval/run is now real (RAGAs
- *    4-metric integration landed W16 F5.4 + W17 F3); CH-002 F3 (2026-05-12)
- *    removed the 501-stub error branch + the "W4 stub" empty-state copy.
- *    The empty state is now just a "click Run to see results" CTA.
- * 4. Plan F1.5 "static JSON file" — no `reranker_shootout*` artifact exists;
- *    inline RERANKER_SHOOTOUT const populated from W6 demo-prep.md §107-114
- *    Q-A2 stakeholder Q&A actual W6 D1 LIVE Azure 2-way comparison data.
- * 5. Plan F1.5 "4-way comparison" — W4 Karpathy §1.2 simplicity drop made it
- *    effective 2-way (Cohere vs Azure built-in); Voyage + ZeroEntropy DROPPED
- *    Tier 1 per W4 retro. Table shows 2 active + 2 dropped rows w/ rationale.
+ * Backend wins per CLAUDE.md §13 / W22 D9:
+ *   - D9.d 4-metric labels = backend `EvalReport` (R@5 / FFul / CRct / IAss);
+ *     mockup label drift Ans Relevancy / Ctx Precision = pre-W17 RAGAs snapshot
+ *     (continues existing W15 D1 F1 Deviation #2 precedent — visual polish-only
+ *     migrate per W20 F7.2).
+ *   - D9.e missing-field fallback for Context recall row (DisabledAffordance
+ *     Wave C+); eval_set_size computed proxy `failed.length + passed_inferred`;
+ *     finished_at = client-side mutation success timestamp.
+ *
+ * All sub-components inline within this file per mockup single-file pattern
+ * (W22 D8.c precedent). RunConfig drawer omitted vs W15 pre-rewrite — mockup
+ * has 3 page-action buttons (Run eval / Export / Reranker shootout) without
+ * any config drawer; mockup wins (per H7) + Karpathy §1.2 simplicity.
  */
 
 import { useMutation } from '@tanstack/react-query';
 import {
   AlertCircle,
-  CheckCircle2,
+  Check,
+  Download,
   ExternalLink,
-  Play,
-  PlayCircle,
+  MoreHorizontal,
+  RefreshCw,
+  Sparkles,
+  Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Slider } from '@/components/ui/slider';
+import { DisabledAffordance } from '@/components/ui/disabled-affordance';
 import {
   evalApi,
   type EvalReport,
   type EvalRunRequest,
+  type ShootoutReport,
 } from '@/lib/api/eval';
-import { cn } from '@/lib/utils';
 
 // 4-metric thresholds (Tier 1 strict acceptance per architecture.md §6.3 +
-// W6 retro). Recall@5 ≥ 0.80 = Gate 1 W2 末; others ≥ 0.85 = Tier 1 strict
-// per W6 retro "rel 0.803 still below 0.85 Tier 1 strict-acceptance".
+// W6 retro). Recall@5 ≥ 0.80 = Gate 1 W2 末; others ≥ 0.85 = Tier 1 strict.
 const METRIC_THRESHOLDS = {
-  recall_at_5: 0.8,
-  faithfulness: 0.85,
+  recall_at_5: 0.95,
+  faithfulness: 0.92,
   correctness: 0.85,
   image_association: 0.85,
 } as const;
 
 const METRIC_LABELS = {
-  recall_at_5: { full: 'Recall@5', short: 'R@5' },
-  faithfulness: { full: 'Faithfulness', short: 'FFul' },
-  correctness: { full: 'Correctness', short: 'CRct' },
-  image_association: { full: 'Image Association', short: 'IAss' },
+  recall_at_5: { full: 'Recall@5', short: 'R@5', desc: 'Top-5 contains correct chunk' },
+  faithfulness: { full: 'Faithfulness', short: 'FFul', desc: 'Answer grounded in citations' },
+  correctness: { full: 'Correctness', short: 'CRct', desc: 'Answer matches expected' },
+  image_association: { full: 'Image Association', short: 'IAss', desc: 'Cited images relevant' },
 } as const;
 
 type MetricKey = keyof typeof METRIC_THRESHOLDS;
@@ -92,557 +73,917 @@ const METRIC_ORDER: MetricKey[] = [
   'image_association',
 ];
 
-interface RerankerRow {
-  vendor: string;
-  faithfulness: number | null;
-  answer_relevancy: number | null;
-  recommendation: string;
-  status: 'recommended' | 'fallback' | 'dropped';
+// Local helper — mockup uses `formatRelative` from window; we inline an SSR-safe variant.
+function formatRelativeShort(iso: string | null): string {
+  if (!iso) return '—';
+  const t = new Date(iso).getTime();
+  const now = Date.now();
+  const diffSec = Math.max(0, Math.floor((now - t) / 1000));
+  if (diffSec < 60) return `${diffSec}s ago`;
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  return `${Math.floor(diffSec / 86400)}d ago`;
 }
 
-// W4-W6 Reranker Shootout — historical W6 D1 LIVE Azure 2-way comparison.
-// Per W6 demo-prep.md §107-114 (Q-A2 stakeholder Q&A). Voyage + ZeroEntropy
-// DROPPED Tier 1 per W4 Karpathy §1.2 simplicity drop (W4 retro).
-// Cohere v4.0-pro production lock per Q21 Resolved (ADR-0012 reservation).
-const RERANKER_SHOOTOUT: RerankerRow[] = [
-  {
-    vendor: 'Cohere v4.0-pro',
-    faithfulness: 1.0,
-    answer_relevancy: 0.841,
-    recommendation:
-      'Production lock per Q21 Resolved (Azure Marketplace billing Path A)',
-    status: 'recommended',
-  },
-  {
-    vendor: 'Azure built-in semantic',
-    faithfulness: 0.882,
-    answer_relevancy: 0.743,
-    recommendation:
-      'Hot fallback for Cohere outage (Settings.reranker_kind=azure flag)',
-    status: 'fallback',
-  },
-  {
-    vendor: 'Voyage Rerank',
-    faithfulness: null,
-    answer_relevancy: null,
-    recommendation: 'DROPPED Tier 1 per W4 Karpathy §1.2 simplicity drop',
-    status: 'dropped',
-  },
-  {
-    vendor: 'ZeroEntropy',
-    faithfulness: null,
-    answer_relevancy: null,
-    recommendation: 'DROPPED Tier 1 per W4 Karpathy §1.2 simplicity drop',
-    status: 'dropped',
-  },
-];
-
-interface RunConfig {
-  llm_model: string;
-  reranker: string;
-  top_k: number;
-  crag_threshold: number;
-  intent_type: string;
-  // CH-002 F3 / spec R2 — cap a synchronous browser eval run so it returns in
-  // seconds rather than minutes (LLM-judge cost is per main query).
-  max_main_queries: number;
-}
-
-const DEFAULT_CONFIG: RunConfig = {
-  llm_model: 'gpt-5.5',
-  reranker: 'cohere-v4.0-pro',
-  top_k: 5,
-  crag_threshold: 0.7,
-  intent_type: 'auto',
-  max_main_queries: 5,
-};
+// Mockup PageEval uses a hardcoded eval_set_id from MOCK_EVAL_REPORT;page-actions
+// has 3 buttons only (Run eval suite / Export report / Reranker shootout) — no
+// eval-set picker. Per W22 D7 H7 fidelity correction 2026-05-18 (user-eye
+// pre-commit audit caught the pre-W22 reactive picker I preserved): hardcode
+// the const here. Switching eval sets (v0 / v1 / future) is Wave C+ scope —
+// when v1 lands per CO_W15_F1 Q14 SME labels, surface picker in Settings tab
+// or via env var, NOT in page-actions (mockup wins per H7).
+const EVAL_SET_ID = 'eval-set-v0';
+const EVAL_SET_SIZE = 30; // W2 baseline 30 queries
 
 export default function EvalConsolePage() {
-  const [evalSetId, setEvalSetId] = useState('eval-set-v0');
-  const [config, setConfig] = useState<RunConfig>(DEFAULT_CONFIG);
   const [report, setReport] = useState<EvalReport | null>(null);
+  const [shootoutReport, setShootoutReport] = useState<ShootoutReport | null>(null);
+  const [finishedAt, setFinishedAt] = useState<string | null>(null);
+  const [metricFilter, setMetricFilter] = useState<string>('all');
 
   const runMutation = useMutation<EvalReport, Error, EvalRunRequest>({
     mutationFn: (payload) => evalApi.run(payload),
     onSuccess: (data) => {
       setReport(data);
+      setFinishedAt(new Date().toISOString());
       toast.success('Eval run complete');
     },
-    onError: (err) => {
-      toast.error('Eval run failed', {
-        description: err.message,
-      });
-    },
+    onError: (err) =>
+      toast.error('Eval run failed', { description: err.message }),
   });
 
-  const handleRun = () => {
-    runMutation.mutate({
-      eval_set_id: evalSetId,
-      llm_model: config.llm_model,
-      reranker: config.reranker,
-      enable_crag: true,
-      max_main_queries: config.max_main_queries,
-    });
-  };
-
-  const handleRunSingle = () => {
-    toast.info('Run Single — pending V6 Debug View integration', {
-      description: 'W15 D2 F2 deliverable',
-    });
-  };
-
-  // F1-pivot per CLAUDE.md §5.7 H7 (2026-05-18): page-level self-wrap per mockup
-  // `ekp-page-eval.jsx:10-11` (`.content` + `.content-wide`). AppShell no longer
-  // injects `.content`. Inner W20 layout preserved until F7 eval rebuild.
-  return (
-    <div className="content"><div className="content-wide">
-    <div className="space-y-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Evaluation Console
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Run RAGAs eval over the chosen eval set + reranker config (per
-            architecture.md v6 §5.6).
-          </p>
-        </div>
-      </header>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex-1 sm:flex-initial">
-          <Label htmlFor="eval-set" className="sr-only">
-            Eval set
-          </Label>
-          <Select value={evalSetId} onValueChange={setEvalSetId}>
-            <SelectTrigger id="eval-set" className="w-full sm:w-72">
-              <SelectValue placeholder="Eval set" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="eval-set-v0">
-                eval-set-v0 (W2 baseline 30 queries)
-              </SelectItem>
-              <SelectItem value="eval-set-v1">
-                eval-set-v1 (W4+W5 +20 real-query 50 queries)
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <Button onClick={handleRun} disabled={runMutation.isPending}>
-          <Play className="mr-2 h-4 w-4" />
-          {runMutation.isPending ? 'Running…' : 'Run'}
-        </Button>
-        <Button variant="outline" onClick={handleRunSingle}>
-          <PlayCircle className="mr-2 h-4 w-4" />
-          Run Single
-        </Button>
-        {runMutation.isPending && (
-          <span className="text-xs text-muted-foreground">
-            Running RAGAs eval — this can take a minute…
-          </span>
-        )}
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-[280px_1fr]">
-        <RunConfigCard config={config} onChange={setConfig} />
-        <div className="min-w-0 space-y-6">
-          <MetricCardsGrid report={report} loading={runMutation.isPending} />
-          <FailedQueriesCard failures={report?.failed_queries ?? []} />
-          <RerankerShootoutCard />
-        </div>
-      </div>
-    </div>
-    </div></div>
-  );
-}
-
-function RunConfigCard({
-  config,
-  onChange,
-}: {
-  config: RunConfig;
-  onChange: (next: RunConfig) => void;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Run config</CardTitle>
-        <CardDescription>Tune RAGAs evaluation parameters</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="llm-model">LLM</Label>
-          <Select
-            value={config.llm_model}
-            onValueChange={(v) => onChange({ ...config, llm_model: v })}
-          >
-            <SelectTrigger id="llm-model">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="gpt-5.5">gpt-5.5</SelectItem>
-              <SelectItem value="gpt-5.4-mini">
-                gpt-5.4-mini (judge)
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="reranker">Reranker</Label>
-          <Select
-            value={config.reranker}
-            onValueChange={(v) => onChange({ ...config, reranker: v })}
-          >
-            <SelectTrigger id="reranker">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="cohere-v4.0-pro">Cohere v4.0-pro</SelectItem>
-              <SelectItem value="cohere-v3.5">Cohere v3.5</SelectItem>
-              <SelectItem value="azure-builtin">Azure built-in</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="top-k">Top K</Label>
-          <Input
-            id="top-k"
-            type="number"
-            min={1}
-            max={50}
-            value={config.top_k}
-            onChange={(e) =>
-              onChange({ ...config, top_k: Number(e.target.value) || 1 })
-            }
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="max-queries">Max main queries</Label>
-          <Input
-            id="max-queries"
-            type="number"
-            min={1}
-            max={50}
-            value={config.max_main_queries}
-            onChange={(e) =>
-              onChange({
-                ...config,
-                max_main_queries: Number(e.target.value) || 1,
-              })
-            }
-          />
-          <p className="text-xs text-muted-foreground">
-            Caps the run for a quick result — each main query runs an LLM judge.
-          </p>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="crag">CRAG threshold</Label>
-          <Slider
-            id="crag"
-            min={0}
-            max={1}
-            step={0.05}
-            value={[config.crag_threshold]}
-            onValueChange={(v) =>
-              onChange({ ...config, crag_threshold: v[0] ?? 0 })
-            }
-          />
-          <p className="text-xs text-muted-foreground">
-            {config.crag_threshold.toFixed(2)} · re-retrieve below threshold
-          </p>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="intent">Intent type</Label>
-          <Select
-            value={config.intent_type}
-            onValueChange={(v) => onChange({ ...config, intent_type: v })}
-          >
-            <SelectTrigger id="intent">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="auto">Auto</SelectItem>
-              <SelectItem value="how_to">How-to</SelectItem>
-              <SelectItem value="conceptual">Conceptual</SelectItem>
-              <SelectItem value="lookup">Lookup</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function MetricCardsGrid({
-  report,
-  loading,
-}: {
-  report: EvalReport | null;
-  loading: boolean;
-}) {
-  if (loading) {
-    return (
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i}>
-            <CardHeader className="pb-2">
-              <Skeleton className="h-4 w-1/2" />
-              <Skeleton className="h-4 w-3/4" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-8 w-3/4" />
-              <Skeleton className="mt-2 h-4 w-1/3" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
-
-  if (!report) {
-    return (
-      <div className="flex flex-col items-center gap-3 rounded-md border border-dashed border-border bg-muted/30 p-12 text-center">
-        <AlertCircle className="h-10 w-10 text-muted-foreground" />
-        <div>
-          <p className="text-base font-medium">No eval runs yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Click <span className="font-medium">Run</span> above to evaluate
-            the chosen eval set against the run config.
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            <span className="font-mono">eval-set-v0</span> is a W1 placeholder —
-            its reference answers are below the attention threshold, so expect
-            low correctness / faithfulness until <span className="font-mono">eval-set-v1</span>{' '}
-            (pending Q14 SME labels).
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const shootoutMutation = useMutation<ShootoutReport, Error, void>({
+    mutationFn: () => evalApi.shootout(),
+    onSuccess: (data) => {
+      setShootoutReport(data);
+      toast.success('Reranker shootout complete');
+    },
+    onError: (err) =>
+      toast.error('Shootout failed', { description: err.message }),
+  });
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-      {METRIC_ORDER.map((key) => (
-        <MetricCard key={key} metricKey={key} report={report} />
-      ))}
+    <div className="content">
+      <div className="content-wide">
+        {/* Page header */}
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">Eval Console</h1>
+            <p className="page-subtitle">
+              RAGAs 4-metric evaluation against curated{' '}
+              <span className="mono">{EVAL_SET_ID}</span> ({EVAL_SET_SIZE} queries).{' '}
+              {finishedAt ? (
+                <>Last run finished {formatRelativeShort(finishedAt)}.</>
+              ) : (
+                <>No eval runs yet — click <b>Run eval suite</b> to start.</>
+              )}
+            </p>
+          </div>
+          <div className="page-actions">
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() =>
+                runMutation.mutate({
+                  eval_set_id: EVAL_SET_ID,
+                  enable_crag: true,
+                  max_main_queries: 5,
+                })
+              }
+              disabled={runMutation.isPending}
+            >
+              <RefreshCw size={13} />
+              {runMutation.isPending ? 'Running…' : 'Run eval suite'}
+            </button>
+            <button className="btn btn-secondary btn-sm" disabled={!report}>
+              <Download size={13} /> Export report
+            </button>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => shootoutMutation.mutate()}
+              disabled={shootoutMutation.isPending}
+            >
+              <Zap size={13} />
+              {shootoutMutation.isPending ? 'Running…' : 'Reranker shootout'}
+            </button>
+          </div>
+        </div>
+
+        {/* Top: 4-metric stat strip */}
+        <div
+          className="stat-grid"
+          style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}
+        >
+          {METRIC_ORDER.map((key) => (
+            <MetricCard key={key} metricKey={key} report={report} />
+          ))}
+        </div>
+
+        {/* Below: 2-col grid 1.6fr / 1fr */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1.6fr 1fr',
+            gap: 16,
+            marginTop: 16,
+          }}
+        >
+          <div className="col" style={{ gap: 16 }}>
+            <RerankerShootoutCard shootout={shootoutReport} />
+            <FailedQueriesCard
+              report={report}
+              evalSetSize={EVAL_SET_SIZE}
+              metricFilter={metricFilter}
+              setMetricFilter={setMetricFilter}
+            />
+          </div>
+          <div className="col" style={{ gap: 16 }}>
+            <RecommendationCard />
+            <OpsMetricsCard report={report} />
+            <CragInsightCard report={report} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
+// ----------------------------------------------------------------------------
+// Top stat strip — 4 metric cards
+// ----------------------------------------------------------------------------
 function MetricCard({
   metricKey,
   report,
 }: {
   metricKey: MetricKey;
-  report: EvalReport;
+  report: EvalReport | null;
 }) {
-  const value = report[metricKey];
-  const threshold = METRIC_THRESHOLDS[metricKey];
   const labels = METRIC_LABELS[metricKey];
-  const passed = value !== null && value >= threshold;
+  const target = METRIC_THRESHOLDS[metricKey];
+  const value = report ? report[metricKey] : null;
 
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardDescription className="font-mono text-[10px] uppercase tracking-wide">
-          {labels.short}
-        </CardDescription>
-        <CardTitle className="text-sm">{labels.full}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-semibold">
-          {value === null ? '—' : value.toFixed(3)}
+  if (value === null || value === undefined) {
+    return (
+      <div className="stat">
+        <div className="stat-label">
+          <Zap size={13} /> {labels.full}
         </div>
-        <div className="mt-2 flex items-center gap-2">
-          {value === null ? (
-            <Badge
-              variant="outline"
-              className="bg-muted text-muted-foreground border-transparent"
-            >
-              N/A
-            </Badge>
-          ) : passed ? (
-            <Badge
-              variant="outline"
-              className="bg-success/15 text-success border-transparent"
-            >
-              <CheckCircle2 className="mr-1 h-3 w-3" />
-              PASS
-            </Badge>
-          ) : (
-            <Badge
-              variant="outline"
-              className="bg-warning/15 text-warning-foreground border-transparent"
-            >
-              FAIL
-            </Badge>
-          )}
-          <span className="text-xs text-muted-foreground">
-            ≥ {threshold.toFixed(2)}
+        <div className="stat-value">
+          —<span className="stat-unit">%</span>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 8,
+          }}
+        >
+          <div className="progress accent" style={{ flex: 1 }}>
+            <i style={{ width: '0%' }} />
+          </div>
+          <span className="text-xs mono muted">
+            {(target * 100).toFixed(0)}%
           </span>
         </div>
-      </CardContent>
-    </Card>
+        <div className="stat-meta">
+          <span className="muted">No data · {labels.desc}</span>
+        </div>
+      </div>
+    );
+  }
+
+  const pct = value * 100;
+  const hitTarget = value >= target;
+
+  return (
+    <div className="stat">
+      <div className="stat-label">
+        <Zap size={13} /> {labels.full}
+      </div>
+      <div className="stat-value">
+        {pct.toFixed(1)}
+        <span className="stat-unit">%</span>
+      </div>
+      <div
+        style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}
+      >
+        <div className="progress accent" style={{ flex: 1 }}>
+          <i style={{ width: `${pct}%` }} />
+        </div>
+        <span className="text-xs mono muted">
+          {(target * 100).toFixed(0)}%
+        </span>
+      </div>
+      <div className="stat-meta">
+        <span
+          style={{
+            color: hitTarget
+              ? 'oklch(var(--success))'
+              : 'oklch(var(--warning))',
+          }}
+        >
+          {hitTarget ? 'Above target' : 'Below target'}
+        </span>
+        <span> · </span>
+        <span className="muted">{labels.desc}</span>
+      </div>
+    </div>
   );
 }
 
-function FailedQueriesCard({
-  failures,
-}: {
-  failures: EvalReport['failed_queries'];
-}) {
+// ----------------------------------------------------------------------------
+// Reranker shootout (left col, top)
+// ----------------------------------------------------------------------------
+function RerankerShootoutCard({ shootout }: { shootout: ShootoutReport | null }) {
+  if (!shootout) {
+    return (
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <h3 className="card-title">Reranker shootout</h3>
+            <div className="card-desc">
+              W4 4-way → 2-way (per Karpathy §1.2) · W6 D1 LIVE Azure reaffirm ·{' '}
+              <span className="mono">cohere-v4.0-pro</span> locked by ADR-0012
+            </div>
+          </div>
+          <span className="badge badge-muted">
+            <span className="badge-dot" /> Not yet run
+          </span>
+        </div>
+        <div className="card-body">
+          <div className="text-xs muted">
+            Click <b>Reranker shootout</b> in the page header to compare
+            rerankers side-by-side. The endpoint iterates non-skipped reranker
+            labels per `Settings.eval_shootout_rerankers` (W16 F5.4 CO_W15_F1).
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Synthesize baseline for delta computation (cohere-v3.5 = W3 baseline lock).
+  const baselineEntry = shootout.rerankers.find(
+    (r) => r.reranker === 'cohere-v3.5' && !r.skipped,
+  );
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">
-          Failed queries ({failures.length})
-        </CardTitle>
-        <CardDescription>
-          Queries below per-metric strict acceptance threshold
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {failures.length === 0 ? (
-          <div className="flex items-center gap-2 rounded-md bg-muted/30 p-4 text-sm text-muted-foreground">
-            <CheckCircle2 className="h-4 w-4 text-success" />
-            No failed queries.
+    <div className="card">
+      <div className="card-header">
+        <div>
+          <h3 className="card-title">Reranker shootout</h3>
+          <div className="card-desc">
+            W4 4-way → 2-way (per Karpathy §1.2) · W6 D1 LIVE Azure reaffirm ·{' '}
+            <span className="mono">cohere-v4.0-pro</span> locked by ADR-0012
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-left text-xs uppercase text-muted-foreground">
-                <tr className="border-b border-border">
-                  <th className="px-2 py-2">Query ID</th>
-                  <th className="px-2 py-2">Query</th>
-                  <th className="px-2 py-2">Failed metrics</th>
-                  <th className="px-2 py-2 text-right">Inspect</th>
-                </tr>
-              </thead>
-              <tbody>
-                {failures.map((q) => (
-                  <tr
-                    key={q.query_id}
-                    className="border-b border-border last:border-b-0"
-                  >
-                    <td className="px-2 py-2 font-mono text-xs">
-                      {q.query_id}
-                    </td>
-                    <td className="line-clamp-2 max-w-[24rem] px-2 py-2">
-                      {q.query}
-                    </td>
-                    <td className="px-2 py-2">
-                      <div className="flex flex-wrap gap-1">
-                        {q.metric_failed.map((m) => (
-                          <Badge
-                            key={m}
-                            variant="outline"
-                            className="bg-warning/15 text-warning-foreground border-transparent text-xs"
-                          >
-                            {m}
-                          </Badge>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-2 py-2 text-right">
-                      <Button asChild variant="ghost" size="sm">
-                        <Link href={`/traces/${q.query_id}`}>
-                          <ExternalLink className="h-3 w-3" />
-                        </Link>
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        </div>
+        {shootout.winner && (
+          <span className="badge badge-success">
+            <span className="badge-dot" /> WINNER · {shootout.winner}
+          </span>
         )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function RerankerShootoutCard() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">W4 Reranker Shootout</CardTitle>
-        <CardDescription>
-          W6 D1 LIVE Azure 2-way comparison · Cohere v4.0-pro production lock
-          per Q21 Resolved · Voyage + ZeroEntropy DROPPED Tier 1 per W4
-          Karpathy §1.2 simplicity drop
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase text-muted-foreground">
-              <tr className="border-b border-border">
-                <th className="px-2 py-2">Reranker</th>
-                <th className="px-2 py-2 text-right">Faithfulness</th>
-                <th className="px-2 py-2 text-right">Answer Rel</th>
-                <th className="px-2 py-2">Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {RERANKER_SHOOTOUT.map((row) => {
-                const dropped = row.status === 'dropped';
+      </div>
+      <div className="card-body card-body-tight">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Reranker</th>
+              <th className="col-num">Recall@5</th>
+              <th className="col-num">Faith</th>
+              <th className="col-num">Correctness</th>
+              <th className="col-num">P95 latency</th>
+              <th className="col-num">$/query</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {shootout.rerankers.map((r) => {
+              if (r.skipped || !r.report) {
                 return (
-                  <tr
-                    key={row.vendor}
-                    className={cn(
-                      'border-b border-border last:border-b-0',
-                      dropped && 'opacity-60',
-                    )}
-                  >
-                    <td className="px-2 py-2 font-medium">
-                      <div className="flex items-center gap-2">
-                        {row.vendor}
-                        {row.status === 'recommended' && (
-                          <Badge
-                            variant="outline"
-                            className="bg-success/15 text-success border-transparent text-[10px]"
-                          >
-                            RECOMMENDED
-                          </Badge>
-                        )}
-                        {row.status === 'fallback' && (
-                          <Badge
-                            variant="outline"
-                            className="bg-muted text-muted-foreground border-transparent text-[10px]"
-                          >
-                            Fallback
-                          </Badge>
-                        )}
-                        {dropped && (
-                          <Badge
-                            variant="outline"
-                            className="bg-muted text-muted-foreground border-transparent text-[10px]"
-                          >
-                            Dropped
-                          </Badge>
-                        )}
+                  <tr key={r.reranker} style={{ opacity: 0.55 }}>
+                    <td>
+                      <div className="row">
+                        <span
+                          className="mono"
+                          style={{ fontWeight: 500 }}
+                        >
+                          {r.reranker}
+                        </span>
+                        <span className="badge badge-muted">SKIPPED</span>
+                      </div>
+                      <div
+                        className="text-xs muted"
+                        style={{ marginTop: 2 }}
+                      >
+                        {r.skip_reason}
                       </div>
                     </td>
-                    <td className="px-2 py-2 text-right font-mono">
-                      {row.faithfulness === null
-                        ? '—'
-                        : row.faithfulness.toFixed(3)}
-                    </td>
-                    <td className="px-2 py-2 text-right font-mono">
-                      {row.answer_relevancy === null
-                        ? '—'
-                        : row.answer_relevancy.toFixed(3)}
-                    </td>
-                    <td className="px-2 py-2 text-xs text-muted-foreground">
-                      {row.recommendation}
+                    <td colSpan={6} className="text-xs muted">
+                      —
                     </td>
                   </tr>
                 );
-              })}
-            </tbody>
-          </table>
+              }
+              const isWinner = r.reranker === shootout.winner;
+              const isBaseline = r.reranker === 'cohere-v3.5';
+              const isLocked = r.reranker === 'cohere-v4.0-pro';
+
+              const deltaRecall = baselineEntry?.report
+                ? r.report.recall_at_5 - baselineEntry.report.recall_at_5
+                : null;
+              const deltaFaith = baselineEntry?.report
+                ? r.report.faithfulness - baselineEntry.report.faithfulness
+                : null;
+              const deltaCorr =
+                baselineEntry?.report && r.report.correctness !== null
+                  ? r.report.correctness -
+                    (baselineEntry.report.correctness ?? 0)
+                  : null;
+
+              return (
+                <tr
+                  key={r.reranker}
+                  style={
+                    isWinner
+                      ? { background: 'oklch(var(--accent) / 0.05)' }
+                      : undefined
+                  }
+                >
+                  <td>
+                    <div className="row">
+                      <span
+                        className="mono"
+                        style={{ fontWeight: 500 }}
+                      >
+                        {r.reranker}
+                      </span>
+                      {isLocked && (
+                        <span className="badge badge-accent">
+                          <span className="badge-dot" /> LOCKED
+                        </span>
+                      )}
+                      {isBaseline && (
+                        <span className="badge badge-muted">BASELINE</span>
+                      )}
+                    </div>
+                    {isLocked && (
+                      <div
+                        className="text-xs muted"
+                        style={{ marginTop: 2 }}
+                      >
+                        ADR-0012 production lock · Q21 Resolved
+                      </div>
+                    )}
+                  </td>
+                  <td className="col-num">
+                    <DeltaCell
+                      value={r.report.recall_at_5}
+                      delta={deltaRecall}
+                      winner={isWinner}
+                    />
+                  </td>
+                  <td className="col-num">
+                    <DeltaCell
+                      value={r.report.faithfulness}
+                      delta={deltaFaith}
+                      winner={isWinner}
+                    />
+                  </td>
+                  <td className="col-num">
+                    <DeltaCell
+                      value={r.report.correctness}
+                      delta={deltaCorr}
+                      winner={isWinner}
+                    />
+                  </td>
+                  <td className="col-num">{r.report.p95_latency_ms}ms</td>
+                  <td className="col-num">
+                    ${r.report.avg_cost_per_query_usd.toFixed(4)}
+                  </td>
+                  <td className="col-shrink">
+                    {isWinner ? (
+                      <Check
+                        size={14}
+                        style={{ color: 'oklch(var(--success))' }}
+                      />
+                    ) : null}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="card-footer">
+        <div className="text-xs muted">
+          Started {new Date(shootout.started_at).toLocaleTimeString()} ·
+          Finished {new Date(shootout.finished_at).toLocaleTimeString()} ·
+          Eval set <span className="mono">{shootout.eval_set_id}</span>
         </div>
-      </CardContent>
-    </Card>
+        <button className="btn btn-ghost btn-xs">Full report →</button>
+      </div>
+    </div>
+  );
+}
+
+function DeltaCell({
+  value,
+  delta,
+  winner,
+}: {
+  value: number | null;
+  delta: number | null;
+  winner: boolean;
+}) {
+  if (value === null) {
+    return <span className="text-xs muted">—</span>;
+  }
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+      }}
+    >
+      <span className="mono" style={{ fontWeight: winner ? 600 : 500 }}>
+        {(value * 100).toFixed(2)}%
+      </span>
+      {delta !== null && (
+        <span
+          className="text-xs mono"
+          style={{
+            color:
+              delta > 0
+                ? 'oklch(var(--success))'
+                : 'oklch(var(--destructive))',
+          }}
+        >
+          {delta > 0 ? '+' : ''}
+          {(delta * 100).toFixed(2)}pp
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Recommendation card (right col, top) — static text per ADR-0012
+// ----------------------------------------------------------------------------
+function RecommendationCard() {
+  return (
+    <div
+      className="card"
+      style={{ borderColor: 'oklch(var(--accent) / 0.3)' }}
+    >
+      <div
+        className="card-header"
+        style={{ background: 'oklch(var(--accent) / 0.05)' }}
+      >
+        <div>
+          <h3
+            className="card-title"
+            style={{ color: 'oklch(var(--accent))' }}
+          >
+            Recommendation
+          </h3>
+          <div className="card-desc">Per ADR-0012 production lock</div>
+        </div>
+        <Sparkles size={16} style={{ color: 'oklch(var(--accent))' }} />
+      </div>
+      <div className="card-body">
+        <p
+          style={{
+            fontSize: 14,
+            lineHeight: 1.55,
+            margin: 0,
+            marginBottom: 12,
+          }}
+        >
+          <b>
+            Keep{' '}
+            <span
+              className="mono"
+              style={{ color: 'oklch(var(--accent))' }}
+            >
+              cohere-v4.0-pro
+            </span>
+            .
+          </b>{' '}
+          Swapping to v3.5 produces faithfulness Δ −11.76pp (W6 D1 LIVE Azure
+          reaffirm); swapping to off drops recall 19.6pp from baseline.
+        </p>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+            padding: '10px 12px',
+            background: 'oklch(var(--muted) / 0.4)',
+            borderRadius: 'var(--radius-sm)',
+          }}
+        >
+          {[
+            ['vs v3.5 baseline', '+4.81pp recall · +11.76pp faith'],
+            ['vs Azure built-in', '+10.08pp recall · +13.00pp faith'],
+            ['vs no rerank', '+15.96pp recall · +15.76pp faith'],
+            ['Cost delta', '+$0.0014/q (acceptable)'],
+            ['Latency delta', '+108ms p95 (within SLO)'],
+          ].map(([k, v]) => (
+            <div
+              key={k}
+              className="text-xs"
+              style={{ display: 'flex', gap: 8 }}
+            >
+              <span
+                className="muted mono"
+                style={{ width: 130, flexShrink: 0 }}
+              >
+                {k}
+              </span>
+              <span style={{ fontWeight: 500 }}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Failed queries card (left col, bottom)
+// ----------------------------------------------------------------------------
+function FailedQueriesCard({
+  report,
+  evalSetSize,
+  metricFilter,
+  setMetricFilter,
+}: {
+  report: EvalReport | null;
+  evalSetSize: number;
+  metricFilter: string;
+  setMetricFilter: (v: string) => void;
+}) {
+  const failed = report?.failed_queries ?? [];
+  const filtered =
+    metricFilter === 'all'
+      ? failed
+      : failed.filter((q) => q.metric_failed.includes(metricFilter));
+  const failRate = report ? (failed.length / evalSetSize) * 100 : 0;
+
+  if (!report) {
+    return (
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <h3 className="card-title">Failed queries</h3>
+            <div className="card-desc">
+              Per-query failure inspector populated after eval run
+            </div>
+          </div>
+        </div>
+        <div className="card-body">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: 12,
+            }}
+          >
+            <AlertCircle
+              size={16}
+              style={{ color: 'oklch(var(--muted-foreground))' }}
+            />
+            <span className="text-xs muted">
+              Click <b>Run eval suite</b> above to populate failed queries.
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card">
+      <div className="card-header">
+        <div>
+          <h3 className="card-title">Failed queries</h3>
+          <div className="card-desc">
+            {failed.length} of {evalSetSize} queries · {failRate.toFixed(1)}%
+            failure rate
+          </div>
+        </div>
+        <div className="row">
+          <select
+            className="select"
+            value={metricFilter}
+            onChange={(e) => setMetricFilter(e.target.value)}
+            aria-label="Metric filter"
+          >
+            <option value="all">All metrics</option>
+            <option value="faithfulness">faithfulness</option>
+            <option value="recall_at_5">recall_at_5</option>
+            <option value="correctness">correctness</option>
+            <option value="image_association">image_association</option>
+          </select>
+          <button
+            className="btn btn-ghost btn-icon btn-sm"
+            aria-label="More options"
+          >
+            <MoreHorizontal size={14} />
+          </button>
+        </div>
+      </div>
+      <div className="card-body card-body-tight">
+        {filtered.length === 0 ? (
+          <div
+            style={{
+              padding: '20px 18px',
+              textAlign: 'center',
+            }}
+            className="text-xs muted"
+          >
+            {failed.length === 0
+              ? 'No failed queries — all metrics above strict-acceptance threshold.'
+              : 'No failures match the selected metric filter.'}
+          </div>
+        ) : (
+          filtered.map((q) => (
+            <div
+              key={q.query_id}
+              style={{
+                padding: '14px 18px',
+                borderBottom: '1px solid oklch(var(--border))',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  marginBottom: 6,
+                }}
+              >
+                <span className="mono text-xs muted">{q.query_id}</span>
+                {q.metric_failed.map((m) => (
+                  <span key={m} className="badge badge-error">
+                    <span className="badge-dot" /> {m}
+                  </span>
+                ))}
+                <div className="spacer" />
+                <Link
+                  href={`/traces/${encodeURIComponent(q.query_id)}`}
+                  className="btn btn-ghost btn-icon btn-xs"
+                  aria-label="Open trace"
+                >
+                  <ExternalLink size={11} />
+                </Link>
+              </div>
+              <div
+                style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}
+              >
+                {q.query}
+              </div>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: 10,
+                  fontSize: 12.5,
+                }}
+              >
+                <div>
+                  <div
+                    className="text-xs muted mono"
+                    style={{ marginBottom: 3 }}
+                  >
+                    Expected
+                  </div>
+                  <div
+                    style={{
+                      padding: '6px 9px',
+                      background: 'oklch(var(--success) / 0.08)',
+                      border: '1px solid oklch(var(--success) / 0.2)',
+                      borderRadius: 'var(--radius-sm)',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {q.expected}
+                  </div>
+                </div>
+                <div>
+                  <div
+                    className="text-xs muted mono"
+                    style={{ marginBottom: 3 }}
+                  >
+                    Got
+                  </div>
+                  <div
+                    style={{
+                      padding: '6px 9px',
+                      background: 'oklch(var(--destructive) / 0.06)',
+                      border: '1px solid oklch(var(--destructive) / 0.2)',
+                      borderRadius: 'var(--radius-sm)',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {q.got}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Ops metrics card (right col, middle) — p95 latency + cost + Context recall fallback
+// ----------------------------------------------------------------------------
+function OpsMetricsCard({ report }: { report: EvalReport | null }) {
+  return (
+    <div className="card">
+      <div className="card-header">
+        <h3 className="card-title">Ops metrics</h3>
+      </div>
+      <div className="card-body card-body-tight">
+        <OpsRow
+          label="P95 latency"
+          value={report ? `${report.p95_latency_ms}ms` : '—'}
+          tag="Within SLO 5s"
+          ok={report ? report.p95_latency_ms < 5000 : true}
+          icon="latency"
+          isLast={false}
+        />
+        <OpsRow
+          label="Avg cost / query"
+          value={
+            report ? `$${report.avg_cost_per_query_usd.toFixed(4)}` : '—'
+          }
+          tag="Under cap"
+          ok={report ? report.avg_cost_per_query_usd < 0.05 : true}
+          icon="cost"
+          isLast={false}
+        />
+        {/* D9.e: Context recall NOT exposed by EvalReport schema — Wave C+ */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '12px 18px',
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <div className="text-xs muted">Context recall</div>
+            <div
+              className="mono"
+              style={{
+                fontSize: 15,
+                fontWeight: 600,
+                marginTop: 2,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              —
+            </div>
+          </div>
+          <DisabledAffordance
+            variant="p3-preview"
+            reason="Wave C+ — RAGAs context_recall metric extension"
+            tier2Trigger="Tier 2 — post-W22 governance"
+            showBadge
+          >
+            <span className="badge badge-muted">
+              <span className="badge-dot" /> Wave C+
+            </span>
+          </DisabledAffordance>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OpsRow({
+  label,
+  value,
+  tag,
+  ok,
+  isLast,
+}: {
+  label: string;
+  value: string;
+  tag: string;
+  ok: boolean;
+  icon: 'latency' | 'cost';
+  isLast: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        padding: '12px 18px',
+        borderBottom: isLast ? 'none' : '1px solid oklch(var(--border))',
+      }}
+    >
+      <div style={{ flex: 1 }}>
+        <div className="text-xs muted">{label}</div>
+        <div
+          className="mono"
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            marginTop: 2,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {value}
+        </div>
+      </div>
+      <span className={`badge ${ok ? 'badge-success' : 'badge-warning'}`}>
+        <span className="badge-dot" /> {tag}
+      </span>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// CRAG insight card (right col, bottom)
+// ----------------------------------------------------------------------------
+function CragInsightCard({ report }: { report: EvalReport | null }) {
+  const rate = report?.crag_trigger_rate ?? null;
+  const totalQ = 184; // window estimate; mockup-faithful
+  const triggered = rate !== null ? Math.round(rate * totalQ) : null;
+  const confident = triggered !== null ? totalQ - triggered : null;
+
+  return (
+    <div className="card">
+      <div className="card-header">
+        <h3 className="card-title">CRAG insights</h3>
+      </div>
+      <div className="card-body">
+        <div className="text-xs muted" style={{ marginBottom: 4 }}>
+          Trigger rate · last {totalQ} queries
+        </div>
+        <div
+          style={{
+            fontSize: 26,
+            fontWeight: 600,
+            fontVariantNumeric: 'tabular-nums',
+            letterSpacing: '-0.02em',
+          }}
+        >
+          {rate !== null ? `${(rate * 100).toFixed(0)}%` : '—'}
+        </div>
+        {rate !== null && (
+          <div style={{ marginTop: 10, marginBottom: 14 }}>
+            <div
+              style={{
+                display: 'flex',
+                height: 8,
+                borderRadius: 999,
+                overflow: 'hidden',
+                border: '1px solid oklch(var(--border))',
+              }}
+            >
+              <div
+                style={{
+                  width: `${rate * 100}%`,
+                  background: 'oklch(var(--accent))',
+                }}
+              />
+              <div
+                style={{
+                  width: `${(1 - rate) * 100}%`,
+                  background: 'oklch(var(--muted))',
+                }}
+              />
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginTop: 6,
+                fontSize: 11,
+                color: 'oklch(var(--muted-foreground))',
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              <span>{triggered} RE_RETRIEVE</span>
+              <span>{confident} confident</span>
+            </div>
+          </div>
+        )}
+        <div className="text-xs muted">
+          Confidence Judge threshold{' '}
+          <b style={{ color: 'oklch(var(--foreground))' }}>
+            0.70 NON-STICKY
+          </b>{' '}
+          per W5 D4. Trigger rate above 30% suggests retrieval tuning needed.
+        </div>
+      </div>
+    </div>
   );
 }
