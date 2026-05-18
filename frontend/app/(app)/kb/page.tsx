@@ -28,6 +28,7 @@ import {
   FileText,
   Filter,
   Layers,
+  MoreHorizontal,
   Plus,
   Search,
   Tag,
@@ -39,16 +40,9 @@ import { useQuery } from '@tanstack/react-query';
 
 import { kbApi, type KbStatus } from '@/lib/api/kb';
 
-type SortKind = 'name' | 'last_indexed' | 'documents';
 type StatusKind = 'indexed' | 'empty' | 'archived';
 type StatusFilter = StatusKind | 'all';
 type ViewKind = 'grid' | 'table';
-
-const SORT_LABEL: Record<SortKind, string> = {
-  name: 'Name (A→Z)',
-  last_indexed: 'Last indexed (recent)',
-  documents: 'Documents (most)',
-};
 
 const STATUS_FILTER_LABEL: Record<StatusFilter, string> = {
   all: 'Status: All',
@@ -76,18 +70,10 @@ function formatRelative(iso: string | null | undefined): string {
   return `${Math.floor(mins / 60 / 24)}d ago`;
 }
 
-function makeComparator(sort: SortKind): (a: KbStatus, b: KbStatus) => number {
-  if (sort === 'name') {
-    return (a, b) => (a.name || a.kb_id).localeCompare(b.name || b.kb_id);
-  }
-  if (sort === 'documents') {
-    return (a, b) => (b.total_documents ?? 0) - (a.total_documents ?? 0);
-  }
-  return (a, b) => {
-    const av = a.last_indexed_at ?? '';
-    const bv = b.last_indexed_at ?? '';
-    return bv.localeCompare(av);
-  };
+function sortByLastIndexed(a: KbStatus, b: KbStatus): number {
+  const av = a.last_indexed_at ?? '';
+  const bv = b.last_indexed_at ?? '';
+  return bv.localeCompare(av);
 }
 
 export default function KbListPage() {
@@ -97,7 +83,6 @@ export default function KbListPage() {
   });
 
   const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<SortKind>('last_indexed');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [view, setView] = useState<ViewKind>('grid');
 
@@ -125,8 +110,8 @@ export default function KbListPage() {
       statusFilter === 'all'
         ? filteredBySearch
         : filteredBySearch.filter((kb) => deriveStatus(kb) === statusFilter);
-    return [...filteredByStatus].sort(makeComparator(sort));
-  }, [query.data, search, sort, statusFilter]);
+    return [...filteredByStatus].sort(sortByLastIndexed);
+  }, [query.data, search, statusFilter]);
 
   const totalDocs = (query.data ?? []).reduce(
     (s, k) => s + k.total_documents,
@@ -195,13 +180,15 @@ export default function KbListPage() {
             </span>
             <input
               className="input"
-              placeholder="Filter by name, id, description…"
+              placeholder="Filter by name, owner, tag…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
-          {/* Status filter — cycle through options on click (replaces shadcn Select) */}
+          {/* Status filter — cycle on click;backend `archived` flag drives the
+              filterable set (W22 B-i policy:preserve mockup button + cycle via
+              backend-known states until full `status` field lands). */}
           <button
             type="button"
             className="btn btn-secondary btn-sm"
@@ -215,18 +202,17 @@ export default function KbListPage() {
             <Filter size={13} /> {STATUS_FILTER_LABEL[statusFilter]}
           </button>
 
-          {/* Sort cycle */}
+          {/* Tag filter — mockup line 40 (per W22 B-i policy:render mockup
+              button + disabled until backend `tags[]` field lands;tag
+              filtering is pending-Beta-data,not Tier 2). */}
           <button
             type="button"
             className="btn btn-secondary btn-sm"
-            onClick={() => {
-              const order: SortKind[] = ['last_indexed', 'name', 'documents'];
-              const idx = order.indexOf(sort);
-              setSort(order[(idx + 1) % order.length]!);
-            }}
-            title="Click to cycle sort"
+            disabled
+            title="Tag filtering — pending backend `tags[]` field"
+            style={{ opacity: 0.5, cursor: 'default' }}
           >
-            <Tag size={13} /> {SORT_LABEL[sort]}
+            <Tag size={13} /> Tag: Any
           </button>
 
           <div className="spacer" style={{ flex: 1 }} />
@@ -297,6 +283,9 @@ function KbCard({ kb }: { kb: KbStatus }) {
         <div className="kb-title">{kb.name || kb.kb_id}</div>
         <div className="kb-desc">{kb.description || '—'}</div>
       </div>
+      {/* Tags slot — mockup lines 75-77 (W22 B-i:empty until backend `tags[]`
+          field lands;preserves mockup DOM slot for spacing fidelity). */}
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }} />
       <div className="kb-meta">
         <span>
           <FileText size={11} /> {kb.total_documents}
@@ -304,8 +293,9 @@ function KbCard({ kb }: { kb: KbStatus }) {
         <span>
           <Layers size={11} /> {kb.total_chunks.toLocaleString()}
         </span>
+        {/* R@5 — mockup line 81 (W22 B-i:"—%" until backend `recall_at_5` field). */}
         <span>
-          <Zap size={11} /> {kb.storage_size_mb.toFixed(1)} MB
+          <Zap size={11} /> R@5 —%
         </span>
         <span style={{ marginLeft: 'auto' }}>
           {formatRelative(kb.last_indexed_at)}
@@ -327,16 +317,22 @@ function KbTable({ rows }: { rows: KbStatus[] }) {
           <tr>
             <th>Name</th>
             <th>Status</th>
+            <th>Chunk strategy</th>
             <th className="col-num">Docs</th>
             <th className="col-num">Chunks</th>
-            <th className="col-num">Screenshots</th>
             <th className="col-num">Storage</th>
+            <th className="col-num">R@5</th>
+            <th>Owner</th>
             <th className="col-num">Last indexed</th>
+            <th className="col-shrink" aria-label="Row actions" />
           </tr>
         </thead>
         <tbody>
           {rows.map((kb) => {
             const status = deriveStatus(kb);
+            const chunkStrategy =
+              (kb as KbStatus & { config?: { chunk_strategy?: string } })
+                .config?.chunk_strategy ?? '—';
             return (
               <tr key={kb.kb_id}>
                 <td>
@@ -376,12 +372,29 @@ function KbTable({ rows }: { rows: KbStatus[] }) {
                     </span>
                   )}
                 </td>
+                <td>
+                  <span className="badge badge-muted">{chunkStrategy}</span>
+                </td>
                 <td className="col-num">{kb.total_documents}</td>
                 <td className="col-num">{kb.total_chunks.toLocaleString()}</td>
-                <td className="col-num">{kb.total_screenshots}</td>
                 <td className="col-num">{kb.storage_size_mb.toFixed(1)} MB</td>
+                {/* R@5 — W22 B-i placeholder until backend `recall_at_5` field */}
+                <td className="col-num">—%</td>
+                {/* Owner — W22 B-i placeholder until backend `owner` field */}
+                <td>—</td>
                 <td className="col-num text-xs">
                   {formatRelative(kb.last_indexed_at)}
+                </td>
+                <td className="col-shrink">
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-icon btn-xs"
+                    title="Row actions"
+                    aria-label="Row actions"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <MoreHorizontal size={14} />
+                  </button>
                 </td>
               </tr>
             );

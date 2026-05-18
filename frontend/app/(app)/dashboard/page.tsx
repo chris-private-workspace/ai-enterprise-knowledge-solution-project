@@ -150,7 +150,11 @@ export default function DashboardPage() {
   const totalDocs = kbs.reduce((s, k) => s + k.total_documents, 0);
   const totalChunks = kbs.reduce((s, k) => s + k.total_chunks, 0);
   const totalStorageMb = kbs.reduce((s, k) => s + k.storage_size_mb, 0);
-  const archivedKbs = kbs.filter((k) => k.archived);
+  // Mockup line 13:`kbs.filter(k => k.status === "indexing")`。Backend `KbStatus`
+  // 暫未 expose `status === indexing` field(W22 B-i policy:default "All ready"
+  // until backend ships indexing state)。`archived` flag 唔等於 indexing,
+  // 故唔做 W20 substitution。
+  const indexingKbCount = 0;
 
   // /health overall — drives the page-header status pill.
   const healthOk = healthQuery.data?.status === 'ok';
@@ -176,7 +180,8 @@ export default function DashboardPage() {
             <h1 className="page-title">Welcome back, {displayName}</h1>
             <p className="page-subtitle">
               <span className={`status-dot ${healthDotClass}`} /> EKP Beta ·{' '}
-              <span className="mono">ekp-beta.ricoh.com</span> · {healthLabel}
+              <span className="mono">ekp-beta.ricoh.com</span> · {healthLabel} ·
+              {' '}Last eval pass <b>—</b>
             </p>
           </div>
           <div className="page-actions">
@@ -200,9 +205,9 @@ export default function DashboardPage() {
               <span className="stat-unit"> active</span>
             </div>
             <div className="stat-meta">
-              {archivedKbs.length > 0 ? (
+              {indexingKbCount > 0 ? (
                 <>
-                  <span className="status-dot queued" /> {archivedKbs.length} archived
+                  <span className="status-dot indexing" /> {indexingKbCount} indexing
                 </>
               ) : (
                 <>
@@ -311,7 +316,7 @@ function KbSummaryCard({
                 <th>Status</th>
                 <th className="col-num">Docs</th>
                 <th className="col-num">Chunks</th>
-                <th className="col-num">Storage</th>
+                <th className="col-num">R@5</th>
                 <th className="col-num">Last indexed</th>
               </tr>
             </thead>
@@ -363,7 +368,8 @@ function KbRow({ kb }: { kb: KbStatus }) {
       </td>
       <td className="col-num">{kb.total_documents}</td>
       <td className="col-num">{kb.total_chunks.toLocaleString()}</td>
-      <td className="col-num">{kb.storage_size_mb.toFixed(1)} MB</td>
+      {/* R@5 — W22 B-i placeholder until backend `recall_at_5` per-KB field */}
+      <td className="col-num">—%</td>
       <td className="col-num text-xs">{formatRelative(kb.last_indexed_at)}</td>
     </tr>
   );
@@ -374,6 +380,11 @@ function KbRow({ kb }: { kb: KbStatus }) {
 // ──────────────────────────────────────────────────────────────────────────
 
 function RecentQueriesCard() {
+  // W22 B-i:mockup lines 148-184 renders `recent.map(activity)` activity rows;
+  // backend query log NOT collected yet(Q6 Open)→ recent=[] → card-body
+  // visually empty,matches mockup behavior when MOCK_RECENT_QUERIES=[]。
+  // Single muted-text placeholder preserves the card-body slot per mockup
+  // `.card-body.card-body-tight` padding without inventing a CTA mockup lacks。
   return (
     <div className="card">
       <div className="card-header">
@@ -390,21 +401,13 @@ function RecentQueriesCard() {
           All traces <ChevronRight size={13} />
         </Link>
       </div>
-      <div className="card-body" style={{ textAlign: 'center', padding: '32px 18px' }}>
-        <div className="text-xs muted" style={{ marginBottom: 8 }}>
-          Query history isn&apos;t collected yet (Q6).
-        </div>
-        <Link
-          href="/chat"
-          style={{
-            color: 'oklch(var(--accent))',
-            fontWeight: 500,
-            textDecoration: 'none',
-            fontSize: 13,
-          }}
+      <div className="card-body card-body-tight">
+        <div
+          className="text-xs muted"
+          style={{ padding: '32px 18px', textAlign: 'center' }}
         >
-          Ask a question →
-        </Link>
+          No recent activity yet — query log pending (Q6).
+        </div>
       </div>
     </div>
   );
@@ -415,40 +418,68 @@ function RecentQueriesCard() {
 // ──────────────────────────────────────────────────────────────────────────
 
 function LatestEvalCard() {
+  // W22 B-i:mockup lines 186-223 renders 2×2 metric grid + Shootout footer
+  // button。Backend no cached-eval-run endpoint yet → 4 placeholder metric
+  // boxes with "—%" preserve grid structure;delta-arrow omitted(no baseline
+  // to compare against until 2 eval runs land)。
+  const metrics = [
+    { label: 'Recall@5' },
+    { label: 'Faithfulness' },
+    { label: 'Ans Relevancy' },
+    { label: 'Ctx Precision' },
+  ];
   return (
     <div className="card">
       <div className="card-header">
         <div>
           <h3 className="card-title">Latest eval</h3>
           <div className="card-desc">
-            RAGAs · 4-metric (Recall@5 / Faith / Rel / Ctx Prec)
+            RAGAs · <span className="mono">eval-set-v1-draft</span> · — q
           </div>
         </div>
         <Link href="/eval" className="btn btn-ghost btn-icon btn-sm" aria-label="Open eval">
           <ChevronRight size={13} />
         </Link>
       </div>
-      <div className="card-body" style={{ textAlign: 'center', padding: '32px 18px' }}>
-        <div className="text-xs muted" style={{ marginBottom: 8 }}>
-          No eval run cached. Run RAGAs to see metric scores.
-        </div>
-        <Link
-          href="/eval"
-          style={{
-            color: 'oklch(var(--accent))',
-            fontWeight: 500,
-            textDecoration: 'none',
-            fontSize: 13,
-          }}
-        >
-          Open Eval Console →
-        </Link>
+      <div
+        className="card-body"
+        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}
+      >
+        {metrics.map((m) => (
+          <div
+            key={m.label}
+            style={{
+              padding: '10px 12px',
+              border: '1px solid oklch(var(--border))',
+              borderRadius: 'var(--radius-sm)',
+            }}
+          >
+            <div className="text-xs muted" style={{ marginBottom: 4 }}>
+              {m.label}
+            </div>
+            <div
+              style={{
+                fontSize: 18,
+                fontWeight: 600,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              —<span className="stat-unit" style={{ fontSize: 11 }}>%</span>
+            </div>
+            <div className="text-xs mono muted" style={{ marginTop: 2 }}>
+              no baseline
+            </div>
+          </div>
+        ))}
       </div>
       <div className="card-footer">
         <div className="text-xs muted mono">
           Reranker locked ·{' '}
           <b style={{ color: 'oklch(var(--foreground))' }}>cohere-v4.0-pro</b> · ADR-0012
         </div>
+        <Link href="/eval" className="btn btn-ghost btn-xs">
+          Shootout →
+        </Link>
       </div>
     </div>
   );

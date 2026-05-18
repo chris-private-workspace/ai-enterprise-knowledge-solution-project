@@ -170,7 +170,7 @@ export default function LoginPage() {
               disabled
               aria-disabled="true"
               className="btn btn-ghost btn-xs btn-ghost-muted"
-              title="Forgot password — Tier 2 (post-Beta)"
+              title="Tier 2 — post-Beta"
             >
               Forgot password?{' '}
               <span

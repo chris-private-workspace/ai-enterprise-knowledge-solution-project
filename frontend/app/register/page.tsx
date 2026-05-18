@@ -59,10 +59,12 @@ const CODE_LENGTH = 6;
 
 type Step = 1 | 2 | 3;
 
+// Mockup `ekp-page-auth.jsx PageRegister` Step 1 fields:Full name · Email · Password ·
+// Terms checkbox。NO confirm-password field per mockup line 133-174 (W22 A5 audit
+// fix 2026-05-18 — W20 F7.2 inheritance removed)。
 interface AccountInfo {
   email: string;
   password: string;
-  confirmPassword: string;
   displayName: string;
   acceptedTerms: boolean;
 }
@@ -70,10 +72,14 @@ interface AccountInfo {
 const EMPTY_INFO: AccountInfo = {
   email: '',
   password: '',
-  confirmPassword: '',
   displayName: '',
   acceptedTerms: false,
 };
+
+// Mockup line 155-156:`placeholder="At least 12 characters"` + hint
+// `≥ 12 chars, ≥ 1 number, ≥ 1 symbol` (W22 B12 mockup-wins 2026-05-18 —
+// supersedes W20 8-char rule)。Backend accepts any length;frontend enforces。
+const MIN_PASSWORD_LENGTH = 12;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -299,14 +305,14 @@ function Step1({
           className="input"
           type="password"
           autoComplete="new-password"
-          placeholder="At least 8 characters"
+          placeholder="At least 12 characters"
           value={info.password}
           onChange={(e) => onChange({ ...info, password: e.target.value })}
           disabled={isPending}
           required
         />
         <div className="hint">
-          Scrypt-hashed via ADR-0022 · 8+ chars, 1 uppercase, 1 digit or symbol
+          Scrypt-hashed via ADR-0022 · ≥ 12 chars, ≥ 1 number, ≥ 1 symbol
         </div>
         {errors.password && (
           <div
@@ -315,34 +321,6 @@ function Step1({
             role="alert"
           >
             {errors.password}
-          </div>
-        )}
-      </div>
-
-      {/* Confirm password — preserved per W20 F7.2 */}
-      <div className="field">
-        <label className="label" htmlFor="reg-confirm-password">
-          Confirm password
-        </label>
-        <input
-          id="reg-confirm-password"
-          className="input"
-          type="password"
-          autoComplete="new-password"
-          value={info.confirmPassword}
-          onChange={(e) =>
-            onChange({ ...info, confirmPassword: e.target.value })
-          }
-          disabled={isPending}
-          required
-        />
-        {errors.confirmPassword && (
-          <div
-            className="hint"
-            style={{ color: 'oklch(var(--destructive))' }}
-            role="alert"
-          >
-            {errors.confirmPassword}
           </div>
         )}
       </div>
@@ -845,15 +823,12 @@ function validateAccountInfo(info: AccountInfo): Record<string, string> {
     errors.email = 'Invalid email format.';
 
   if (!info.password) errors.password = 'Required.';
-  else if (info.password.length < 8) errors.password = 'Min 8 characters.';
-  else if (!/[A-Z]/.test(info.password))
-    errors.password = 'Must include an uppercase letter.';
-  else if (!/[\d!@#$%^&*]/.test(info.password))
-    errors.password = 'Must include a digit or symbol.';
-
-  if (!info.confirmPassword) errors.confirmPassword = 'Required.';
-  else if (info.confirmPassword !== info.password)
-    errors.confirmPassword = 'Passwords do not match.';
+  else if (info.password.length < MIN_PASSWORD_LENGTH)
+    errors.password = `Min ${MIN_PASSWORD_LENGTH} characters.`;
+  else if (!/\d/.test(info.password))
+    errors.password = 'Must include a number.';
+  else if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(info.password))
+    errors.password = 'Must include a symbol.';
 
   if (!info.acceptedTerms)
     errors.acceptedTerms = 'Accept the Terms of Use and Privacy Policy to continue.';
