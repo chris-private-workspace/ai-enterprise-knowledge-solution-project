@@ -15,15 +15,22 @@
  *   - `streamQuery` SSE flow from `/lib/api/query`
  *   - `conversationsApi` CRUD (server-side Conversation History per
  *     ADR-0031 Option B → C10 §7 Tier 2 → Tier 1 promotion preserved)
- *   - localStorage keys (`ekp-citation-mode`, `ekp-chat-history-collapsed`)
+ *   - localStorage keys (`ekp-citation-mode` read-only, `ekp-chat-history-collapsed`)
  *   - `?q=` deep-link from `<GlobalSearch>` (W18 F6)
  *   - Per-turn persistence (user prompt + assistant reply POST to
  *     `/conversations/{id}/messages` after `done` event;best-effort tail)
- *   - 3 citation placement modes (`inline` / `footnote` / `sidebar`)
+ *   - citationMode state machine + `inline`/`footnote`/`sidebar` placement
+ *     consumers (MessageRow / SourcesStrip / CitationPanel)
+ *
+ * F4 fidelity correction 2026-05-18 — ChatHeader right-side rebuilt to mockup
+ * direct-copy: CRAG switch + Show images switch + Focus eye + Sources book.
+ * The W20-era 3-mode citation seg-toggle was removed (mockup never had it);
+ * citationMode default flipped `sidebar` → `inline` to match no-toggle UX.
+ * The placement-mode machinery stays in state for future ADR re-introduction.
  *
  * Visual rebuild (mockup-direct per memory rule #1 + rule #2):
  *   - Inline ConversationHistoryPanel (260px aside, mockup lines 134-219)
- *   - Inline ChatHeader (KB chip + toggles + sources toggle, mockup 257-298)
+ *   - Inline ChatHeader (KB chip + CRAG/images switches + focus/sources icons, mockup 257-298)
  *   - Inline ChatThread + MessageRow (user/assistant variants, mockup 301-373)
  *   - Inline FeedbackBar (mockup 377-440)
  *   - Inline SourcesStrip + SourceDocCard (footnote/inline mode footer, mockup 667-778)
@@ -150,7 +157,7 @@ export default function ChatPage() {
     citation: Citation;
     image: ImageRef;
   } | null>(null);
-  const [citationMode, setCitationMode] = useState<CitationMode>('sidebar');
+  const [citationMode, setCitationMode] = useState<CitationMode>('inline');
   const [historyCollapsed, setHistoryCollapsed] = useState(false);
   const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
   const [kbId, setKbId] = useState<string>(DEFAULT_KB_ID);
@@ -202,11 +209,6 @@ export default function ChatPage() {
 
   function persist(key: string, value: string) {
     window.localStorage.setItem(key, value);
-  }
-
-  function handleCitationMode(mode: CitationMode) {
-    setCitationMode(mode);
-    persist(CITATION_MODE_KEY, mode);
   }
 
   function toggleHistory() {
@@ -431,7 +433,6 @@ export default function ChatPage() {
           activeKb={activeKb}
           onKbChange={setKbId}
           citationMode={citationMode}
-          onCitationModeChange={handleCitationMode}
           historyCollapsed={historyCollapsed}
           onToggleHistory={toggleHistory}
           sourcesCollapsed={sourcesCollapsed}
@@ -818,7 +819,6 @@ function ChatHeader({
   activeKb,
   onKbChange,
   citationMode,
-  onCitationModeChange,
   historyCollapsed,
   onToggleHistory,
   sourcesCollapsed,
@@ -828,7 +828,6 @@ function ChatHeader({
   activeKb: KbStatus | undefined;
   onKbChange: (id: string) => void;
   citationMode: CitationMode;
-  onCitationModeChange: (mode: CitationMode) => void;
   historyCollapsed: boolean;
   onToggleHistory: () => void;
   sourcesCollapsed: boolean;
@@ -856,7 +855,7 @@ function ChatHeader({
           <Inbox size={14} />
         </button>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="row">
         <span className="text-xs muted mono">KB</span>
         <select
           className="select"
@@ -884,29 +883,23 @@ function ChatHeader({
           </>
         )}
       </div>
-      <div className="spacer" style={{ flex: 1 }} />
-
-      {/* Citation mode selector — replaces mockup's CRAG / Show-images switches
-          since the W20 surface is citation-placement-mode driven. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span className="text-xs muted">Citations</span>
-        <div className="seg">
-          {(['inline', 'footnote', 'sidebar'] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              className="seg-btn"
-              data-active={citationMode === m}
-              onClick={() => onCitationModeChange(m)}
-              style={{ fontSize: 11, padding: '3px 8px' }}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
+      <div className="spacer" />
+      <div className="row">
+        <span className="text-xs muted">CRAG</span>
+        <span className="switch" data-on="true" />
+        <span className="text-xs muted" style={{ marginLeft: 12 }}>
+          Show images
+        </span>
+        <span className="switch" data-on="true" />
       </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
+      <div className="row" style={{ marginLeft: 4 }}>
+        <button
+          type="button"
+          className="btn btn-ghost btn-icon btn-sm"
+          title="Focus mode (hide all panels)"
+        >
+          <Eye size={14} />
+        </button>
         {citationMode === 'sidebar' && (
           <button
             type="button"
