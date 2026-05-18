@@ -1,8 +1,8 @@
 ---
 phase: W22-frontend-presentation-rebuild
 plan_ref: ./plan.md
-status: active
-last_updated: 2026-05-17
+status: closed
+last_updated: 2026-05-18
 ---
 
 # Phase W22 — Checklist

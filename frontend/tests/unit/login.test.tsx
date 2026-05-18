@@ -1,10 +1,14 @@
 /**
- * Unit tests — `/login` strict-fidelity refactor (W20 F7.1 / F8.4).
+ * Unit tests — `/login` strict-fidelity refactor (W22 F2 rebuild per
+ * `references/design-mockups/ekp-page-auth.jsx PageLogin`).
  *
- * Verifies: SSO primary button at top of form + Divider "OR continue with
- * email" + email/password form secondary + Forgot password inline next to
- * Password label via `<DisabledAffordance>` (TIER 2 badge present) + bottom
- * mono dashed "Auth modes (Tier 1)" `<aside>` block.
+ * Verifies: SSO primary button + Divider "OR continue with email" + email/
+ * password form (mockup label "Work email") + Forgot password Tier 2 inline
+ * chip + Sign in → submit + Auth modes (Tier 1) bottom mono dashed `<aside>`.
+ *
+ * W22 F8.7 rewrite (2026-05-18): W20 F8.4 baseline asserted DOM that the
+ * W22 rebuild changed (label text "Email" → "Work email"; badge case
+ * "TIER 2" → "Tier 2" per inline `.badge-muted`; structure preserved).
  */
 
 import { render, screen } from '@testing-library/react';
@@ -32,7 +36,7 @@ vi.mock('@/lib/api/auth', () => ({
 import LoginPage from '../../app/login/page';
 
 describe('LoginPage', () => {
-  it('renders the SSO primary button + Divider + Sign in form + Forgot password DisabledAffordance + Auth modes aside', () => {
+  it('renders the SSO primary button + Divider + Sign in form + Forgot password Tier 2 + Auth modes aside', () => {
     render(<LoginPage />);
     // SSO primary at top of form.
     expect(
@@ -40,12 +44,14 @@ describe('LoginPage', () => {
     ).toBeInTheDocument();
     // Divider label between SSO and email form.
     expect(screen.getByText(/or continue with email/i)).toBeInTheDocument();
-    // Email + Password labels render.
-    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    // Email + Password labels render (mockup uses "Work email" — W22 D11 audit).
+    expect(screen.getByLabelText('Work email')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
-    // Forgot password is wrapped in a DisabledAffordance — TIER 2 badge visible.
+    // Forgot password button has Tier 2 inline badge.
     expect(screen.getByText(/forgot password\?/i)).toBeInTheDocument();
-    expect(screen.getByText('TIER 2')).toBeInTheDocument();
+    // Multiple Tier 2 badges may exist (Forgot password + Auth modes block);
+    // assert at least one is present using getAllByText.
+    expect(screen.getAllByText(/^tier 2$/i).length).toBeGreaterThan(0);
     // Sign in submit button (accent variant via className override).
     expect(screen.getByRole('button', { name: /^sign in →$/i })).toBeInTheDocument();
     // Auth modes mono dashed aside block at bottom.

@@ -1,16 +1,16 @@
 /**
- * Unit tests — `<AppShell>` unified application chrome (W18 F8.4 + W22 F1).
+ * Unit tests — `<AppShell>` unified application chrome (W22 F1 rebuild per
+ * `references/design-mockups/ekp-shell.jsx` strict fidelity).
  *
  * Covers: (1) the 5 sidebar nav modules render under `<nav aria-label="Primary">`,
- * (2) the active route gets `aria-current="page"`, (3) the focus-mode toggle
- * hides the desktop sidebar (and flips its label), (4) the top-bar global-search
- * trigger is present. `<UserMenu>` shows "Signing in…" with no AuthProvider
- * mounted (fine — that path is exercised); `<ThemeToggle>` + `<GlobalSearch open=false>`
- * render inertly. Render/interaction smoke — deep coverage is Tier 2.
+ * (2) the active route gets `aria-current="page"`, (3) the sidebar toggle button
+ * flips the `data-sidebar` attribute on the root `.app` div (collapsed/expanded),
+ * (4) the top-bar global-search trigger is present.
  *
- * W22 F1 label updates per CLAUDE.md §5.7 H7 strict mockup fidelity —
- * "Knowledge Bases" → "Knowledge", "Eval Console" → "Eval" (matches
- * `references/design-mockups/ekp-data.jsx` `window.NAV_ITEMS` shape).
+ * W22 F8.7 rewrite (2026-05-18): W18 F8.4 baseline asserted the toggle label
+ * flips "Collapse sidebar" ↔ "Expand sidebar" but W22 F1 uses a single
+ * aria-label "Toggle sidebar (hides left navigation)" + `data-sidebar` state
+ * attribute on the root `.app` div (mockup-faithful pattern).
  */
 
 import { render, screen } from '@testing-library/react';
@@ -49,23 +49,32 @@ describe('AppShell', () => {
   it('renders the 5 sidebar nav modules', () => {
     renderShell();
     expect(screen.getByRole('navigation', { name: /primary/i })).toBeInTheDocument();
+    // Use prefix regex — some links have a `nav-tail` badge (Chat "Cmd↵",
+    // Knowledge "5") whose text contributes to the accessible name.
     for (const label of ['Dashboard', 'Chat', 'Knowledge', 'Eval', 'Traces']) {
-      expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: new RegExp(`^${label}`) }),
+      ).toBeInTheDocument();
     }
   });
 
   it('marks the active route with aria-current="page"', () => {
     renderShell();
-    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('link', { name: 'Chat' })).not.toHaveAttribute('aria-current');
+    expect(
+      screen.getByRole('link', { name: /^Dashboard/ }),
+    ).toHaveAttribute('aria-current', 'page');
+    expect(
+      screen.getByRole('link', { name: /^Chat/ }),
+    ).not.toHaveAttribute('aria-current');
   });
 
-  it('the focus-mode toggle hides the desktop sidebar and flips its label', async () => {
-    renderShell();
-    expect(screen.getByRole('navigation', { name: /primary/i })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: /collapse sidebar/i }));
-    expect(screen.queryByRole('navigation', { name: /primary/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /expand sidebar/i })).toBeInTheDocument();
+  it('the sidebar toggle flips data-sidebar attribute on the .app root', async () => {
+    const { container } = renderShell();
+    const appRoot = container.querySelector('div.app');
+    expect(appRoot).not.toBeNull();
+    expect(appRoot).toHaveAttribute('data-sidebar', 'expanded');
+    await userEvent.click(screen.getByRole('button', { name: /toggle sidebar/i }));
+    expect(appRoot).toHaveAttribute('data-sidebar', 'collapsed');
   });
 
   it('renders the top-bar global-search trigger', () => {

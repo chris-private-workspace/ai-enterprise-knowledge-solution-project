@@ -134,6 +134,11 @@ const ICON_FOR: Record<NotificationKind, { Icon: LucideIcon; colorVar: string }>
   shootout: { Icon: Activity, colorVar: '' },
 };
 
+/** Fallback when a fetched notification carries an unknown `kind` — defensive
+ *  against backend schema drift (W22 F8.7 fix per W22 D11 — pre-W20 F1 test mock
+ *  uses `{id, title, read}` shape lacking `kind`, surfacing destructure crash). */
+const ICON_FOR_FALLBACK = { Icon: Activity, colorVar: 'oklch(var(--muted-foreground))' };
+
 export function NotificationsMenu() {
   const [locallyReadIds, setLocallyReadIds] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
@@ -249,11 +254,11 @@ export function NotificationsMenu() {
         ) : (
           items.map((n) => {
             const isUnread = n.unread && !locallyReadIds.has(n.id);
-            const { Icon, colorVar } = ICON_FOR[n.kind];
+            const { Icon, colorVar } = ICON_FOR[n.kind] ?? ICON_FOR_FALLBACK;
             return (
               <Link
                 key={n.id}
-                href={n.href}
+                href={n.href ?? '#'}
                 onClick={() => setOpen(false)}
                 style={{
                   display: 'flex',

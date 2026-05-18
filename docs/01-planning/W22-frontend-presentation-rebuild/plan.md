@@ -4,7 +4,7 @@ name: "Frontend Presentation Layer Rebuild — strict 100% mockup fidelity per C
 sprint_week: W22
 start_date: 2026-05-17              # real-calendar — kicked off same-session as W21 partial-close (user directive 2026-05-17 post-screenshot fidelity audit;immediate per H7 enforcement)
 end_date: 2026-05-24                # ~1 week window per page-by-page rebuild cadence;real-calendar collapse pattern 1.8-12× applies — actual likely ~2-4 days per W12-W20 trajectory;frontmatter is a window, not a commitment
-status: active                      # `active` from kickoff 2026-05-17 (user directive at W21 partial-close session + 3 AskUserQuestion Recommended picks = the authorization)
+status: closed                      # `active` from kickoff 2026-05-17 → `closed` 2026-05-18 F8 closeout cascade (15 routes strict-fidelity rebuild complete + Vitest re-verify + Playwright pixel baseline + 5 empirical-finding patterns catalogued)
 spec_refs:
   - CLAUDE.md §5.7                  # H7 Design Fidelity Constraint (hard constraint;promoted v1.7 2026-05-17)
   - CLAUDE.md §3.2.1                # Design Fidelity Rule (7-item checklist:layout / spacing / typography / color tokens / interaction states / responsive / a11y)

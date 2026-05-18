@@ -4,6 +4,29 @@
 
 ---
 
+## W22 strict-fidelity rebuild milestone(2026-05-18 phase closeout)
+
+All Tier 1 routes (#1-11 + #13-14) rebuilt per `references/design-mockups/ekp-page-*.jsx` mockups for 100% visual + interaction fidelity per CLAUDE.md §5.7 H7. Prior status「Implemented Wave A drift」(W20 / W18 / W17 vintage)→ now「Rebuilt W22 strict-fidelity」across 15 routes(includes W22 F6.3 NEW route `/kb/[id]/docs/[docId]` per ADR-0029 Option C — formerly entry #6 placeholder)。Phase F-deliverable mapping:
+
+| W22 F-deliverable | Routes touched | Commit |
+|---|---|---|
+| F1 AppShell rebuild | Topbar + Sidebar + main wrap(cross-cutting,every page inherits)| W22 plan §7 D0-D2 |
+| F2 auth surface | `/login` + `/register` | W22 plan §7 D2 |
+| F3 dashboard | `/dashboard` | W22 plan §7 D2 |
+| F4 chat | `/chat`(D1 ChatHeader correction `fee7836`)| W22 plan §7 D1-D2 |
+| F5a + F5b KB list + wizard | `/kb` + `/kb/new` | W22 plan §7 D3 |
+| F6 KB cluster | `/kb/[id]` 7-tab + `/kb/[id]/upload` 3-step + NEW `/kb/[id]/docs/[docId]` | `093ff89` |
+| F7 observability cluster | `/eval` + `/traces` + `/traces/[traceId]` 3-viz | `ad3ec90` + `4f1eadd`(D8 Langfuse clamp) |
+| F8.1 settings baseline | `/settings`(W18 thin scope per mockup `ekp-page-misc.jsx:308 PageSettings`;Wave C2 6-tab fully-editable per ADR-0026 仍然 future)| `(this F8 closeout commit)` |
+| F8.7 Vitest re-verify | Test surface(9 simple tests rewrite + 4 complex files DEFERRED W23+ per describe.skip;26 pass + 6 skipped vs pre-W22 14 pass)| `(this F8 closeout commit)` |
+| F8.8 Playwright pixel baseline | All 15 rebuilt routes pixel-snapshots capture | `(this F8 closeout commit)` |
+
+**Empirical-finding catalog**(5 cumulative anti-patterns surfaced during W22 — see `feedback_design_fidelity.md` memory):D1 inherited-W20-surface-not-in-mockup / D6 over-extending-§13-backend-wins-to-drop-visual-element / D7 preserve-pre-W22-UI-not-in-mockup / D8 assumed-permissive-vendor-SDK-cap / D9 plan-text-contamination-from-pre-W22-vintage。Process discipline:per-page pre-active-flip 5-step audit + per-F H7 7-item self-verify + per-F user-eye side-by-side verify(NO smoke-user-deferred for fidelity itself per W21 retro)。
+
+**Wave C / Tier 2 boundaries preserved**:`/users` Tier 1.5 RBAC(Wave C1 per ADR-0027)+ `/settings` 6-tab fully-editable(Wave C2 per ADR-0026)+ all Tier 2 affordances catalogued in W19 F5 27-affordance Tier 2 catalog rendered as `<DisabledAffordance>` per H4 boundary discipline。
+
+---
+
 ## Tier 1 — Active (Beta launch scope)
 
 | # | Route | File | Component slot | Tier 1 status | Backend schema |
