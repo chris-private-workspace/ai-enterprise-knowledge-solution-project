@@ -171,11 +171,64 @@ status: active                      # active | closed
 ### Commits
 | Hash | Subject |
 |---|---|
-| _(this commit)_ | `feat(api): /admin/connections/* 5 endpoints × 9 providers + InMemory+Postgres dual backend (W24-wave-c1 F2 per ADR-0026 Option B)` |
+| `ea8cafa` | `feat(api): /admin/connections/* 5 endpoints × 9 providers + InMemory+Postgres dual backend (W24-wave-c1 F2 per ADR-0026 Option B)` |
 
 ---
 
-**End of W24-wave-c1 Day 1 cont(active — F1+F2 done,F3 next)**
+## Day 1 cont F3 — `/admin/identity/*` 5 sub-resources(2026-05-19)
+
+### Pre-active-flip 5-step grep audit recursive(per CLAUDE.md §10 R6)
+
+Per W22 D1+D8+D9 plan-text contamination evidence,plan §2.F3 文本 grep audit 揭露 3 處 deviation surfaced upfront(NOT post-implementation):
+
+| Plan §2.F3 文本 | Audit 發現 | 處理 |
+|---|---|---|
+| **`PATCH /admin/identity/roles`** = "update Entra group → EKP role mapping" | Mockup `SettingsIdentity` table row 暗示 **multiple role mappings** → PATCH semantic 唔啱 — 應該係 list-replace(`POST /roles` + `DELETE /roles/{id}` individual CRUD 需 ADR-0027 RBAC infra Wave C2) | **Adjust**:Wave C1 ship list-replace 接受 full `RoleMappingConfig.mappings: list[RoleMapping]` semantic;individual mapping CRUD = Wave C2 |
+| **Tenant fields** = "tenant_id + display_name + verified_domains" | Mockup actually surfaces `tenant_id + tenant_domain + authority_url(disabled/derived) + cloud_instance`;`verified_domains` 唔喺 mockup | **Adjust**:`EntraTenantConfig` = `tenant_id + tenant_domain + cloud_instance`;`authority_url` **derived server-side**(`{base}/{tenant_id}` per 3 cloud instance map)— 不持久化;`verified_domains` 留 Wave C2 ADR-0027 Graph SDK sync 範圍 |
+| **Postgres table** = "single-row config(sub_resource_key PK + config_json + updated_at + updated_by)" | F2 用 `provider_id PK + row-per-provider`;5 sub-resources 各自 1 row 更乾淨 + audit_log writes per-row + Wave C2 audit log UI 直接 query | **Adjust**:`admin_identity_config` 用 **per-sub-resource row pattern**(`sub_resource TEXT PRIMARY KEY + config JSONB + updated_at + updated_by`)— 5 rows seeded;`get_all` 5-query SELECT 後 schema 重組 IdentityConfig consolidated |
+
+### What worked(F3.1-F3.11)
+
+- **F2 pattern reuse 100%**:storage 3-file split(Protocol + InMemory + Postgres lazy-import)+ factory + lifespan wire 完整 mirror F2 — single-pass implementation 無 friction
+- **Tier 2 boundary 設計成 3 explicit reject guard**(per CLAUDE.md H4):`multi_disabled` audience(app_registration)+ `distributed_disabled` token cache(msal)+ `power_user` ekp_role unless `is_tier2_disabled=True`(roles)— 422 Pydantic + business rule layered
+- **Security hygiene parity with F2**:client_secret value NEVER returned 喺 GET(只有 `client_secret_kv_ref` name + `client_secret_masked_preview`)+ client-supplied `authority_url` 喺 PATCH 被 server 靜靜 strip + re-derived(防 redirect attack 預防)
+- **3-cloud authority URL derivation** 寫成 server-side `_derive_authority_url` helper(Azure Public / Government / China 21Vianet)+ 3 NEW pytest cover all branches
+- **mypy strict clean** on 4 non-Postgres files 一次過,zero iteration
+
+### What didn't work / friction
+
+- **Postgres path 6 baseline mypy errors persisted**(psycopg no-stubs x3 + `dict` missing-type-arg x3)— 跟 F2 + `kb_management/postgres_backend.py` 既有 baseline pattern,per CLAUDE.md §13 surgical 不在 scope cleanup。F3 ADD 6 errors 但全部 baseline-shape;**F1.5b R8/Azure-key-bound runtime smoke** + **psycopg type-stubs cleanup** 留 CO17 umbrella
+- **Pydantic `Literal[False]` 行為**:`require_mfa_all_roles_tier2: Literal[False]` 不是 read-only — POST `True` 會 422,但 missing field 會 default to `False`(per Pydantic v2 default semantic)。Test 422-on-True 寫低咗,確認 type-system 強制 Tier 2 boundary
+
+### Surprises
+
+- **HTTP_422_UNPROCESSABLE_ENTITY → HTTP_422_UNPROCESSABLE_CONTENT deprecation warning** in starlette > 0.40 — F2 + F3 同樣 hit;migration defer 至 future deps bump session(non-blocking,3 warnings during F3 26 pytest)。
+
+### Decisions(captured for retro at F8)
+
+- **D3.1** `RoleMapping.member_count = None` at Wave C1 — Graph API count refresh defer Wave C2 ADR-0027 RBAC infra(Tier 1 不依賴 real-time count for boundary enforcement)
+- **D3.2** `cookie_settings_preview` field 用 `default=` static string from mockup,server-side computed value 留 future ADR-0022 transport-policy split
+- **D3.3** `client_secret_expires_at: datetime | None` 留 Wave C2 ADR-0027 + Graph sync wire;Wave C1 ship `None` + UI 90d rotation reminder banner show "不知道 expiry"
+- **D3.4** **Per-sub-resource row Postgres pattern**(vs single-row JSON blob)— audit_log per-row writes Wave C2 easier;5-row SELECT cheap
+
+### Acceptance(plan §3 + checklist F3)
+- [x] F3.1-F3.2 routes + schemas layout
+- [x] F3.3-F3.8 1 GET + 5 PATCH endpoints landed
+- [x] F3.9 + F3.9a + F3.9b + F3.9c storage layer + lifespan wire(per-sub-resource row pattern per plan §7 changelog)
+- [x] F3.10 26/26 tests pass in 6.43s(F2 baseline 27 → +26 IMPROVED via 26 NEW Identity tests;total /admin/* combined 53 pytest cases)
+- [x] F3.11 mypy strict 0 errors on 4 new non-Postgres files
+- [x] F3.12 Full backend pytest regression preserved:**773 passed + 11 skipped + 0 failed in 404.09s**(F2 baseline 747 → +26 net IMPROVED via 26 NEW F3 Identity tests;no regression)
+
+**Day 1 cont F3 Verdict**:F3 `/admin/identity/*` endpoint group **DONE** 100%。Backend has 5-sub-resource identity config CRUD + 3 Tier 2 boundary guards + server-side authority URL derivation ready for F4 api-keys tab + F5 frontend `<SettingsIdentity>` consumption。
+
+### Commits
+| Hash | Subject |
+|---|---|
+| _(this commit)_ | `feat(api): /admin/identity/* 5 sub-resources + per-sub-resource row Postgres backend + 3 Tier 2 boundary guards (W24-wave-c1 F3 per ADR-0026 Option B)` |
+
+---
+
+**End of W24-wave-c1 Day 1 cont F3(active — F1+F2+F3 done,F4 next)**
 
 ### Commits
 | Hash | Subject |

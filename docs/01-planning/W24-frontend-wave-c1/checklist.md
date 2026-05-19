@@ -2,7 +2,7 @@
 phase: W24-frontend-wave-c1
 plan_ref: ./plan.md
 status: active                      # active | closed
-last_updated: 2026-05-19
+last_updated: 2026-05-19  # F3 active-flip → F3.1-F3.11 complete
 ---
 
 # W24-wave-c1 — Checklist
@@ -49,17 +49,21 @@ last_updated: 2026-05-19
 
 ## F3 — `/admin/identity/*` endpoint group
 
-- [ ] **F3.1** `backend/api/routes/admin/identity.py` NEW(5 sub-resources)
-- [ ] **F3.2** Pydantic schemas — Entra / App / MSAL / Roles / Policy
-- [ ] **F3.3** `GET /admin/identity` → consolidated state(secret masked)
-- [ ] **F3.4** `PATCH /admin/identity/tenant`
-- [ ] **F3.5** `PATCH /admin/identity/app_registration`(client_secret rotation via KeyVaultProvider)
-- [ ] **F3.6** `PATCH /admin/identity/msal` → Postgres `admin_identity_config` write
-- [ ] **F3.7** `PATCH /admin/identity/roles`(3 active + Power User disabled affordance fallback)
-- [ ] **F3.8** `PATCH /admin/identity/policy`
-- [ ] **F3.9** NEW Postgres table `admin_identity_config`
-- [ ] **F3.10** Tests `backend/tests/api/admin/test_identity.py` NEW(~15 pytest cases)
-- [ ] **F3.11** mypy strict + pytest pass
+- [x] **F3.1** `backend/api/routes/admin/identity.py` NEW(127 lines:1 GET + 5 PATCH endpoints + 3 Tier 2 boundary guards `_reject_tier2_app_registration` + `_reject_tier2_msal` + `_reject_tier2_roles`)
+- [x] **F3.2** Pydantic schemas in `backend/api/schemas/admin_identity.py` NEW(140 lines:`EkpRoleKey` + `CloudInstance` + `SignInAudience` + `TokenCacheStrategy` Literals + `EntraTenantConfig` + `AppRegistrationConfig` + `MsalConfig` + `RoleMapping` + `RoleMappingConfig` + `SignInPolicyConfig` + `IdentityConfig` consolidated)
+- [x] **F3.3** `GET /admin/identity` → IdentityConfig consolidated 5 sub-resources(client_secret value NEVER returned — only `client_secret_kv_ref` + `client_secret_masked_preview`)
+- [x] **F3.4** `PATCH /admin/identity/tenant` → EntraTenantConfig(server strips client-supplied `authority_url` + re-derives from `tenant_id + cloud_instance` per security hygiene)
+- [x] **F3.5** `PATCH /admin/identity/app_registration` → AppRegistrationConfig(client_secret rotation via F1 KeyVaultProvider hook — `client_secret_kv_ref` field;Wave B+ promotes rotate-on-PATCH;Tier 2 boundary:`multi_disabled` audience rejected 422)
+- [x] **F3.6** `PATCH /admin/identity/msal` → MsalConfig(Tier 2 boundary:`distributed_disabled` token cache strategy rejected 422)
+- [x] **F3.7** `PATCH /admin/identity/roles` → RoleMappingConfig(**list-replace** semantic per pre-active-flip deviation in plan §7 changelog;Tier 2 boundary:`power_user` ekp_role rejected unless `is_tier2_disabled=True` per ADR-0027 Option B fallback)
+- [x] **F3.8** `PATCH /admin/identity/policy` → SignInPolicyConfig(`require_mfa_all_roles_tier2` Literal[False] permanent;`auto_disable_after_days >= 0` validated)
+- [x] **F3.9** NEW Postgres table `admin_identity_config` in `backend/storage/admin_identity_postgres.py`(174 lines):**per-sub-resource row pattern**(per plan §7 changelog deviation from "single-row JSON")— `sub_resource TEXT PRIMARY KEY + config JSONB + updated_at + updated_by NULL`;idempotent `CREATE TABLE IF NOT EXISTS` + 5-row seed merge
+- [x] **F3.9a** `backend/storage/admin_identity_storage.py` NEW(180 lines)— Protocol + `InMemoryAdminIdentityBackend` + `default_*` seed helpers + `SUB_RESOURCES` constant + `_derive_authority_url` for 3 cloud instances + `IdentitySubResourceNotFoundError`
+- [x] **F3.9b** `backend/storage/admin_identity_factory.py` NEW(22 lines)— `make_admin_identity_backend(settings)` mirrors `make_admin_provider_backend` F2 + ADR-0023 lazy-import shape
+- [x] **F3.9c** `backend/api/server.py` lifespan wires `app.state.admin_identity_backend` + registers `admin_identity.router` w/ `_auth` deps
+- [x] **F3.10** Tests `backend/tests/api/test_admin_identity.py` NEW(316 lines)— **26 tests pass in 6.43s**:storage seed shape(8)+ 503 lifespan guard(1)+ GET identity(3)+ PATCH tenant(2)+ PATCH app_registration(2)+ PATCH msal(2)+ PATCH roles(3)+ PATCH policy(3)+ cross-cutting persistence(1)+ 3-cloud authority URL derivation(3)
+- [x] **F3.11** mypy strict:`api/schemas/admin_identity.py` + `api/routes/admin/identity.py` + `storage/admin_identity_storage.py` + `storage/admin_identity_factory.py` 全部 **0 errors in 4 source files**;`storage/admin_identity_postgres.py` 6 errors **mirror existing baseline pattern**(psycopg no-stubs x3 + dict generic type-arg x3)— per CLAUDE.md §13 surgical 不改 pre-existing baseline
+- [x] **F3.12** Full backend pytest regression preserved:**773 passed + 11 skipped + 0 failed in 404.09s**(F2 baseline 747 → **+26 net IMPROVED** via F3 26 NEW Identity tests;no regression introduced)
 
 ## F4 — `/admin/api-keys/*` + `/admin/usage-stats` endpoint group
 

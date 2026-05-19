@@ -40,6 +40,7 @@ from api.routes import (
     eval as eval_routes,
 )
 from api.routes.admin import connections as admin_connections
+from api.routes.admin import identity as admin_identity
 from generation.crag import CragGrader, CragLoop
 from generation.synthesizer import Synthesizer
 from indexing.populate import IndexPopulator  # noqa: E402 — truststore-after-imports
@@ -50,6 +51,7 @@ from retrieval.hybrid import HybridSearcher
 from retrieval.reranker.base import Reranker
 from retrieval.reranker.factory import make_reranker
 from retrieval.retrieval_engine import RetrievalEngine
+from storage.admin_identity_factory import make_admin_identity_backend
 from storage.admin_provider_factory import make_admin_provider_backend
 from storage.key_vault_factory import make_key_vault_provider
 from storage.settings import get_settings
@@ -86,6 +88,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # make_kb_backend pattern; no startup cost when neither is configured.
     app.state.key_vault_provider = make_key_vault_provider(settings)
     app.state.admin_provider_backend = make_admin_provider_backend(settings)
+    # F3 — admin identity config backend (5 sub-resources per ADR-0026 Option B).
+    app.state.admin_identity_backend = make_admin_identity_backend(settings)
 
     if settings.azure_openai_api_key and settings.azure_search_admin_key:
         embedder = AzureOpenAIEmbedder(
@@ -269,3 +273,5 @@ app.include_router(screenshots.router, tags=["screenshots"], dependencies=_auth)
 app.include_router(observability.router, tags=["observability"], dependencies=_auth)
 # W24-wave-c1 F2 — /admin/connections/* per ADR-0026 Option B.
 app.include_router(admin_connections.router, tags=["admin"], dependencies=_auth)
+# W24-wave-c1 F3 — /admin/identity/* per ADR-0026 Option B.
+app.include_router(admin_identity.router, tags=["admin"], dependencies=_auth)
