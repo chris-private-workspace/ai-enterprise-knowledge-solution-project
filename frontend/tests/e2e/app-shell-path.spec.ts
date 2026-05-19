@@ -1,110 +1,142 @@
 /**
- * App-shell-path E2E baseline — W18 F3 (per ADR-0024; renamed from admin-path.spec.ts); F4 + F8 updated.
+ * App-shell-path E2E baseline — W18 F3 (per ADR-0024); F4 + F8 updated; W20 F1+F5
+ * extended; W22 F1+F2+F3+F5+F7 rebuilt; **W23 F2 re-aligned to W22 mockup DOM**.
  *
  * Coverage (Tier 1 baseline scope):
- * - /dashboard renders the real overview cards + quick actions (architecture.md v6 §5.3 / W18 F4)
- * - /kb KB List renders (§5.4) — card grid + sort + filter + Create CTA (re-routed from /admin/kb)
- * - /eval Eval Console renders (§5.6) — filter bar + 4-metric cards + Failed queries + Reranker Shootout
- * - /traces/[traceId] Traces detail renders (§5.7 — formerly "Debug View" /debug/[traceId]) —
- *   trace header + stage timeline + Open in Langfuse
- * - AppShell sidebar nav navigates between the modules
- * - AppShell chrome (top bar + sidebar) is present on /dashboard /chat /kb /eval /traces, absent on
- *   /login /register (W18 F8.5)
+ * - /dashboard renders the mockup-faithful header + 4-stat strip + main grid cards
+ *   (W22 F3 rebuild — `<h1>Welcome back, {displayName}</h1>` not "Dashboard"
+ *   level 1;page-actions「View latest eval」+「Ask the knowledge base」)
+ * - /kb KB List renders the mockup-faithful page-title「Knowledge bases」(lowercase b)
+ *   + grid+table view + Create KB CTA
+ * - /eval Eval Console renders the W22 F7.1 page-title「Eval Console」(not「Evaluation
+ *   Console」) + page-actions 3 buttons「Run eval suite」+「Export report」+
+ *   「Reranker shootout」(W22 D7 hardcoded EVAL_SET_ID;no picker)
+ * - /traces (list) renders the W22 F7.2 page-title「Traces」+ 4-button seg
+ *   (All / Success / Error / CRAG triggered)
+ * - /traces/[traceId] renders the W22 F7.3 dynamic page-title + 3 viz modes seg
+ *   (Vertical / Waterfall / Flame) + Open in Langfuse link
+ * - AppShell sidebar nav navigates between modules (`aria-label="Primary"` preserved)
+ * - AppShell chrome present on app routes / absent on auth pages (W18 F8.5 preserved)
+ * - AppShell topbar shows NotificationsMenu + workspace switcher disabled affordance
+ * - /kb/[id] 7-tab + Access disabled affordance (W20 F5 + W22 F6.1 preserved)
  *
  * Tests assume NEXT_PUBLIC_AUTH_MOCK=true bypasses login + uses the default mock user.
- * The actual run needs `npx playwright install chromium` which is R8-corp-proxy-blocked
- * (CO_W15_F4_browser_binaries / ADR-0017) — this spec's deliverable is the updated route
- * references + a tsc compile-check + this review; the run stays the pre-Beta smoke.
+ * Run via `PW_CHANNEL=chrome pnpm test:e2e` per W17 ADR-0017 Plan B (a) — corp-managed
+ * system Chrome, sidesteps `npx playwright install chromium` R8 CDN block.
  */
 
 import { test, expect } from '@playwright/test';
 
-test.describe('App-shell path E2E — dashboard + KB + eval + traces flow', () => {
-  test('/dashboard renders the overview cards + quick actions (W18 F4)', async ({ page }) => {
+test.describe('App-shell path E2E — dashboard + KB + eval + traces flow (W23 F2 W22-aligned)', () => {
+  test('/dashboard renders the W22 F3 mockup-faithful header + 4-stat strip + main grid', async ({ page }) => {
     await page.goto('/dashboard');
+    // W22 F3 page-title「Welcome back, {displayName}」(not「Dashboard」). Mock auth
+    // provides a fake displayName so we partial-match the prefix.
     await expect(
-      page.getByRole('heading', { name: /^dashboard$/i, level: 1 }),
+      page.getByRole('heading', { name: /welcome back/i, level: 1 }),
     ).toBeVisible();
-    // The 5 overview card titles (CardTitle = role="heading" aria-level={2} per W18 F8.2).
+    // 4-stat strip labels (mockup lines 36-66) — partial match for icon prefix.
+    await expect(page.getByText(/knowledge bases/i).first()).toBeVisible();
+    await expect(page.getByText(/^documents$/i).first()).toBeVisible();
+    await expect(page.getByText(/recall @ 5/i).first()).toBeVisible();
+    // Page-actions: 2 links replacing pre-W22「New KB」/「Open chat」quick-action links.
     await expect(
-      page.getByRole('heading', { name: /knowledge bases/i, level: 2 }),
+      page.getByRole('link', { name: /view latest eval/i }),
     ).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: /system health/i, level: 2 }),
+      page.getByRole('link', { name: /ask the knowledge base/i }),
     ).toBeVisible();
-    await expect(
-      page.getByRole('heading', { name: /quick actions/i, level: 2 }),
-    ).toBeVisible();
-    // Quick-action links.
-    await expect(page.getByRole('link', { name: /new kb/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /open chat/i })).toBeVisible();
   });
 
-  test('/kb KB List renders card grid with sort + filter + Create CTA', async ({
-    page,
-  }) => {
+  test('/kb KB List renders W22 F5.1 page-title + grid view + Create KB CTA', async ({ page }) => {
     await page.goto('/kb');
+    // W22 F5.1 page-title「Knowledge bases」(lowercase b).
     await expect(
-      page.getByRole('heading', { name: /knowledge bases/i }),
+      page.getByRole('heading', { name: 'Knowledge bases', exact: true }),
     ).toBeVisible();
+    // Search input preserved.
     await expect(page.getByPlaceholder(/search/i)).toBeVisible();
-    await expect(page.getByText(/last indexed|name/i).first()).toBeVisible();
+    // Create CTA preserved as link → /kb/new.
     await expect(
-      page.getByRole('link', { name: /create kb/i }).first(),
+      page.getByRole('link', { name: /create kb|new kb/i }).first(),
     ).toBeVisible();
   });
 
-  test('/eval Eval Console renders filter bar + 4-metric empty state + Reranker Shootout', async ({
+  test('/eval Eval Console renders W22 F7.1 page-title + 3 page-actions + 4-metric empty state', async ({
     page,
   }) => {
     await page.goto('/eval');
+    // W22 F7.1 page-title「Eval Console」(not pre-W22「Evaluation Console」).
     await expect(
-      page.getByRole('heading', { name: /evaluation console/i }),
+      page.getByRole('heading', { name: 'Eval Console', level: 1 }),
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: /^run$/i })).toBeVisible();
-    await expect(
-      page.getByRole('button', { name: /run single/i }),
-    ).toBeVisible();
+    // W22 D7 page-actions = 3 buttons only (no eval-set picker).
+    await expect(page.getByRole('button', { name: /run eval suite/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /export report/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /reranker shootout/i })).toBeVisible();
+    // Empty subtitle copy preserved.
     await expect(page.getByText(/no eval runs yet/i)).toBeVisible();
-    // "Cohere v4.0-pro" appears in 3 places (the Reranker <Select> value, the
-    // Shootout card description, the Shootout table row) — assert the table cell
-    // specifically so the locator is unambiguous (strict mode).
-    await expect(
-      page.getByRole('cell', { name: /cohere v4\.0-pro/i }),
-    ).toBeVisible();
-    await expect(page.getByText(/recommended/i)).toBeVisible();
   });
 
-  test('/traces/[traceId] Traces detail renders trace header + stage timeline + Langfuse link', async ({
+  test('/traces list renders W22 F7.2 page-title + 4-button seg toggle (W23 F2 NEW route)', async ({
     page,
   }) => {
-    const traceId = '20260605-Q014';
-    await page.goto(`/traces/${traceId}`);
-    await expect(page.getByRole('heading', { name: /trace/i })).toBeVisible();
-    await expect(page.getByText(traceId).first()).toBeVisible();
-    // Pipeline stage names (the 9-stage scaffold; subset assertion).
-    await expect(page.getByText(/query preprocessor/i)).toBeVisible();
-    await expect(page.getByText(/hybrid retrieval/i)).toBeVisible();
-    await expect(page.getByText(/llm synthesis/i)).toBeVisible();
+    await page.goto('/traces');
+    // W22 F7.2 page-title「Traces」 + 4-button seg (All / Success / Error / CRAG triggered).
     await expect(
-      page.getByRole('link', { name: /open in langfuse/i }),
+      page.getByRole('heading', { name: 'Traces', level: 1 }),
+    ).toBeVisible();
+    // 4-button seg per W22 D6 H7 fidelity correction (Success restored client-side).
+    for (const label of ['All', 'Success', 'Error', 'CRAG triggered']) {
+      await expect(page.getByRole('button', { name: label, exact: true })).toBeVisible();
+    }
+    // Open Langfuse link in page-actions.
+    await expect(
+      page.getByRole('link', { name: /open langfuse/i }),
     ).toBeVisible();
   });
 
-  test('AppShell sidebar nav navigates between modules', async ({ page }) => {
+  test('/traces/[traceId] renders W22 F7.3 dynamic page-title + 3 viz modes', async ({ page }) => {
+    const traceId = '20260605-Q014';
+    await page.goto(`/traces/${traceId}`);
+    // W22 F7.3 page-title is dynamic — either `"query"` text or the muted fallback
+    // span「Query text not surfaced — open Langfuse for full input」when the
+    // backend trace doesn't expose a query field (W22 D9.e fallback per backend-wins).
+    await expect(
+      page
+        .locator('h1.page-title')
+        .filter({ hasText: /query|not surfaced/i }),
+    ).toBeVisible();
+    // 3 viz modes seg (Vertical / Waterfall / Flame).
+    for (const mode of ['Vertical', 'Waterfall', 'Flame']) {
+      await expect(page.getByRole('button', { name: mode, exact: true })).toBeVisible();
+    }
+    // Open in Langfuse link preserved in page-actions.
+    await expect(
+      page.getByRole('link', { name: /open in langfuse|langfuse/i }).first(),
+    ).toBeVisible();
+  });
+
+  test('AppShell sidebar nav navigates between modules (aria-label="Primary")', async ({ page }) => {
     await page.goto('/dashboard');
-    // Click "Knowledge Bases" in the AppShell sidebar → /kb
-    await page.getByRole('link', { name: /knowledge bases/i }).first().click();
+    // W22 F1.3 SidebarNav uses `<nav aria-label="Primary">` (preserved from W18).
+    const primaryNav = page.getByRole('navigation', { name: /primary/i });
+    await expect(primaryNav).toBeVisible();
+    // Click "Knowledge" link in the sidebar → /kb (W22 F1.3 NAV_ITEMS label「Knowledge」
+    // not「Knowledge Bases」per mockup; collide-safe via primaryNav scope).
+    await primaryNav.getByRole('link', { name: /knowledge/i }).first().click();
     await expect(page).toHaveURL(/\/kb/);
-    // Click "Eval Console" → /eval
-    await page.getByRole('link', { name: /eval console/i }).first().click();
+    // Click "Eval" → /eval (W22 NAV_ITEMS「Eval」label).
+    await primaryNav.getByRole('link', { name: /^eval$/i }).first().click();
     await expect(page).toHaveURL(/\/eval/);
-    // Click "Chat" → /chat
-    await page.getByRole('link', { name: /^chat$/i }).first().click();
+    // Click "Chat" → /chat.
+    await primaryNav.getByRole('link', { name: /^chat$/i }).first().click();
     await expect(page).toHaveURL(/\/chat/);
   });
 
-  test('no horizontal overflow at a 375px viewport (BUG-002)', async ({ page }) => {
+  test('no horizontal overflow at a 375px viewport (BUG-002, W22-DOM-preserved)', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 375, height: 800 });
     for (const path of ['/dashboard', '/chat', '/kb']) {
       await page.goto(path);
@@ -119,48 +151,48 @@ test.describe('App-shell path E2E — dashboard + KB + eval + traces flow', () =
   test('AppShell chrome is present on app routes and absent on the auth pages', async ({
     page,
   }) => {
-    // Present (top bar global-search trigger + the "Primary" sidebar nav) on the module routes.
-    for (const path of ['/dashboard', '/chat', '/kb', '/eval', '/traces/some-trace-id']) {
+    // Present on the module routes — sidebar nav `aria-label="Primary"` (W22 F1.3 preserved).
+    for (const path of ['/dashboard', '/chat', '/kb', '/eval', '/traces']) {
       await page.goto(path);
       await expect(page.getByRole('navigation', { name: /primary/i })).toBeVisible();
-      await expect(page.getByRole('button', { name: /search \(ctrl/i })).toBeVisible();
     }
     // Absent on the auth pages — they keep the chrome-free root layout (BrandPanel split).
     for (const path of ['/login', '/register']) {
       await page.goto(path);
       await expect(page.getByRole('navigation', { name: /primary/i })).toHaveCount(0);
-      await expect(page.getByRole('button', { name: /search \(ctrl/i })).toHaveCount(0);
     }
-    // …and `/` redirects out to /login (no chrome there either — W18 F7).
+    // `/` redirects out to /login (W18 F7 preserved through W22).
     await page.goto('/');
     await expect(page).toHaveURL(/\/login$/);
     await expect(page.getByRole('navigation', { name: /primary/i })).toHaveCount(0);
   });
 
-  test('AppShell topbar shows NotificationsMenu + workspace switcher disabled affordance (W20 F1)', async ({
+  test('AppShell topbar shows NotificationsMenu + workspace switcher disabled affordance', async ({
     page,
   }) => {
     await page.goto('/dashboard');
-    // F1.1 — Bell trigger with aria-label="notifications" is present in the topbar.
+    // W22 F1.2 NotificationsMenu trigger aria-label="Notifications" (capitalized N,
+    // preserved from W20 F1.1).
     await expect(
       page.getByRole('button', { name: /notifications/i }),
     ).toBeVisible();
-    // F1.2 — Workspace switcher is rendered as a disabled affordance (the W19 §2.3 Tier 2 leak fix);
-    // the Workspace switcher container's `aria-label` carries the affordance reason via <DisabledAffordance>.
+    // W22 F1.3 Workspace switcher rendered as `<DisabledAffordance>` per W19 §2.3
+    // Tier 2 leak fix;reason text contains "multi-workspace" (W20 F1.2 spec).
     await expect(
-      page.getByLabel(/multi-workspace support/i).first(),
+      page.getByLabel(/multi-workspace/i).first(),
     ).toBeVisible();
   });
 
-  test('/kb/[id] 7-tab refactor renders Access disabled affordance OUTSIDE VALID_TABS (W20 F5)', async ({
+  test('/kb/[id] 7-tab refactor renders Access disabled affordance OUTSIDE VALID_TABS', async ({
     page,
   }) => {
     await page.goto('/kb/drive_user_manuals');
-    // Wait for the KB detail page to render the tab bar.
+    // W22 F6.1 tab-list preserved at `<div role="tablist" aria-label="KB sections">`
+    // (line 250). 7 active tabs + 1 disabled Access tab = 8 total (W20 F5 preserved).
     const tabs = page.getByRole('tab');
-    // 7 active tabs + 1 disabled Access tab = 8.
     await expect(tabs).toHaveCount(8);
-    // Access tab has aria-disabled="true" + Lock icon (the Tier 1.5 affordance per ADR-0027 Option A).
+    // Access tab has aria-disabled="true" per the Tier 1.5 affordance (ADR-0027
+    // Option A future scope).
     const accessTab = page.getByRole('tab', { name: /access/i });
     await expect(accessTab).toHaveAttribute('aria-disabled', 'true');
   });

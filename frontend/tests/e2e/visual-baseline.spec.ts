@@ -1,101 +1,106 @@
 /**
- * Visual baseline pixel diff harness — W15 D4 F4.4 deliverable; W18 F7 updated.
+ * Visual baseline pixel diff harness — W15 D4 F4.4 deliverable; W18 F7 updated;
+ * W20 F8.5 extended; W22 rebuilt 15 routes; **W23 F2.3 baseline RE-CAPTURE**.
  *
- * Captures baseline screenshots for the representative views per Tier 1 scope:
- * - V8 Login (`/login`)
- * - V9 Register Step 1 (`/register`)
- * - Dashboard (`/dashboard` — real overview cards landed W18 F4; re-baseline on visual approval)
- * - V5 Eval Console (`/eval`)
+ * Captures baseline screenshots for representative views per Tier 1 scope:
+ * - V8 Login (`/login`) — W22 F2.1 rebuild
+ * - V9 Register Step 1 (`/register`) — W22 F2.2 rebuild
+ * - Dashboard (`/dashboard`) — W22 F3 rebuild
+ * - V5 Eval Console (`/eval`) — W22 F7.1 rebuild
+ * - /kb/new wizard Step 1 (Identity) — W22 F5.2 rebuild
+ * - Chat advanced surfaces (`/chat`) — W22 F4 rebuild
  *
- * (V7 Landing's `/` baseline was dropped — the Landing page was REMOVED per
- * ADR-0024 W18 F7; `/` now just redirects to `/login`, already covered above.)
+ * V7 Landing's `/` baseline was dropped — Landing page REMOVED per ADR-0024.
  *
  * V1 Chat / V3 KB List / V4 KB Detail / V6 Traces = covered by golden-path +
  * app-shell-path E2E render assertions (interactive flow tests). Pixel diff is
  * gated to stable layout views — empty state baselines avoid dynamic content
- * jitter (KB IDs / timestamps / failed_documents arrays would mask out).
+ * jitter.
  *
  * First run captures baseline:
- *   pnpm test:e2e:update-snapshots
+ *   PW_CHANNEL=chrome pnpm test:e2e:update-snapshots
  * Subsequent runs diff against baseline (1% maxDiffPixelRatio per
  * playwright.config.ts):
- *   pnpm test:e2e
+ *   PW_CHANNEL=chrome pnpm test:e2e
  *
  * Baseline screenshots stored next to this file under:
  *   tests/e2e/visual-baseline.spec.ts-snapshots/
- * Per Playwright convention (Karpathy §1.2 simplicity — follow tool defaults
- * vs custom path; plan F4.4 literal "frontend/tests/e2e/screenshots/baseline/"
- * deviation noted in §7 changelog (D4) — Playwright auto-organizes snapshots
- * next to test file).
+ *
+ * W23 F2.3 baseline re-capture: pre-W22 baselines stale across 15 W22 rebuilt
+ * routes (TopBar / Sidebar / typography / spacing all changed at CSS-first
+ * pivot baseline). All 6 baselines below re-capture with new W22 mockup-faithful
+ * DOM. Selectors re-aligned per W22 F2/F3/F5/F7 rebuild commits.
  */
 
 import { test, expect } from '@playwright/test';
 
-test.describe('Visual baseline — pixel diff harness', () => {
-  test('V8 Login baseline', async ({ page }) => {
+test.describe('Visual baseline — pixel diff harness (W23 F2.3 W22-aligned)', () => {
+  test('V8 Login baseline (W22 F2.1)', async ({ page }) => {
     await page.goto('/login');
-    await expect(page.getByLabel(/email/i)).toBeVisible();
+    // W22 F2.1 page-title「Welcome back」 + work email label preserved.
+    await expect(page.getByLabel(/work email/i)).toBeVisible();
     await expect(page).toHaveScreenshot('v8-login.png', {
       fullPage: true,
     });
   });
 
-  test('V9 Register Step 1 baseline', async ({ page }) => {
+  test('V9 Register Step 1 baseline (W22 F2.2)', async ({ page }) => {
     await page.goto('/register');
-    await expect(page.getByLabel(/email/i)).toBeVisible();
+    // W22 F2.2 page-title「Create your account」 + full name field first.
+    await expect(page.getByLabel(/full name/i)).toBeVisible();
     await expect(page).toHaveScreenshot('v9-register-step1.png', {
       fullPage: true,
     });
   });
 
-  test('Dashboard baseline (W18 F4 overview cards)', async ({ page }) => {
+  test('Dashboard baseline (W22 F3 rebuild)', async ({ page }) => {
     await page.goto('/dashboard');
+    // W22 F3 page-title「Welcome back, {displayName}」(not pre-W22「Dashboard」).
     await expect(
-      page.getByRole('heading', { name: /^dashboard$/i, level: 1 }),
+      page.getByRole('heading', { name: /welcome back/i, level: 1 }),
     ).toBeVisible();
-    // The F4 cards' data loads async (GET /kb + GET /health); mask dynamic content
+    // F3 cards' data loads async (GET /kb + GET /health); mask dynamic content
     // (mono-font ids / timestamps) so the baseline doesn't jitter on counts/uptime.
     await expect(page).toHaveScreenshot('dashboard.png', {
       fullPage: true,
-      mask: [page.locator('time'), page.locator('.font-mono')],
+      mask: [page.locator('time'), page.locator('.mono')],
     });
   });
 
-  test('V5 Eval Console baseline (empty state)', async ({ page }) => {
+  test('V5 Eval Console baseline (W22 F7.1 empty state)', async ({ page }) => {
     await page.goto('/eval');
+    // W22 F7.1 page-title「Eval Console」 (not pre-W22「Evaluation Console」).
     await expect(
-      page.getByRole('heading', { name: /evaluation console/i }),
+      page.getByRole('heading', { name: 'Eval Console', level: 1 }),
     ).toBeVisible();
-    // Empty 4-metric state — captured before any Run click (the backend
-    // /eval/run is real since W16 F5.4 / W17 F3; CH-002 F3 wired the page).
+    // Empty 4-metric state — captured before any Run click.
     await expect(page.getByText(/no eval runs yet/i)).toBeVisible();
     await expect(page).toHaveScreenshot('v5-eval-console.png', {
       fullPage: true,
     });
   });
 
-  // W20 F8.5 NEW snapshots — first user run via `PW_CHANNEL=chrome pnpm test:e2e:update-snapshots`
-  // captures the baseline file under `tests/e2e/visual-baseline.spec.ts-snapshots/`.
-
-  test('/kb/new wizard Step 1 baseline (W20 F4.4 — 5-step wizard)', async ({ page }) => {
+  test('/kb/new wizard Step 1 baseline (W22 F5.2 — 5-step Identity)', async ({ page }) => {
     await page.goto('/kb/new');
-    await expect(page.getByRole('heading', { name: 'Source', level: 2 })).toBeVisible();
+    // W22 F5.2 Step 1 card heading「KB identity」(h3 level, not pre-W22「Source」h2).
+    await expect(
+      page.getByRole('heading', { name: /kb identity/i, level: 3 }),
+    ).toBeVisible();
     await expect(page).toHaveScreenshot('kb-new-wizard-step1.png', {
       fullPage: true,
     });
   });
 
-  test('Chat advanced surfaces baseline (W20 F3b — Conversation History + citation modes)', async ({
+  test('Chat advanced surfaces baseline (W22 F4 — Conversations + ChatHeader)', async ({
     page,
   }) => {
     await page.goto('/chat');
-    await expect(
-      page.getByRole('heading', { name: /^conversations$/i }),
-    ).toBeVisible();
-    // Mask the dynamic timestamps + the empty-state copy that's data-driven.
+    // W22 F4 Conversations sidebar — span element not heading (line 577).
+    await expect(page.getByText(/^conversations$/i).first()).toBeVisible();
+    // Mask dynamic timestamps + mono spans (KB IDs / chunk counts).
     await expect(page).toHaveScreenshot('chat-w20-f3b.png', {
       fullPage: true,
-      mask: [page.locator('time'), page.locator('.font-mono')],
+      mask: [page.locator('time'), page.locator('.mono')],
     });
   });
 });

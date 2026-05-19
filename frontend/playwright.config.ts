@@ -47,7 +47,11 @@ const PW_VIDEO = PW_CHANNEL ? ('off' as const) : ('retain-on-failure' as const);
 
 export default defineConfig({
   testDir: './tests/e2e',
-  timeout: 30_000,
+  // W23 F2: 30s timeout 喺 OneDrive-synced repo + Next.js dev server first-route
+  // compile 經常 timeout(Windows OneDrive filesystem sync delay + dev mode
+  // route-on-demand build = 30-40s per cold route)。Lift to 60s preserves
+  // CI Beta hardening signal while allowing dev cold-start.
+  timeout: 60_000,
   expect: {
     timeout: 5_000,
     toHaveScreenshot: {
