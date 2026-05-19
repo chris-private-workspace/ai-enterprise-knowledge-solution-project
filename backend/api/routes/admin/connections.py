@@ -39,6 +39,7 @@ from storage.admin_provider_storage import (
     AdminProviderConfigBackend,
     ProviderNotFoundError,
 )
+from storage.audit_log_storage import AuditLogBackend
 from storage.key_vault import KeyVaultProvider, SecretNotFoundError
 from storage.settings import Settings, get_settings
 
@@ -63,6 +64,11 @@ def _get_key_vault(request: Request) -> KeyVaultProvider:
             detail="key_vault_provider not initialized — check lifespan logs",
         )
     return provider  # type: ignore[no-any-return]
+
+
+def _get_audit_log(request: Request) -> AuditLogBackend | None:
+    """Audit log is optional — endpoint stays usable when unwired (F2 tests pass)."""
+    return getattr(request.app.state, "audit_log_backend", None)
 
 
 def _mask_secret(value: str) -> str:
@@ -218,9 +224,18 @@ async def update_connection(
 ) -> ProviderConfig:
     backend = _get_backend(request)
     try:
-        return await backend.update(provider_id, patch)
+        updated = await backend.update(provider_id, patch)
     except ProviderNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    audit = _get_audit_log(request)
+    if audit is not None:
+        await audit.append(
+            actor=None,
+            action="connection_patch",
+            resource=f"admin_provider_configs/{provider_id}",
+            payload=patch.model_dump(exclude_unset=True),
+        )
+    return updated
 
 
 @router.post("/{provider_id}/test", response_model=TestConnectionResult)
@@ -240,6 +255,14 @@ async def test_connection(provider_id: str, request: Request) -> TestConnectionR
         detail=result.detail,
         tested_at=datetime.now(timezone.utc),
     )
+    audit = _get_audit_log(request)
+    if audit is not None:
+        await audit.append(
+            actor=None,
+            action="connection_test",
+            resource=f"admin_provider_configs/{provider_id}",
+            payload={"status": test_status, "detail": result.detail},
+        )
     return result
 
 
@@ -277,6 +300,14 @@ async def rotate_secret(provider_id: str, request: Request) -> RotateSecretResul
     await backend.update_rotation_timestamp(
         provider_id, rotated_at=rotated_at, secret_masked_preview=masked
     )
+    audit = _get_audit_log(request)
+    if audit is not None:
+        await audit.append(
+            actor=None,
+            action="connection_rotate_secret",
+            resource=f"admin_provider_configs/{provider_id}",
+            payload={"kv_ref": cfg.secret_kv_ref, "masked_preview": masked},
+        )
     return RotateSecretResult(
         provider_id=provider_id,
         last_rotated_at=rotated_at,

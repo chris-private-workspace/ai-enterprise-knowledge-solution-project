@@ -42,6 +42,9 @@ class ProviderDeployment(BaseModel):
     model_family: str = Field(..., description="E.g. 'embedding' / 'chat' / 'rerank'.")
     tpm_limit: int | None = None
     rpm_limit: int | None = None
+    # F4 — cost-spike alert threshold (mockup line 760 "alerts fire at 80% sustained").
+    # JSONB-backed in Postgres so existing F2 rows roundtrip without migration.
+    alert_threshold_pct: int = Field(default=80, ge=50, le=95)
 
 
 class ProviderConfig(BaseModel):

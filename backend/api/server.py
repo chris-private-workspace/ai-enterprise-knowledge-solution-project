@@ -39,8 +39,10 @@ from api.routes import (
 from api.routes import (
     eval as eval_routes,
 )
+from api.routes.admin import api_keys as admin_api_keys
 from api.routes.admin import connections as admin_connections
 from api.routes.admin import identity as admin_identity
+from api.routes.admin import usage_stats as admin_usage_stats
 from generation.crag import CragGrader, CragLoop
 from generation.synthesizer import Synthesizer
 from indexing.populate import IndexPopulator  # noqa: E402 — truststore-after-imports
@@ -53,6 +55,7 @@ from retrieval.reranker.factory import make_reranker
 from retrieval.retrieval_engine import RetrievalEngine
 from storage.admin_identity_factory import make_admin_identity_backend
 from storage.admin_provider_factory import make_admin_provider_backend
+from storage.audit_log_factory import make_audit_log_backend
 from storage.key_vault_factory import make_key_vault_provider
 from storage.settings import get_settings
 
@@ -90,6 +93,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.admin_provider_backend = make_admin_provider_backend(settings)
     # F3 — admin identity config backend (5 sub-resources per ADR-0026 Option B).
     app.state.admin_identity_backend = make_admin_identity_backend(settings)
+    # F4 — audit log backend (write-mostly Wave C1; read endpoint = Wave C2 / F5).
+    app.state.audit_log_backend = make_audit_log_backend(settings)
 
     if settings.azure_openai_api_key and settings.azure_search_admin_key:
         embedder = AzureOpenAIEmbedder(
@@ -275,3 +280,6 @@ app.include_router(observability.router, tags=["observability"], dependencies=_a
 app.include_router(admin_connections.router, tags=["admin"], dependencies=_auth)
 # W24-wave-c1 F3 — /admin/identity/* per ADR-0026 Option B.
 app.include_router(admin_identity.router, tags=["admin"], dependencies=_auth)
+# W24-wave-c1 F4 — /admin/usage-stats + /admin/api-keys/* per ADR-0026 Option B.
+app.include_router(admin_usage_stats.router, tags=["admin"], dependencies=_auth)
+app.include_router(admin_api_keys.router, tags=["admin"], dependencies=_auth)

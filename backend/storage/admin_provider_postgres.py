@@ -209,3 +209,37 @@ class PostgresAdminProviderBackend:
                 if row is None:
                     raise ProviderNotFoundError(f"provider {provider_id!r} not found")
                 return _row_to_config(row)
+
+    async def update_deployment_alert_threshold(
+        self,
+        provider_id: str,
+        deployment_id: str,
+        *,
+        alert_threshold_pct: int,
+    ) -> ProviderConfig:
+        current = await self.get(provider_id)
+        new_deployments = []
+        found = False
+        for d in current.deployments:
+            if d.deployment_id == deployment_id:
+                new_deployments.append(d.model_copy(update={"alert_threshold_pct": alert_threshold_pct}))
+                found = True
+            else:
+                new_deployments.append(d)
+        if not found:
+            raise ProviderNotFoundError(
+                f"deployment {deployment_id!r} not found in provider {provider_id!r}"
+            )
+        new_json = Jsonb([d.model_dump(mode="json") for d in new_deployments])
+        async with await psycopg.AsyncConnection.connect(self._dsn, row_factory=dict_row) as conn:
+            await self._ensure_schema_and_seed(conn)
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    f"UPDATE {_TABLE} SET deployments = %s, updated_at = NOW() "
+                    f"WHERE provider_id = %s RETURNING {_COLS}",
+                    (new_json, provider_id),
+                )
+                row = await cur.fetchone()
+                if row is None:
+                    raise ProviderNotFoundError(f"provider {provider_id!r} not found")
+                return _row_to_config(row)

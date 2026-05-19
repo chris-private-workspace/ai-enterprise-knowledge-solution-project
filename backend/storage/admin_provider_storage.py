@@ -213,6 +213,14 @@ class AdminProviderConfigBackend(Protocol):
         secret_masked_preview: str,
     ) -> ProviderConfig: ...
 
+    async def update_deployment_alert_threshold(
+        self,
+        provider_id: str,
+        deployment_id: str,
+        *,
+        alert_threshold_pct: int,
+    ) -> ProviderConfig: ...
+
 
 # ---------- InMemory impl ---------------------------------------------------
 
@@ -281,5 +289,29 @@ class InMemoryAdminProviderBackend:
                 "updated_at": _now(),
             }
         )
+        self._configs[provider_id] = updated
+        return updated
+
+    async def update_deployment_alert_threshold(
+        self,
+        provider_id: str,
+        deployment_id: str,
+        *,
+        alert_threshold_pct: int,
+    ) -> ProviderConfig:
+        current = await self.get(provider_id)
+        new_deployments = []
+        found = False
+        for d in current.deployments:
+            if d.deployment_id == deployment_id:
+                new_deployments.append(d.model_copy(update={"alert_threshold_pct": alert_threshold_pct}))
+                found = True
+            else:
+                new_deployments.append(d)
+        if not found:
+            raise ProviderNotFoundError(
+                f"deployment {deployment_id!r} not found in provider {provider_id!r}"
+            )
+        updated = current.model_copy(update={"deployments": new_deployments, "updated_at": _now()})
         self._configs[provider_id] = updated
         return updated

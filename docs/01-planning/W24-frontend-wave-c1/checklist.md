@@ -67,14 +67,16 @@ last_updated: 2026-05-19  # F3 active-flip → F3.1-F3.11 complete
 
 ## F4 — `/admin/api-keys/*` + `/admin/usage-stats` endpoint group
 
-- [ ] **F4.1** `backend/api/routes/admin/api_keys.py` + `usage_stats.py` NEW
-- [ ] **F4.2** `GET /admin/usage-stats` → 4-stat strip + per-provider TPM/RPM(reads realtime_cost.py)
-- [ ] **F4.3** `GET /admin/api-keys/outgoing` → list of per-provider quotas
-- [ ] **F4.4** `PATCH /admin/api-keys/outgoing/{provider_id}` → quota config update
-- [ ] **F4.5** `GET /admin/api-keys/incoming` → 永遠 `{enabled: false}` disabled affordance shape
-- [ ] **F4.6** Tests NEW(~12 pytest cases)
-- [ ] **F4.7** mypy strict + pytest pass
-- [ ] **F4.8** `audit_log` row writes preview(Postgres table NEW additive — Tier 2 expansion via ADR-0027 Wave C2)
+- [x] **F4.1** `backend/api/routes/admin/api_keys.py`(196 lines)+ `usage_stats.py`(63 lines)NEW
+- [x] **F4.2** `GET /admin/usage-stats` → `UsageStats4Stat` shape(per pre-active-flip audit deviation — **adjusted to mockup 24h window**:`api_calls_24h` + `spend_today_usd` + `spend_cap_daily_usd` + `spend_pct_used` + `token_throughput_tpm` + `rate_limit_hits_24h`;Wave B+ wire real P95 + delta_pct + middleware 429 counter);reads `realtime_cost.fetch_realtime_usage(window_hours=24)` + `cost_estimator.total_projected_daily_usd()`
+- [x] **F4.3** `GET /admin/api-keys/outgoing` → `OutgoingQuotaList`(per-deployment flattened rows;F2 `azure_openai` 4 deployments + 6 non-deployment providers — skips `structlog` + `key_vault` config-only;total 10 rows in seed state)
+- [x] **F4.4** **Scope-adjusted per pre-active-flip audit**:`PATCH /admin/api-keys/outgoing/{provider_id}/{deployment_id}/alert-threshold` only(cost-spike alert % 50-95,default 80;mockup line 760 "alerts fire at 80% sustained")— TPM/RPM cap edit defer Wave B+(Azure portal authoritative);extends `ProviderDeployment.alert_threshold_pct` field additively + `AdminProviderConfigBackend.update_deployment_alert_threshold` Protocol method
+- [x] **F4.5** `GET /admin/api-keys/incoming` → `IncomingKeysDisabled` 永遠返 `{enabled: false, reason: "Tier 2 — Tier 1 access via web UI only (MSAL SSO)."}`(per ADR-0026 §Consequences + mockup line 815-818)
+- [x] **F4.6** Tests:`test_admin_api_keys.py`(213 lines / 16 tests)+ `test_admin_usage_stats.py`(110 lines / 4 tests)+ `test_audit_log.py`(85 lines / 6 tests)= **26 tests pass in 8.54s**(F3 baseline 26 → +26 IMPROVED via F4)
+- [x] **F4.7** mypy strict:F4 6 NEW non-Postgres files(schemas/admin_api_keys + schemas/audit_log + routes/admin/api_keys + routes/admin/usage_stats + storage/audit_log_storage + storage/audit_log_factory)0 errors;F2 + F3 routes re-check 0 errors post audit-log wiring;`storage/audit_log_postgres.py` 3 errors mirror F2/F3 + kb_management baseline(psycopg import-not-found per R8 / CO17)— per CLAUDE.md §13 surgical
+- [x] **F4.8** `audit_log` Postgres table NEW additive + 3-file split(`audit_log_storage.py` Protocol + InMemory + `audit_log_postgres.py` SERIAL PK / ORDER BY id DESC + `audit_log_factory.py` lazy-import);F2 PATCH/test/rotate-secret + F3 PATCH × 5 sub-resource + F4 PATCH alert-threshold 6 endpoint hooks emit `connection_patch` / `connection_test` / `connection_rotate_secret` / `identity_patch` / `api_keys_alert_threshold_patch` rows;**graceful no-op when `audit_log_backend` is None**(preserves F2/F3 test path);read endpoint defer F5/Wave C2 SettingsAccount surface
+- [x] **F4.9** `backend/api/server.py` lifespan wires `app.state.audit_log_backend` + registers `admin_usage_stats.router` + `admin_api_keys.router` w/ `_auth` deps
+- [x] **F4.10** Full backend pytest regression preserved:**799 passed + 11 skipped + 0 failed in 309s**(F3 baseline 773 → **+26 net IMPROVED** via F4 26 NEW tests;no regression introduced)
 
 ## F5 — Frontend `/settings` 6-tab `PageSettingsRich` rebuild
 

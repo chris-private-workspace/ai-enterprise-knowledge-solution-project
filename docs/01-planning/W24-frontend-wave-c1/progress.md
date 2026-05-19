@@ -230,6 +230,68 @@ Per W22 D1+D8+D9 plan-text contamination evidence,plan §2.F3 文本 grep audit 
 
 **End of W24-wave-c1 Day 1 cont F3(active — F1+F2+F3 done,F4 next)**
 
+---
+
+## Day 1 cont F4 — `/admin/api-keys/*` + `/admin/usage-stats`(2026-05-19)
+
+### Pre-active-flip 5-step grep audit recursive(per CLAUDE.md §10 R6)
+
+4 plan-text deviations surfaced upfront(NOT post-implementation):
+
+| Plan §2.F4 文本 | Audit 發現 | 處理 |
+|---|---|---|
+| **F4.2 4-stat = 7d window**("total_requests_7d + total_tokens_7d + total_cost_7d_usd + total_errors_7d")| Mockup line 749-752 actual:**24h window** —「API calls today + Spend today + Token throughput + Rate limit hits 24h」 | **Adjust** to mockup-aligned 24h shape with `api_calls_24h + spend_today_usd + spend_cap_daily_usd + spend_pct_used + token_throughput_tpm + rate_limit_hits_24h`;per CLAUDE.md §5.7 H7 fidelity |
+| **F4.3 quota config = per-provider** | Mockup shows **per-deployment**(Azure OpenAI 4 deployments + Cohere + ACS — 6 rows visible);F2 `ProviderDeployment.tpm_limit + rpm_limit` already schema-ready | **Adjust** `OutgoingQuotaList` 用 per-deployment flatten — F2 `azure_openai` 4 deployments + 6 non-deployment providers single row each = 10 rows in seed state |
+| **F4.4 PATCH quota config**(TPM + RPM cap)| Azure portal authoritative for deployment caps;EKP backend改 cap value 唔會 propagate;mockup line 760 actually shows **alert threshold 80%** as the editable knob | **Adjust** Wave C1 ship `PATCH /admin/api-keys/outgoing/{provider}/{deployment}/alert-threshold` only(50-95 range);TPM/RPM cap edit defer Wave B+(設計問題 — Azure portal level)。Add `alert_threshold_pct: int = 80` field to `ProviderDeployment`(additive,JSONB backward-compat)+ `update_deployment_alert_threshold` Protocol method |
+| **F4.8 audit_log writes** | Plan 講「Tier 1 starts writing rows for forward-compat retention」— need actual writes from F2/F3/F4 PATCH endpoints | **Add** `audit_log` 3-file split(storage + postgres + factory)+ wire F2 PATCH/test/rotate + F3 PATCH × 5 sub-resource + F4 PATCH alert-threshold 6 endpoint hooks emit rows;**graceful no-op when backend None** preserves F2/F3 test path;read endpoint defer F5/Wave C2 |
+
+### What worked(F4.1-F4.10)
+
+- **F2 + F3 pattern triple reuse**:audit_log 3-file split + factory + lazy-import 直接 mirror,single-pass implementation
+- **Tier 2 boundary via permanent `IncomingKeysDisabled`**(`enabled: Literal[False]` Pydantic permanent)— 同 H4 hard-codable boundary,UI consumer 直接 read 後 render `<DisabledAffordance>`
+- **Mockup-aligned 24h window** decision 一致對齊 mockup `Spend today` semantic(non-7d);Karpathy §1.2 "average over window" simplicity-first
+- **Cost-spike alert threshold** edit 設計 50-95 range(`alerts.py cost_spike` rule consume)+ `_derive_status` per-row helper return `Literal["within_limits", "warning", "over_limit"]`(`>= threshold_pct` = warning;`>= 100` = over_limit)
+- **Audit-log graceful degradation**(`audit_log_backend = None` 唔 break endpoint)— F2 + F3 既有 tests 一個都唔需要改 = surgical extension per CLAUDE.md §1.3
+
+### What didn't work / friction
+
+- **psycopg-bound mypy 3 baseline errors** persisted in `audit_log_postgres.py`(import-not-found x3)— 跟 F2 + F3 既有 baseline pattern,per §13 surgical defer CO17;**dict / tuple type-arg issues** fixed mid-iteration(initially `dict | None`,explicit type-args + `Any` cast 解決)
+- **`HTTP_422_UNPROCESSABLE_ENTITY` deprecation warnings** continued(F2 + F3 + F4 同一個 pattern;migration to `HTTP_422_UNPROCESSABLE_CONTENT` defer future starlette bump)
+
+### Surprises
+
+- **F2 audit-log wire 完全 backward-compat**:`getattr(request.app.state, "audit_log_backend", None)` 讀取確保 InMemory backend 無 set 時 `None` fallback;F2 27 既有 tests + F3 26 既有 tests 一個都唔 break
+- **`get_langfuse_client` monkeypatch pattern**:F4 usage stats tests 用 `monkeypatch.setattr("api.routes.admin.usage_stats.get_langfuse_client", lambda: None)` pattern 避免 real Langfuse SDK touch(同`observability/realtime_cost.py` 既有 test pattern 一致)
+
+### Decisions(captured for retro at F8)
+
+- **D4.1** `alert_threshold_pct` 加入 `ProviderDeployment` schema(JSONB backward-compat;F2 既存 `ProviderConfig` 都會 expose 呢個 field 但 read-only)— vs 另開 table 簡化 storage layer
+- **D4.2** `cap_tpm / cap_rpm` Wave C1 ship **read-only**(Azure portal authoritative);Wave B+ promote 視乎是否需要 EKP-side governance
+- **D4.3** **`api_calls_delta_pct = None`** Wave C1(prior-24h comparison fetch defer Wave B+ when dashboard chart UI lands)
+- **D4.4** `rate_limit_hits_24h = 0` placeholder Wave C1;Wave B+ wire `api/middleware/rate_limit.py` counter exposure
+- **D4.5** **Audit log 3 actions**:`connection_patch + connection_test + connection_rotate_secret`(F2 hooks)+ `identity_patch`(F3 5 sub-resources 通通同一個 action,resource path 區分)+ `api_keys_alert_threshold_patch`(F4 hook)— `AuditAction` Literal 5 values total
+- **D4.6** **Postgres `audit_log` SERIAL PK**(not UUID)+ ORDER BY id DESC for `list_recent` — F2/F3 PK pattern一致;Wave C2 promote 視乎是否需要 distributed-write conflict resolution
+- **D4.7** Audit-log **read endpoint defer F5/Wave C2** — Wave C1 write-mostly retention 既有,Wave C2 SettingsAccount card 再 read
+
+### Acceptance(plan §3 + checklist F4)
+- [x] F4.1-F4.5 5 endpoints landed(GET usage-stats + GET outgoing + PATCH alert-threshold + GET incoming + audit hooks)
+- [x] F4.6 26/26 tests pass in 8.54s(api_keys 16 + usage_stats 4 + audit_log 6)
+- [x] F4.7 mypy strict 6 NEW non-Postgres files 0 errors;Postgres baseline 3 errors mirror F2/F3
+- [x] F4.8 audit_log 3-file split + 6 endpoint hooks wired
+- [x] F4.9 server.py lifespan + routers wired
+- [x] F4.10 Full backend pytest regression preserved:**799 passed + 11 skipped + 0 failed in 309s**(F3 baseline 773 → +26 net IMPROVED via 26 NEW F4 tests;no regression)
+
+**Day 1 cont F4 Verdict**:F4 `/admin/api-keys/*` + `/admin/usage-stats` endpoint group **DONE** 100%。Backend now has full Wave C1 backend scope landed(F1 KeyVaultProvider + F2 connections × 9 providers + F3 identity × 5 sub-resources + F4 api-keys × 4 endpoints + audit_log write-mostly);ready for **F5 Frontend `/settings` 6-tab `PageSettingsRich` rebuild** per CLAUDE.md §5.7 H7 mockup fidelity。
+
+### Commits
+| Hash | Subject |
+|---|---|
+| _(this commit)_ | `feat(api): /admin/api-keys/* + /admin/usage-stats + audit_log writes (W24-wave-c1 F4 per ADR-0026 Option B)` |
+
+---
+
+**End of W24-wave-c1 Day 1 cont F4(active — F1+F2+F3+F4 backend done,F5 frontend next)**
+
 ### Commits
 | Hash | Subject |
 |---|---|

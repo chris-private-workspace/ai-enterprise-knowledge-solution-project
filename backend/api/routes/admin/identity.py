@@ -40,6 +40,7 @@ from api.schemas.admin_identity import (
     SignInPolicyConfig,
 )
 from storage.admin_identity_storage import AdminIdentityConfigBackend
+from storage.audit_log_storage import AuditLogBackend
 
 router = APIRouter(prefix="/admin/identity")
 
@@ -52,6 +53,25 @@ def _get_backend(request: Request) -> AdminIdentityConfigBackend:
             detail="admin_identity_backend not initialized — check lifespan logs",
         )
     return backend  # type: ignore[no-any-return]
+
+
+def _get_audit_log(request: Request) -> AuditLogBackend | None:
+    """Audit log is optional — endpoint stays usable when unwired (F3 tests pass)."""
+    return getattr(request.app.state, "audit_log_backend", None)
+
+
+async def _audit_identity_patch(
+    request: Request, sub_resource: str, payload: dict[str, object]
+) -> None:
+    audit = _get_audit_log(request)
+    if audit is None:
+        return
+    await audit.append(
+        actor=None,
+        action="identity_patch",
+        resource=f"admin_identity_config/{sub_resource}",
+        payload=payload,
+    )
 
 
 # ---------- Tier 2 boundary guards (per CLAUDE.md H4) ----------------------
@@ -97,7 +117,11 @@ async def get_identity(request: Request) -> IdentityConfig:
 @router.patch("/tenant", response_model=EntraTenantConfig)
 async def patch_tenant(value: EntraTenantConfig, request: Request) -> EntraTenantConfig:
     backend = _get_backend(request)
-    return await backend.update_tenant(value)
+    result = await backend.update_tenant(value)
+    await _audit_identity_patch(
+        request, "tenant", value.model_dump(mode="json", exclude={"authority_url"})
+    )
+    return result
 
 
 @router.patch("/app_registration", response_model=AppRegistrationConfig)
@@ -106,24 +130,34 @@ async def patch_app_registration(
 ) -> AppRegistrationConfig:
     _reject_tier2_app_registration(value)
     backend = _get_backend(request)
-    return await backend.update_app_registration(value)
+    result = await backend.update_app_registration(value)
+    # `client_secret_masked_preview` is the only secret-adjacent field — never log
+    # the kv_ref value itself (only the name).
+    await _audit_identity_patch(request, "app_registration", value.model_dump(mode="json"))
+    return result
 
 
 @router.patch("/msal", response_model=MsalConfig)
 async def patch_msal(value: MsalConfig, request: Request) -> MsalConfig:
     _reject_tier2_msal(value)
     backend = _get_backend(request)
-    return await backend.update_msal(value)
+    result = await backend.update_msal(value)
+    await _audit_identity_patch(request, "msal", value.model_dump(mode="json"))
+    return result
 
 
 @router.patch("/roles", response_model=RoleMappingConfig)
 async def patch_roles(value: RoleMappingConfig, request: Request) -> RoleMappingConfig:
     _reject_tier2_roles(value)
     backend = _get_backend(request)
-    return await backend.update_roles(value)
+    result = await backend.update_roles(value)
+    await _audit_identity_patch(request, "roles", value.model_dump(mode="json"))
+    return result
 
 
 @router.patch("/policy", response_model=SignInPolicyConfig)
 async def patch_policy(value: SignInPolicyConfig, request: Request) -> SignInPolicyConfig:
     backend = _get_backend(request)
-    return await backend.update_policy(value)
+    result = await backend.update_policy(value)
+    await _audit_identity_patch(request, "policy", value.model_dump(mode="json"))
+    return result
