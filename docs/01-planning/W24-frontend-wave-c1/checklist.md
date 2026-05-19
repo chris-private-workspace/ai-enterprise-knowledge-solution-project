@@ -1,7 +1,7 @@
 ---
 phase: W24-frontend-wave-c1
 plan_ref: ./plan.md
-status: active                      # active | closed
+status: closed                      # closed 2026-05-19 (F8 closeout — all F0-F8 [x] except F6.3-F6.5 documented Wave C2 promote)
 last_updated: 2026-05-19  # F3 active-flip → F3.1-F3.11 complete
 ---
 
@@ -113,15 +113,15 @@ last_updated: 2026-05-19  # F3 active-flip → F3.1-F3.11 complete
 
 ## F8 — Closeout cascade
 
-- [ ] **F8.1** Phase Gate verdict published per `progress.md` retro
-- [ ] **F8.2** 7-section retro(What worked / What didn't / Surprises / Decisions / Carry-overs / Time tracking / Spec-ref)
-- [ ] **F8.3** plan/checklist/progress frontmatter `active → closed`
-- [ ] **F8.4** Wave C2 candidates noted in retro NOT pre-created per §10 R1
-- [ ] **F8.5** `session-start.md` 6 places synced(§3 + §10 + §11 + §12 + Last Updated + Update history)
-- [ ] **F8.6** `COMPONENT_CATALOG.md` C08 + C09 + C11 W24 status amendment appended
-- [ ] **F8.7** `PAGE_INVENTORY.md` `/settings` row W22 F8.1 thin → W24 6-tab status flip
-- [ ] **F8.8** `ADR-0026 Implementation Status` section appended at closeout(per W20 F9.3 / ADR-0025 W20 closeout precedent)
-- [ ] **F8.9** ADR-0017 amendment row added(occurrence #8 + 3rd realized Plan B (c))
+- [x] **F8.1** Phase Gate verdict **PASS WITH WAVE-C2-PROMOTE-DEFERS CAVEAT** published per `progress.md` retro(Day 1 cont F8 entry)
+- [x] **F8.2** 7-section retro per F-deliverable landed in `progress.md`(Day 1 cont F1 + F2 + F3 + F4 + F5 + F6+F7 + F8 entries with What worked / What didn't / Surprises / Decisions D0.x-D7.x / Acceptance);phase-level retro embedded in F8 entry below
+- [x] **F8.3** `plan.md` + `checklist.md` + `progress.md` frontmatter `active → closed` 2026-05-19
+- [x] **F8.4** Wave C2 candidates noted in retro **NOT pre-created** per CLAUDE.md §10 R1 rolling JIT(F6.3-F6.5 + Identity inline edit + Connections deployment cap edit + Audit log filter/pagination + real-MSAL feature flag concurrent ship + ADR-0027 Option A /users RBAC)
+- [x] **F8.5** `docs/12-ai-assistant/01-prompts/01-session-start.md` 6 places synced:**(1)** §3 C08+C09+C11+C12 W24 status amendments(C08 endpoint count 28→45 + 3 NEW Postgres tables + security hygiene;C09 6-tab `PageSettingsRich` rebuild + 3 NEW primitives + 4 settings/* components + apiClient.admin.* + H7 per-tab fidelity gate;C11 5 NEW `/admin/identity/*` endpoints + `admin_identity_config` table + server-side authority_url derivation + 3 Tier 2 boundary guards;C12 Azure Key Vault SDK Plan B (c)mobile hotspot ADR-0017 occurrence #8)**(2)** §10 W24 row closed_with_PASS verdict + W24b+ row(Wave C2 split candidates)**(3)** §11 NEW W24-frontend-wave-c1 CLOSED block(8-commit listing + +17 endpoints + 3 NEW tables + 9 NEW frontend files + 805 pytest)**(4)** §12 milestones W24-frontend-wave-c1 row + 累計 22→**23 phase closed**(W01-W22 21 + W23 1 + W24-wave-c1 1)**(5)** Last Updated reflects W24 closeout + 8-commit summary + ADR-0026 Option B Wave C1 implementation summary **(6)** Update history table NEW row 2026-05-19 W24-frontend-wave-c1 phase closeout entry
+- [x] **F8.6** `docs/02-architecture/COMPONENT_CATALOG.md` C08+C09+C11+C12 W24 status amendments appended(C08 endpoint count + 3 NEW Postgres tables + 3 Tier 2 boundary guards + security hygiene;C09 6-tab `PageSettingsRich` + 3 NEW primitives + 4 settings/* + apiClient.admin.* + Wave C2 promote items + `[oklch`=0 milestone preserved;C11 5 NEW `/admin/identity/*` endpoints + per-sub-resource row Postgres + server-side authority_url + 3 Tier 2 guards + Power User Tier 2 disabled affordance + read-mostly frontend per Wave C1 scope;C12 Azure Key Vault SDK Plan B (c)mobile hotspot + ADR-0017 occurrence #8 3rd-realized + NEW `KEY_VAULT_URL` env var + lazy-import per ADR-0023)
+- [x] **F8.7** `references/design-mockups/PAGE_INVENTORY.md` `/settings` row(line 44)flip ⏳ Wave C candidate → ✅ **Implemented W24-wave-c1 F5**(6-tab fully editable backend + read-mostly frontend per ADR-0026 Option B + 3 NEW Postgres tables + 3 NEW primitives + 4 settings/* components + apiClient.admin.* + Key Vault SDK Plan B (c)+ schema column extended to enumerate all 10 NEW Pydantic models)
+- [x] **F8.8** `docs/adr/0026-settings-6-tab-hub-and-connections-backend.md` **Implementation Status section appended at closeout**(per W20 F9.3 / ADR-0025 W20 closeout precedent)— Backend F1-F4 + Frontend F5 + Tests + Verify gates + Wave C2 promote items;**Status frontmatter** `Accepted` → `Accepted + Wave C1 implemented` with cross-ref to Implementation Status section
+- [x] **F8.9** ADR-0017 occurrence #8 + 3rd realized Plan B (c)row **already landed** via F1 commit `01f8efc`(lines 85-116 of ADR-0017 — "Plan B realised — Azure Key Vault SDK via mobile hotspot (2026-05-19, W24-wave-c1 F1)")— no F8 update needed
 
 ---
 

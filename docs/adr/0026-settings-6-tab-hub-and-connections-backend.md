@@ -1,7 +1,7 @@
 # ADR-0026: Settings v1 thin → 6-tab hub + Connections backend(**option set — Chris pick at W19 F6**)
 
 **Date**: 2026-05-16
-**Status**: **Accepted (Option B fully editable)** — W19 F6 Chris pick 2026-05-16。Chris selected Option B over Option C hybrid(W19 F2 §6 recommendation)和 Option A read-only。**Implications**:~22 NEW backend endpoints + Key Vault SDK new dependency(H2 trigger;R8 corp-proxy risk per ADR-0017 mitigation pattern noted)+ Wave C combined with ADR-0027 Option A = ~42 backend days **MUST split Wave C into C1+C2 sub-phases** per F4 §3.6 trigger + CLAUDE.md §10 rolling JIT
+**Status**: **Accepted + Wave C1 implemented** — W19 F6 Chris pick 2026-05-16 + W24-wave-c1 phase closed 2026-05-19。Chris selected Option B over Option C hybrid(W19 F2 §6 recommendation)和 Option A read-only。**Implications**:~22 NEW backend endpoints + Key Vault SDK new dependency(H2 trigger;R8 corp-proxy risk per ADR-0017 mitigation pattern noted)+ Wave C combined with ADR-0027 Option A = ~42 backend days **MUST split Wave C into C1+C2 sub-phases** per F4 §3.6 trigger + CLAUDE.md §10 rolling JIT。**Wave C1 implementation** — see Implementation Status section below。
 **Approver**: Chris(Tech Lead + stakeholder)
 
 ## Context
@@ -75,6 +75,49 @@ Adopt the **6-tab Settings hub** layout per the prototype。Amend `architecture.
 - `architecture.md v6 §5.0` Settings paragraph amendment(thin v1 → 6-tab hub)inline-tagged at W22-frontend-wave-c kickoff
 - `COMPONENT_CATALOG.md` C09 Settings row gets「6-tab per ADR-0026 Option C」status note + new endpoint group documented under C08 / C12 scope
 - Legacy `PageSettings` in `ekp-page-misc.jsx`(thin v1)is SUPERSEDED — `frontend/` ships `PageSettingsRich`
+
+## Implementation Status — W24-wave-c1 closeout(2026-05-19)
+
+**Implemented by `W24-frontend-wave-c1` phase**(closed 2026-05-19,Gate **PASS WITH WAVE-C2-PROMOTE-DEFERS CAVEAT**)— Wave C1 ships **Option B fully editable Settings 6-tab hub backend + read-mostly frontend + audit_log write-mostly retention**。
+
+### Backend(F1-F4)
+
+- [x] **F1** `KeyVaultProvider` abstraction(`backend/storage/key_vault.py` Protocol + `EnvVarProvider` fallback + `azure_key_vault.py` async `AzureKeyVaultProvider` via `azure-keyvault-secrets>=4.8.0` + `azure-identity>=1.18.0`)+ `make_key_vault_provider` factory(lazy-import per ADR-0023 pattern;unset `KEY_VAULT_URL` never touches the SDK)— Azure SDK install via mobile hotspot Plan B (c)per ADR-0017 occurrence #8(15/15 pytest)
+- [x] **F2** `/admin/connections/*`(5 endpoints × 9 providers seed):`GET` list + detail / `PATCH` non-secret fields / `POST /test` config-state probe(Wave A scope per W20 F2.1 `/health` pattern)/ `POST /rotate-secret` Key Vault rotation hook with masked preview;**`admin_provider_configs` Postgres table NEW** + 3-file split storage / postgres / factory(27 pytest)
+- [x] **F3** `/admin/identity/*`(5 endpoints / 5 sub-resources):consolidated `GET` + 5 `PATCH` per tenant + app_registration + msal + roles + policy;**3 Tier 2 boundary guards** rejected via 422(`multi_disabled` audience / `distributed_disabled` token cache / active `power_user` ekp_role unless `is_tier2_disabled=True`)+ server-side `authority_url` derivation from `tenant_id × cloud_instance` per 3-cloud map(Azure Public / Government / China);**`admin_identity_config` Postgres table NEW per-sub-resource row pattern**(26 pytest)
+- [x] **F4** `/admin/api-keys/*` + `/admin/usage-stats`(5 endpoints):4-stat strip(24h window per mockup line 749-752)+ per-deployment flatten `OutgoingQuotaList`(F2 azure_openai 4 deployments + 6 non-deployment providers = 10 rows seed)+ `PATCH /alert-threshold`(50-95 range,cost-spike rule consume)+ permanent `IncomingKeysDisabled.enabled: Literal[False]` Tier 2 affordance;**`audit_log` Postgres table NEW** + write hooks from F2 PATCH/test/rotate + F3 PATCH × 5 sub-resource + F4 PATCH(26 pytest)
+- [x] **F5 backend hook** `GET /admin/audit-log?limit=N`(promoted from F4 deferral;default 10,1-200 range — 6 pytest)
+- [x] **Per-sub-resource Postgres pattern** for `admin_identity_config`(vs single-row JSON blob plan-text)— audit_log per-row writes simpler at Wave C2 + 5 rows seeded idempotently
+- [x] **Security hygiene**:secret values NEVER returned in any GET — only `secret_kv_ref` name + `secret_masked_preview`(`***last4`);client-supplied `authority_url` 喺 PATCH 被 strip + re-derived(prevents redirect injection)
+
+### Frontend(F5)
+
+- [x] **F5.1** `frontend/app/(app)/settings/page.tsx` 6-tab `PageSettingsRich` shell + `?tab=` deep link via `useSearchParams` + `<Suspense>` boundary + W22 F8.1 ProfileTab/AppearanceTab/AccountTab preserved inline(per Karpathy §1.3 surgical extend-not-rewrite)
+- [x] **F5.2-F5.4** Profile + Appearance + Account tabs preserved from W22 F8.1 logic;Density toggle Tier 2 disabled affordance added per Wave C2 promote
+- [x] **F5.5** `<SettingsConnections>` data-bound to `adminApi.listConnections()` + lazy-fetch `getConnection()` per row;**3 NEW primitives**:`<ApiKeyInput>`(reveal/hide/copy/rotate)+ `<ServiceCard>`(collapsible expand-on-click with TestStatus badge variants)+ `<DeploymentsTable>`(tight TPM/RPM cap + alert % table);Test connection + Rotate secret mutation buttons wire `adminApi.testConnection` + `adminApi.rotateSecret`
+- [x] **F5.6** `<SettingsIdentity>` 5 cards 1:1 onto F3 sub-resources(Entra tenant + App reg + MSAL + Role mapping 3 active + Power User Tier 2 disabled affordance per ADR-0027 fallback + Sign-in policy);Wave C1 ship **read-mostly**(inline edit Wave C2 promote)
+- [x] **F5.7** `<SettingsApiKeys>` 4-stat strip(spend_pct>=80 warn amber + rate_limit_hits>0 warn amber)+ `OutgoingQuotaRowItem` per-row TPM + RPM bars + inline alert threshold `<input type="number" min={50} max={95}>` editable + `<IncomingKeysDisabled>` Tier 2 affordance with permanent `enabled: false` Literal
+- [x] **F5.8** `AccountTab` extends W22 F8.1 + NEW `<SettingsAuditLog>` sub-card reads `adminApi.listAuditLog(10)` + Danger Zone Delete account `<DisabledAffordance>` per mockup line 842-870
+- [x] **`apiClient.admin.*`** wrapper(`frontend/lib/api/admin.ts` 235 LOC,13 methods)— full Pydantic-mirror TypeScript types for F2 + F3 + F4 + F5 audit-log endpoints
+- [x] **H7 per-tab fidelity gate ALL passed** — mockup line-ref alignment for all 6 tabs(50-65 / 67-93 / 96-355 / 528-723 / 744-823 / 842-870)— **NO smoke-user-deferred for fidelity itself** per W21+W22+W23 retro consistency
+
+### Tests + Verify gates
+
+- [x] **F7 Vitest**:`tests/unit/settings-6tab.test.tsx` 217 LOC / **9 tests pass in 26s**(6 tab labels + 3 deep-link variations + tab-click router.replace spy + Account/Identity/ApiKeys data-bound assertions)
+- [x] **F7 Playwright +2 NEW** app-shell-path tests(6-tab labels + `?tab=identity` deep link 2-state OR render-smoke)+ **+1 NEW** visual baseline test `settings-connections.png`(first-capture user-deferred per W20 F8.5 + W23 F2.3 precedent)
+- [x] **Full backend pytest regression**:**805 passed + 11 skipped + 0 failed in 189s**(W23 baseline 705 → +100 net IMPROVED through W24 backend phase)
+- [x] **Verify gates**:`tsc --noEmit` exit 0 + `next lint` clean + `Grep '[oklch'` across `frontend/` = **0 preserved**(post-W23 milestone maintained through 9 NEW frontend files)
+- [x] **`architecture.md v6 §5.0`** inline-tagged amendment landed at F0 kickoff(thin v1 → 6-tab hub per ADR-0024 / §3.4 / §3.7 precedent;doc version held)
+
+### Wave C2 promote items(NOT W24-wave-c1 scope)
+
+- F6.3 Form validation per-provider schema(react-hook-form + zod)— Wave C1 ships HTML5 `min`/`max` Pydantic-mirror validation only
+- F6.4 Optimistic UI per PATCH(rollback on error per TanStack Query pattern)— Wave C1 ships pessimistic await + refresh
+- F6.5 ErrorBoundary integration per tab — Wave C1 ships inline `banner-destructive` per-component error surface
+- Identity inline edit(Tenant + App reg + MSAL + Policy)— Wave C1 ships read-mostly with `readOnly` / `disabled` props;structural primitives in place
+- `<SettingsConnections>` deployment cap edit(TPM/RPM)— Wave B+ scope per F4 plan(Azure portal authoritative for caps);alert_threshold % is the Wave C1 editable knob
+- Audit log filter + pagination — Wave C2 promotes when SettingsAccount audit log surface lands properly
+- Real-MSAL feature flag concurrent ship — Wave C2 per user 岔口 2(Wave C1 仍 mock-auth default per W18+ pattern)
 
 ## References
 

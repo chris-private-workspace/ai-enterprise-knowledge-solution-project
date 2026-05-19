@@ -4,7 +4,7 @@ name: "Settings 6-tab Hub + Connections + Identity & Auth + API Keys & Quotas �
 sprint_week: W24
 start_date: 2026-05-19              # real-calendar — Chris directive 2026-05-19 「start W24-wave-c1 kickoff」 post BUG-003 + BUG-004 closure
 end_date: 2026-05-24                # ~3-5 day window per backend-heavy 22 NEW endpoints + Key Vault SDK install + 6-tab frontend rebuild;real-calendar collapse 1.5-12× pattern applies — actual likely ~2-4 days per W19-W23 trajectory;frontmatter is a window, not a commitment
-status: active                      # active from kickoff 2026-05-19
+status: closed                      # closed 2026-05-19 (F8 closeout cascade — Phase Gate PASS WITH WAVE-C2-PROMOTE-DEFERS CAVEAT)
 spec_refs:
   - CLAUDE.md §10 R1-R6             # rolling JIT + plan-before-code (multi-day Phase work) + R6 pre-active-flip recursive (plan-text grep audit)
   - CLAUDE.md §5.1 H1               # architecture.md §5.0 amendment (Settings v1 thin → 6-tab hub)
