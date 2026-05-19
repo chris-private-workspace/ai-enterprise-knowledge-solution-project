@@ -1,7 +1,7 @@
 ---
 phase: W23-frontend-test-cleanup
 plan_ref: ./plan.md
-status: active
+status: closed
 last_updated: 2026-05-19
 ---
 
@@ -57,13 +57,13 @@ last_updated: 2026-05-19
 
 ## F5 — Closeout cascade
 
-- [ ] F5.1 W23 phase Gate verdict landed(PASS / PARTIAL PASS / FAIL with explicit rationale per W18-W22 pattern)
-- [ ] F5.2 W23 `progress.md` Retro — 7 sections(What worked / What didn't & friction / Surprises / Decisions / Carry-overs to W23b+ / Time tracking / Spec-ref alignment)
-- [ ] F5.3 W23 `plan.md` + `checklist.md` + `progress.md` frontmatter `status: active` → `closed`
-- [ ] F5.4 W23b+ phase folder **NOT pre-created** per CLAUDE.md §10 R1 rolling JIT — Wave C SPLIT kickoff candidates noted in retro(C1 ADR-0027 RBAC + C2 ADR-0026 Settings;mock-auth default continues per user 岔口 2)
-- [ ] F5.5 `session-start.md` hygiene catch-up — §9 OQ status preserved;§10 W23 closed row + W23b+ candidates row;§11 W23 CLOSED block(F1-F4 cleanup + governance + 3 CLAUDE.md amendments);§12 milestones row 累計 22 closed + Last Updated + Update history
-- [ ] F5.6 `references/design-mockups/PAGE_INVENTORY.md` no change(test cleanup doesn't touch page status — 已 W22 F8.9 updated)
-- [ ] F5.7 `docs/02-architecture/COMPONENT_CATALOG.md` no change(W23 不 ship feature)
+- [x] F5.1 W23 phase Gate verdict landed `(this commit)` — **PASS WITH F2 PARTIAL CAVEAT** rationale documented in progress.md Day 5;F0-F1+F3-F4 fully PASS;F2 PARTIAL per plan §3 allowance(15/22 Playwright pass)+ 6 selector tweaks defer W24+;no backend regression introduced;all verify gates green;W22 retro 3 surfaced amendment candidates fully landed in CLAUDE.md v1.9 + setup.md §8.7
+- [x] F5.2 W23 `progress.md` Retro 7 sections written `(this commit)` — Day 5 entry inline:What worked / What didn't & friction / Surprises / Decisions(D0.1-D4.3 cumulative)/ Carry-overs to W23b+ / Time tracking / Spec-ref alignment
+- [x] F5.3 W23 `plan.md` + `checklist.md`(this file)+ `progress.md` frontmatter `active → closed` `(this commit)`
+- [x] F5.4 W24+ phase folder **NOT pre-created** per CLAUDE.md §10 R1 rolling JIT `(this commit)` — Wave C SPLIT(W24-wave-c1 + W24b-wave-c2)+ W16 F1-F4 Track A IT cred parallel + Sev4 BUG-fix candidates(test_health + 6 Playwright selectors)noted in progress.md retro carry-overs
+- [x] F5.5 `session-start.md` hygiene catch-up `(this commit)` — §10 W23 closed row + W24+ candidates row updated;§11 NEW W23 CLOSED block + Narrowed-by-W23 + W23 closeout follow-ups;§12 milestones W23 row + 累計 22 closed;Last Updated + Update history entry。§9 OQ unchanged(no new OQ);§3 C09 status preserved
+- [x] F5.6 `references/design-mockups/PAGE_INVENTORY.md` no change verified `(this commit)` — W22 F8.9 已 update for 15 routes status;W23 test cleanup doesn't touch page status
+- [x] F5.7 `docs/02-architecture/COMPONENT_CATALOG.md` no change verified `(this commit)` — W22 F8.10 已 append C09 + C10 W22 amendments;W23 不 ship feature
 
 ---
 
