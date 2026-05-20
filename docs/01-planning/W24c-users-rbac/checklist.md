@@ -2,7 +2,7 @@
 phase: W24c-users-rbac
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-21  # F0 kickoff cascade landed
+last_updated: 2026-05-21  # F1 active-flip → F1.1-F1.5 complete (architecture.md §5 amendment + C16 decision + managed-REST pick)
 ---
 
 # W24c-users-rbac — Checklist
@@ -18,13 +18,15 @@ last_updated: 2026-05-21  # F0 kickoff cascade landed
 - [x] **F0.4** Pre-active-flip 5-step grep audit recursive(per CLAUDE.md §10 R6)completed,documented `progress.md` Day 0 + plan §7:`ekp-page-users.jsx` exists / `backend/api/auth/{users_store,postgres_users_store,users_repo}.py` exist / `backend/api/middleware/` has audit_log+rate_limit(NEW acl.py needed)/ **`audit_log` table ALREADY EXISTS** → ADR-0027「6 NEW tables」實際 5 NEW / `frontend/app/(app)/users/` does NOT exist(NET NEW route)
 - [x] **F0.5** W24c kickoff cascade committed `(this commit)`
 
-## F1 — Spec amendment + Entra Graph SDK install + C16/C11 decision
+## F1 — Spec amendment + Entra Graph approach + C16/C11 decision
 
-- [ ] **F1.1** `architecture.md v6 §3.7` inline-tagged amendment — RBAC「Tier 2 hook」→「Tier 1.5 minimum」per ADR-0027(doc version held)
-- [ ] **F1.2** NEW `architecture.md v6 §3.8 /users page` reference paragraph inline-tagged
-- [ ] **F1.3** C16 Users Service vs C11 expansion decision logged plan §7 + `COMPONENT_CATALOG.md` updated
-- [ ] **F1.4** Entra Graph SDK install — Plan B (a) `pip install` → 若 R8 fail Plan B (c) mobile hotspot + ADR-0017 amendment occurrence #9
-- [ ] **F1.5** `backend/pyproject.toml` + lock confirm;`mypy --strict` clean import site;lazy-import per ADR-0023
+> R6 finding(plan §7 Day 1):**(a)** ADR-0027「amend §3.7 + add §3.8」§-pointer 錯(§3.7 = C13 Email Verification)→ amendment 落 **§5** inline block per ADR-0024/0025/0026 convention;**(b)** Entra Graph SDK fork → Chris pick **managed-REST**(`azure-identity`+`httpx` W24-c1 已裝)→ F1.4 install no-op;**(c)** C16 vs C11 → pick **C16 NEW Users Service**。
+
+- [x] **F1.1** `architecture.md v6 §5.0` inline-tagged `> **Amendment(/users Tier 1.5 RBAC + Access tab activation)**` block(R6-corrected from ADR-0027 §3.7 → §5;doc version held;ADR-0027 authoritative)— RBAC「Tier 2 hook」→「Tier 1.5 minimum」
+- [x] **F1.2** `/users` 4-tab + per-KB ACL + Access-tab-activation reference 入同一 §5 amendment block(R6-corrected from「NEW §3.8」— `/users` 屬 UI view → §5)
+- [x] **F1.3** C16 vs C11 decision — pick **C16 NEW Users Service**(authorization concern distinct from C11 authentication;~20 backend days weight)logged plan §7 Day 1 + `COMPONENT_CATALOG.md` C16 card landed
+- [x] **F1.4** Entra Graph approach — **managed-REST**(Chris AskUserQuestion 2026-05-21):既有 `azure-identity` token + `httpx` `GET graph.microsoft.com/v1.0/groups`;**no `msgraph-sdk` install**(零新 dep / 零 H2 / 零 R8 — per ADR-0017「managed-REST > heavy SDK」)→ F1.4 install no-op
+- [x] **F1.5** `backend/pyproject.toml` — **no change**(`azure-identity>=1.20` + `httpx>=0.27` W24-c1 已存在);F1 無 backend code change(`entra_graph.py` managed-REST module 落 F6 — mypy 屆時 verify)
 
 ## F2 — RBAC schema layer(5 NEW Postgres tables + storage)
 

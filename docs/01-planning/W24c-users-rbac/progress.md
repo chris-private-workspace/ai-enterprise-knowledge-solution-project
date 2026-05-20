@@ -40,4 +40,36 @@ status: active                      # active | closed
 
 ---
 
-<!-- Day 1+ F1 entries land at F1 active flip per CLAUDE.md §10 R2 -->
+## Day 1 — 2026-05-21 — F1 Spec amendment + Entra Graph approach + C16 decision
+
+### Done
+
+- **F1 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 `architecture.md §3.7` + §5 region + `backend/pyproject.toml` + `COMPONENT_CATALOG.md` C08-C12 cards:
+  - **(2) grep** — `architecture.md §3.7` 實為「C13 Email Verification Service」;§3.8 不存在;§5 有 3 個 `> **Amendment**` inline block(ADR-0024 line 752 / ADR-0026 line 754 / ADR-0025 §5.5 line 887);`pyproject.toml` 有 `azure-identity>=1.20` + `httpx>=0.27`(W24-c1),**無 `msgraph`**;COMPONENT_CATALOG component cards C08-C12,C13 無 full card(per-component section 收喺 C12 後)
+  - **(3) surface** — 2 findings + 1 decision(plan §7 Day 1 row)
+  - **(4) document** — plan §7 Day 1 changelog row landed
+  - **(5) adjust** — F1.1-F1.2 amendment 落 §5;F1.4 install no-op;F1.3 = C16 NEW
+- **F1.1-F1.2** `architecture.md v6 §5.0` 加 NEW `> **Amendment(/users Tier 1.5 RBAC + Access tab activation)**` inline block — RBAC「Tier 2 hook」→「Tier 1.5 minimum」+ `/users` 4-tab(Members / Roles & permissions / Groups / Audit log)+ per-KB ACL `TabKbAccess` + `/kb/[id]` Access tab activation;4 triggers(5 NEW Postgres tables + C16 + ACL middleware + managed-REST `sync-from-entra`);H4 boundary(custom roles + Power User + multi-tenancy = Tier 2);doc version held;ADR-0027 authoritative + §-pointer 更正 note
+- **F1.3** C16 vs C11 decision — **pick C16 NEW Users Service**;`COMPONENT_CATALOG.md` 加 `### C16 — Users Service(Tier 1.5)` card(10-row Field/Value table,Status 🟡 W24c active,inserted 在 §4 component cards 段尾 C12 之後)
+- **F1.4** Entra Graph approach — **managed-REST**(Chris AskUserQuestion 2026-05-21)— 既有 `azure-identity` token + `httpx` REST call,**no `msgraph-sdk`**;install no-op(deps W24-c1 已在)
+- **F1.5** `pyproject.toml` 無 change;F1 無 backend code change(spec + component-registry only)
+
+### Decisions
+
+- **D1.1 — F1.1-F1.2 amendment 落 §5 非 §3.7/§3.8**(R6 finding 1)— ADR-0027 §Decision「amend `architecture.md v6 §3.7` + add §3.8 /users」嘅 §-pointer 錯:`§3.7` = C13 Email Verification Service(v6 amendment per ADR-0014),`§3.8` 不存在。`/users` 係 UI view → 屬 §5 UI Specifications。§5 已有 3 個 ADR-driven `> **Amendment**` inline block precedent(ADR-0024 / ADR-0026 §5.0 + ADR-0025 §5.5)。**Adjust**:amendment 落 §5.0 第 3 個 inline block,對齊 convention。屬 W22 D9「plan-text-contamination」anti-pattern class(ADR draft-time §-numbering 錯,plan F1 inherit)— R6 auto-adjust,established convention 明確故不需 user escalate;ADR-0027 §-pointer 更正 note 寫入 amendment block 自身 + F12 ADR-0027 Implementation Status 會 record。
+- **D1.2 — Entra Graph = managed-REST 非 SDK**(R6 finding 2,Chris AskUserQuestion 2026-05-21)— ADR-0027 寫 `sync-from-entra` 用 Entra Graph SDK(明標 new dep / H2 / R8 risk)。但 `azure-identity>=1.20` + `httpx>=0.27` W24-c1 已裝;`sync-from-entra` 本質 = `GET https://graph.microsoft.com/v1.0/groups` 一個 REST call。ADR-0017 §Decision-rule 本身明寫「stdlib > managed-REST > lazy-imported optional dep」。managed-REST(`DefaultAzureCredential` 取 Graph token + `httpx` call)= 零新 dependency / 零 H2 / 零 R8 install risk。Chris pick managed-REST。**Adjust**:F1.4 Entra Graph SDK install 變 no-op;F6 `entra_graph.py` 用 managed-REST helper(lazy `azure-identity` import per ADR-0023 — unset Entra config 唔 touch)。屬 §13「spec 同 idea 衝突 → raise + get approval」— 已 raise + Chris approve。
+- **D1.3 — C16 NEW Users Service 非 fold-into-C11**(R6 finding 3 / plan F1.3)— ADR-0027 §Decision Option A leave open「New Cn:C16 Users Service(or fold into C11)」。決定 = **C16 NEW**。Rationale:(a) scope weight ~20 backend days + 5 NEW Postgres tables + ACL middleware = substantial cohesive subsystem;(b) **concern separation** — C11 Identity & Access = *authentication*(MSAL / Entra SSO / token validation),C16 Users Service = *authorization*(RBAC / role enforcement / per-KB ACL / user management)— fold 入 C11 會 overload 一個 authentication component 做埋 authorization;(c) ADR-0027 §Decision Option A 首選 phrasing 就係「C16 Users Service」。C14 / C15 維持 Tier 2 reserved slot(Training Pipeline / Workflow Engine);C16 = 首個 post-C13 Tier 1.5 component。
+
+### Acceptance(plan §3 + checklist F1)
+
+- [x] F1.1 architecture.md §5.0 ADR-0027 inline-amendment block(R6-corrected §3.7→§5)
+- [x] F1.2 /users 4-tab + Access tab activation reference 入同一 §5 block(R6-corrected §3.8→§5)
+- [x] F1.3 C16 NEW Users Service decision + COMPONENT_CATALOG C16 card
+- [x] F1.4 Entra Graph = managed-REST(Chris pick)— no msgraph-sdk install
+- [x] F1.5 pyproject.toml 無 change;F1 無 backend code change
+
+**Day 1 F1 Verdict**:F1 complete — `architecture.md v6 §5.0` ADR-0027 inline-amendment block(RBAC Tier 2 hook → Tier 1.5 + `/users` 4-tab + Access tab activation)+ COMPONENT_CATALOG C16 Users Service card。3 R6 findings resolved:§-pointer 更正(§3.7→§5)/ Entra Graph managed-REST(零新 dep)/ C16 NEW component。**Zero new dependency** — ADR-0027 原假設嘅 Entra Graph SDK 經 managed-REST 避免。F2 RBAC schema layer(5 NEW Postgres tables + storage)next。
+
+---
+
+<!-- Day 2+ F2 entries land at F2 active flip per CLAUDE.md §10 R2 -->

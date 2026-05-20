@@ -368,6 +368,25 @@ Phase Gates             prep G1        G2   stretch  POC  Beta deploy testing 25
 
 ---
 
+### C16 — Users Service(Tier 1.5,NEW per ADR-0027 — W24c)
+
+> **NEW component** per ADR-0027 Option A full RBAC(W19 F6 Chris pick;W24c F1.3 decision over「fold into C11」)。C14 / C15 remain Tier 2 reserved slots(Training Pipeline / Workflow Engine);C16 是首個 Tier 1.5 post-C13 component。
+
+| Field | Value |
+|---|---|
+| **Scope** | RBAC authorization layer + user management — `/users` 4-tab surface(Members / Roles & permissions / Groups / Audit log)+ per-KB ACL(`kb_acl`)+ ACL middleware(`@requires_role` / `@requires_kb_acl`)+ auth-time role claim。Authorization concern,distinct from C11 authentication。 |
+| **Spec ref** | `architecture.md v6 §5.0`(ADR-0027 amendment block,W24c F1)+ ADR-0027 Option A full RBAC + ADR-0025(Access tab dep)|
+| **Tech (H2 locked)** | Postgres via `psycopg`(5 NEW tables `roles` + `role_permissions` + `groups` + `group_members` + `kb_acl`;`audit_log` shared — already exists per ADR-0026)+ FastAPI ACL middleware + `azure-identity` + `httpx` managed-REST for Entra Graph `/groups`(**no `msgraph-sdk`** — W24c F1 pick per ADR-0017「managed-REST > heavy SDK」)|
+| **Depends on** | C08(route surface + ACL middleware host),C11(auth-time role claim — Entra group → role),C02(per-KB ACL consumer),C12(Postgres)|
+| **Phase plan** | W24c F2 RBAC schema(5 tables + storage)→ F3 ACL middleware + role claim → F4-F6 Members / Roles / Groups endpoints → F7 audit log expansion → F8 per-KB ACL → F9-F10 frontend `/users` + Access tab → F11 tests |
+| **Critical OQ** | Q11(Entra ID tenant — Resolved decision-level;operational early June 2026 — non-blocking,mock-auth `role:'admin'` default per user 岔口 2)|
+| **Risks** | H6:ACL middleware(`acl.py`)protected-endpoint-critical → ≥80% test coverage;R-W24c-2 ~20 backend days scope explosion → rolling JIT F-deliverable sub-split |
+| **Owner** | AI |
+| **Status** | 🟡 W24c-users-rbac active — F0 kickoff + F1 spec amendment(`architecture.md v6 §5.0` ADR-0027 block)+ C16 NEW decision landed 2026-05-21;F2-F12 in progress。**H4 boundary**:custom role creation + Power User role activation + multi-tenancy stay Tier 2。 |
+| **Interface** | **Input**:HTTP request(role claim in session / cookie) → **Output**:role-gated response / 403 on unauthorized → **Side effect**:`audit_log` write on role / access / config mutation,Entra Graph REST call on `sync-from-entra` |
+
+---
+
 ## 5. Cross-Cutting Conventions(binding)
 
 呢套規則喺 catalog 寫低,所有 future doc / commit / artifact 必跟:
