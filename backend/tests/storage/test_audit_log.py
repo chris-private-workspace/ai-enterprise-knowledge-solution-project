@@ -1,6 +1,9 @@
-"""Audit log storage tests (W24-wave-c1 F4.8 per ADR-0026)."""
+"""Audit log storage tests (W24-wave-c1 F4.8 per ADR-0026;
+W24b-wave-c2 F6 filter + cursor cases)."""
 
 from __future__ import annotations
+
+from datetime import datetime, timezone
 
 import pytest
 
@@ -89,3 +92,71 @@ async def test_factory_returns_in_memory_when_database_url_unset() -> None:
     settings = Settings(database_url="")
     backend = make_audit_log_backend(settings)
     assert isinstance(backend, InMemoryAuditLogBackend)
+
+
+# ---- W24b F6 — filter + cursor ---------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_recent_filter_by_action_type() -> None:
+    backend = InMemoryAuditLogBackend()
+    for _ in range(3):
+        await backend.append(
+            actor=None, action="connection_patch", resource="r", payload=None
+        )
+    for _ in range(2):
+        await backend.append(
+            actor=None, action="identity_patch", resource="r", payload=None
+        )
+    rows = await backend.list_recent(action_type="identity_patch")
+    assert len(rows) == 2
+    assert all(r.action == "identity_patch" for r in rows)
+
+
+@pytest.mark.asyncio
+async def test_list_recent_filter_by_cursor_walks_strictly_older() -> None:
+    backend = InMemoryAuditLogBackend()
+    for i in range(10):
+        await backend.append(
+            actor=None, action="connection_test", resource=f"r_{i}", payload=None
+        )
+    # ids 1..10; cursor=6 is exclusive → strictly-older ids 5..1.
+    rows = await backend.list_recent(cursor=6)
+    assert [r.id for r in rows] == [5, 4, 3, 2, 1]
+
+
+@pytest.mark.asyncio
+async def test_list_recent_filter_by_since() -> None:
+    backend = InMemoryAuditLogBackend()
+    for i in range(4):
+        await backend.append(
+            actor=None, action="connection_test", resource=f"r_{i}", payload=None
+        )
+    # Backdate the two oldest rows so `since` filters them out.
+    old = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    backend._rows[0].created_at = old
+    backend._rows[1].created_at = old
+    rows = await backend.list_recent(
+        since=datetime(2021, 1, 1, tzinfo=timezone.utc)
+    )
+    assert len(rows) == 2  # only the two recent rows survive
+
+
+@pytest.mark.asyncio
+async def test_list_recent_combined_action_type_and_cursor() -> None:
+    backend = InMemoryAuditLogBackend()
+    await backend.append(
+        actor=None, action="connection_patch", resource="a", payload=None
+    )  # id 1
+    await backend.append(
+        actor=None, action="identity_patch", resource="b", payload=None
+    )  # id 2
+    await backend.append(
+        actor=None, action="connection_patch", resource="c", payload=None
+    )  # id 3
+    await backend.append(
+        actor=None, action="connection_patch", resource="d", payload=None
+    )  # id 4
+    # connection_patch + cursor=4 → id 3, id 1 (id 2 wrong action, id 4 not < 4).
+    rows = await backend.list_recent(action_type="connection_patch", cursor=4)
+    assert [r.id for r in rows] == [3, 1]

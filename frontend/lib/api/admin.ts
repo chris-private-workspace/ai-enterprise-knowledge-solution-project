@@ -212,6 +212,20 @@ export interface AuditLogEntry {
   created_at: string;
 }
 
+export interface AuditLogPage {
+  entries: AuditLogEntry[];
+  next_cursor: number | null;
+}
+
+export interface AuditLogQuery {
+  limit?: number;
+  action_type?: AuditAction;
+  /** ISO date (YYYY-MM-DD) or datetime — entries on/after this instant. */
+  since?: string;
+  /** `id` of the oldest row already shown — fetches the next older page. */
+  cursor?: number;
+}
+
 // ---------- ApiClient surface ------------------------------------------------
 
 export const adminApi = {
@@ -259,6 +273,12 @@ export const adminApi = {
     ),
   getIncomingKeys: (): Promise<IncomingKeysDisabled> =>
     client.get('/admin/api-keys/incoming'),
-  listAuditLog: (limit = 10): Promise<AuditLogEntry[]> =>
-    client.get(`/admin/audit-log?limit=${limit}`),
+  listAuditLog: (opts: AuditLogQuery = {}): Promise<AuditLogPage> => {
+    const params = new URLSearchParams();
+    params.set('limit', String(opts.limit ?? 10));
+    if (opts.action_type) params.set('action_type', opts.action_type);
+    if (opts.since) params.set('since', opts.since);
+    if (opts.cursor != null) params.set('cursor', String(opts.cursor));
+    return client.get(`/admin/audit-log?${params.toString()}`);
+  },
 };

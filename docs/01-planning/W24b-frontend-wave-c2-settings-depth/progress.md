@@ -270,4 +270,44 @@ status: active                      # active | closed
 
 ---
 
-<!-- Day 1+ F6 entries land at F6 active flip per CLAUDE.md §10 R2 -->
+## Day 1 cont — 2026-05-20 — F6 Audit log filter + cursor pagination
+
+### Done
+
+- **F6 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 `audit_log_storage.py` + `audit_log_postgres.py` + `audit_log.py` route + `audit_log.py` schema + `test_admin_audit_log.py` + `test_audit_log.py`(storage)+ `admin.ts` + `settings-audit-log.tsx` + mockup `ekp-page-settings-tabs.jsx:842-870 SettingsAccount`:
+  - **(2) grep** — endpoint test 實際 = flat `backend/tests/api/test_admin_audit_log.py`(6 tests);`backend/tests/api/admin/` 子目錄**不存在**;mockup `SettingsAccount` 只有 Session + Danger zone card,**完全無 audit log surface**(`<SettingsAuditLog>` 本身係 W24-c1 functional promote);`settings-audit-log.tsx` 現用 `useEffect + useState`(無 TanStack)
+  - **(3) surface** — 6 處 deviation/fork(plan §7 Day 1 cont F6 row)
+  - **(4) document** — plan §7 changelog F6 row landed
+  - **(5) adjust** — checklist F6.1-F6.7 重寫 per reality;F6.6 test path 改 flat file + 加 storage cases
+- **F6.1** `audit_log_storage.py` `AuditLogBackend.list_recent` Protocol 加 keyword-only `action_type: AuditAction | None` + `since: datetime | None` + `cursor: int | None`(default None — backward-compat;return type 保持 `list[AuditLogEntry]`)
+- **F6.2** filter 實作 — `InMemoryAuditLogBackend.list_recent` in-pass filter loop(`limit` counts post-filter rows,`cursor` exclusive `id <` 上界);`PostgresAuditLogBackend.list_recent` `WHERE` 由 fixed column predicate set 砌,每個 user value `%s` placeholder(無 string interpolation — SQL-injection-safe)+ `ORDER BY id DESC LIMIT %s`
+- **F6.3** NEW `AuditLogPage` schema(`entries: list[AuditLogEntry]` + `next_cursor: int | None`);`GET /admin/audit-log` 加 `action_type`(AuditAction Literal → 422 on unknown)+ `since`(datetime)+ `cursor`(ge=1)query params;`since` tz-naive → endpoint UTC-normalize;over-fetch `limit+1` rows → `has_more` → `next_cursor = page[-1].id`;`response_model` bare-list → `AuditLogPage`
+- **F6.4** `apiClient.admin.listAuditLog` signature `(limit=10)` → `(opts: AuditLogQuery = {})` → `Promise<AuditLogPage>`;NEW `AuditLogPage` + `AuditLogQuery` interfaces;`URLSearchParams` query build
+- **F6.5** `settings-audit-log.tsx` filter UI — action_type `.select`(6 options:All + 5 AuditAction)+ since `type="date"` `.input` + "Load more" `.btn` cursor button;local-state extend(`useEffect` fresh-fetch on filter change + `useCallback` loadMore append)per D3.1 Wave C2 settings-cluster pattern;CSS-first primitives(無 mockup — net-new functional UI per R6 finding)
+- **F6.6** tests — `test_admin_audit_log.py` rewrite 3 existing for `AuditLogPage` wrapper shape + **7 NEW**(action_type filter / unknown-action 422 / since filter / next_cursor present / next_cursor none on last page / cursor walks older / cursor=0 422)= 13 endpoint tests;`test_audit_log.py`(storage)**4 NEW**(action_type / cursor / since backdated / combined)= 10 storage tests;`settings-audit-log.test.tsx` NEW 3(mount render / filter re-fetch / Load more append);`settings-6tab.test.tsx` mock line 132 `listAuditLog` → `{entries:[],next_cursor:null}`
+- **F6.7** Verify gates — backend `pytest` **816 passed + 11 skipped + 0 failed**(W24-c1 baseline 805 → +11 net);mypy strict route+schema **clean** + `audit_log_storage.py` clean;`pnpm exec tsc --noEmit` **REAL exit 0** + `next lint` **✔ No ESLint warnings or errors** + `Grep '\[oklch'`=**0** + Vitest `settings-audit-log` **3/3** + `settings-6tab` **9/9 regression-clean**
+
+### Decisions
+
+- **D6.1 — F6.6 test path corrected** — plan-text「`backend/tests/api/admin/test_audit_log.py`」嘅 `admin/` 子目錄不存在;actual endpoint test = flat `backend/tests/api/test_admin_audit_log.py`。R6 adjust:extend 既有 flat file。另外 Protocol/impl change(F6.1/F6.2)應有 storage 覆蓋 → 加 4 cases 入 `backend/tests/storage/test_audit_log.py`(plan §2 F6.6 原只提 endpoint test)。
+- **D6.2 — `next_cursor` = breaking shape change,bare-list → `AuditLogPage` wrapper** — 現 endpoint `response_model=list[AuditLogEntry]`;加 `next_cursor` 唯一乾淨做法 = wrapper object `{entries, next_cursor}`。plan F6.6「6+ NEW cases」遺漏咗 **3 existing endpoint tests**(`returns_empty` / `returns_newest_first` / `respects_limit` 全部 assert bare list)+ `settings-6tab.test.tsx` mock + `settings-audit-log.tsx` consumer 都要 update 新 shape。R6 adjust:F6.6 包含 existing-test + mock 改寫。內部 consumer only,無 external API contract — 直接轉 wrapper(per CLAUDE.md §13 backend wins on field shape)。
+- **D6.3 — `since` UTC-normalize 喺 endpoint** — HTML `type="date"` input 出 `YYYY-MM-DD` → FastAPI/Pydantic parse 為 **tz-naive** datetime → 同 tz-aware `created_at`(`datetime.now(timezone.utc)`)比較會 raise `TypeError: can't compare offset-naive and offset-aware`。Fix:endpoint 收到 `since` 後 `if since.tzinfo is None: since = since.replace(tzinfo=timezone.utc)`,單一 funnel normalize,backend 收到永遠 tz-aware。
+- **D6.4 — `next_cursor` 計算 = `limit+1` over-fetch,`list_recent` return type 不變** — plan F6.1 只 extend params,唔改 `list_recent` return(保持 `list[AuditLogEntry]`)。endpoint 請求 `limit+1` rows:`has_more = len(rows) > limit` → `page = rows[:limit]` → `next_cursor = page[-1].id if has_more else None`。`next_cursor` 邏輯留喺 endpoint,storage 純 query — 唔需要 storage 返 page object。
+- **D6.5 — filter UI 無 mockup,net-new functional UI,非 H7 violation** — mockup `SettingsAccount` 842-870 只有 Session + Danger zone card,**完全無 audit log surface**。`<SettingsAuditLog>` 本身係 W24-c1 functional promote(component header + endpoint docstring 明文 pre-commit「Wave C2 adds filter + pagination」);F6 filter dropdown + since input + Load more 係**無 mockup element 可偏離**嘅 net-new functional UI → 非 H7 trigger(ADR-0026 §Consequences Wave C2 expansion sanction)。處理:用既有 CSS-first primitive(`.select` / `.input` / `.btn` / `.field` / `.label`)保持 Settings cluster 視覺一致,而非 redesign。
+- **D6.6 — frontend pattern = local-state extend,非 `useInfiniteQuery`** — `settings-audit-log.tsx` 現用 `useEffect + useState`(無 TanStack),cursor pagination「Load more append」嘅 TanStack-idiomatic 做法係 `useInfiniteQuery`,但轉換要連帶引入 QueryClient 依賴 + 重寫整個 fetch path = scope creep per Karpathy §1.3。跟 Wave C2 settings-cluster local-state 一致(D3.1 / D3.4 / D5.6):extend `useEffect`(filter-change fresh fetch)+ `useState` accumulator + `useCallback` loadMore append handler。
+
+### Acceptance(plan §3 + checklist F6)
+
+- [x] F6.1 list_recent Protocol +action_type/since/cursor keyword-only
+- [x] F6.2 InMemory in-pass filter + Postgres parameterized WHERE
+- [x] F6.3 AuditLogPage schema + endpoint 3 params + since UTC-normalize + next_cursor
+- [x] F6.4 listAuditLog (opts: AuditLogQuery) → Promise<AuditLogPage>
+- [x] F6.5 filter select + since date input + Load more button(local-state)
+- [x] F6.6 13 endpoint + 10 storage + 3 frontend tests + 6tab mock update
+- [x] F6.7 pytest 816 + mypy clean + tsc 0 + lint clean + [oklch=0 + Vitest 12/12
+
+**Day 1 cont F6 Verdict**:F6 complete — audit log 由 W24-c1 read-only last-10 table 提升至 `action_type` + `since` filter + cursor「Load more」pagination;backend Protocol/InMemory/Postgres + `AuditLogPage` wrapper + endpoint 3 additive params,frontend filter UI local-state extend。Breaking response shape change(bare-list → wrapper)consumer + 3 existing test + mock 全部 R6-surfaced 並 update。F7 tests(Vitest + Playwright)next。Real-calendar:F6 ~0.5 day vs 1.0 plan estimate。
+
+---
+
+<!-- Day 1+ F7 entries land at F7 active flip per CLAUDE.md §10 R2 -->

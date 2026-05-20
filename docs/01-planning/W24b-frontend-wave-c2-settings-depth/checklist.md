@@ -2,7 +2,7 @@
 phase: W24b-frontend-wave-c2-settings-depth
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-20  # F5 active-flip → F5.1-F5.7 complete (Identity inline edit)
+last_updated: 2026-05-20  # F6 active-flip → F6.1-F6.7 complete (audit log filter + cursor pagination)
 ---
 
 # W24b-wave-c2 — Checklist
@@ -69,13 +69,15 @@ last_updated: 2026-05-20  # F5 active-flip → F5.1-F5.7 complete (Identity inli
 
 ## F6 — Audit log filter + pagination
 
-- [ ] **F6.1** `backend/storage/audit_log_storage.py` `AuditLogBackend.list_recent` Protocol extended `action_type` + `since` + `cursor`(backward-compat default None)
-- [ ] **F6.2** InMemory + Postgres impl filter logic(InMemory comprehension + Postgres `WHERE action_type = %s AND created_at >= %s AND id < %s ORDER BY id DESC LIMIT %s`)
-- [ ] **F6.3** `audit_log.py` `GET /admin/audit-log` add `action_type` + `since` + `cursor` query params;response extends with `next_cursor: int | None`
-- [ ] **F6.4** `apiClient.admin.listAuditLog` extended signature `(opts: {limit?, action_type?, since?, cursor?})` + response `{entries, next_cursor}`
-- [ ] **F6.5** `settings-audit-log.tsx` filter dropdown(action_type)+ since date input + "Load more" cursor button
-- [ ] **F6.6** Tests:`test_audit_log.py` 加 filter/pagination 6+ NEW cases;`settings-audit-log.test.tsx` filter interaction
-- [ ] **F6.7** mypy strict backend + tsc/lint frontend clean
+> R6 finding(plan §7 Day 1 cont F6):**(a)** F6.6 plan-text test path「`backend/tests/api/admin/test_audit_log.py`」→ `admin/` 子目錄不存在,實際 = flat `backend/tests/api/test_admin_audit_log.py`;**(b)** F6.3 `next_cursor` = breaking shape change,bare-list → wrapper `AuditLogPage{entries,next_cursor}`,3 existing endpoint tests + `settings-6tab.test.tsx` mock + consumer 全部要 update。
+
+- [x] **F6.1** `backend/storage/audit_log_storage.py` `AuditLogBackend.list_recent` Protocol extended keyword-only `action_type` + `since` + `cursor`(backward-compat default None;return type 保持 `list[AuditLogEntry]`)
+- [x] **F6.2** InMemory(in-pass filter loop,`limit` counts post-filter rows)+ Postgres(`WHERE` parameterized conditions — 每個 user value `%s` placeholder,no string interpolation + `ORDER BY id DESC LIMIT %s`)impl filter logic
+- [x] **F6.3** NEW `AuditLogPage` schema(`entries` + `next_cursor`);`audit_log.py` `GET /admin/audit-log` add `action_type`(AuditAction Literal)+ `since` + `cursor`(ge=1)query params + `since` UTC-normalize + `limit+1` over-fetch + `next_cursor` compute;`response_model` bare-list → `AuditLogPage`
+- [x] **F6.4** `apiClient.admin.listAuditLog` extended signature `(opts: AuditLogQuery = {})` → `Promise<AuditLogPage>` + NEW `AuditLogPage` + `AuditLogQuery` interfaces;`URLSearchParams` query build
+- [x] **F6.5** `settings-audit-log.tsx` filter dropdown(action_type `.select` 6 options)+ since `type="date"` input + "Load more" cursor button(local-state extend `useEffect`/`useState`/`useCallback` per D3.1;CSS-first primitives — no mockup, net-new functional UI per R6 finding 5)
+- [x] **F6.6** Tests:`backend/tests/api/test_admin_audit_log.py` rewrite 3 existing for wrapper shape + **7 NEW** filter/pagination cases(13 total)+ `backend/tests/storage/test_audit_log.py` **4 NEW** storage filter cases(10 total)+ `frontend/tests/unit/settings-audit-log.test.tsx` **NEW 3** filter interaction + `settings-6tab.test.tsx` mock(line 132)updated 新 shape
+- [x] **F6.7** mypy strict route+schema **clean** + `audit_log_storage.py` clean(`audit_log_postgres.py` 只 pre-existing psycopg import-not-found per R8/F1.5b 環境)+ `tsc --noEmit` **exit 0** + `next lint` **✔ clean** + `Grep '\[oklch'`=**0** + backend pytest **816 passed + 11 skipped + 0 failed**(805 baseline +11)+ Vitest settings-audit-log 3/3 + settings-6tab 9/9 regression
 
 ## F7 — Tests(Vitest + Playwright)
 

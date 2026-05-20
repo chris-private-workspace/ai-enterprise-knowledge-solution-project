@@ -129,7 +129,7 @@ vi.mock('@/lib/api/admin', () => ({
       reason: 'Tier 2 — Tier 1 access via web UI only (MSAL SSO).',
       tier2_trigger: 'post-W12 Tier 2 governance',
     })),
-    listAuditLog: vi.fn(async () => []),
+    listAuditLog: vi.fn(async () => ({ entries: [], next_cursor: null })),
   },
 }));
 

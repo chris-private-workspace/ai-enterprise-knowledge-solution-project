@@ -49,3 +49,21 @@ class AuditLogEntry(BaseModel):
         ),
     )
     created_at: datetime
+
+
+class AuditLogPage(BaseModel):
+    """One page of audit log entries + the cursor for the next (older) page.
+
+    Wave C2 (W24b F6) wraps the former bare-list `GET /admin/audit-log`
+    response so the SettingsAccount surface can drive cursor pagination.
+    """
+
+    entries: list[AuditLogEntry]
+    next_cursor: int | None = Field(
+        default=None,
+        description=(
+            "The `id` of the oldest row on this page when more rows exist — "
+            "pass it back as `cursor` to fetch the next older page. "
+            "None means this is the last page."
+        ),
+    )

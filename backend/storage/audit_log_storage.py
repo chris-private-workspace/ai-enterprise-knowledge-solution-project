@@ -36,7 +36,14 @@ class AuditLogBackend(Protocol):
         payload: dict[str, object] | None = None,
     ) -> AuditLogEntry: ...
 
-    async def list_recent(self, limit: int = 50) -> list[AuditLogEntry]: ...
+    async def list_recent(
+        self,
+        limit: int = 50,
+        *,
+        action_type: AuditAction | None = None,
+        since: datetime | None = None,
+        cursor: int | None = None,
+    ) -> list[AuditLogEntry]: ...
 
 
 class InMemoryAuditLogBackend:
@@ -66,6 +73,25 @@ class InMemoryAuditLogBackend:
         self._next_id += 1
         return entry
 
-    async def list_recent(self, limit: int = 50) -> list[AuditLogEntry]:
-        # Newest-first ordering — list-recent semantic per Wave C2 UI consumer.
-        return list(reversed(self._rows))[:limit]
+    async def list_recent(
+        self,
+        limit: int = 50,
+        *,
+        action_type: AuditAction | None = None,
+        since: datetime | None = None,
+        cursor: int | None = None,
+    ) -> list[AuditLogEntry]:
+        # Newest-first; filters applied in-pass so `limit` counts post-filter
+        # rows. `cursor` is an exclusive `id` bound — `id < cursor` walks older.
+        result: list[AuditLogEntry] = []
+        for entry in reversed(self._rows):
+            if action_type is not None and entry.action != action_type:
+                continue
+            if since is not None and entry.created_at < since:
+                continue
+            if cursor is not None and entry.id is not None and entry.id >= cursor:
+                continue
+            result.append(entry)
+            if len(result) >= limit:
+                break
+        return result

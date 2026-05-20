@@ -16,12 +16,15 @@ Schema (in the `ekp` database per ADR-0023):
     )
 
 `list_recent` ORDER BY id DESC — newer rows have higher ids per SERIAL
-monotonicity. Index on (created_at) added in Wave C2 when query volume
-demands it; Wave C1 is write-mostly so seq scan acceptable.
+monotonicity. Wave C2 adds `action_type` / `since` / `cursor` filter params;
+the `id < cursor` keyset walk + `ORDER BY id DESC` ride the PK index. A
+dedicated (created_at) index stays a Wave B+ perf item — Beta-scale audit
+volume keeps the residual `action`/`created_at` predicate a cheap seq scan.
 """
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, cast
 
 import psycopg
@@ -86,14 +89,36 @@ class PostgresAuditLogBackend:
                 assert row is not None
                 return _row_to_entry(row)
 
-    async def list_recent(self, limit: int = 50) -> list[AuditLogEntry]:
+    async def list_recent(
+        self,
+        limit: int = 50,
+        *,
+        action_type: AuditAction | None = None,
+        since: datetime | None = None,
+        cursor: int | None = None,
+    ) -> list[AuditLogEntry]:
+        # WHERE built from a fixed set of column predicates — every user value
+        # is a `%s` placeholder, no string interpolation of inputs.
+        conditions: list[str] = []
+        params: list[Any] = []
+        if action_type is not None:
+            conditions.append("action = %s")
+            params.append(action_type)
+        if since is not None:
+            conditions.append("created_at >= %s")
+            params.append(since)
+        if cursor is not None:
+            conditions.append("id < %s")
+            params.append(cursor)
+        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        params.append(limit)
         async with await psycopg.AsyncConnection.connect(self._dsn, row_factory=dict_row) as conn:
             await self._ensure_schema(conn)
             async with conn.cursor() as cur:
                 await cur.execute(
                     f"SELECT id, actor, action, resource, payload, created_at "
-                    f"FROM {_TABLE} ORDER BY id DESC LIMIT %s",
-                    (limit,),
+                    f"FROM {_TABLE} {where} ORDER BY id DESC LIMIT %s",
+                    params,
                 )
                 rows = await cur.fetchall()
                 return [_row_to_entry(r) for r in rows]
