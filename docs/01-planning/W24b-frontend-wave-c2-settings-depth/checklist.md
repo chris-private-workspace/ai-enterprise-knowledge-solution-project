@@ -2,7 +2,7 @@
 phase: W24b-frontend-wave-c2-settings-depth
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-20  # F1 active-flip → F1.1-F1.5 complete (F1.4 deferred F2.1)
+last_updated: 2026-05-20  # F2 active-flip → F2.1-F2.8 complete (F2.4→F5, F2.6→F3 deferred)
 ---
 
 # W24b-wave-c2 — Checklist
@@ -27,13 +27,14 @@ last_updated: 2026-05-20  # F1 active-flip → F1.1-F1.5 complete (F1.4 deferred
 
 ## F2 — Zod schemas + form validation wire
 
-- [ ] **F2.1** `frontend/lib/schemas/admin/identity.ts` NEW — 5 zod schemas(EntraTenantConfig + AppRegistrationConfig + MsalConfig + RoleMappingConfig + SignInPolicyConfig)mirror backend Pydantic
-- [ ] **F2.2** `frontend/lib/schemas/admin/api_keys.ts` NEW — `AlertThresholdSchema`(50-95 range)
-- [ ] **F2.3** `frontend/lib/schemas/admin/connections.ts` NEW — `ProviderPatchSchema`(endpoint_url URL + region + display_name)
-- [ ] **F2.4** `settings-identity.tsx` wire `useForm({resolver: zodResolver(...)})` × 5 sub-resource card(structural wire;final inline-edit activation 入 F5)
-- [ ] **F2.5** `settings-api-keys.tsx` `OutgoingQuotaRowItem` alert_threshold useState → react-hook-form upgrade
-- [ ] **F2.6** `settings-connections.tsx` ProviderRow expand panel useForm for endpoint_url + region + display_name(structural wire;PATCH wire 入 F3)
-- [ ] **F2.7** `tsc --noEmit` exit 0 + `next lint` clean + `Grep '\[oklch'` = 0 preserved
+- [x] **F2.1** `frontend/lib/schemas/admin/identity.ts` NEW(106 lines)— 5 object schemas(`entraTenantConfigSchema` + `appRegistrationConfigSchema` + `msalConfigSchema` + `roleMappingConfigSchema` + `signInPolicyConfigSchema`)+ 4 enum schemas(cloud / audience / token-cache / ekp-role)mirror backend `admin_identity.py` Pydantic Literals + Field bounds;GUID / duration / domain regex 比 backend `str` 嚴(form-validation 層意義 — value 仍係 `str`,wire contract 不變)
+- [x] **F2.2** `frontend/lib/schemas/admin/api_keys.ts` NEW(20 lines)— `alertThresholdSchema`(int 50-95)+ `AlertThresholdInput` z.infer type;mirror backend `AlertThresholdPatch`
+- [x] **F2.3** `frontend/lib/schemas/admin/connections.ts` NEW(24 lines)— `providerPatchSchema`(endpoint_url URL-or-empty union + region + display_name min-1)+ `ProviderPatchInput` type;mirror backend `ProviderPatch`
+- [🚧] **F2.4 DEFERRED to F5** — `settings-identity.tsx` useForm wire:wiring `useForm` 入全 `readOnly` inputs = inert code;F5 一個 surgical pass 做 remove-readOnly + form + zod + mutation(per CLAUDE.md §10 R6 adjust-to-reality + Karpathy §1.3 surgical;plan §7 Day 1 F2 row documented)。F2 對 Identity 嘅貢獻 = `identity.ts` 5 schemas(F2.1)
+- [x] **F2.5** `settings-api-keys.tsx` `OutgoingQuotaRowItem` — `useState`+`handleSave` → `useForm` + `zodResolver(alertThresholdSchema)` + `register('alert_threshold_pct', {valueAsNumber:true})`;`<form onSubmit>` + `reset()` re-baseline;`!isDirty || isSubmitting` disable;inline `errors.alert_threshold_pct.message` 紅字。既有 await save pattern 保留(optimistic 入 F3)
+- [🚧] **F2.6 DEFERRED to F3** — `settings-connections.tsx` ProviderRow form:form scaffold 冇 submit mutation = 唔可以 submit 的死表單;F3 一個 pass 做 form + zod + mutation。F2 對 Connections 嘅貢獻 = `connections.ts` schema(F2.3)
+- [x] **F2.7** `tsc --noEmit` **REAL exit 0**(用 `> file 2>&1; echo $?` 量度,非 broken `tsc | tail` pipe)+ `next lint` **✔ No ESLint warnings or errors** + `Grep '\[oklch'` across `app`+`components`+`lib` = **0 preserved**;9 NEW/edited 行全部 CSS-first
+- [x] **F2.8** NEW(per plan §7 Day 1 F2 changelog)`frontend/tests/unit/admin-schemas.test.ts`(150 lines)— **16/16 pass**:entraTenant(valid + non-GUID + bad enum)+ alertThreshold(in-band + <50 + >95 + non-int)+ signInPolicy(valid domains + missing-@ + tier2-true-reject)+ msal(duration-shape + free-text-reject)+ providerPatch(valid URL + empty + malformed + empty display_name)
 
 ## F3 — Optimistic UI per PATCH(TanStack useMutation retrofit)
 

@@ -72,7 +72,8 @@ status: active                      # active | closed
 |---|---|---|---|---|
 | F0 | 0.25 | 0.25 | 0 | Single-commit kickoff per W19-W24 F0 precedent |
 | F1 | 0.5 | ~0.15 | -0.35 | Plan B (a) clean install no R8 friction;F1.4 folder defer F2.1 |
-| F2-F8 | _TBD per active flip_ | _TBD_ | _TBD_ | Rolling JIT per CLAUDE.md §10 R1 |
+| F2 | 1.0 | ~0.4 | -0.6 | 3 schemas + ApiKeys upgrade + 16-test suite;F2.4→F5 + F2.6→F3 deferred |
+| F3-F8 | _TBD per active flip_ | _TBD_ | _TBD_ | Rolling JIT per CLAUDE.md §10 R1 |
 
 ---
 
@@ -111,4 +112,47 @@ status: active                      # active | closed
 
 ---
 
-<!-- Day 1+ F2 entries land at F2 active flip per CLAUDE.md §10 R2 -->
+## Day 1 cont — 2026-05-20 — F2 zod schemas + form validation wire
+
+### Done
+
+- **F2 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 `admin.py` + `admin_identity.py` + `admin_api_keys.py` backend Pydantic + `lib/api/admin.ts` TS mirror + `settings-{identity,api-keys,connections}.tsx` 3 components:
+  - **(3) surface mismatches** — F2/F3/F5 原 aspect-slice 切法令 component 處於 incoherent intermediate state:F2.4 wire useForm 入全 readOnly Identity = inert / F2.6 Connections form scaffold 冇 mutation = 死表單。**Adjust** aspect-slice → feature-slice:F2 = pure validation layer + ApiKeys 既有 edit 硬化;F2.4 wire → F5、F2.6 wire → F3(各自一個 surgical pass)
+  - **(4) document** — plan §7 Day 1 cont F2 row landed
+  - **(5) adjust** — F2 ship 3 schemas + ApiKeys upgrade + 16-test suite;F2.8 schema test added(plan §2 F2 原無)
+- **F2.1** `frontend/lib/schemas/admin/identity.ts` NEW(106 lines)— 5 object schemas + 4 enum schemas mirror `admin_identity.py` Literals(`CloudInstance` / `SignInAudience` / `TokenCacheStrategy` / `EkpRoleKey`)+ Field bounds(`auto_disable_after_days >= 0` / `require_mfa_all_roles_tier2` z.literal(false));GUID(`.uuid()`)+ duration(`/^\d+[smhd]$/`)+ domain(`/^@.../`)regex 比 backend plain `str` 嚴 — form-validation 層意義,value 仍 `str`,wire contract 不變。F1.4-deferred `lib/schemas/admin/` folder 喺此 materialize
+- **F2.2** `frontend/lib/schemas/admin/api_keys.ts` NEW(20 lines)— `alertThresholdSchema`(int 50-95)mirror `AlertThresholdPatch`
+- **F2.3** `frontend/lib/schemas/admin/connections.ts` NEW(24 lines)— `providerPatchSchema`(endpoint_url URL-or-empty `z.union`)mirror `ProviderPatch`
+- **F2.4** DEFERRED to F5 — Identity useForm wire(全 readOnly,F5 一個 pass)
+- **F2.5** `settings-api-keys.tsx` `OutgoingQuotaRowItem` 升級 — `useState`+`handleSave` → `useForm<AlertThresholdInput>` + `zodResolver` + `register(...,{valueAsNumber:true})`;`<form onSubmit>` + `handleSubmit` + `reset()` re-baseline post-save;`!isDirty || isSubmitting` disable;inline zod error 紅字。既有 await save pattern 保留(optimistic 入 F3)
+- **F2.6** DEFERRED to F3 — Connections ProviderRow form wire(冇 mutation = 死表單,F3 一個 pass)
+- **F2.7** Verify gates:`tsc --noEmit` **REAL exit 0**、`next lint` **✔ No ESLint warnings or errors**、`Grep '\[oklch'` across `app`+`components`+`lib` = **0 preserved**
+- **F2.8** `frontend/tests/unit/admin-schemas.test.ts` NEW(150 lines)— **16/16 pass in 49s**:5 schema × happy + sad path
+- **Pre-existing defect caught + fixed** — 量度 tsc REAL exit 時發現 `settings-6tab.test.tsx:138` `beforeEach` 漏 import(W24-c1 F7 `1a3784c` latent;該 phase「tsc exit 0」用 broken `tsc | tail` pipe 量度 — 我 F2 第一次量度都犯同樣 pipe 錯,即時更正)→ 獨立 Trivial-class `fix(frontend): add missing beforeEach import` commit **`d10bf2c`**(per PROCESS.md §1 typo-class,F2 commit 前 land)
+- **Regression check** — `settings-6tab.test.tsx`(9)+ `zod-toolchain.test.ts`(4)= **13/13 pass**;`settings-api-keys.tsx` RHF 改動冇 break API Keys tab render-smoke
+
+### Decisions
+
+- **D2.1 — F2/F3/F5 aspect-slice → feature-slice** per Karpathy §1.1 + §1.3 — 每個 F-deliverable 要留 codebase 喺 coherent state。原 plan F2「wire useForm structural,F5 activate」會令 Identity component 經歷 inert-useForm 中間態 + 3-pass;feature-slice(F2=schemas,F3=Connections-edit-complete,F5=Identity-edit-complete)每個 component 一個 coherent pass。總 scope / components / outcome 不變,只 regroup。
+- **D2.2 — F2 ApiKeys upgrade keep,Identity/Connections wire defer** — ApiKeys `OutgoingQuotaRowItem` 本身已有 self-contained alert-threshold edit(Wave C1 shipped),F2「加 zod validation」係 coherent shippable change(component 全程 functional)。Identity(全 readOnly)+ Connections(冇 form)冇既有 edit,wire 入去無 mutation 唔 functional → defer 去佢哋各自 feature slice。
+- **D2.3 — zod regex 比 backend `str` 嚴** — backend `tenant_id` / `session_ttl` / email domain 全部 plain `str`;zod 加 GUID / duration / `@`-prefix regex。Rationale:form-validation 層嘅意義就係喺 submit 前 catch malformed input(malformed tenant GUID → MSAL auth silently break)。Value 通過 regex 後仍係 `str`,wire contract 不變 — 唔 violate CLAUDE.md §13 backend-wins(嗰條係 field-shape contract,呢度 field shape 仍 `str`)。
+- **D2.4 — `valueAsNumber:true` on alert-threshold input** — RHF number input 預設返 string;`valueAsNumber` 令 zod `.number()` resolver 直接收到 number。Empty input → `NaN`(typeof number)→ `.int()`/`.min(50)` fail → inline error,acceptable behavior。
+- **D2.5 — Trivial-class fix 獨立 commit `d10bf2c`** — `beforeEach` 漏 import 屬 PROCESS.md §1 typo-class(< 30 min,無需 BUG folder);獨立 `fix(frontend):` commit 喺 F2 commit 之前 land,令 F2「tsc REAL exit 0」gate 誠實 + 唔將 W24-c1 defect fix 混入 F2 feature commit(Karpathy §1.3 surgical separation)。
+- **D2.6 — broken `tsc | tail` pipe exit-code 教訓** — `npx tsc | tail; echo $?` 嘅 `$?` 係 `tail` 嘅 exit,唔係 `tsc` 嘅;W24-c1(+ 我 F1 + F2 第一次量度)都中招。正確量度 = `npx tsc --noEmit > file 2>&1; echo $?`。後續 F3-F8 tsc verify 一律用正確法。
+
+### Acceptance(plan §3 + checklist F2)
+
+- [x] F2.1 identity.ts 5 schemas + 4 enums
+- [x] F2.2 api_keys.ts alertThresholdSchema
+- [x] F2.3 connections.ts providerPatchSchema
+- [🚧] F2.4 deferred F5(Identity all-readOnly)
+- [x] F2.5 ApiKeys OutgoingQuotaRowItem RHF + zod upgrade
+- [🚧] F2.6 deferred F3(Connections no existing form)
+- [x] F2.7 tsc REAL exit 0 + lint clean + [oklch=0
+- [x] F2.8 admin-schemas.test.ts 16/16
+
+**Day 1 cont F2 Verdict**:F2 complete — pure validation layer(3 zod schema files mirror backend Pydantic)+ ApiKeys alert-threshold RHF+zod 硬化 + 16-test schema suite green。1 pre-existing W24-c1 tsc defect 順帶 caught + Trivial-fixed(`d10bf2c`)。F3 Connections inline edit(form + zod + optimistic mutation)next。Real-calendar:F2 ~0.4 day vs 1.0 plan estimate。
+
+---
+
+<!-- Day 1+ F3 entries land at F3 active flip per CLAUDE.md §10 R2 -->

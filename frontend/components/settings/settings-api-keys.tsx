@@ -11,10 +11,15 @@
  *
  * Per F4 plan deviation: alert_threshold_pct is the editable knob (cap edit
  * deferred Wave B+ — Azure portal authoritative).
+ *
+ * W24b-wave-c2 F2: the alert-threshold edit is react-hook-form + zod
+ * (`alertThresholdSchema`) — surfaces a 50-95 range error inline.
  */
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { KeyRound, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
 
 import { DisabledAffordance } from '@/components/ui/disabled-affordance';
 import {
@@ -24,6 +29,10 @@ import {
   type OutgoingQuotaRow,
   type UsageStats4Stat,
 } from '@/lib/api/admin';
+import {
+  alertThresholdSchema,
+  type AlertThresholdInput,
+} from '@/lib/schemas/admin/api_keys';
 
 function formatNum(n: number | null): string {
   if (n == null) return '—';
@@ -222,22 +231,25 @@ function OutgoingQuotaRowItem({
   row: OutgoingQuotaRow;
   isLast: boolean;
 }) {
-  const [threshold, setThreshold] = useState(row.alert_threshold_pct);
-  const [saving, setSaving] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isDirty, isSubmitting },
+  } = useForm<AlertThresholdInput>({
+    resolver: zodResolver(alertThresholdSchema),
+    defaultValues: { alert_threshold_pct: row.alert_threshold_pct },
+  });
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const updated = await adminApi.patchAlertThreshold(
-        row.provider_id,
-        row.deployment_id,
-        threshold,
-      );
-      setThreshold(updated.alert_threshold_pct);
-    } finally {
-      setSaving(false);
-    }
-  };
+  const onSubmit = handleSubmit(async (data) => {
+    const updated = await adminApi.patchAlertThreshold(
+      row.provider_id,
+      row.deployment_id,
+      data.alert_threshold_pct,
+    );
+    // Re-baseline the form so `isDirty` clears after a successful save.
+    reset({ alert_threshold_pct: updated.alert_threshold_pct });
+  });
 
   const tpmPct = row.cap_tpm ? row.used_tpm / row.cap_tpm : 0;
   const rpmPct = row.cap_rpm ? row.used_rpm / row.cap_rpm : 0;
@@ -248,6 +260,7 @@ function OutgoingQuotaRowItem({
       : row.status === 'warning'
         ? 'badge badge-warning'
         : 'badge badge-success';
+  const inputId = `th-${row.provider_id}-${row.deployment_id}`;
 
   return (
     <div
@@ -278,41 +291,47 @@ function OutgoingQuotaRowItem({
         <QuotaBar label={unit} used={row.used_tpm} cap={row.cap_tpm} pct={tpmPct} />
         <QuotaBar label="RPM" used={row.used_rpm} cap={row.cap_rpm} pct={rpmPct} />
       </div>
-      <div
-        style={{
-          marginTop: 10,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          fontSize: 12,
-        }}
-      >
-        <label htmlFor={`th-${row.provider_id}-${row.deployment_id}`}>
-          Alert threshold:
-        </label>
-        <input
-          id={`th-${row.provider_id}-${row.deployment_id}`}
-          type="number"
-          className="input mono"
-          min={50}
-          max={95}
-          value={threshold}
-          onChange={(e) => setThreshold(Number(e.target.value))}
-          style={{ width: 72, height: 28, fontSize: 12 }}
-        />
-        <span>%</span>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={() => void handleSave()}
-          disabled={saving || threshold === row.alert_threshold_pct}
+      <form onSubmit={onSubmit} style={{ marginTop: 10 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 12,
+          }}
         >
-          {saving ? (
-            <Loader2 size={12} className="animate-spin" aria-hidden="true" />
-          ) : null}{' '}
-          Save
-        </button>
-      </div>
+          <label htmlFor={inputId}>Alert threshold:</label>
+          <input
+            id={inputId}
+            type="number"
+            className="input mono"
+            min={50}
+            max={95}
+            aria-invalid={errors.alert_threshold_pct ? 'true' : undefined}
+            {...register('alert_threshold_pct', { valueAsNumber: true })}
+            style={{ width: 72, height: 28, fontSize: 12 }}
+          />
+          <span>%</span>
+          <button
+            type="submit"
+            className="btn btn-ghost btn-sm"
+            disabled={!isDirty || isSubmitting}
+          >
+            {isSubmitting ? (
+              <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+            ) : null}{' '}
+            Save
+          </button>
+        </div>
+        {errors.alert_threshold_pct ? (
+          <div
+            className="hint"
+            style={{ color: 'oklch(var(--destructive))', marginTop: 4 }}
+          >
+            {errors.alert_threshold_pct.message}
+          </div>
+        ) : null}
+      </form>
     </div>
   );
 }
