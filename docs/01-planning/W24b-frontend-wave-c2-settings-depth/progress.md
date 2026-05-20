@@ -75,7 +75,8 @@ status: active                      # active | closed
 | F2 | 1.0 | ~0.4 | -0.6 | 3 schemas + ApiKeys upgrade + 16-test suite;F2.4→F5 + F2.6→F3 deferred |
 | F3 | 1.0 | ~0.4 | -0.6 | Connections inline edit + 3 useMutation;1 tsc type-fix(ConnectionEdit) |
 | F4 | 0.5 | ~0.3 | -0.2 | ErrorBoundary class NEW(F0 audit 誤判)+ 6-tab wrap + 3-test suite |
-| F5-F8 | _TBD per active flip_ | _TBD_ | _TBD_ | Rolling JIT per CLAUDE.md §10 R1 |
+| F5 | 1.0 | ~0.6 | -0.4 | settings-identity rewrite — 4 form cards;最大 deliverable |
+| F6-F8 | _TBD per active flip_ | _TBD_ | _TBD_ | Rolling JIT per CLAUDE.md §10 R1 |
 
 ---
 
@@ -226,4 +227,47 @@ status: active                      # active | closed
 
 ---
 
-<!-- Day 1+ F5 entries land at F5 active flip per CLAUDE.md §10 R2 -->
+## Day 1 cont — 2026-05-20 — F5 Identity inline edit activation(最大 deliverable)
+
+### Done
+
+- **F5 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6):
+  - **(2) grep** — 讀 mockup `ekp-page-settings-tabs.jsx:528-723 SettingsIdentity`:role card 編輯 = per-row「⋯」menu + 「Add mapping」按鈕(individual CRUD)/ scopes = plain `badge badge-muted` 無 ×/Add(display-only)/ redirect_uris + allowed_email_domains = editable list with X + Add;`QueryProvider` confirmed `(app)/layout.tsx`(F3 audit)
+  - **(3) surface** — role 編輯 = individual CRUD → plan F5.5 defer Wave C+ → F5 = 4 editable cards;scopes display-only;Identity cards form-based → optimistic pattern ≠ Connections
+  - **(5) adjust** — F5 acceptance F5.1-F5.7 重寫 per 4-card reality;plan §7 Day 1 cont F5 row landed
+- **F5.0** `lib/schemas/admin/identity.ts` 加 4 inferred type exports(`EntraTenantInput` / `AppRegistrationInput` / `MsalInput` / `SignInPolicyInput`)— `useForm<T>` generic 要 form type = `z.infer<schema>` 對齊 `zodResolver`
+- **F5.1-F5.6** `settings-identity.tsx` 完整 rewrite(425 read-only → 559 行 / 4 form cards + 1 display card)：
+  - `<TenantCard>` — tenant_id / tenant_domain(GUID + domain regex zod)/ cloud_instance select editable;authority_url `watch()` controlled read-only
+  - `<AppRegistrationCard>` — client_id editable;redirect_uris editable list(`watch` + `setValue` add/remove + X button per row);scopes display badges;sign_in_audience select(multi_disabled `<option>` disabled);client_secret ApiKeyInput rotateDisabled(Wave C2)
+  - `<MsalCard>` — token_cache_strategy select(distributed_disabled disabled)/ session_ttl / refresh / csrf(duration regex zod)editable;cookie_settings_preview `watch()` read-only div
+  - `<RoleMappingCard>` — read-only display(W24-c1 role table 保留;individual CRUD defer Wave C+)
+  - `<SignInPolicyCard>` — allowed_email_domains editable list / require_mfa_workspace_admin switch button / auto_disable_after_days switch+number;require_mfa_all_roles_tier2 DisabledAffordance
+  - shared `<CardSaveRow>`(Save footer + mutation feedback)+ `<FieldError>`(zod error hint)helpers
+  - 每 card `useMutation` patch endpoint + `onSuccess reset(saved)` re-baseline
+- **F5.7** Verify gates — `pnpm exec tsc --noEmit` **REAL exit 0**(首 pass)、`next lint` **✔ No ESLint warnings or errors**、`Grep '\[oklch'`=0、`settings-6tab.test.tsx` **9/9**
+- **settings-6tab.test.tsx QueryClientProvider wrapper** — F5 令 Identity tab(`getIdentity` mock 返完整 config → 4 form cards render → `useMutation`)需要 QueryClientProvider;預判 → 實測 2 identity test fail → 加 `renderSettings()` helper(`QueryClient` + `QueryClientProvider` wrap,pattern 對齊 `dashboard.test.tsx:77`)+ 9 處 `render(<SettingsPage/>)` → `renderSettings()`;**9/9 restored**
+
+### Decisions
+
+- **D5.1 — F5 = 4 editable cards 非 5**(role card display)— mockup role 編輯 affordance(per-row「⋯」menu + 「Add mapping」)= individual mapping CRUD,plan F5.5 明文 defer Wave C+;`<RoleMappingCard>` 保持 W24-c1 read-only display table。F5.2 plan-text「5 cards Save」R6-adjusted。
+- **D5.2 — Identity cards form-based:onSuccess re-baseline,onError keep-and-show(非 onMutate rollback)** — Connections(F3)有獨立 `detail` display object → optimistic = onMutate setDetail / onError rollback。Identity cards 係**全卡表單**(所有 field 都係 form input)— form 本身就持住用戶 edits,冇獨立 display 要 optimistically update。save 失敗時 rollback 會**棄用戶輸入** = 壞 UX。正確 pattern:`useMutation` + `onSuccess reset(saved)` re-baseline(form 顯示 saved values + clean)+ `onError` 保留 form dirty + `<CardSaveRow>` 顯示 error。plan §3 Gate criterion 4「onMutate/onError rollback」對 form-based card 應讀作此 pattern — F8 closeout reconcile。
+- **D5.3 — primitive `string[]` list 用 `watch`+`setValue` 非 `useFieldArray`** — redirect_uris / allowed_email_domains 係 `string[]`;RHF `useFieldArray` 對 primitive array 要 `{value:string}[]` object wrapper + form-specific type + submit-time map-back。`watch('redirect_uris')` render + `setValue('redirect_uris', newArr, {shouldDirty:true})` add/remove + `register('redirect_uris.${i}')` — 單一 isDirty / 單一 submit source / form type = backend config type,更 surgical per Karpathy §1.3。
+- **D5.4 — mutationFn 顯式構造 backend payload** — form type = `z.infer<schema>`(authority_url / secret fields optional),backend config type required → `mutationFn` 顯式列 `{...edited from data, ...passed-through from initial}`(e.g. TenantCard authority_url 送 `null` server re-derive;AppReg secret fields 由 `initial` pass-through)— 比 `??` coercion chain 清楚。
+- **D5.5 — `<CardSaveRow>` Save footer 係 functional 必需** — mockup `SettingsIdentity` 係 static prototype,inputs 有 defaultValue 但無 Save 按鈕。「inline edit」per ADR-0026 Option B 需要 Save 機制 → 加 card footer Save button(同 F2 ApiKeys / F3 Connections 加 Save button 一致 precedent;mockup static-prototype 限制,非 H7 deviation)。
+- **D5.6 — settings-6tab QueryClientProvider 預判正確** — F3 嗰陣預判 settings-6tab 會 break(Connections useMutation)but 證實多餘(empty mock 無 ProviderRow)。F5 同樣預判 → 今次**證實成立**(Identity `getIdentity` mock 返完整 config → 4 form cards mount → useMutation reach)→ 加 wrapper。差別:Connections empty-mockable / Identity 唔 empty-mockable(consolidated config GET)。
+
+### Acceptance(plan §3 + checklist F5)
+
+- [x] F5.1 settings-identity rewrite — 7 readOnly removed + 1 (authority_url) preserved
+- [x] F5.2 4 form cards useForm + zodResolver + CardSaveRow
+- [x] F5.3 useMutation PATCH + onSuccess reset + 422 boundary
+- [x] F5.4 authority_url read-only watch-controlled
+- [x] F5.5 RoleMappingCard display(list-replace / individual CRUD defer Wave C+)
+- [x] F5.6 H7 4-card layout 對齊 mockup
+- [x] F5.7 tsc REAL exit 0 + lint clean + [oklch=0 + settings-6tab 9/9
+
+**Day 1 cont F5 Verdict**:F5 complete — `settings-identity.tsx` 由 read-only display 變 4 editable form cards(Tenant / App Registration / MSAL / Sign-in Policy)+ role card display;每 card useForm + zod + useMutation + Save。最大 deliverable done。F6 audit log filter + pagination next。Real-calendar:F5 ~0.6 day vs 1.0 plan estimate。
+
+---
+
+<!-- Day 1+ F6 entries land at F6 active flip per CLAUDE.md §10 R2 -->

@@ -104,3 +104,10 @@ export const signInPolicyConfigSchema = z.object({
     .int('Must be a whole number of days')
     .min(0, '0 = never auto-disable'),
 });
+
+// Inferred form-value types — `useForm<T>` generics for the F5 inline-edit
+// cards. Consumed by `settings-identity.tsx`.
+export type EntraTenantInput = z.infer<typeof entraTenantConfigSchema>;
+export type AppRegistrationInput = z.infer<typeof appRegistrationConfigSchema>;
+export type MsalInput = z.infer<typeof msalConfigSchema>;
+export type SignInPolicyInput = z.infer<typeof signInPolicyConfigSchema>;

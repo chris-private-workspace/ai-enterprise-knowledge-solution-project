@@ -2,7 +2,7 @@
 phase: W24b-frontend-wave-c2-settings-depth
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-20  # F4 active-flip → F4.1-F4.4 complete (ErrorBoundary per tab)
+last_updated: 2026-05-20  # F5 active-flip → F5.1-F5.7 complete (Identity inline edit)
 ---
 
 # W24b-wave-c2 — Checklist
@@ -57,13 +57,15 @@ last_updated: 2026-05-20  # F4 active-flip → F4.1-F4.4 complete (ErrorBoundary
 
 ## F5 — Identity inline edit activation
 
-- [ ] **F5.1** `settings-identity.tsx` 8 處 `readOnly` removed(line 96/106/115/163/190/256/265/274)
-- [ ] **F5.2** 5 sub-resource card 各 wire Save button + dirty-state detection(react-hook-form `formState.isDirty`)
-- [ ] **F5.3** Save click → useMutation PATCH endpoint → optimistic update → 422 boundary inline banner-destructive
-- [ ] **F5.4** `authority_url` disabled-display preserved(server-side derived — read-only 唔屬 inline-edit promote)
-- [ ] **F5.5** RoleMappingConfig list-replace semantic preserved(individual mapping CRUD defer Wave C+)
-- [ ] **F5.6** H7 per-tab fidelity verify — inline-edit affordance match mockup line 528-723 visual(unlock-only,no visual restructure)
-- [ ] **F5.7** `tsc --noEmit` exit 0 + `next lint` clean
+> R6 finding(plan §7 Day 1 cont F5):mockup `SettingsIdentity` 嘅 role 編輯 = per-row「⋯」menu + 「Add mapping」(individual CRUD)→ plan F5.5 明文 defer Wave C+ → **F5 = 4 editable cards 非 5**(Tenant / App Registration / MSAL / Sign-in Policy);role card 保持 W24-c1 display。
+
+- [x] **F5.1** `settings-identity.tsx` 完整 rewrite(read-only display → 4 editable form cards)— 8 處 `readOnly` 入面 **7 個移除**(tenant_id / tenant_domain → register editable;client_id → register;redirect_uris → register list;session_ttl / refresh / csrf → register);**1 個保留** = `authority_url`(per F5.4 server-derived);3 個 `disabled` select(cloud_instance / sign_in_audience / token_cache_strategy)→ `register` editable(Tier 2 `<option>` 保持 disabled)
+- [x] **F5.2** **4 sub-resource card**(非 5 — role card display per F5.5)各 `useForm<XInput>` + `zodResolver` + `<CardSaveRow>` footer Save button(`!isDirty || isPending` disabled)+ `formState.isDirty` dirty-state;redirect_uris + allowed_email_domains editable list 用 `watch` + `setValue(...,{shouldDirty:true})` add/remove(非 useFieldArray — primitive string array)
+- [x] **F5.3** Save → `useMutation` PATCH(`patchTenant`/`patchAppRegistration`/`patchMsal`/`patchPolicy`)→ `onSuccess` `reset(saved)` re-baseline(form-based card:form 本身持 edits,onSuccess re-baseline,onError 保留 edits + 顯示 error — 比 onMutate-rollback 啱,rollback 會棄用戶輸入,per D5.2)+ 422 boundary 透過 disabled Tier 2 `<option>` preserve + `CardSaveRow` inline destructive error 顯示任何 422
+- [x] **F5.4** `authority_url` read-only disabled preserved — `watch('authority_url')` controlled display(save 後 server re-derive 會更新);唔 register,唔 edit
+- [x] **F5.5** RoleMappingConfig list-replace semantic preserved — `<RoleMappingCard>` 保持 W24-c1 read-only display(individual mapping CRUD = mockup「⋯」menu + 「Add mapping」= Wave C+);Power User row `opacity:0.5` Tier 2 disabled affordance preserved
+- [x] **F5.6** H7 per-tab fidelity — 4 cards layout 對齊 mockup line 542-721(grid 1fr/1fr field layout / redirect_uris list with X + Add per mockup line 589-600 / allowed_email_domains list per mockup line 700-705 / switch toggles);`<CardSaveRow>` Save footer 係 functional 必需(mockup static prototype 無 save wiring,同 F2 ApiKeys / F3 Connections Save button precedent 一致)
+- [x] **F5.7** `pnpm exec tsc --noEmit` **REAL exit 0** + `next lint` **✔ clean** + `Grep '\[oklch'`=0 + `settings-6tab.test.tsx` **9/9**(F5 令 Identity tab 用 `useMutation` → 預判並修復 settings-6tab 缺 QueryClientProvider:加 `renderSettings()` helper wrap — F5 自己整出嚟嘅 breakage 自己清 per Karpathy §1.3)
 
 ## F6 — Audit log filter + pagination
 

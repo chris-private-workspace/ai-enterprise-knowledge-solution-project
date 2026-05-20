@@ -14,6 +14,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // next/navigation mock — exposes searchParams + a controllable router.replace spy.
 const mockReplace = vi.fn();
@@ -134,6 +135,22 @@ vi.mock('@/lib/api/admin', () => ({
 
 import SettingsPage from '@/app/(app)/settings/page';
 
+// W24b F5 — the Identity + Connections tabs now use `useMutation`, so the
+// page must render inside a QueryClientProvider.
+function renderSettings() {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <SettingsPage />
+    </QueryClientProvider>,
+  );
+}
+
 describe('Settings 6-tab PageSettingsRich (W24 F5)', () => {
   beforeEach(() => {
     mockReplace.mockReset();
@@ -141,7 +158,7 @@ describe('Settings 6-tab PageSettingsRich (W24 F5)', () => {
   });
 
   it('renders all 6 tab labels in the navigation', async () => {
-    render(<SettingsPage />);
+    renderSettings();
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /^settings$/i })).toBeInTheDocument();
     });
@@ -154,7 +171,7 @@ describe('Settings 6-tab PageSettingsRich (W24 F5)', () => {
   });
 
   it('defaults to the Profile tab when no ?tab= query param', async () => {
-    render(<SettingsPage />);
+    renderSettings();
     await waitFor(() => {
       const profileTab = screen.getByRole('tab', { name: /^profile$/i });
       expect(profileTab).toHaveAttribute('aria-selected', 'true');
@@ -165,7 +182,7 @@ describe('Settings 6-tab PageSettingsRich (W24 F5)', () => {
 
   it('honors ?tab=identity deep link', async () => {
     mockSearchParams = new URLSearchParams('tab=identity');
-    render(<SettingsPage />);
+    renderSettings();
     await waitFor(() => {
       const identityTab = screen.getByRole('tab', { name: /identity & auth/i });
       expect(identityTab).toHaveAttribute('aria-selected', 'true');
@@ -179,7 +196,7 @@ describe('Settings 6-tab PageSettingsRich (W24 F5)', () => {
 
   it('honors ?tab=api-keys deep link with hyphen', async () => {
     mockSearchParams = new URLSearchParams('tab=api-keys');
-    render(<SettingsPage />);
+    renderSettings();
     await waitFor(() => {
       const tab = screen.getByRole('tab', { name: /api keys & quotas/i });
       expect(tab).toHaveAttribute('aria-selected', 'true');
@@ -188,7 +205,7 @@ describe('Settings 6-tab PageSettingsRich (W24 F5)', () => {
 
   it('falls back to profile when ?tab= contains an unknown value', async () => {
     mockSearchParams = new URLSearchParams('tab=bogus');
-    render(<SettingsPage />);
+    renderSettings();
     await waitFor(() => {
       const profileTab = screen.getByRole('tab', { name: /^profile$/i });
       expect(profileTab).toHaveAttribute('aria-selected', 'true');
@@ -196,7 +213,7 @@ describe('Settings 6-tab PageSettingsRich (W24 F5)', () => {
   });
 
   it('updates URL via router.replace on tab click', async () => {
-    render(<SettingsPage />);
+    renderSettings();
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: /^connections$/i })).toBeInTheDocument();
     });
@@ -212,7 +229,7 @@ describe('Settings 6-tab PageSettingsRich (W24 F5)', () => {
 
   it('Account tab renders Sign out + Audit log + Danger Zone', async () => {
     mockSearchParams = new URLSearchParams('tab=account');
-    render(<SettingsPage />);
+    renderSettings();
     await waitFor(() => {
       expect(
         screen.getByRole('button', { name: /sign out/i }),
@@ -226,7 +243,7 @@ describe('Settings 6-tab PageSettingsRich (W24 F5)', () => {
 
   it('Identity Power User row carries Tier 2 disabled affordance', async () => {
     mockSearchParams = new URLSearchParams('tab=identity');
-    render(<SettingsPage />);
+    renderSettings();
     await waitFor(() => {
       // Power User row badge (one of multiple "Tier 2" badges in mocked data).
       const tier2Badges = screen.getAllByText(/tier 2/i);
@@ -239,7 +256,7 @@ describe('Settings 6-tab PageSettingsRich (W24 F5)', () => {
 
   it('API Keys tab renders 4-stat strip + incoming Tier 2 affordance', async () => {
     mockSearchParams = new URLSearchParams('tab=api-keys');
-    render(<SettingsPage />);
+    renderSettings();
     await waitFor(() => {
       expect(screen.getByText(/api calls today/i)).toBeInTheDocument();
     });
