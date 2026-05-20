@@ -71,8 +71,44 @@ status: active                      # active | closed
 | F# | Planned days | Actual days | Variance | Notes |
 |---|---|---|---|---|
 | F0 | 0.25 | 0.25 | 0 | Single-commit kickoff per W19-W24 F0 precedent |
-| F1-F8 | _TBD per active flip_ | _TBD_ | _TBD_ | Rolling JIT per CLAUDE.md §10 R1 |
+| F1 | 0.5 | ~0.15 | -0.35 | Plan B (a) clean install no R8 friction;F1.4 folder defer F2.1 |
+| F2-F8 | _TBD per active flip_ | _TBD_ | _TBD_ | Rolling JIT per CLAUDE.md §10 R1 |
 
 ---
 
-<!-- Day 1+ entries land at F1+ active flip per CLAUDE.md §10 R2 -->
+## Day 1 — 2026-05-20 — F1 react-hook-form + zod install + sanity test
+
+### Done
+
+- **F1 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6):
+  - **(1)** read F1 plan literal acceptance criteria — F1.1-F1.5
+  - **(2)** grep code base — `react-hook-form` / `zod` / `@hookform` 完全唔喺 `frontend/app` + `frontend/components` + `frontend/lib`(greenfield);`docs/adr/` 確認 ADRs 去到 0031(0030 + 0032 skipped per session-start)— next available NNNN ≥ 0033 但 W24b 無 NEW ADR;`frontend/app/(app)/kb/new/page.tsx`(W20 F4 5-step wizard)用 plain `useState`(line 104-105)— **無 react-hook-form precedent**,F2 zod 整合 fully greenfield
+  - **(3)** surface mismatches via Karpathy §1.1 — 2 deviations(F1.4 空 folder git-meaningless / F1.5 test 檔名隨 folder defer 而 rename)
+  - **(4)** document deviations in plan §7 changelog — Day 1 row landed
+  - **(5)** adjust acceptance criteria — F1.4 → F2.1 / F1.5 → `zod-toolchain.test.ts`
+- **F1.1** `pnpm add react-hook-form@^7 zod@^3 @hookform/resolvers@^3` — **Plan B (a) clean install in 40.6s,zero R8**(npm-registry metadata non-binary;`+8 -58` packages,resolved 620);landed `react-hook-form@^7.76.0` + `zod@^3.25.76` + `@hookform/resolvers@^3.10.0`
+- **F1.2** N/A — F1.1 Plan B (a) succeeded clean,no R8 hit → no ADR-0017 amendment + no Plan B (c) mobile hotspot fallback;confirms W17 F6 Vitest npm-registry precedent(R8 blocks binary-CDN / image-layer downloads,not npm/PyPI metadata)
+- **F1.3** `package.json` 3 new deps confirmed;`pnpm-lock.yaml` updated;`npx tsc --noEmit` **exit 0**(types resolve)
+- **F1.4** DEFERRED to F2.1 — `frontend/lib/schemas/admin/` folder materialize 喺首個真 schema 落地時
+- **F1.5** `frontend/tests/unit/zod-toolchain.test.ts` NEW(60 lines)— toolchain sanity:zod `.parse()` valid path + `.safeParse()` field-error surfacing(`tenant_id` + `alert_threshold_pct`)+ `zodResolver` bridge typeof function + `useForm` export typeof function;**4/4 pass in 11.9s**;inline `sampleSchema` mirror 2 real Wave C1 constraint(Entra `tenant_id` UUID + `alert_threshold_pct` int 50-95)
+
+### Decisions
+
+- **D1.1 — F1.4 空 folder defer F2.1** per Karpathy §1.2 simplicity — git 唔 track 空目錄;為滿足「folder NEW」字面去整 throwaway placeholder file 屬 busywork;folder 喺 F2.1 `identity.ts` 落地時自然 materialize。R6 adjust-acceptance-to-reality。
+- **D1.2 — F1.5 test 改名 `zod-toolchain.test.ts`** — plan-text `lib-schemas-admin.test.ts` 隱含 import `lib/schemas/admin/`;F1.4 folder 既 defer,toolchain-level 命名更準確反映 test 實際驗證內容(3-dep 整合 sanity,非 schema collection coverage)。
+- **D1.3 — react-hook-form + zod H2 = NO NEW ADR** per W24-wave-c1 F1 Key Vault SDK precedent — NEW dep within an approved parent ADR scope(ADR-0026 Option B「fully editable」→ form validation inherent)= parent ADR covers + ADR-0017 amendment only IF Plan B fallback 用到;F1.1 Plan B (a) succeeded → ADR-0017 unchanged。
+- **D1.4 — zod v3 not v4** per plan §1 spec(`zod@^3`)— zod v3 rock-solid + `@hookform/resolvers@^3` 對齊 zod 3;zod 4 / resolvers v5 屬 future migration,Wave C2 唔 scope-creep。
+
+### Acceptance(plan §3 + checklist F1)
+
+- [x] F1.1 pnpm add 3 deps — Plan B (a) clean
+- [x] F1.2 N/A — no R8 fallback needed
+- [x] F1.3 package.json + tsc exit 0
+- [🚧] F1.4 deferred F2.1(R6 adjust)
+- [x] F1.5 sanity test 4/4 pass
+
+**Day 1 F1 Verdict**:F1 complete — 3 form-validation deps landed clean(Plan B (a),zero R8 friction)+ toolchain sanity 4/4 green。F2 zod schemas + form validation wire next。Real-calendar:F1 ~0.15 day vs 0.5 plan estimate(-0.35 — `pnpm add` 無 R8 friction collapse)。
+
+---
+
+<!-- Day 1+ F2 entries land at F2 active flip per CLAUDE.md §10 R2 -->

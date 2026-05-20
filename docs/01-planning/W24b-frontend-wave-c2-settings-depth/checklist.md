@@ -2,7 +2,7 @@
 phase: W24b-frontend-wave-c2-settings-depth
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-20  # F0 kickoff landed
+last_updated: 2026-05-20  # F1 active-flip → F1.1-F1.5 complete (F1.4 deferred F2.1)
 ---
 
 # W24b-wave-c2 — Checklist
@@ -19,11 +19,11 @@ last_updated: 2026-05-20  # F0 kickoff landed
 
 ## F1 — react-hook-form + zod install(H2 ADR-0017 mitigation)
 
-- [ ] **F1.1** `pnpm add react-hook-form@^7 zod@^3 @hookform/resolvers@^3` 透過 IT-managed pnpm registry(non-binary npm metadata)
-- [ ] **F1.2** 若 F1.1 fails per R8 → ADR-0017 amendment occurrence #9 + retry via Plan B (c) mobile hotspot
-- [ ] **F1.3** `package.json` + `pnpm-lock.yaml` 3 new deps landed;`tsc --noEmit` exit 0
-- [ ] **F1.4** `frontend/lib/schemas/admin/` folder NEW(zod schema collection root)
-- [ ] **F1.5** Sanity Vitest:`frontend/tests/unit/lib-schemas-admin.test.ts` NEW — 1 sample schema parse path verify
+- [x] **F1.1** `pnpm add react-hook-form@^7 zod@^3 @hookform/resolvers@^3` — **Plan B (a) clean install in 40.6s,zero R8**;resolved `react-hook-form@^7.76.0` + `zod@^3.25.76` + `@hookform/resolvers@^3.10.0`
+- [x] **F1.2** N/A — F1.1 Plan B (a) `pnpm add` succeeded clean;no R8 hit → no ADR-0017 amendment + no Plan B (c) mobile hotspot fallback needed(npm-registry metadata non-binary,per W17 F6 Vitest precedent — confirmed low R8 risk)
+- [x] **F1.3** `package.json` 3 new deps confirmed(lines per `grep`);`tsc --noEmit` **exit 0**
+- [🚧] **F1.4 DEFERRED to F2.1** — `frontend/lib/schemas/admin/` 空 folder 對 git 無意義(空目錄唔被 tracked);folder 喺 F2.1 首個真 schema `identity.ts` 落地時自然 materialize(per CLAUDE.md §10 R6 adjust-acceptance-to-reality + Karpathy §1.2 avoid-busywork;plan §7 changelog Day 1 row documented)
+- [x] **F1.5** Sanity Vitest:`frontend/tests/unit/zod-toolchain.test.ts` NEW(renamed from plan-text `lib-schemas-admin.test.ts` — F1.4 folder deferred so toolchain-level name 更準;R6 deviation logged)— **4/4 pass in 11.9s**:zod parse + safeParse field-error surfacing + zodResolver bridge + useForm export;inline `sampleSchema` mirrors 2 real Wave C1 constraints(tenant_id UUID + alert_threshold_pct 50-95)
 
 ## F2 — Zod schemas + form validation wire
 

@@ -314,6 +314,7 @@ Phase Gate **PASS** requires:
 | Day | Change | Reason |
 |---|---|---|
 | Day 0 2026-05-20 | Plan kickoff cascade — frontmatter / §0-§7 全部 landed `status: active` + Chris kickoff directive + Wave C2 pivot from W24b-wave-b-observability per R6 audit finding(W22 F7 已 rebuild 3 observability routes;original wave-b scope redundant)| per CLAUDE.md §10 R1 + R6 + ADR-0026 §Consequences Wave C2 promote |
+| Day 1 2026-05-20 | **F1 pre-active-flip 5-step grep audit recursive** surfaced **2 plan-text deviations**(per CLAUDE.md §10 R6):**(1)** F1.4 plan-text「`frontend/lib/schemas/admin/` folder NEW」→ 空 folder 對 git 無意義(空目錄唔被 tracked)→ **Adjust** — folder 延後至 **F2.1** 首個真 schema `identity.ts` 落地時自然 materialize(Karpathy §1.2 avoid-busywork — 唔為滿足「folder NEW」字面去整 throwaway file);**(2)** F1.5 plan-text test 檔名「`lib-schemas-admin.test.ts`」→ F1.4 folder 既然延後,test 唔再 import 該 folder → **Adjust** rename 為 `zod-toolchain.test.ts`(toolchain-level sanity 更準確反映 test 內容 — 驗證 zod + react-hook-form + @hookform/resolvers 3-dep 整合,inline `sampleSchema` mirror 2 real Wave C1 constraint)。**F1.1 Plan B (a) `pnpm add` clean install zero R8** — npm-registry metadata non-binary per W17 F6 Vitest precedent confirmed;**no ADR-0017 amendment needed**(Plan B fallback 未觸發)| Karpathy §1.1 think-before-coding surfaced upfront;F1 ship 3 deps + 1 sanity test(4/4 pass);tsc exit 0 |
 
 ---
 
