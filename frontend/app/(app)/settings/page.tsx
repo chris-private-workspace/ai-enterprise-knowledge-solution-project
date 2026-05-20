@@ -30,6 +30,10 @@
  * AuthenticatedUser shape + computeInitials helper. Per CLAUDE.md §1.3
  * surgical — extends, does NOT rewrite the Profile / Appearance / Account
  * logic.
+ *
+ * W24b-wave-c2 F4: each of the 6 tab bodies is wrapped in an `<ErrorBoundary>`
+ * (`<TabBoundary>`) so a thrown tab degrades to a recoverable `<TabErrorState>`
+ * without taking down the page.
  */
 
 import {
@@ -44,12 +48,20 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
 
+import { ErrorBoundary } from '@/components/error/error-boundary';
 import { SettingsApiKeys } from '@/components/settings/settings-api-keys';
 import { SettingsAuditLog } from '@/components/settings/settings-audit-log';
 import { SettingsConnections } from '@/components/settings/settings-connections';
 import { SettingsIdentity } from '@/components/settings/settings-identity';
+import { TabErrorState } from '@/components/settings/tab-error-state';
 import { DisabledAffordance } from '@/components/ui/disabled-affordance';
 import type { AuthenticatedUser } from '@/lib/auth/types';
 import { useAuthStore, useCurrentUser } from '@/lib/providers/auth-provider';
@@ -79,6 +91,23 @@ function computeInitials(username: string | null | undefined): string {
     return (parts[0][0]! + parts[1][0]!).toUpperCase();
   }
   return localPart.slice(0, 2).toUpperCase() || '??';
+}
+
+/** Wraps a settings tab body in an error boundary scoped to that tab. */
+function TabBoundary({
+  tabName,
+  children,
+}: {
+  tabName: string;
+  children: ReactNode;
+}) {
+  return (
+    <ErrorBoundary
+      fallback={(reset) => <TabErrorState tabName={tabName} onRetry={reset} />}
+    >
+      {children}
+    </ErrorBoundary>
+  );
 }
 
 export default function SettingsPage() {
@@ -163,19 +192,41 @@ function SettingsPageInner() {
           })}
         </div>
 
-        {/* Tab body */}
-        {tab === 'profile' && <ProfileTab user={user} />}
-        {tab === 'appearance' && (
-          <AppearanceTab
-            mounted={mounted}
-            resolvedTheme={resolvedTheme ?? null}
-            setTheme={setTheme}
-          />
+        {/* Tab body — each wrapped in a tab-scoped error boundary (F4). */}
+        {tab === 'profile' && (
+          <TabBoundary tabName="Profile">
+            <ProfileTab user={user} />
+          </TabBoundary>
         )}
-        {tab === 'connections' && <SettingsConnections />}
-        {tab === 'identity' && <SettingsIdentity />}
-        {tab === 'api-keys' && <SettingsApiKeys />}
-        {tab === 'account' && <AccountTab onSignOut={() => void signOut()} />}
+        {tab === 'appearance' && (
+          <TabBoundary tabName="Appearance">
+            <AppearanceTab
+              mounted={mounted}
+              resolvedTheme={resolvedTheme ?? null}
+              setTheme={setTheme}
+            />
+          </TabBoundary>
+        )}
+        {tab === 'connections' && (
+          <TabBoundary tabName="Connections">
+            <SettingsConnections />
+          </TabBoundary>
+        )}
+        {tab === 'identity' && (
+          <TabBoundary tabName="Identity & Auth">
+            <SettingsIdentity />
+          </TabBoundary>
+        )}
+        {tab === 'api-keys' && (
+          <TabBoundary tabName="API Keys & Quotas">
+            <SettingsApiKeys />
+          </TabBoundary>
+        )}
+        {tab === 'account' && (
+          <TabBoundary tabName="Account">
+            <AccountTab onSignOut={() => void signOut()} />
+          </TabBoundary>
+        )}
       </div>
     </div>
   );

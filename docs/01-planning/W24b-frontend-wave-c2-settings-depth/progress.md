@@ -74,7 +74,8 @@ status: active                      # active | closed
 | F1 | 0.5 | ~0.15 | -0.35 | Plan B (a) clean install no R8 friction;F1.4 folder defer F2.1 |
 | F2 | 1.0 | ~0.4 | -0.6 | 3 schemas + ApiKeys upgrade + 16-test suite;F2.4→F5 + F2.6→F3 deferred |
 | F3 | 1.0 | ~0.4 | -0.6 | Connections inline edit + 3 useMutation;1 tsc type-fix(ConnectionEdit) |
-| F4-F8 | _TBD per active flip_ | _TBD_ | _TBD_ | Rolling JIT per CLAUDE.md §10 R1 |
+| F4 | 0.5 | ~0.3 | -0.2 | ErrorBoundary class NEW(F0 audit 誤判)+ 6-tab wrap + 3-test suite |
+| F5-F8 | _TBD per active flip_ | _TBD_ | _TBD_ | Rolling JIT per CLAUDE.md §10 R1 |
 
 ---
 
@@ -191,4 +192,38 @@ status: active                      # active | closed
 
 ---
 
-<!-- Day 1+ F4 entries land at F4 active flip per CLAUDE.md §10 R2 -->
+## Day 1 cont — 2026-05-20 — F4 ErrorBoundary per tab
+
+### Done
+
+- **F4 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6):
+  - **(2) grep** — 讀 `components/error/error-boundary.tsx` 發現只 export `ErrorBoundaryView`(presentational error card,Tailwind-token style,畀 Next `error.tsx` route convention 用)— **冇 React class error boundary**;F0 audit「85-line class component」誤判
+  - **(3) surface** — React error boundary 必須係 class component(`getDerivedStateFromError` / `componentDidCatch` — 冇 hook 版本)→ F4 必須創建真 `ErrorBoundary` class
+  - **(4) document** — plan §7 Day 1 cont F4 row landed
+  - **(5) adjust** — F4.2 acceptance = 創建 `ErrorBoundary` class(非「wrap existing」);`fallback` render-prop form;F4.3 = 自動化 test
+- **F4.1** `frontend/components/settings/tab-error-state.tsx` NEW(48 lines)— `<TabErrorState tabName onRetry>` — CSS-first `.banner banner-destructive`(對齊 4 settings/* 既有 fetch-fail inline error)+ AlertTriangle + Retry button
+- **F4.2** `ErrorBoundary` class 加入 `components/error/error-boundary.tsx`(~45 lines,append after `ErrorBoundaryView`)— `getDerivedStateFromError` 設 error state、`componentDidCatch` console.error、`reset` 清 error 令 children re-mount;`fallback: (reset) => ReactNode` render-prop;`settings/page.tsx` 加 `TabBoundary` local helper(`<ErrorBoundary fallback={(reset) => <TabErrorState onRetry={reset}/>}>`)+ 6 個 tab body 各 wrap(Profile / Appearance / Connections / Identity & Auth / API Keys & Quotas / Account)
+- **F4.3** `frontend/tests/unit/error-boundary.test.tsx` NEW(78 lines / 3 tests)— healthy child passthrough / fallback-on-throw / reset re-mount recovers(controllable `MaybeBoom` + `console.error` spy silence);**3/3 pass in 32s**
+- **F4.4** Verify gates — `pnpm exec tsc --noEmit` **REAL exit 0**、`next lint` **✔ No ESLint warnings or errors**、`Grep '\[oklch'`=0、`settings-6tab.test.tsx` **9/9 regression-clean**
+
+### Decisions
+
+- **D4.1 — `ErrorBoundary` class 加入 既有 `error-boundary.tsx`** — 該檔已有 `ErrorBoundaryView`(presentational fallback);`ErrorBoundary`(boundary class)係佢自然 sibling,同檔。React error boundary 只可以係 class component — 冇 hook 版本,亦唔需要 `react-error-boundary` new dep(H2 避免)。
+- **D4.2 — `fallback` render-prop `(reset) => ReactNode`** — plan-text 寫 `fallback={<TabErrorState/>}` ReactNode form;但 `<TabErrorState>` 嘅 Retry button 要 reset boundary 就需要攞到 `reset` callback。render-prop form `(reset) => <TabErrorState onRetry={reset}/>` 先做到 retry wire。`reset()` 清 error state → children re-mount → 失敗嘅 fetch 重跑(transient error 可復原)。
+- **D4.3 — `TabBoundary` local helper** — 6 個 tab 各 wrap 同一 `<ErrorBoundary fallback={(reset)=>...}>` pattern;`TabBoundary({tabName, children})` local helper DRY 6 call sites(用 6× → 非 single-use,Karpathy §1.2 abstraction 合理)。
+- **D4.4 — F4.3 自動化 test 取代「dev throw test」** — plan F4.3 寫「dev throw test → fallback renders」係非正式 manual verify;`error-boundary.test.tsx` 3-test(passthrough / catch / reset-recover)係更紮實 + repeatable 嘅 verification,亦 feed F7 test count。
+- **D4.5 — `npx tsc` decoy package 教訓** — `npx tsc` 喺 npx cache miss 時會去 fetch npm 上嘅 decoy package `tsc@2.0.4`(故意提示「This is not the tsc command you are looking for」),非 TypeScript compiler。正解 = `pnpm exec tsc`(只行 local `node_modules/.bin`,永不 fetch)。F5-F8 tsc verify 一律 `pnpm exec tsc`。
+- **D4.6 — Bash cwd 飄移** — Bash tool cwd 喺 call 之間唔穩定(時 root 時 frontend);F5+ 一律用 absolute path `cd "C:/...一/frontend"` 確保。
+
+### Acceptance(plan §3 + checklist F4)
+
+- [x] F4.1 tab-error-state.tsx NEW(CSS-first banner-destructive)
+- [x] F4.2 ErrorBoundary class NEW + TabBoundary helper + 6-tab wrap
+- [x] F4.3 error-boundary.test.tsx 3/3 pass
+- [x] F4.4 tsc REAL exit 0 + lint clean + [oklch=0 + settings-6tab 9/9
+
+**Day 1 cont F4 Verdict**:F4 complete — `ErrorBoundary` class(F0 audit 誤判已 R6-corrected)+ `<TabErrorState>` CSS-first fallback + `TabBoundary` helper + 6-tab wrap;一個壞 tab 退化成可復原 error state,其餘 5 個照常。F5 Identity inline edit activation next。Real-calendar:F4 ~0.3 day vs 0.5 plan estimate。
+
+---
+
+<!-- Day 1+ F5 entries land at F5 active flip per CLAUDE.md §10 R2 -->

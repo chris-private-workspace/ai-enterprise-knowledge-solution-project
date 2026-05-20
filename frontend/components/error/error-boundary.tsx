@@ -18,6 +18,8 @@
  * admin UI + automatic dark mode + focus-visible ring (a11y).
  */
 
+import { Component, type ReactNode } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/lib/api-client';
 
@@ -82,4 +84,52 @@ export function ErrorBoundaryView({
       </div>
     </div>
   );
+}
+
+// ============================================================================
+// ErrorBoundary — React error boundary class (W24b-wave-c2 F4)
+// ============================================================================
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  /**
+   * Renders the fallback UI. `reset` clears the caught error so `children`
+   * re-mount — e.g. re-running a fetch that failed the first time.
+   */
+  fallback: (reset: () => void) => ReactNode;
+}
+
+interface ErrorBoundaryState {
+  error: Error | null;
+}
+
+/**
+ * Catches render-time errors in `children` and shows `fallback` instead of
+ * letting them bubble to the route-level `error.tsx`. React offers no hook
+ * equivalent — an error boundary must be a class component.
+ *
+ * Used by `/settings` to scope a thrown tab to that tab (W24b F4): one bad
+ * tab shows a recoverable error state, the other five keep working.
+ */
+export class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
+  state: ErrorBoundaryState = { error: null };
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { error };
+  }
+
+  componentDidCatch(error: Error): void {
+    // Console only — backend owns Langfuse trace correlation.
+    console.error('[ErrorBoundary]', error);
+  }
+
+  private readonly reset = (): void => this.setState({ error: null });
+
+  render(): ReactNode {
+    if (this.state.error) return this.props.fallback(this.reset);
+    return this.props.children;
+  }
 }

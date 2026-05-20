@@ -2,7 +2,7 @@
 phase: W24b-frontend-wave-c2-settings-depth
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-20  # F3 active-flip → F3.1-F3.5 complete (Connections inline edit)
+last_updated: 2026-05-20  # F4 active-flip → F4.1-F4.4 complete (ErrorBoundary per tab)
 ---
 
 # W24b-wave-c2 — Checklist
@@ -48,10 +48,12 @@ last_updated: 2026-05-20  # F3 active-flip → F3.1-F3.5 complete (Connections i
 
 ## F4 — ErrorBoundary per tab
 
-- [ ] **F4.1** `frontend/components/settings/tab-error-state.tsx` NEW — `<TabErrorState tabName>` fallback(banner-destructive + retry button)
-- [ ] **F4.2** `frontend/app/(app)/settings/page.tsx` wrap each tab in `<ErrorBoundary fallback={<TabErrorState tabName={...} />}>` × 6 wrap points
-- [ ] **F4.3** Verify ErrorBoundary catches React render errors(dev throw test → fallback renders)
-- [ ] **F4.4** `tsc --noEmit` exit 0 + `next lint` clean
+> R6 finding(plan §7 Day 1 cont F4):F0 audit 誤判「`error-boundary.tsx` 係 85-line class component」— 實際只 export `ErrorBoundaryView`(presentational error card,畀 Next `error.tsx` route convention 用)。React error boundary 必須係 class component(冇 hook 版本)→ F4 創建真 `ErrorBoundary` class(first-party code,非 new dep,無 H2)。
+
+- [x] **F4.1** `frontend/components/settings/tab-error-state.tsx` NEW(48 lines)— `<TabErrorState tabName onRetry>` fallback;CSS-first `.banner banner-destructive`(對齊 4 settings/* components 既有 fetch-fail inline error 風格)+ AlertTriangle icon + Retry button
+- [x] **F4.2** `ErrorBoundary` class NEW(加入 `components/error/error-boundary.tsx`,~45 lines)— `getDerivedStateFromError` + `componentDidCatch`(console.error)+ `reset` re-mount;`fallback: (reset) => ReactNode` render-prop(原 plan-text `fallback={<TabErrorState/>}` ReactNode form → render-prop 先做到 retry wire,R6 adjust)。`settings/page.tsx` 加 `TabBoundary` local helper(DRY for 6 wrap)+ 6 個 tab body 各 wrap(Profile / Appearance / Connections / Identity & Auth / API Keys & Quotas / Account)
+- [x] **F4.3** `frontend/tests/unit/error-boundary.test.tsx` NEW(3 tests pass)— healthy child passthrough / fallback on throw / reset re-mount recovers(controllable `MaybeBoom`)— 比 plan「dev throw test」更紮實嘅自動化 verification
+- [x] **F4.4** Verify gates — `pnpm exec tsc --noEmit` **REAL exit 0**(`npx tsc` 攞錯 decoy package → 改用 `pnpm exec` local binary)+ `next lint` **✔ clean** + `Grep '\[oklch'`=0 + `settings-6tab.test.tsx` **9/9 regression-clean**(ErrorBoundary 無 error 時 passthrough children → 6-tab render 不變)
 
 ## F5 — Identity inline edit activation
 
