@@ -4,7 +4,7 @@ name: "/users Tier 1.5 RBAC — full RBAC per ADR-0027 Option A (Members + Roles
 sprint_week: W24c
 start_date: 2026-05-21              # real-calendar — Chris directive 2026-05-21 「Kickoff W24c — /users RBAC」(AskUserQuestion pick)
 end_date: 2026-05-30                # ~10-14 plan-day window;~20 backend days compressed by W19-W24 real-calendar collapse (~1.5-12× pattern)
-status: active
+status: closed
 spec_refs:
   - ADR-0027                        # Option A full RBAC — Accepted W19 F6 Chris pick
   - ADR-0025                        # /kb/[id] Access tab — hard dep on RBAC infra (disabled affordance → active at W24c)
@@ -17,6 +17,7 @@ spec_refs:
   - CLAUDE.md §5.4 H4               # Tier boundary — Power User role + custom roles stay Tier 2 (disabled affordance)
   - CLAUDE.md §10 R1-R6             # rolling JIT + plan-before-code + R6 pre-active-flip recursive grep audit
 prior_phase: W24b-frontend-wave-c2-settings-depth   # closed 2026-05-20 PASS WITH SMOKE-USER-DEFERRED CAVEAT
+closed_date: 2026-05-21             # Phase Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT — F12 closeout
 related_artifacts:
   - docs/adr/0027-users-tier-1-5-rbac.md            # primary ADR — Option A full RBAC
   - docs/adr/0025-kb-detail-8-tab.md                # Access tab dep

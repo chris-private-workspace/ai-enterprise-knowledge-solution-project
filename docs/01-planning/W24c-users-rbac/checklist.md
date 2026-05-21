@@ -1,8 +1,8 @@
 ---
 phase: W24c-users-rbac
 plan_ref: ./plan.md
-status: active
-last_updated: 2026-05-21  # F11 complete — RBAC pytest 111-case subset green + full 908; NEW use-role.test.tsx; Playwright stale-comment fix; Vitest 21 files/88 tests; coverage-% R8-deferred CO17
+status: closed
+last_updated: 2026-05-21  # F12 closeout — phase CLOSED, Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT; F0-F12 all [x]; closeout cascade landed (session-start 6 places + COMPONENT_CATALOG + PAGE_INVENTORY + ADR-0027/0025)
 ---
 
 # W24c-users-rbac — Checklist
@@ -109,14 +109,14 @@ last_updated: 2026-05-21  # F11 complete — RBAC pytest 111-case subset green +
 
 ## F12 — Closeout cascade
 
-- [ ] **F12.1** Phase Gate verdict published per `progress.md` retro
-- [ ] **F12.2** 7-section retro per F-deliverable
-- [ ] **F12.3** plan/checklist/progress frontmatter `active → closed`
-- [ ] **F12.4** W24d+ candidates noted in retro **NOT pre-created** per CLAUDE.md §10 R1
-- [ ] **F12.5** `session-start.md` 6 places synced
-- [ ] **F12.6** `COMPONENT_CATALOG.md` C16/C11/C08/C02 W24c amendments
-- [ ] **F12.7** `PAGE_INVENTORY.md` row 12 `/users` + `/kb/[id]` Access tab status amendments
-- [ ] **F12.8** ADR-0027 + ADR-0025 Implementation Status section amendments
+- [x] **F12.1** Phase Gate verdict published per `progress.md` retro — ✅ **PASS WITH SMOKE-USER-DEFERRED CAVEAT**(plan §3 10 criteria all met;唯一 deferred = Playwright runtime smoke + measured coverage-%)
+- [x] **F12.2** 7-section retro per F-deliverable — `progress.md` Retrospective(What worked / Friction / Surprises / Decisions / Carry-overs / Time tracking / Spec-ref alignment)
+- [x] **F12.3** plan/checklist/progress frontmatter `active → closed`(+ plan `closed_date`)
+- [x] **F12.4** W24d+ candidates noted in retro §5 carry-overs — phase folder **NOT pre-created** per CLAUDE.md §10 R1 rolling JIT
+- [x] **F12.5** `session-start.md` 6 places synced — §3 component-table heading + §10 Sprint Awareness W24c row + W24d+ NOT-pre-created row + §11「已知未解」header + §11 NEW「CLOSED by W24c」blockquote + §12 milestones row + §12 累計 count(24→25)
+- [x] **F12.6** `COMPONENT_CATALOG.md` — C16 Status 🟡→✅ Implemented W24c;C11 +F3 role-claim amendment;C08 +13 endpoints / 4 NEW routers / ACL middleware amendment;C02 +F8/F10 per-KB ACL consumer amendment
+- [x] **F12.7** `PAGE_INVENTORY.md` — row 12 `/users` ⏳→✅ Implemented W24c;row 5 `/kb/[id]` Access tab disabled affordance → ✅ activated W24c F10(row 6 `/doc-detail` staleness 仍 W24d+ carry-over per plan §6 — out of F12.7 scope per D15.4)
+- [x] **F12.8** ADR-0027 NEW「Implementation Status — W24c Closeout」section + Status line `+ W24c implemented`;ADR-0025 NEW「Implementation Status — W24c Closeout(Access tab activated)」section
 
 ---
 

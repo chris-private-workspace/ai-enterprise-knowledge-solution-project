@@ -68,6 +68,18 @@ Backend additions(per W19 F2 §3.2):
 
 **Wave C1 follow-up**(NOT W20 scope):Access tab activation + `kb_acl` table + per-KB ACL CRUD endpoints per ADR-0027 Option A full RBAC(~20 backend days)— W22-frontend-wave-c1 candidate per F4 §3.6 split。
 
+## Implementation Status — W24c Closeout(Access tab activated 2026-05-21)
+
+**Access tab activated by `W24c-users-rbac` phase F10**(closed 2026-05-21,Gate **PASS WITH SMOKE-USER-DEFERRED CAVEAT**)— the W20 Wave A disabled affordance is now the 8th active tab,backed by W24c F8 `kb_acl` per-KB ACL infra(ADR-0027 Option A full RBAC)。**Note**:landed at **W24c**,not W22 — the「Wave C1 follow-up」above predates the W19 F4 §3.6 Wave C split into C1(W24 Settings)/ C2(W24b Settings depth)/ C3(W24c `/users` RBAC);Access tab was Wave C3 scope。
+
+- [x] **Access tab — disabled affordance → active 8th tab** — `'access'` 加入 `VALID_TABS` + `TAB_DEFS`(icon `Shield`);W20 `<DisabledAffordance>` block + orphan `Lock`/`DisabledAffordance` import 移除 — W24c F10.1
+- [x] **NEW `<TabKbAccess>`**(`frontend/components/kb/tab-kb-access.tsx`)per mockup `ekp-page-users.jsx` `TabKbAccess` lines 390-519 — banner-info + stat-grid 4(「Members with access」real,其餘 3 `—` placeholder)+ Visibility card(3 radio read-only — KB Visibility F8 D8.4 deferred)+ Members & permissions table(`kbApi.listAcl` explicit grants + 1 synthetic「Workspace Admins (auto)」system row + users/groups display-name join)+ footer「Manage all → /users」nav — W24c F10.2
+- [x] **`kbApi.listAcl`** read-only client(`frontend/lib/api/kb.ts` + `KbAcl*` types mirror backend `schemas/rbac.py`)— mockup CRUD affordance presentational → write client(POST/PATCH/DELETE)不建 per Karpathy §1.2(無 caller)
+- [x] **Backend** — F8 `kb_acl` table(5th of 5 NEW W24c Postgres tables)+ `/kb/{kb_id}/acl` 4 CRUD endpoints + `require_kb_acl(min_role)` ACL guard(workspace `admin` always-pass + direct user grant role-rank `manage>edit>query`)
+- [x] **Vitest** — `kb-detail-tabs.test.tsx` 7-active+1-disabled → 8-active;`kb-detail.test.tsx` `<TabKbAccess>` stub mock
+
+**🚧 W24d+ carry-over**:`kb_acl` CRUD write UI(backend 4 endpoint shipped,frontend mockup presentational)+ KB Visibility 真設定(F8 D8.4 — KB-level setting,需 `KbStatus`/`KbConfig` enum field)+ group-inherited ACL rows(F6 D6.5 group member sync deferred)。
+
 ## References
 
 - `architecture.md v6 §5.5` KB Detail(5-tab original spec → 7-tab refactor per W20 F5;Access tab Wave C1)

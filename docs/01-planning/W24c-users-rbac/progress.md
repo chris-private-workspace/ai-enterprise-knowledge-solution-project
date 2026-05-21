@@ -2,7 +2,7 @@
 phase: W24c-users-rbac
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active                      # active | closed
+status: closed                      # active | closed
 ---
 
 # W24c-users-rbac — Progress
@@ -565,4 +565,121 @@ status: active                      # active | closed
 
 **Day 14 F11 Verdict**:F11 complete — RBAC test suite verified。RBAC pytest subset 111 cases 全綠 + full suite 908 regression 0;NEW `use-role.test.tsx` 補 hook contract gap;Playwright `/users`+`/kb/[id]` render-smoke spec 已 F9.4 land,2 處 F10-stale comment 修正。6 R6 findings resolved + verify gates 全綠(tsc / lint / `[oklch`=0 / mypy RBAC 10 modules / Vitest 21 files 88 tests)。**🚧 measured coverage-% R8-deferred CO17**(`pytest-cov` install blocked — H6 via test-inventory adequacy + subset green,project F2-F8 一貫做法)。F12 Closeout cascade next。
 
-<!-- Day 14+ F12 entry lands at active flip per CLAUDE.md §10 R2 -->
+## Day 15 — 2026-05-21 — F12 Closeout cascade
+
+### Done
+
+- **F12 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 W24b-wave-c2 progress.md retro 7-section 樣板 + `plan.md §0-§3` + `COMPONENT_CATALOG.md` C16/C11/C08/C02 cards + `PAGE_INVENTORY.md` row 5/12 + `ADR-0027` + `ADR-0025` 結構 → R6 findings:F12.5「6 places」= §3 heading + §10 sprint table + §11 header + §11 NEW CLOSED blockquote + §12 milestones row + §12 累計 line;criterion 2「Entra Graph SDK landed」→ F1 D1 已 decide managed-REST(零新 dep)→ reconcile note(D15.2)
+- **F12.1 Phase Gate verdict** — ✅ **PASS WITH SMOKE-USER-DEFERRED CAVEAT**(retro 下方)
+- **F12.2 7-section retrospective** — 下方 landed
+- **F12.3 frontmatter `active → closed`** — `plan.md` / `checklist.md` / `progress.md` 三份 frontmatter `status: active → closed`
+- **F12.5 `session-start.md` 6 places synced** — §3 component-table heading status-date + §10 Sprint Awareness W24c row(W24c+ → W24c closed + W24d+ NOT pre-created)+ §11「已知未解」header date + §11 NEW「CLOSED by W24c-users-rbac」blockquote + §12 milestones table W24c row + §12 累計 phase count(24 → 25)
+- **F12.6 `COMPONENT_CATALOG.md`** — C16 Status 🟡 active → ✅ Implemented W24c full summary;C11 +W24c F3 role-claim amendment;C08 +W24c +13 endpoints / 4 NEW routers / ACL middleware amendment;C02 +W24c F8/F10 per-KB ACL consumer amendment
+- **F12.7 `PAGE_INVENTORY.md`** — row 12 `/users` ⏳ Wave C1 candidate → ✅ Implemented W24c;row 5 `/kb/[id]` Access tab disabled affordance → ✅ activated W24c F10;F-deliverable mapping + Wave C boundary note synced(row 6 `/doc-detail` staleness 仍 W24d+ carry-over per plan §6 — 不在 F12.7 scope)
+- **F12.8 ADR Implementation Status** — ADR-0027 NEW「Implementation Status — W24c Closeout」section(Status line `Accepted` → `Accepted + W24c implemented`);ADR-0025 NEW「Implementation Status — W24c Closeout(Access tab activated)」section after W20 Wave A section
+- **F12.4 W24d+ NOT pre-created** — per CLAUDE.md §10 R1 rolling JIT;candidates 列入 retro §5 carry-overs,phase folder 不建
+- **F12 committed** `(this commit)`
+
+### Decisions
+
+- **D15.1 — Gate verdict = PASS WITH SMOKE-USER-DEFERRED CAVEAT**(F12.1)— plan §3 10 criteria 全 met(見 retro);唯一 deferred = Playwright runtime execution(`PW_CHANNEL=chrome` — smoke-user-deferred per plan §3,W12-W24b 一貫 pattern)+ measured coverage-%(F11 `pytest-cov` R8-blocked → CO17)。两者皆非 fidelity / 非 functional gap → PASS,caveat 標明。
+- **D15.2 — Gate criterion 2「Entra Graph SDK landed」reconcile**(R6 F12 finding)— plan §3 criterion 2 字面「Entra Graph SDK landed(Plan B (a) or (c))」。F1 D1 + F6 D6.5 已 decide **managed-REST**(`api/auth/entra_graph.py` 用 `azure-identity` + `httpx`,零新 dep,per ADR-0017「managed-REST > heavy SDK」)— 無 `msgraph-sdk` install。criterion 2 satisfied-by-substitution:Entra Graph 整合 landed,只是 via managed-REST 非 SDK。對齊 W24b D8.2 criterion-reconcile precedent。
+- **D15.3 — `session-start.md` §3 13-component table 不加 C16 row**(F12.5)— §3 table 明框「EKP 13 Components C01-C13」+「禁止跨 component 雜湊」。C16 係 Tier 1.5 NEW component,完整 card 已喺 `COMPONENT_CATALOG.md`(W24c F1 landed)。F12.5 只更新 §3 heading status-date note 指向 W24c + C16 經 COMPONENT_CATALOG — 不 restructure 13-row table(13→14 = 更大 framing change,非 closeout housekeeping scope;per Karpathy §1.3 surgical)。若 Chris 要 promote C16 入 §3 table 屬另一 explicit decision。
+- **D15.4 — `PAGE_INVENTORY.md` row 6 `/doc-detail` staleness 不修**(F12.7)— W24b F8 R6 finding(row 6 仍標「⏳ Wave B candidate」雖然 W22 F6 `093ff89` 已 land `/kb/[id]/docs/[docId]`)。plan §6 已列為 W24d+ carry-over → 不在 F12.7「row 12 + Access tab」stated scope → 不順手修(Karpathy §1.3 surgical,避免擴大 closeout blast radius)。
+
+### Acceptance(plan §2 F12)
+
+- [x] F12.1 Phase Gate verdict published — ✅ PASS WITH SMOKE-USER-DEFERRED CAVEAT(retro)
+- [x] F12.2 7-section retro per F-deliverable — 下方
+- [x] F12.3 plan/checklist/progress frontmatter `active → closed`
+- [x] F12.4 W24d+ candidates noted in retro §5 — phase folder **NOT pre-created** per CLAUDE.md §10 R1
+- [x] F12.5 `session-start.md` 6 places synced
+- [x] F12.6 `COMPONENT_CATALOG.md` C16/C11/C08/C02 W24c amendments
+- [x] F12.7 `PAGE_INVENTORY.md` row 12 `/users` + row 5 `/kb/[id]` Access tab status amendments
+- [x] F12.8 ADR-0027 + ADR-0025 Implementation Status section amendments
+
+### Verify
+
+- closeout cascade landed across `session-start.md` / `COMPONENT_CATALOG.md` / `PAGE_INVENTORY.md` / `ADR-0027` / `ADR-0025` / 3 phase docs frontmatter — 無 code change(F12 = governance docs)
+- backend pytest **908** + Vitest **21 files / 88 tests** = W24c final test state(F11 verified — 不變)
+- endpoint count **58**(W24b 45 → +13 W24c)
+
+**Day 15 F12 Verdict**:F12 complete — closeout cascade landed across `session-start.md`(6 places)/ `COMPONENT_CATALOG.md`(C16/C11/C08/C02)/ `PAGE_INVENTORY.md`(row 12 + row 5)/ `ADR-0027` + `ADR-0025`(Implementation Status)/ 3 phase docs frontmatter。**W24c-users-rbac phase CLOSED** — Phase Gate **PASS WITH SMOKE-USER-DEFERRED CAVEAT**。
+
+---
+
+## Retrospective — W24c-users-rbac
+
+**Phase Gate verdict**:✅ **PASS WITH SMOKE-USER-DEFERRED CAVEAT**
+
+W24c 交付 ADR-0027 Option A full RBAC(Wave C3 — Wave C 最後一段)— `/users` 4-tab Tier 1.5 surface(Members / Roles & permissions / Groups / Audit log)+ per-KB ACL + ACL middleware + auth-time role claim + `/kb/[id]` Access tab activation per ADR-0025。F0-F12 全部交付(F9 sub-split F9.1-F9.4)。Plan §3 10 criteria 全 met:**(1)** F0-F12 全 `[x]`;**(2)** Entra Graph 整合 landed via managed-REST(非 SDK — F1 D1 zero-new-dep reconcile per D15.2);**(3)** 5 NEW Postgres tables(`roles` + `role_permissions` + `groups` + `group_members` + `kb_acl`;`audit_log` 已存在 W24-c1)+ `users.role`/`users.status` column;**(4)** ACL middleware(`acl.py` `require_role` + `require_kb_acl`)working;**(5)** `/users` 4 tabs working;**(6)** per-KB ACL(`kb_acl` CRUD + Access tab)working;**(7)** audit log writes(F4/F7/F8 RBAC action types);**(8)** H7 fidelity preserved(`/users` 4 tabs + Access tab 100% mockup-faithful — F9/F10 per-tab 7-item self-verify all passed);**(9)** H4 boundary(Power User role + custom role creation = disabled affordance,NOT implemented);**(10)** no regression(backend pytest 908 + Vitest 21 files/88 tests + tsc/lint/`[oklch`=0/mypy RBAC modules green)。唯一 deferred = Playwright runtime execution(smoke-user-deferred per plan §3)+ measured coverage-%(`pytest-cov` R8-blocked → CO17)— 两者皆非 fidelity / 非 functional gap。
+
+### 1. What worked
+
+- **Rolling JIT F-deliverable sub-split** — F9 ~3 plan-day(`/users` 4-tab NET NEW route)於 active-flip sub-split F9.1-F9.4(foundation / route shell+Members / Roles+Groups / Audit+role-gating+tests),每 sub-unit 一個 coherent shippable pass。plan §2 + §7 R3 logged,checklist 原 scope 全吸收。
+- **Pre-active-flip 5-step R6 recursive audit 每 F-deliverable 都 catch 到嘢** — F1(3)/ F2(3)/ F3(5)/ F4(6)/ F5(6)/ F6(7)/ F7(6)/ F8(8)/ F9.1(6)/ F9.2(10)/ F9.3(10)/ F9.4(10)/ F10(10)/ F11(6)/ F12(reconcile)= **累計 ~100 findings**,全 R6 auto-adjust,**零 STOP+ask escalate**(除 F3 role-key vocabulary 衝突 1 次 Chris AskUserQuestion + F1 Entra Graph approach 1 次)。R6 recursive(plan-text + mockup + code)持續產出 value,plan-text-contamination(W22 D9 anti-pattern)反覆 catch。
+- **§13 backend-subset discipline 一致** — mockup `MOCK_USERS`/`ROLES`/`GroupsTab` 多 column / metadata 無 backend field(`queries_7d`/`kbs_owned`/`source`/`member_count`/`mapped_role`)→ backend ship field-shape subset,frontend `—` placeholder(W22 B-i)或 client-side join / count。column 結構 100% 保留(§13 v1.9 visual-fidelity),非 visual element removal。
+- **mockup-presentational → inert pattern** — mockup CRUD affordance(Invite member / Sync from Entra / Export / per-row More / Add member)全部無 onClick/onChange = prototype affordance → reproduce inert per mockup,functional CRUD UI 唔喺 mockup → 不 build(Karpathy §1.2 no speculative + W22 D6 over-extending anti-pattern)。`usersApi` / `kbApi.listAcl` write client 同理只建有 caller 嘅 method。
+- **Karpathy §1.2 no-speculative 多次生效** — F11 RBAC test 早已 F2-F8 tests-alongside-code 寫齊(F11 = verify 非 write-from-scratch);F10 `kbApi` write client 不建(無 caller);`pytest-cov` 不入 `pyproject.toml`(uninstallable dep)。
+
+### 2. Friction
+
+- **R8 corp proxy 再現(F11 `pytest-cov`)** — `coverage` binary wheel 兩次 `IncompleteRead`(ADR-0017 occurrence #9)→ measured coverage-% 🚧 defer CO17。R8 累計 occurrences 持續累積;binary-CDN / PyPI binary-wheel 仍係 deterministic-within-window block。
+- **mypy 多檔同跑 dup-module path 解析** — `mypy --strict <多個 RBAC 檔>` 觸發「Source file found twice under different module names」;逐檔 + `--explicit-package-bases` workaround,errors filter 到 target-file path 先準。
+- **Vitest full-suite OneDrive worker-pool timeout** — 21 檔一齊跑命中 `vitest-pool-runner: Timeout waiting for worker`(W23 setup.md §8.7 已 documented);`--no-file-parallelism` 3-batch sequential 係可靠 workaround。
+- **Bash cwd 飄移** — backend / frontend 之間 cwd call 之間唔穩定(尤其 background command 之後)；一律 absolute path `cd`。
+
+### 3. Surprises
+
+- **F1 Entra Graph SDK → managed-REST** — ADR-0027 §Decision 明標「Entra Graph SDK new dependency(H2)」,但 R6 grep `pyproject.toml` 發現 `azure-identity` + `httpx` W24-c1 已裝 → `sync-from-entra` 本質 = `GET graph.microsoft.com/v1.0/groups` REST call → Chris pick managed-REST(零新 dep / 零 H2 / 零 R8)。一個預期 major 嘅 H2 dependency-add 變 no-op。
+- **`audit_log` table 已存在** — ADR-0027 §Decision 寫「6 NEW Postgres tables」含 `audit_log`,但 `audit_log` W24-c1 F4 已 created → W24c 實際 **5 NEW tables**,`audit_log` 由 F7 EXTEND(additive `AuditAction` Literal)。
+- **F11 RBAC test 已 F2-F8 寫齊** — F11 plan-text 讀落似要由零寫 backend test,實際每個 F2-F8 deliverable 已 per Karpathy §1.4 + H6 同步寫 test(RBAC subset 111 cases)→ F11 = verify + gap-fill(NEW `use-role.test.tsx` + Playwright stale comment)。
+- **role-key vocabulary 衝突(F3)** — W24-c1 `admin_identity` 用 long-form(`workspace_admin`),F2 RBAC-core + mockup 用 short-form,17 files 散落 → F3.0 STOP + Chris AskUserQuestion 統一 short form。
+
+### 4. Decisions(完整清單見各 Day entry)
+
+D1.1-D1.3(§5-amendment placement / managed-REST / C16-NEW)· D2.1-D2.3(5-table declared-ahead / `UserRecord.role` 4-surface / Protocol scope)· D3.0-D3.5(vocabulary-unify / `require_role` factory / role 3-path populate)· D4.1-D4.6(backend-subset / `status` field / invite-defer / `list_users` / NEW router / `AuditAction` +3)· D5.1-D5.6(lifespan rbac wire / NEW `roles.py` / member-count client-side / flat matrix / response schema home / router gate)· D6.1-D6.7(group Protocol / `synced_at` ALTER / role-mapping join / member_count backend / managed-REST / member-sync defer / SDK→REST)· D7.1-D7.6(action-count / write-site-defer / no-auth-dep surgical / config-not-metadata / `prune_expired` / payload-snapshot)· D8.1-D8.8(`kb_acl` Protocol / `granted_by` ALTER / synthetic-row / Visibility-defer / `require_kb_acl` / NEW router / audit-write / role-rank)· D10.1-D10.2 + D11.1-D11.4 + D12.1-D12.4 + D13.1-D13.6(F9.2-F10 frontend)· D14.1-D14.4(F11 tests)· D15.1-D15.4(F12 closeout)。
+
+### 5. Carry-overs(→ W24d+,NOT pre-created per R1)
+
+- **measured coverage-%**(F11)— `pytest-cov` install R8-blocked → CO17 R8 umbrella;H6 currently via test-inventory adequacy + subset green
+- **Playwright runtime execution** — `PW_CHANNEL=chrome pnpm exec playwright test`(`/users` + `/kb/[id]` render-smoke)= user pre-Beta smoke(W12-W24 smoke-deferred backlog roll forward)
+- **`kb_acl` CRUD write UI** — F8 backend 4 endpoint(POST/PATCH/DELETE)已 ship,F10 frontend mockup `TabKbAccess` CRUD affordance 係 presentational → write client + mutation UI defer(建嗰陣先加)
+- **KB Visibility 真設定**(F8 D8.4)— KB-level setting(Private/Workspace/Public),非 `kb_acl` per-principal grant;需 `KbStatus`/`KbConfig` enum field;F10 Visibility card 現 read-only render
+- **group member sync**(F6 D6.5)— Graph `/groups/{id}/members` per-group enumeration + Entra-oid↔EKP-user matching;F6 只 sync group **list**;影響 `/users` Groups tab member_count + Access tab inherited rows
+- **Tier 2 RBAC expansion** — custom role creation + Power User role activation + multi-tenancy(H4 boundary — Q12 post-Beta governance)
+- **real-MSAL feature flag verification + Track A IT cred** — W16 parallel track,Q11 operational early June 2026
+- **`PAGE_INVENTORY.md` row 6 `/doc-detail` staleness**(W24b F8 R6 finding,D15.4)— W22 F6 已 land route,row 仍標 Wave B candidate → 下一 doc-sync
+- **CO17 R8 umbrella** — F1.5b psycopg + F3.5b RAGAs live-verify + W24c coverage-% 仍 external-blocked
+
+### 6. Time tracking
+
+| F | Plan estimate | Note |
+|---|---|---|
+| F0 Kickoff | 0.25 day | kickoff cascade |
+| F1 Spec + C16/C11 | 1 day | Entra Graph SDK → managed-REST(zero new dep) |
+| F2 RBAC schema | ~4 days | 5 NEW Postgres tables + storage Protocol/InMemory/Postgres |
+| F3 ACL middleware | ~3 days | `require_role` factory + role 3-path populate + vocabulary unify |
+| F4 Members backend | ~3 days | 4 endpoints + `UserRecord.status` |
+| F5 Roles backend | ~2 days | 2 endpoints + flat permission matrix |
+| F6 Groups backend | ~2.5 days | 2 endpoints + managed-REST Graph client |
+| F7 Audit log | ~2 days | `AuditAction` +2 + `prune_expired` retention |
+| F8 per-KB ACL | ~2.5 days | `kb_acl` 4 CRUD endpoints + `require_kb_acl` |
+| F9 `/users` 4-tab | ~3 days | sub-split F9.1-F9.4 |
+| F10 Access tab | ~1.5 days | `/kb/[id]` 8th tab + `<TabKbAccess>` |
+| F11 Tests | ~2 days | actual ≪ — RBAC tests pre-written F2-F8 |
+| F12 Closeout | 0.5 day | closeout cascade |
+| **總計** | **~27.25 plan-day** | real-calendar 全部 2026-05-21(Day 0-15 同日)— ~13-27× collapse,延續 W19-W24b single-session multi-commit pattern |
+
+### 7. Spec-ref alignment
+
+- **ADR-0027** Status `Accepted (Option A full RBAC)` → `Accepted (Option A full RBAC) + W24c implemented`;NEW「Implementation Status — W24c Closeout」section landed(F12.8)。Entra Graph SDK new-dep → managed-REST(F1 D1 — zero new dep,no H2 install,no ADR-0017 amendment)
+- **ADR-0025** Access tab disabled affordance → active;NEW「Implementation Status — W24c Closeout(Access tab activated)」section after W20 Wave A section(F12.8)
+- **architecture.md v6 §5.0** — ADR-0027 inline-amendment block landed at W24c F1(`/users` Tier 1.5 surface;doc version held per ADR-0024/0025/0026 §5-inline precedent)
+- **CLAUDE.md §5.2 H2** — zero NEW dependency(Entra Graph managed-REST 用 W24-c1 既裝 `azure-identity` + `httpx`)— no vendor-lock table change,no ADR-0017 amendment
+- **CLAUDE.md §5.4 H4** — Power User role + custom role creation + multi-tenancy stay Tier 2(disabled affordance,NOT implemented)— boundary preserved
+- **CLAUDE.md §5.7 H7** — `/users` 4 tabs + `/kb/[id]` Access tab 100% mockup-faithful per `ekp-page-users.jsx`;F9/F10 per-tab 7-item self-verify all passed;mockup-presentational affordance reproduce inert(非 H7 deviation);`—` placeholder + read-only Visibility = §13 v1.9 visual-fidelity fallback
+- **CLAUDE.md §10 R6** — pre-active-flip 5-step recursive audit 每 F-deliverable 執行,~100 cumulative findings,全 log 入 plan §7 changelog
+- **CLAUDE.md §5.6 H6** — ACL/RBAC backend modules — RBAC subset 111 test cases;measured coverage-% R8-deferred(F11 — `pytest-cov` blocked),H6 via test-inventory adequacy + subset green
+
+**累計 phase**:**25 closed**(W01-W24-wave-c1 23 + W24b-wave-c2 1 + W24c-users-rbac 1)。

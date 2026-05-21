@@ -1,7 +1,7 @@
 # ADR-0027: /users Tier 1.5 RBAC NET NEW surface(**option set — Chris pick at W19 F6**)
 
 **Date**: 2026-05-16
-**Status**: **Accepted (Option A full RBAC)** — W19 F6 Chris pick 2026-05-16。Chris selected Option A over Option B minimal 3-role(W19 F2 §6 recommendation)和 Option C stage。**Implications**:~20 NEW backend days + 6 NEW Postgres tables(`roles` + `role_permissions` + `groups` + `group_members` + `audit_log` + `kb_acl`)+ Entra Graph SDK new dependency(H2 trigger;R8 corp-proxy risk per ADR-0017 mitigation)+ ACL middleware on every protected endpoint + audit_log writes + new C16 Users Service component + Wave C combined with ADR-0026 Option B = ~42 backend days **MUST split Wave C into C1+C2** per F4 §3.6 trigger + CLAUDE.md §10 rolling JIT。Full RBAC Tier 1 ship = significantly higher operational maturity for Beta launch + per-KB ACL fully functional
+**Status**: **Accepted (Option A full RBAC) — Implemented W24c-users-rbac (closed 2026-05-21, Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT)**。See「Implementation Status」section below。 W19 F6 Chris pick 2026-05-16。Chris selected Option A over Option B minimal 3-role(W19 F2 §6 recommendation)和 Option C stage。**Implications**:~20 NEW backend days + 6 NEW Postgres tables(`roles` + `role_permissions` + `groups` + `group_members` + `audit_log` + `kb_acl`)+ Entra Graph SDK new dependency(H2 trigger;R8 corp-proxy risk per ADR-0017 mitigation)+ ACL middleware on every protected endpoint + audit_log writes + new C16 Users Service component + Wave C combined with ADR-0026 Option B = ~42 backend days **MUST split Wave C into C1+C2** per F4 §3.6 trigger + CLAUDE.md §10 rolling JIT。Full RBAC Tier 1 ship = significantly higher operational maturity for Beta launch + per-KB ACL fully functional
 **Approver**: Chris(Tech Lead + stakeholder)
 
 ## Context
@@ -90,6 +90,22 @@ Adopt **`/users` Tier 1.5 surface** + per-KB ACL(ADR-0025 Access tab dep)。Amen
 - `users` table schema migration is additive(`role` column with default `'user'`)— no breaking change
 - `COMPONENT_CATALOG.md` C11 Identity & Access row gets「Tier 1.5 RBAC Option B per ADR-0027」status + scope expansion note
 - Mock-auth dev mode default(per user 岔口 2 W22 ship mock + real both):Mock provider returns `role: 'admin'`(documented),real MSAL provider extracts role from Entra ID group membership via session callback
+
+## Implementation Status — W24c Closeout(2026-05-21)
+
+**Implemented by `W24c-users-rbac` phase**(Wave C3 — closed 2026-05-21,Gate **PASS WITH SMOKE-USER-DEFERRED CAVEAT**)— Option A full RBAC shipped F0-F12 across the W24c phase。Plan §3 10 Gate criteria all met。
+
+- [x] **F1 spec amendment + C16 decision** — `architecture.md v6 §5.0` ADR-0027 inline-amendment block(this ADR §Decision「amend §3.7 + add §3.8」§-pointer corrected — `/users` 屬 UI view → amendment landed §5 UI Specifications,per W24c F1 D1);**NEW C16 Users Service** component(F1.3 decision over「fold into C11」— authorization concern distinct from C11 authentication)
+- [x] **Entra Graph SDK → managed-REST reconcile** — this ADR §Decision lists「Entra Graph SDK new dependency(H2)」;W24c F1 D1 R6-audit found `azure-identity` + `httpx` already installed(W24-c1)→ `sync-from-entra` = managed-REST `GET graph.microsoft.com/v1.0/groups`(NEW `api/auth/entra_graph.py`);**zero new dependency,no H2 install,no ADR-0017 amendment**(per ADR-0017「managed-REST > heavy SDK」;Chris AskUserQuestion pick)
+- [x] **5 NEW Postgres tables**(this ADR §Decision said 6 — `audit_log` 已存在 W24-c1 F4 → W24c F7 EXTEND,not create):`roles` + `role_permissions` + `groups` + `group_members` + `kb_acl`;+ `users.role`/`users.status` column ALTER — W24c F2
+- [x] **ACL middleware** — NEW `api/middleware/acl.py` `require_role(*roles)` + `require_kb_acl(min_role)` dependency factories;`AuthenticatedUser.role` 3-path populate(self-register `UserRecord.role` / mock-auth `Settings.auth_mock_role` default `admin` / real-MSAL `_role_from_claims` Entra app-role claim) — W24c F3
+- [x] **`/users` 4-tab surface** — Members(`routes/users.py` 4 endpoints)+ Roles & permissions(`routes/roles.py` 2)+ Groups(`routes/groups.py` 2 incl. sync-from-entra)+ Audit log(reuse `/admin/audit-log`)— W24c F4-F7 backend + F9 frontend(NEW `/users` route + `useRole()` hook + whole-page Workspace-Admin gating)
+- [x] **per-KB ACL** — `kb_acl` 4 CRUD endpoints(`routes/kb_acl.py`)+ `/kb/[id]` Access tab activation per ADR-0025 — W24c F8 + F10
+- [x] **audit log writes** — `AuditAction` Literal +5 RBAC actions(`user.invited` / `user.suspended` / `role.changed` / `kb.access.granted` / `kb.config.changed`)+ `prune_expired` 90d retention — W24c F4/F7/F8
+- [x] **+13 NEW endpoints**(45→58 across 4 NEW routers)+ **H6** RBAC subset 111 test cases / full pytest 908 + Vitest 21 files/88 tests — W24c F11
+- [x] **H4 boundary** — Power User role + custom role creation + multi-tenancy NOT implemented(disabled affordance per CLAUDE.md §5.4 H4)
+
+**🚧 W24d+ carry-over**:`kb_acl` CRUD write UI(backend 4 endpoint shipped,frontend mockup presentational)+ KB Visibility(F8 D8.4)+ group member sync(F6 D6.5 — Graph `/groups/{id}/members`)+ Tier 2 RBAC expansion(custom role creation + Power User activation — Q12 post-Beta governance)+ measured coverage-%(F11 `pytest-cov` R8-blocked → CO17 R8 umbrella)。Playwright runtime execution = user pre-Beta smoke。
 
 ## References
 
