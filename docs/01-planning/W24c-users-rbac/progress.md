@@ -445,4 +445,46 @@ status: active                      # active | closed
 
 **Day 11 F9.3 Verdict**:F9.3 complete — Roles tab + Groups tab landed。`RolesTab`(banner + 4 role cards + pivoted 92-cell permissions matrix)+ `GroupsTab`(Entra groups table + client-side role-mapping join)inline 入 `page.tsx`。10 R6 findings resolved + H7 self-verify PASS(RolesTab + GroupsTab)。tsc/lint/`[oklch`=0 全綠。F9.4 Audit tab + `useRole()` role-gating + H7 全-tab verify + Vitest/Playwright next。
 
-<!-- Day 11+ F9.4 entry lands at sub-split active flip per CLAUDE.md §10 R2 -->
+---
+
+## Day 12 — 2026-05-21 — F9.4 Audit tab + role-gating + verify(F9 complete)
+
+### Done
+
+- **F9.4 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 mockup `ekp-page-users.jsx` lines 324-377(`AuditTab`)+ `backend/api/schemas/audit_log.py`(`AuditAction`/`AuditLogEntry`/`AuditLogPage`)+ `lib/api/admin.ts`(`AuditAction`/`adminApi.listAuditLog`)+ `components/settings/settings-audit-log.tsx`(render pattern)+ `lib/hooks/use-role.ts` + `tests/unit/settings-6tab.test.tsx` + `tests/e2e/app-shell-path.spec.ts` → **10 findings**(plan §7 Day 12 row)
+- **F9.4 `lib/api/admin.ts` EDIT** — `AuditAction` Literal 5→10:加 W24c RBAC actions(`user.invited`/`user.suspended`/`role.changed`/`kb.access.granted`/`kb.config.changed`)mirror backend `audit_log.py` — stale-type correctness fix(frontend type 落後 backend W24c F4/F7 extend)
+- **F9.4 `app/(app)/users/page.tsx` EDIT** — imports(+`Cpu`/`Link`/`Pencil`/`ShieldAlert`/`LucideIcon` lucide + `AuditLogPage` admin type + `useRole` hook)+ `audit` tab body swap(`<TabPlaceholder>` → `<AuditTab/>`)+ remove `TabPlaceholder`(全部 tab 用完,Karpathy §1.3 清自己 mess)
+- **NEW inline `AuditTab`** — workspace audit feed(`useQuery(['admin','audit-log'])` → `adminApi.listAuditLog()`);`auditActionIcon` 5-prefix branch verbatim per mockup(`role`/`user`/`kb.access`/`provider`/`kb.config`/default);`payloadNote()` synthesize 第 3 行 from `payload` scalar entries(`k: v · k: v`,§13 visual-fidelity — backend 無 `note` field);per-event icon-circle + action chip + actor + resource + `formatRelative` time;`Filter`/`Export` button inert per D11.4;loading/error/empty state
+- **`useRole()` whole-page role-gating** — `UsersPageInner` 加 `useRole()`;`/users` = Workspace-Admin-only(ADR-0027 permissions matrix `cfg.manage_users`)→ `role===null`(loading)minimal state / `role!=='admin'` access-denied `banner banner-warning`(`ShieldAlert` +「Admin access required」)/ `role==='admin'` full page;shell `useQuery(['users','list'])` 加 `enabled: role==='admin'`(非 admin 唔 fetch admin data,避 403);hooks 全部 unconditional call 喺 early-return 之前(React hooks rule)
+- **NEW `tests/unit/users-page.test.tsx`** — 9 Vitest cases(4-tab render + `?tab=` deep-link members/roles/groups/audit + unknown-fallback + `router.replace` on tab click + non-admin access-denied gate + Roles tab cards/matrix);mock `next/navigation` + `usersApi`(含 `getMe`)+ `adminApi` per `settings-6tab.test.tsx` pattern;mutable `mockRole` 測 admin vs non-admin
+- **`tests/e2e/app-shell-path.spec.ts` EDIT** — 加 `/users` render-smoke(heading「Users & access」+ 4 tab visible)per W24-c1 `/settings` test precedent
+- **F9.4 committed** `(this commit)`
+
+### Decisions
+
+- **D12.1 — `admin.ts` `AuditAction` extend 5→10**(R6 #1)— frontend `AuditAction` Literal stale(只 5 個 W24-c1 action),backend `api/schemas/audit_log.py` `AuditAction` 已 10 個(W24c F4 + F7 加 RBAC actions)→ extend mirror backend。additive union,`SettingsAuditLog` 既有 `ACTION_OPTIONS` 6-element array 不 break(settings filter dropdown 留 settings-scoped — 非 F9.4 scope,Karpathy §1.3 不 touch)。non-architectural correctness fix。
+- **D12.2 — `payloadNote()` synthesize Audit feed 第 3 行**(R6 #2)— mockup `AuditTab` event 有 `note`(human description),backend `AuditLogEntry` 無 `note` field(有 structured `payload`)。per §13 v1.9 keep visual element → `payloadNote()` 從 `payload` scalar entries synthesize(`k: v · k: v`,skip nested/null;backend 保證 payload 無 secret per schema doc);note 空時 omit 第 3 行(per-entry fallback)。`SettingsAuditLog`(W24b)完全不 render payload — 但佢無 mockup;`/users` AuditTab 有 mockup 3-line row → 必須 fill。
+- **D12.3 — `auditActionIcon` reproduce mockup verbatim**(R6 #3)— mockup `actionIcon` 5-prefix(`role`/`user`/`kb.access`/`provider`/`kb.config`/default)。backend 無 `provider.*` action(W24-c1 用 `connection_*`),`connection_*`/`identity_patch`/`api_keys_*` fall to `Activity` default。reproduce verbatim 含 dead `provider` branch(H7 mockup-faithful;Karpathy §1.2 唔 over-extend icon map cover backend-specific actions)。
+- **D12.4 — `useRole()` whole-page gate**(R6 #6)— `/users` 全頁 admin-only(非 per-tab — 無 tab 係 non-admin);`role===null` loading / `role!=='admin'` access-denied / `admin` full page。access-denied state mockup 無 spec(prototype assume admin)→ minimal honest `banner banner-warning`,同 loading/error state 一樣係 real-page 必需(Karpathy §1.2)。shell query `enabled: role==='admin'` 避非-admin 403。
+- **D12.5 — `TabPlaceholder` 移除**(R6 #10)— F9.2 introduced 為 transient sub-split scaffolding;F9.3 swap roles/groups、F9.4 swap audit 後無 caller → 刪(Karpathy §1.3 清自己 introduced 嘅 mess,非 pre-existing dead code)。
+
+### Acceptance(plan §2 F9 sub-split F9.4)
+
+- [x] F9.4 `AuditTab` — workspace audit feed(`adminApi.listAuditLog()`;`auditActionIcon` 5-prefix verbatim;`payloadNote` synthesize 第 3 行;`Filter`/`Export` inert)per mockup lines 324-377
+- [x] F9.4 `useRole()` whole-page role-gating wired(`/users` Workspace-Admin-only;loading / access-denied / full page;shell query `enabled: admin`)
+- [x] F9.4 `admin.ts` `AuditAction` 5→10 mirror backend;`TabPlaceholder` removed
+- [x] F9.4 Vitest `users-page.test.tsx` 9/9 + Playwright `/users` render-smoke 加入 `app-shell-path.spec.ts`
+- [x] H7 7-item self-verify PASS — **全 4 tab**(Members/Roles/Groups/Audit)layout/spacing/typography/color 100% mockup-faithful;loading/error/empty/access-denied 為 real-page 必需 state(mockup static prototype 無);a11y upgrade per settings precedent
+
+### Verify
+
+- **frontend `tsc --noEmit`** — exit 0(type-check clean,含 test 檔)
+- **frontend `next lint`** — `✔ No ESLint warnings or errors`(`app/(app)/users` + `lib/api` + `lib/hooks`)
+- **`[oklch` arbitrary-class grep** = **0**(`app/(app)/users/page.tsx` — AuditTab icon-circle / action chip inline `oklch(...)` style strings 無 `[` prefix)
+- **Vitest** — `users-page.test.tsx` **9 passed / 9**(4-tab render + `?tab=` deep-link ×4 + fallback + router.replace + non-admin gate + Roles matrix)
+- **Playwright** — `/users` render-smoke 加入 `app-shell-path.spec.ts`;runtime execution(`PW_CHANNEL=chrome`)= smoke-user-deferred per plan §3
+- **backend** — F9.4 純 frontend,無 backend change → backend pytest 不變 908;endpoint count 不變 58
+
+**Day 12 F9.4 Verdict**:F9.4 complete — Audit tab + role-gating + verify landed。`AuditTab`(workspace audit feed)+ `useRole()` whole-page role-gating + `admin.ts` `AuditAction` extend + Vitest 9/9 + Playwright `/users` smoke。10 R6 findings resolved + H7 self-verify PASS 全 4 tab。**F9 sub-split(F9.1-F9.4)全部完成** — `/users` 4-tab page(Members/Roles/Groups/Audit)+ `useRole()` hook + role-gating。tsc/lint/`[oklch`=0 + Vitest 全綠。F10 frontend `/kb/[id]` Access tab activation next。
+
+<!-- Day 12+ F10+ entries land at active flip per CLAUDE.md §10 R2 -->

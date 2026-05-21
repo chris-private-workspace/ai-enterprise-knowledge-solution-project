@@ -209,7 +209,14 @@ export type AuditAction =
   | 'connection_test'
   | 'connection_rotate_secret'
   | 'identity_patch'
-  | 'api_keys_alert_threshold_patch';
+  | 'api_keys_alert_threshold_patch'
+  // W24c — RBAC user-management + kb.* actions (mirrors the backend
+  // `api/schemas/audit_log.py` Literal; F4 user.* + role.changed, F7 kb.*).
+  | 'user.invited'
+  | 'user.suspended'
+  | 'role.changed'
+  | 'kb.access.granted'
+  | 'kb.config.changed';
 
 export interface AuditLogEntry {
   id: number | null;

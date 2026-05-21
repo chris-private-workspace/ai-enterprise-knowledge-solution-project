@@ -250,6 +250,25 @@ test.describe('App-shell path E2E — dashboard + KB + eval + traces flow (W23 F
     ).toBeVisible({ timeout: 20000 });
   });
 
+  test('/users 4-tab Users & access page renders + tab labels visible (W24c F9)', async ({
+    page,
+  }) => {
+    await page.goto('/users');
+    // W24c F9.2 page-title「Users & access」(per mockup ekp-page-users.jsx:83).
+    // The mock-auth default user resolves to the `admin` role (W24c F3.3), so
+    // the role gate passes and the full 4-tab page renders.
+    await expect(
+      page.getByRole('heading', { name: /users & access/i, level: 1 }),
+    ).toBeVisible();
+    // 4 tab labels per mockup ekp-page-users.jsx:100-103.
+    await expect(page.getByRole('tab', { name: /members/i })).toBeVisible();
+    await expect(
+      page.getByRole('tab', { name: /roles & permissions/i }),
+    ).toBeVisible();
+    await expect(page.getByRole('tab', { name: /groups/i })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /audit log/i })).toBeVisible();
+  });
+
   test('/kb/[id] page renders gracefully — tablist OR error banner (render-smoke; full 8-tab E2E deferred W24+ per BUG-004)', async ({
     page,
   }) => {

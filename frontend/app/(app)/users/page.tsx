@@ -29,15 +29,20 @@ import {
   Activity,
   AlertTriangle,
   Check,
+  Cpu,
   Download,
   Filter,
   Layers,
+  Link,
   MoreHorizontal,
+  Pencil,
   Plus,
   RefreshCw,
   Search,
   Shield,
+  ShieldAlert,
   Users,
+  type LucideIcon,
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -55,6 +60,7 @@ import { TabErrorState } from '@/components/settings/tab-error-state';
 import { RoleBadge } from '@/components/users/role-badge';
 import {
   adminApi,
+  type AuditLogPage,
   type EkpRoleKey,
   type IdentityConfig,
 } from '@/lib/api/admin';
@@ -67,6 +73,7 @@ import {
   type UserListResponse,
   type UserSummary,
 } from '@/lib/api/users';
+import { useRole } from '@/lib/hooks/use-role';
 
 const TABS = [
   { id: 'members', label: 'Members', icon: Users },
@@ -140,6 +147,7 @@ export default function UsersPage() {
 }
 
 function UsersPageInner() {
+  const role = useRole();
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialTab = searchParams.get('tab') as TabId | null;
@@ -147,9 +155,13 @@ function UsersPageInner() {
     initialTab && VALID_TABS.has(initialTab) ? initialTab : 'members',
   );
 
+  // `/users` is Workspace-Admin-only (ADR-0027 permissions matrix —
+  // `cfg.manage_users`). Skip the admin-gated `GET /users` fetch for
+  // non-admins so they never trip a 403.
   const query = useQuery<UserListResponse>({
     queryKey: ['users', 'list'],
     queryFn: usersApi.listUsers,
+    enabled: role === 'admin',
   });
   const users = useMemo(() => query.data?.users ?? [], [query.data]);
   const loaded = query.isSuccess;
@@ -177,6 +189,52 @@ function UsersPageInner() {
     },
     [router],
   );
+
+  // Role gate — `useRole()` is null while `/auth/me` is in flight.
+  if (role === null) {
+    return (
+      <div className="content">
+        <div className="content-wide">
+          <div className="page-header">
+            <h1 className="page-title">Users &amp; access</h1>
+          </div>
+          <div
+            className="text-xs muted"
+            style={{ padding: '48px 18px', textAlign: 'center' }}
+          >
+            Loading…
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (role !== 'admin') {
+    return (
+      <div className="content">
+        <div className="content-wide">
+          <div className="page-header">
+            <h1 className="page-title">Users &amp; access</h1>
+          </div>
+          <div
+            className="banner banner-warning"
+            role="alert"
+            style={{ alignItems: 'center' }}
+          >
+            <ShieldAlert size={14} aria-hidden="true" />
+            <div style={{ flex: 1, lineHeight: 1.55 }}>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>
+                Admin access required
+              </div>
+              <div className="text-xs muted">
+                Managing workspace members, roles, and per-KB access needs the
+                Workspace Admin role.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="content">
@@ -274,7 +332,7 @@ function UsersPageInner() {
         )}
         {tab === 'audit' && (
           <TabBoundary tabName="Audit log">
-            <TabPlaceholder label="Audit log" />
+            <AuditTab />
           </TabBoundary>
         )}
       </div>
@@ -912,6 +970,175 @@ function GroupsTab() {
 }
 
 // ============================================================================
+// Audit log tab — mockup `AuditTab` lines 324-377
+// ============================================================================
+
+/** Action → feed icon, prefix-matched per the mockup `actionIcon` (lines 333-339). */
+function auditActionIcon(action: string): LucideIcon {
+  if (action.startsWith('role')) return Shield;
+  if (action.startsWith('user')) return Users;
+  if (action.startsWith('kb.access')) return Link;
+  if (action.startsWith('provider')) return Cpu;
+  if (action.startsWith('kb.config')) return Pencil;
+  return Activity;
+}
+
+/**
+ * Synthesize the feed's 3rd line from the entry `payload` — the backend has no
+ * human `note` field, so scalar payload entries render as `k: v · k: v`
+ * (nested / null values skipped; the backend guarantees no secrets in payload).
+ */
+function payloadNote(payload: Record<string, unknown> | null): string {
+  if (!payload) return '';
+  const parts: string[] = [];
+  for (const [k, v] of Object.entries(payload)) {
+    if (v === null || typeof v === 'object') continue;
+    parts.push(`${k}: ${String(v)}`);
+  }
+  return parts.join(' · ');
+}
+
+function AuditTab() {
+  const auditQ = useQuery<AuditLogPage>({
+    queryKey: ['admin', 'audit-log'],
+    queryFn: () => adminApi.listAuditLog(),
+  });
+
+  if (auditQ.isLoading) {
+    return (
+      <div
+        className="text-xs muted"
+        style={{ padding: '48px 18px', textAlign: 'center' }}
+      >
+        Loading audit log…
+      </div>
+    );
+  }
+  if (auditQ.isError) {
+    return (
+      <div
+        className="banner banner-destructive"
+        role="alert"
+        style={{ alignItems: 'center' }}
+      >
+        <AlertTriangle size={14} aria-hidden="true" />
+        <div style={{ flex: 1, lineHeight: 1.55 }}>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>
+            Couldn&apos;t load the audit log
+          </div>
+          <div className="text-xs">
+            The <span className="mono">/admin/audit-log</span> request failed.
+            Reload the page to retry.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const events = auditQ.data?.entries ?? [];
+
+  return (
+    <div className="card">
+      <div className="card-header">
+        <div>
+          <h3 className="card-title">Workspace audit log</h3>
+          <div className="card-desc">
+            Every role / access / config change is logged with actor + target
+            + timestamp · 90d retention
+          </div>
+        </div>
+        <div className="row">
+          <button type="button" className="btn btn-secondary btn-sm">
+            <Filter size={13} aria-hidden="true" /> Filter
+          </button>
+          <button type="button" className="btn btn-secondary btn-sm">
+            <Download size={13} aria-hidden="true" /> Export
+          </button>
+        </div>
+      </div>
+      <div className="card-body card-body-tight">
+        {events.length === 0 ? (
+          <div
+            className="text-xs muted"
+            style={{ padding: '48px 18px', textAlign: 'center' }}
+          >
+            No audit events yet.
+          </div>
+        ) : (
+          events.map((e, i, arr) => {
+            const Icon = auditActionIcon(e.action);
+            const note = payloadNote(e.payload);
+            return (
+              <div
+                key={e.id ?? i}
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  padding: '12px 18px',
+                  borderBottom:
+                    i < arr.length - 1
+                      ? '1px solid oklch(var(--border))'
+                      : 'none',
+                }}
+              >
+                <div
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'oklch(var(--muted))',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Icon size={13} className="muted" aria-hidden="true" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      marginBottom: 2,
+                    }}
+                  >
+                    <span
+                      className="mono text-xs"
+                      style={{
+                        background: 'oklch(var(--muted))',
+                        padding: '1px 5px',
+                        borderRadius: 3,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {e.action}
+                    </span>
+                    <span className="text-xs muted">by</span>
+                    <span className="mono text-xs">{e.actor ?? 'system'}</span>
+                  </div>
+                  <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>
+                    {e.resource}
+                  </div>
+                  {note && (
+                    <div className="text-xs muted" style={{ marginTop: 2 }}>
+                      {note}
+                    </div>
+                  )}
+                </div>
+                <span className="text-xs muted mono" style={{ flexShrink: 0 }}>
+                  {formatRelative(e.created_at)}
+                </span>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // Shared helpers
 // ============================================================================
 
@@ -930,18 +1157,6 @@ function StatCard({
       <div className="stat-label">{label}</div>
       <div className="stat-value">{value}</div>
       <div className="stat-meta">{sub}</div>
-    </div>
-  );
-}
-
-/** Transient body for the not-yet-built tabs — replaced by F9.3 / F9.4. */
-function TabPlaceholder({ label }: { label: string }) {
-  return (
-    <div
-      className="text-xs muted"
-      style={{ padding: '48px 18px', textAlign: 'center' }}
-    >
-      {label} — under construction.
     </div>
   );
 }
