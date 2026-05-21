@@ -2,7 +2,7 @@
 phase: W24c-users-rbac
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-21  # F1 active-flip → F1.1-F1.5 complete (architecture.md §5 amendment + C16 decision + managed-REST pick)
+last_updated: 2026-05-21  # F2 active-flip → F2.1-F2.4 complete (RBAC schema layer: 4 NEW files + users.role column + 12 tests; backend pytest 828)
 ---
 
 # W24c-users-rbac — Checklist
@@ -30,10 +30,12 @@ last_updated: 2026-05-21  # F1 active-flip → F1.1-F1.5 complete (architecture.
 
 ## F2 — RBAC schema layer(5 NEW Postgres tables + storage)
 
-- [ ] **F2.1** 5 NEW Postgres tables(`roles` + `role_permissions` + `groups` + `group_members` + `kb_acl`)idempotent `CREATE TABLE IF NOT EXISTS`
-- [ ] **F2.2** `users.role` column ADD(default `'user'`,additive migration)
-- [ ] **F2.3** RBAC storage Protocol + InMemory + Postgres impls + factory(lazy-import per ADR-0023)
-- [ ] **F2.4** Seed:3 active roles(Admin / Editor / End User)+ Power User Tier 2 disabled + PERMISSIONS_MATRIX 5 areas × 24 permissions per mockup lines 26-60
+> R6 Day 2 finding(plan §7):**(1)** PERMISSIONS_MATRIX 實際 = **23** permissions 非 24(plan-text contamination)→ F2.4「24→23」;**(2)** F2.2「column ADD」需同步 `UserRecord.role` + `PostgresUsersStore` 4 處否則 dead schema;**(3)** F2 Protocol 只暴露 `roles`+`role_permissions`,`groups`/`group_members`/`kb_acl` table declared-ahead 但 Protocol method 留 F6/F8。
+
+- [x] **F2.1** 5 NEW Postgres tables(`roles` + `role_permissions` + `groups` + `group_members` + `kb_acl`)idempotent `CREATE TABLE IF NOT EXISTS` — `rbac_postgres.py` `_CREATE_TABLES` 一次建 5 table；`roles`+`role_permissions` 有 `sort_order` column 供 `ORDER BY`
+- [x] **F2.2** `users.role` column ADD(default `'user'`,additive migration)— `postgres_users_store.py` `users` CREATE 加 `role` + `ALTER TABLE … ADD COLUMN IF NOT EXISTS` + `_USER_COLS`/`_row_to_user`/`add_user`/`replace_user` 同步 + `UserRecord.role: str = "user"` field
+- [x] **F2.3** RBAC storage Protocol + InMemory + Postgres impls + factory(lazy-import per ADR-0023)— `RbacBackend` async Protocol + `InMemoryRbacBackend` + `PostgresRbacBackend` + `make_rbac_backend`
+- [x] **F2.4** Seed:3 active roles(Admin / Editor / End User)+ Power User Tier 2 `active=False` disabled + PERMISSIONS_MATRIX 5 areas × **23** permissions per mockup `ekp-page-users.jsx` lines 26-60(R6 finding #1:plan「24」→ actual 23)— `seed_defaults` idempotent → 4 roles + 92 role_permission rows
 
 ## F3 — ACL middleware + auth-time role claim
 

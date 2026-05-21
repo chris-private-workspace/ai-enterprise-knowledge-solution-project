@@ -15,11 +15,14 @@ Imported only when `Settings.database_url` is set — see
 unset `DATABASE_URL` never touches `psycopg`.
 
 Schema (in the `ekp` database per ADR-0023, or whatever DB the DSN points at):
-    users(oid PK / email UNIQUE / display_name / password_hash / verified /
-          verification_code / verification_code_expires_at / last_resend_at /
-          created_at)
+    users(oid PK / email UNIQUE / display_name / password_hash / role /
+          verified / verification_code / verification_code_expires_at /
+          last_resend_at / created_at)
     sessions(token PK / user_oid FK→users(oid) ON DELETE CASCADE / expires_at /
              created_at)
+
+`role` (W24c F2 per ADR-0027) is additive — the `ALTER TABLE … ADD COLUMN IF
+NOT EXISTS` below backfills it on DBs created before this column existed.
 """
 
 from __future__ import annotations
@@ -35,6 +38,7 @@ CREATE TABLE IF NOT EXISTS users (
     email                        TEXT NOT NULL UNIQUE,
     display_name                 TEXT NOT NULL,
     password_hash                TEXT NOT NULL,
+    role                         TEXT NOT NULL DEFAULT 'user',
     verified                     BOOLEAN NOT NULL DEFAULT FALSE,
     verification_code            TEXT,
     verification_code_expires_at TIMESTAMPTZ,
@@ -47,10 +51,11 @@ CREATE TABLE IF NOT EXISTS sessions (
     expires_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL
 );
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
 """
 
 _USER_COLS = (
-    "oid, email, display_name, password_hash, verified, verification_code, "
+    "oid, email, display_name, password_hash, role, verified, verification_code, "
     "verification_code_expires_at, last_resend_at, created_at"
 )
 _SESSION_COLS = "token, user_oid, expires_at, created_at"
@@ -62,6 +67,7 @@ def _row_to_user(row: dict) -> UserRecord:
         email=row["email"],
         display_name=row["display_name"],
         password_hash=row["password_hash"],
+        role=row["role"],
         verified=row["verified"],
         verification_code=row["verification_code"],
         verification_code_expires_at=row["verification_code_expires_at"],
@@ -99,12 +105,13 @@ class PostgresUsersStore:
             try:
                 cur.execute(
                     f"INSERT INTO users ({_USER_COLS}) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (
                         record.oid,
                         record.email,
                         record.display_name,
                         record.password_hash,
+                        record.role,
                         record.verified,
                         record.verification_code,
                         record.verification_code_expires_at,
@@ -135,12 +142,14 @@ class PostgresUsersStore:
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
                 "UPDATE users SET email = %s, display_name = %s, password_hash = %s, "
-                "verified = %s, verification_code = %s, verification_code_expires_at = %s, "
-                "last_resend_at = %s, created_at = %s WHERE oid = %s",
+                "role = %s, verified = %s, verification_code = %s, "
+                "verification_code_expires_at = %s, last_resend_at = %s, "
+                "created_at = %s WHERE oid = %s",
                 (
                     record.email,
                     record.display_name,
                     record.password_hash,
+                    record.role,
                     record.verified,
                     record.verification_code,
                     record.verification_code_expires_at,

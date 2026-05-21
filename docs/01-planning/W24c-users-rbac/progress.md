@@ -72,4 +72,43 @@ status: active                      # active | closed
 
 ---
 
-<!-- Day 2+ F2 entries land at F2 active flip per CLAUDE.md §10 R2 -->
+## Day 2 — 2026-05-21 — F2 RBAC schema layer
+
+### Done
+
+- **F2 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 mockup `ekp-page-users.jsx` lines 26-60(PERMISSIONS_MATRIX)+ `storage/{audit_log_storage,audit_log_postgres,audit_log_factory}.py`(3-file storage pattern)+ `api/auth/{users_store,postgres_users_store,users_repo}.py`(`users` table + `UserRecord`)+ `kb_management/postgres_backend.py`(`ALTER TABLE … ADD COLUMN IF NOT EXISTS` additive-migration pattern):
+  - **(2) grep** — audit_log 3-file split(`*_storage.py` Protocol+InMemory / `*_postgres.py` / `*_factory.py`)= canonical pattern;`audit_log` backend 用 **async** psycopg,`users_store` 用 **sync**(綁 sync `users_repo`);mockup PERMISSIONS_MATRIX = 5 areas;`users` table 由 `postgres_users_store.py` `_CREATE_TABLES` 擁有
+  - **(3) surface** — 3 findings(plan §7 Day 2 row)
+  - **(4) document** — plan §7 Day 2 changelog row + §2 F2 acceptance refined + checklist F2 R6 blockquote landed
+  - **(5) adjust** — F2.4 「24→23」permissions;F2.2 補完 4-處同步 surface;F2 Protocol scope = roles+permissions(groups/members/acl table declared-ahead,method 留 F6/F8)
+- **F2.1** `storage/rbac_postgres.py` `_CREATE_TABLES` — 5 NEW Postgres tables idempotent `CREATE TABLE IF NOT EXISTS`:`roles`(role_key PK / label / description / tier / active / sort_order / created_at)+ `role_permissions`(PK `(role_key, permission_key)` / area / label / granted / sort_order)+ `groups`(group_key PK / source / entra_object_id)+ `group_members`(PK `(group_key, user_oid)`)+ `kb_acl`(SERIAL id / kb_id / principal_type / principal_id / access_role / UNIQUE `(kb_id, principal_type, principal_id)`)
+- **F2.2** `users.role` column — `postgres_users_store.py` `users` CREATE 加 `role TEXT NOT NULL DEFAULT 'user'` + 尾加 `ALTER TABLE users ADD COLUMN IF NOT EXISTS role …`(舊 DB additive backfill)+ `_USER_COLS`/`_row_to_user`/`add_user`(9→10 placeholder)/`replace_user` 同步;`users_store.py` `UserRecord` 加 `role: str = "user"` field;`users_repo.register` 無需改(`UserRecord(...)` 不傳 role → default `'user'`)
+- **F2.3** RBAC storage 3-file split — `storage/rbac_storage.py`(`RbacBackend` async Protocol + `InMemoryRbacBackend` + `_PERMISSION_MATRIX` seed constant + `permission_matrix_rows()`/`default_roles()` helpers)+ `storage/rbac_postgres.py`(`PostgresRbacBackend` async psycopg connection-per-op)+ `storage/rbac_factory.py`(`make_rbac_backend` lazy-import per ADR-0023)+ `api/schemas/rbac.py`(`Role` + `RolePermission` + `RoleKey` Literal)
+- **F2.4** Seed — `seed_defaults` idempotent(InMemory empty-guard / Postgres `ON CONFLICT DO NOTHING`)→ 4 roles(Admin / Editor / End User active tier 1 + Power User `active=False` tier 2 disabled affordance per H4)+ 92 `role_permissions` rows(23 perms × 4 roles,verbatim from mockup lines 26-60)
+- **F2 tests** `tests/storage/test_rbac_storage.py` NEW — 12 cases(seed 4 roles + role order + Power User tier 2/inactive + idempotent + get_role + full matrix 92 + per-role 23 + grant values 對 mockup + reset + matrix constant + factory + `UserRecord.role` smoke);plan F11.1「RBAC storage」portion 提前 F2(per D2.5)
+- **F2 committed** `(this commit)`
+
+### Decisions
+
+- **D2.1 — RBAC backend = async**(非 sync)— audit_log / admin_provider / admin_identity 三個 W24-c1 NEW storage 全 async;`UsersStore` 係 sync 因為綁 sync `users_repo`(被 sync `get_current_user` dependency 消費)。RBAC 係 NET NEW 無此約束,將被 async `/users/*` route bodies + F3 ACL middleware 消費 → async,對齊 `AuditLogBackend` shape。
+- **D2.2 — `groups`/`group_members`/`kb_acl` table declared-ahead,Protocol method 留 F6/F8**(R6 finding #3)— plan F2.1 字面「5 NEW Postgres tables」→ Postgres `_ensure_schema` 一次建 5 table(idempotent,F6/F8 不需再 migrate);但 F2 的 `RbacBackend` Protocol + `InMemoryRbacBackend` 只暴露 `roles`+`role_permissions`(F5 Roles tab backing)。groups/members/acl 的 read+write method 留 F6(Groups)/ F8(per-KB ACL)active-flip 加 — per Karpathy §1.2 不寫 speculative surface + plan §2「acceptance items refine per-deliverable at active-flip」。Postgres table 5、InMemory store 2 嘅不對稱屬 deliberate:Postgres CREATE TABLE 係 declared-ahead 慣例,InMemory 按 Protocol method 增量。
+- **D2.3 — `role_permissions` 存全部 92 rows**(23 perm × 4 role,含 `granted` bool)非只存 granted-only — matrix UI(F5 + mockup)需顯示 granted + not-granted 兩種 cell;`sort_order` column = `permission_matrix_rows()` 的 iteration index(0-91),供單 column `ORDER BY sort_order` 重現 mockup area→perm→role 順序。`roles` 同樣有 `sort_order`(0-3)。InMemory 用 list 保序不需 sort_order。
+- **D2.4 — schema model 放 `api/schemas/rbac.py`,storage 放 `backend/storage/`** — 對齊 audit_log(`AuditLogEntry` 在 `api/schemas/`,storage import 它)+ plan §1 表「F2 → `backend/storage/` NEW rbac storage」。`UserRecord.role` 用 plain `str` 非 `RoleKey` Literal — C11 `users_store` 唔 import C16 `api.schemas.rbac`,避免 component 反向依賴;valid-value 驗證留 RBAC layer / F4 endpoint。
+- **D2.5 — F2 寫 storage test(`test_rbac_storage.py` 12 cases),plan F11.1「RBAC storage」portion 提前 F2** — Karpathy §1.4 goal-driven:F2 schema layer 的 verifiable success criteria = seed/list/reset test pass,唔可以等到 F11 先驗。F11 專注 ACL middleware + `/users/*` endpoints test。屬 R3 plan-deviation logged(plan §7 Day 2)。
+
+### Acceptance(plan §3 + checklist F2)
+
+- [x] F2.1 5 NEW Postgres tables idempotent `CREATE TABLE IF NOT EXISTS`(`rbac_postgres.py` `_CREATE_TABLES`)
+- [x] F2.2 `users.role` column ADD + `ALTER TABLE … ADD COLUMN IF NOT EXISTS` + `UserRecord.role` field + `PostgresUsersStore` 4-處同步
+- [x] F2.3 `RbacBackend` async Protocol + `InMemoryRbacBackend` + `PostgresRbacBackend` + `make_rbac_backend` factory(lazy-import per ADR-0023)
+- [x] F2.4 Seed 3 active roles + Power User Tier 2 `active=False` + PERMISSIONS_MATRIX 5 areas × 23 permissions(R6-corrected from 24)→ 4 roles + 92 role_permission rows
+
+### Verify
+
+- **backend pytest 828 passed**(W24b baseline 816 → +12 F2 storage tests)+ 11 skipped + 0 failed — regression 0
+- **mypy `--strict`** — `rbac_storage.py` / `rbac_factory.py` / `api/schemas/rbac.py` / `users_store.py` 0 error;`rbac_postgres.py` 唯一 error = `psycopg` import-not-found(CO17 R8 — `pip install psycopg[binary]` 一直 R8-blocked,與既有 `audit_log_postgres.py` / `postgres_users_store.py` 同類豁免,非 F2 引入)
+- **H6 note** — RBAC storage 唔在 §5.6 H6 強制 test 清單(ingestion / retrieval / pipeline / eval),但 F2 仍同步寫 12 test(W24b F6 audit_log storage test precedent + Karpathy §1.4)
+
+**Day 2 F2 Verdict**:F2 complete — RBAC schema layer landed(4 NEW files:`api/schemas/rbac.py` + `storage/rbac_storage.py` + `storage/rbac_postgres.py` + `storage/rbac_factory.py`;2 EDIT:`users_store.py` + `postgres_users_store.py`;1 NEW test:`tests/storage/test_rbac_storage.py`)。5 NEW Postgres tables idempotent + `users.role` column additive + `RbacBackend` async Protocol/InMemory/Postgres/factory + seed 4 roles + 92 role_permissions。3 R6 findings resolved(24→23 permissions / `users.role` 4-處同步補完 / F2 Protocol scope = roles+permissions)。backend pytest 828 + 0 fail。F3 ACL middleware + auth-time role claim next。
+
+<!-- Day 3+ F3 entries land at F3 active flip per CLAUDE.md §10 R2 -->

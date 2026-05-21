@@ -40,6 +40,9 @@ class UserRecord(BaseModel):
     email: str
     display_name: str
     password_hash: str
+    # RBAC role key — admin / editor / user / power (W24c F2 per ADR-0027 Option A).
+    # New registrations default to 'user'; F4 `PATCH /users/{id}/role` mutates it.
+    role: str = "user"
     verified: bool = False
     verification_code: str | None = None
     verification_code_expires_at: datetime | None = None
