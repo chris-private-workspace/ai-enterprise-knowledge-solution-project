@@ -3,7 +3,7 @@ W24b-wave-c2 F6 filter + cursor cases)."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
@@ -160,3 +160,46 @@ async def test_list_recent_combined_action_type_and_cursor() -> None:
     # connection_patch + cursor=4 → id 3, id 1 (id 2 wrong action, id 4 not < 4).
     rows = await backend.list_recent(action_type="connection_patch", cursor=4)
     assert [r.id for r in rows] == [3, 1]
+
+
+# ---- W24c F7 — 90d retention prune -----------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_prune_expired_removes_old_rows() -> None:
+    backend = InMemoryAuditLogBackend()
+    for i in range(4):
+        await backend.append(
+            actor=None, action="connection_test", resource=f"r_{i}", payload=None
+        )
+    # Backdate the two oldest rows well past any retention window.
+    old = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    backend._rows[0].created_at = old
+    backend._rows[1].created_at = old
+    removed = await backend.prune_expired(90)
+    assert removed == 2
+    assert len(await backend.list_recent()) == 2
+
+
+@pytest.mark.asyncio
+async def test_prune_expired_keeps_recent_rows() -> None:
+    backend = InMemoryAuditLogBackend()
+    for i in range(3):
+        await backend.append(
+            actor=None, action="connection_test", resource=f"r_{i}", payload=None
+        )
+    removed = await backend.prune_expired(90)
+    assert removed == 0
+    assert len(await backend.list_recent()) == 3
+
+
+@pytest.mark.asyncio
+async def test_prune_expired_respects_retention_days() -> None:
+    backend = InMemoryAuditLogBackend()
+    entry = await backend.append(
+        actor=None, action="connection_test", resource="r", payload=None
+    )
+    # 10 days old — survives a 90d window, pruned by a 1d window.
+    entry.created_at = datetime.now(UTC) - timedelta(days=10)
+    assert await backend.prune_expired(90) == 0
+    assert await backend.prune_expired(1) == 1

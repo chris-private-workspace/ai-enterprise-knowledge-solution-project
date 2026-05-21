@@ -122,3 +122,18 @@ class PostgresAuditLogBackend:
                 )
                 rows = await cur.fetchall()
                 return [_row_to_entry(r) for r in rows]
+
+    async def prune_expired(self, retention_days: int = 90) -> int:
+        # `make_interval(days => %s)` keeps `retention_days` a bound parameter,
+        # never string-interpolated. Returns the DELETE rowcount.
+        async with await psycopg.AsyncConnection.connect(
+            self._dsn, row_factory=dict_row
+        ) as conn:
+            await self._ensure_schema(conn)
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    f"DELETE FROM {_TABLE} "
+                    f"WHERE created_at < NOW() - make_interval(days => %s)",
+                    (retention_days,),
+                )
+                return cur.rowcount

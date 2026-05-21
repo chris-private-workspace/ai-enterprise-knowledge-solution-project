@@ -20,6 +20,7 @@ from api.routes import kb as kb_routes
 from api.schemas.kb import KbConfig, KbCreate
 from kb_management import KBService, get_kb_service
 from kb_management.storage import InMemoryKBBackend
+from storage.audit_log_storage import InMemoryAuditLogBackend
 
 
 def _build_app(kb_service: KBService) -> FastAPI:
@@ -158,3 +159,34 @@ async def test_patch_kb_settings_unchanged_by_metadata_patch(
     assert resp3.json()["name"] == "X"  # metadata preserved
     assert resp3.json()["config"]["default_top_k"] == 100  # settings changed
     assert config_before["default_top_k"] == 50  # default before settings patch
+
+
+@pytest.mark.asyncio
+async def test_update_kb_settings_writes_audit(
+    kb_service_with_drive: KBService,
+) -> None:
+    """W24c F7 — PATCH /settings writes a kb.config.changed audit row when an
+    audit backend is wired (best-effort; skipped silently when unwired)."""
+    app = _build_app(kb_service_with_drive)
+    audit = InMemoryAuditLogBackend()
+    app.state.audit_log_backend = audit
+    client = TestClient(app)
+
+    resp = client.patch(
+        "/kb/drive_user_manuals/settings",
+        json={
+            "embedding_model": "text-embedding-3-large",
+            "embedding_dimension": 1024,
+            "chunk_strategy": "layout_aware",
+            "default_top_k": 30,
+            "default_rerank_k": 10,
+        },
+    )
+    assert resp.status_code == 200, resp.text
+
+    rows = await audit.list_recent()
+    assert len(rows) == 1
+    assert rows[0].action == "kb.config.changed"
+    assert rows[0].resource == "kb/drive_user_manuals"
+    assert rows[0].payload is not None
+    assert rows[0].payload["default_top_k"] == 30

@@ -2,7 +2,7 @@
 phase: W24c-users-rbac
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-21  # F6 active-flip → F6.1-F6.2 complete (/groups Groups tab: routes/groups.py 2 endpoints + entra_graph.py managed-REST + rbac.py +3 group schemas + groups.synced_at ALTER; backend pytest 877)
+last_updated: 2026-05-21  # F7 active-flip → F7.1-F7.3 complete (Audit log expansion: AuditAction +2 kb.* + kb.config.changed write on update_kb_settings + AuditLogBackend.prune_expired 90d retention; backend pytest 881)
 ---
 
 # W24c-users-rbac — Checklist
@@ -71,8 +71,11 @@ last_updated: 2026-05-21  # F6 active-flip → F6.1-F6.2 complete (/groups Group
 
 ## F7 — Audit log expansion
 
-- [ ] **F7.1** `AuditAction` Literal extended with RBAC action types(`role.changed` / `user.invited` / `kb.access.granted` / `kb.config.changed` / `user.suspended`)
-- [ ] **F7.2** audit_log writes wired on protected-endpoint mutations + 90d retention policy
+> R6 Day 7 finding(plan §7,6 findings):**(1)** F4 D4.5 已加 `user.*`/`role.changed` → F7 只加 2 個 `kb.*`;**(2)** `kb.access.granted` write 🚧 defer F8(連 `kb_acl` CRUD);**(3)** `kb.config.changed` wire `update_kb_settings` 只加 `request: Request`,不加 auth dep(避 `test_kb_metadata_patch.py` regression）→ `actor=None`;**(4)** 不 wire `update_kb_metadata`(name/desc 非 config 語義);**(5)** 90d retention = NEW `prune_expired` Protocol + lifespan startup call;**(6)** payload = new `KbConfig` snapshot。
+
+- [x] **F7.1** `AuditAction` Literal +2(`kb.access.granted` + `kb.config.changed`)— F4 D4.5 已加 `user.invited`/`user.suspended`/`role.changed`;`kb.access.granted` **write 🚧 deferred F8**（連 `kb_acl` CRUD endpoint）
+- [x] **F7.2** `kb.config.changed` audit write wired on `PATCH /kb/{kb_id}/settings`（`update_kb_settings` +`request: Request`,`actor=None`,payload = `config.model_dump(mode="json")`,best-effort skip-when-unwired）— 不 wire `update_kb_metadata`（R6 #4）
+- [x] **F7.3** 90d retention — `AuditLogBackend` Protocol +`prune_expired(retention_days=90)` + InMemory + Postgres impl + `server.py` lifespan startup call（best-effort,Tier 1 無 scheduler）
 
 ## F8 — per-KB ACL(`kb_acl`)
 

@@ -262,4 +262,41 @@ status: active                      # active | closed
 
 **Day 6 F6 Verdict**:F6 complete — `/groups` Groups tab backend + `sync-from-entra` landed。NEW `api/auth/entra_graph.py`(managed-REST Graph client,零新 dep per F1 D1)+ `api/routes/groups.py`(2 endpoints)+ `rbac.py` +3 group schemas + `RbacBackend` +2 Protocol methods(InMemory + Postgres)+ `groups.synced_at` additive ALTER。7 R6 findings resolved(全 F2-predicted surface / additive-ALTER-F4-precedent / §13 backend-subset / Karpathy §1.2 no-speculative / plan-text-contamination,auto-adjust)。group member sync 🚧 defer W24d+/F8。backend pytest 877 + 0 fail。F7 Audit log expansion next。
 
-<!-- Day 7+ F7 entries land at F7 active flip per CLAUDE.md §10 R2 -->
+## Day 7 — 2026-05-21 — F7 Audit log expansion
+
+### Done
+
+- **F7 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 `api/schemas/audit_log.py` `AuditAction` Literal + `storage/audit_log_storage.py`/`audit_log_postgres.py`(無 retention)+ `api/routes/kb.py` `update_kb_settings` + `api/routes/admin/audit_log.py` + mockup `ekp-page-users.jsx` lines 324-377(`AuditTab`)+ `tests/storage/test_audit_log.py`/`tests/test_kb_metadata_patch.py` → 6 findings(plan §7 Day 7 row)
+- **F7.1 EDIT `api/schemas/audit_log.py`** — `AuditAction` Literal +2(`kb.access.granted` + `kb.config.changed`);F4 D4.5 已加 `user.invited`/`user.suspended`/`role.changed`
+- **F7.2 EDIT `api/routes/kb.py`** — `update_kb_settings` 加 `request: Request` param + `kb.config.changed` audit write(`actor=None`,`resource=f"kb/{kb_id}"`,`payload=config.model_dump(mode="json")`,best-effort `getattr(app.state, "audit_log_backend", None)` skip-when-unwired);try/except restructure(`return` 移出 try,audit write 喺 success path);NEW import `AuditLogBackend`
+- **F7.3 EDIT `storage/audit_log_storage.py`** — `AuditLogBackend` Protocol +`prune_expired(retention_days: int = 90) -> int` + `InMemoryAuditLogBackend` impl(list-comprehension filter `created_at >= cutoff`);`timedelta` import
+- **F7.3 EDIT `storage/audit_log_postgres.py`** — `PostgresAuditLogBackend.prune_expired`(`DELETE … WHERE created_at < NOW() - make_interval(days => %s)`,`cur.rowcount`)
+- **F7.3 EDIT `api/server.py`** — lifespan startup `audit_log_backend = make_audit_log_backend(settings)` + `await audit_log_backend.prune_expired(90)` + `app.state` assign(local-var pattern,mirror F5 rbac_backend)
+- **F7 tests** — `tests/storage/test_audit_log.py` +3 cases(`prune_expired` removes-old / keeps-recent / respects-retention-days);`tests/test_kb_metadata_patch.py` +1 case(`test_update_kb_settings_writes_audit` — `kb.config.changed` write + payload)
+- **F7 committed** `(this commit)`
+
+### Decisions
+
+- **D7.1 — F7 只加 2 個 `AuditAction`**(R6 #1)— plan F7.1 literal 列 5 個,其中 `user.invited`/`user.suspended`/`role.changed` F4 D4.5 已加(`audit_log.py` comment「W24c F7 adds the kb.* actions」已預告)。F7 加剩餘 2 個 `kb.*`(`kb.access.granted` + `kb.config.changed`)。
+- **D7.2 — `kb.access.granted` Literal 加咗、write 🚧 defer F8**(R6 #2)— `kb.access.granted` 嘅 write site = per-KB ACL grant 操作,屬 F8 `kb_acl` CRUD endpoint;F7 時點該 endpoint 未建。F7.1 加 `AuditAction` Literal(`kb.access.granted` 可被 F8 引用),write 連 `kb_acl` CRUD endpoint 一齊喺 F8 — per F4 D4.5「F7/F8 sequencing」+ Karpathy §1.2 no write-without-endpoint。`AuditAction` Literal 加喺 F7(audit-log-expansion deliverable)係正確 home — F8 唔應該又 expand `AuditAction`。
+- **D7.3 — `update_kb_settings` 只加 `request: Request`,不加 `Depends(get_current_user)` → `actor=None`**(R6 #3)— `kb.config.changed` write site = `PATCH /kb/{kb_id}/settings`。若加 `Depends(get_current_user)` 攞 actor,pre-existing `test_kb_metadata_patch.py:127 test_patch_kb_settings_unchanged_by_metadata_patch`(minimal-app,無 auth setup)會收 401 regression。`update_kb_settings` 喺 `server.py` 已 router-level `_auth`,真實 request 已 authenticated,但 minimal test app 繞過。Karpathy §1.3 surgical — 加 auth dependency 到 pre-existing endpoint + 改 pre-existing test = 擴大 blast radius。改為只加 `request: Request`(`Request` injection 唔影響 minimal test app),audit `actor=None` — 對齊 `routes/admin/identity.py` `_audit_identity_patch(actor=None)` 既有 pattern + `audit_log.py` schema doc 明示「actor ... Wave C2 promotes when ADR-0027 wires actor extraction at middleware level」。Per-endpoint actor extraction 係 middleware-level 後續 concern,非 F7 scope。
+- **D7.4 — `kb.config.changed` 只 wire `update_kb_settings`,不 wire `update_kb_metadata`**(R6 #4)— mockup `AuditTab` `kb.config.changed` event(「Customer Service SOP · default_top_k 50 → 30」)係 `KbConfig` field。`kb.config.changed` 語義 = `KbConfig` change → `update_kb_settings`(`PATCH /kb/{kb_id}/settings`)。`update_kb_metadata`(`PATCH /kb/{kb_id}`,name/description)係 metadata 非 config → 不 wire(避免 over-extend per Karpathy §1.2 + W22 D6 over-extending anti-pattern;Decision A.1 separation-of-concern 已區分 metadata vs config)。
+- **D7.5 — 90d retention = `prune_expired` Protocol method + lifespan startup call**(R6 #5)— `audit_log` table 無 retention 機制,Tier 1 無 background scheduler/cron。`AuditLogBackend` Protocol 加 `prune_expired(retention_days: int = 90)`(InMemory list-filter / Postgres `DELETE`)。`server.py` lifespan startup call `prune_expired(90)` — best-effort retention:server restart/deploy(常見)時 prune,~90d window 足夠(retention policy 唔需精確到秒)。90d hard-code(plan + mockup 都明寫「90d retention」),不加 `settings` field per Karpathy §1.2 no speculative config。
+- **D7.6 — `kb.config.changed` payload = new `KbConfig` snapshot**(R6 #6)— mockup `AuditTab` 顯示「default_top_k 50 → 30」before→after diff,但既有 F2/F3/F4 audit payload pattern = 記 mutation content(F4 `user.invited` payload `{email,role}`、F3 `identity_patch` payload sanitized PATCH 內容),非 before/after diff。F7 payload = `config.model_dump(mode="json")`(new `KbConfig` snapshot — `KbConfig` 無 secret)。before/after diff 渲染係 frontend concern;§13 backend ships mutation payload。
+
+### Acceptance(plan §3 + checklist F7)
+
+- [x] F7.1 `AuditAction` Literal +2(`kb.access.granted` + `kb.config.changed`);`kb.access.granted` write 🚧 deferred F8
+- [x] F7.2 `kb.config.changed` audit write on `PATCH /kb/{kb_id}/settings`(`update_kb_settings` +`request: Request`,`actor=None`,best-effort skip-when-unwired);不 wire `update_kb_metadata`
+- [x] F7.3 90d retention — `AuditLogBackend` Protocol +`prune_expired` + InMemory + Postgres impl + `server.py` lifespan startup call
+
+### Verify
+
+- **backend pytest 881 passed**(F6 baseline 877 → +4:`test_audit_log.py` +3 `prune_expired` + `test_kb_metadata_patch.py` +1 `kb.config.changed` audit)+ 11 skipped + 0 failed — regression 0(pre-existing `test_patch_kb_settings_unchanged_by_metadata_patch` 仍 pass — `update_kb_settings` 加 `request: Request` 無 break minimal test app)
+- **mypy `--strict`** — `api/schemas/audit_log.py` / `storage/audit_log_storage.py` / `api/routes/kb.py` F7 code 0 error;`kb.py:220 reindex_kb -> dict` `type-arg` = pre-existing W16 F5.3.1 signature(F7 `update_kb_settings` expansion 令行號下移,非 F7 引入,per Karpathy §1.3 surgical 未順手修);`storage/audit_log_postgres.py` psycopg import-not-found = CO17 R8 既有豁免
+- **ruff** — F7 NEW code all clean(F7-introduced `tests/storage/test_audit_log.py` `datetime.now(timezone.utc)` UP017 → 改現代 `datetime.now(UTC)` alias,per Karpathy §1.3 清自己嘅 mess);pre-existing UP017(`audit_log_storage.py:23 _now()` + `test_audit_log.py` 既有 3 個 `tzinfo=timezone.utc`)未碰;`server.py` E402 35→35 不變(F7 lifespan 加 3 行,無新 import statement)
+- **endpoint count** 53 → 53 不變(F7 無新 endpoint)
+
+**Day 7 F7 Verdict**:F7 complete — Audit log expansion landed。`AuditAction` Literal +2(`kb.access.granted` + `kb.config.changed`)+ `kb.config.changed` audit write wired on `update_kb_settings` + `AuditLogBackend.prune_expired` 90d retention(InMemory + Postgres)+ `server.py` lifespan startup prune。6 R6 findings resolved(全 F4-sequenced / Karpathy §1.3 surgical avoid-regression / §1.2 no-over-extend+no-speculative-config,auto-adjust)。`kb.access.granted` write 🚧 defer F8。backend pytest 881 + 0 fail。F8 per-KB ACL(`kb_acl`)next。
+
+<!-- Day 8+ F8 entries land at F8 active flip per CLAUDE.md §10 R2 -->

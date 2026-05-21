@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from api.schemas.kb import KbConfig, KbCreate, KbMetadataPatch, KbStatus
 from indexing.populate import IndexPopulator
 from kb_management import KBAlreadyExistsError, KBNotFoundError, KBService, get_kb_service
+from storage.audit_log_storage import AuditLogBackend
 
 router = APIRouter()
 logger = structlog.get_logger(__name__)
@@ -183,20 +184,36 @@ async def delete_kb(kb_id: str, service: KbServiceDep, request: Request) -> None
 
 
 @router.patch("/kb/{kb_id}/settings", response_model=KbConfig)
-async def update_kb_settings(kb_id: str, config: KbConfig, service: KbServiceDep) -> KbConfig:
+async def update_kb_settings(
+    kb_id: str, config: KbConfig, service: KbServiceDep, request: Request
+) -> KbConfig:
     """Update KB config: embedding model, chunk strategy (architecture.md §4.4 #8).
 
     Treats the request body as a full replacement of `KbConfig` (all fields
     have defaults, so omitted fields are reset). Partial PATCH is W2+ if needed.
+
+    W24c F7 — writes a `kb.config.changed` audit row when an audit backend is
+    wired. `actor` stays None; per-endpoint actor extraction is a middleware-
+    level Wave C2+ concern (per the audit_log schema doc).
     """
     try:
         updated = await service.update_config(kb_id, config)
-        return updated.config
     except KBNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+    audit: AuditLogBackend | None = getattr(
+        request.app.state, "audit_log_backend", None
+    )
+    if audit is not None:
+        await audit.append(
+            actor=None,
+            action="kb.config.changed",
+            resource=f"kb/{kb_id}",
+            payload=config.model_dump(mode="json"),
+        )
+    return updated.config
 
 
 @router.post("/kb/{kb_id}/reindex", status_code=status.HTTP_202_ACCEPTED)

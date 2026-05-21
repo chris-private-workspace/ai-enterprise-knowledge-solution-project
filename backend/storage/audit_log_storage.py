@@ -13,7 +13,7 @@ exercise it in tests, but no FastAPI route surfaces it Tier 1.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Protocol, runtime_checkable
 
 from api.schemas.audit_log import AuditAction, AuditLogEntry
@@ -44,6 +44,13 @@ class AuditLogBackend(Protocol):
         since: datetime | None = None,
         cursor: int | None = None,
     ) -> list[AuditLogEntry]: ...
+
+    async def prune_expired(self, retention_days: int = 90) -> int:
+        """Delete entries older than `retention_days`; return the count removed.
+
+        Best-effort retention — called at app startup (Tier 1 has no
+        scheduler), so the window is approximate (W24c F7 per ADR-0027)."""
+        ...
 
 
 class InMemoryAuditLogBackend:
@@ -95,3 +102,9 @@ class InMemoryAuditLogBackend:
             if len(result) >= limit:
                 break
         return result
+
+    async def prune_expired(self, retention_days: int = 90) -> int:
+        cutoff = _now() - timedelta(days=retention_days)
+        before = len(self._rows)
+        self._rows = [r for r in self._rows if r.created_at >= cutoff]
+        return before - len(self._rows)

@@ -22,10 +22,15 @@ AuditAction = Literal[
     "identity_patch",
     # F4 admin_api_keys
     "api_keys_alert_threshold_patch",
-    # W24c F4 — RBAC user management (per ADR-0027); W24c F7 adds the kb.* actions.
+    # W24c F4 — RBAC user management (per ADR-0027).
     "user.invited",
     "user.suspended",
     "role.changed",
+    # W24c F7 — RBAC kb.* actions. `kb.config.changed` is wired on
+    # PATCH /kb/{id}/settings; `kb.access.granted` write site lands at F8
+    # (kb_acl CRUD endpoint) — F7 adds the Literal only.
+    "kb.access.granted",
+    "kb.config.changed",
 ]
 
 

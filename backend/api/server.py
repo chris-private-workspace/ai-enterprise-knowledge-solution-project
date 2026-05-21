@@ -99,7 +99,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # F3 — admin identity config backend (5 sub-resources per ADR-0026 Option B).
     app.state.admin_identity_backend = make_admin_identity_backend(settings)
     # F4 — audit log backend (write-mostly Wave C1; read endpoint = Wave C2 / F5).
-    app.state.audit_log_backend = make_audit_log_backend(settings)
+    # W24c F7 — prune entries past the 90d retention window at startup
+    # (best-effort; Tier 1 has no scheduler — restart/deploy triggers the prune).
+    audit_log_backend = make_audit_log_backend(settings)
+    await audit_log_backend.prune_expired(90)
+    app.state.audit_log_backend = audit_log_backend
     # W24c F5 — RBAC backend (roles + permissions matrix). Seeded at startup —
     # `InMemoryRbacBackend` is restart-wiped; `seed_defaults` is idempotent so
     # the Postgres path is a no-op once the rows exist.
