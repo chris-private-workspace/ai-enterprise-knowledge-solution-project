@@ -15,14 +15,15 @@ Imported only when `Settings.database_url` is set — see
 unset `DATABASE_URL` never touches `psycopg`.
 
 Schema (in the `ekp` database per ADR-0023, or whatever DB the DSN points at):
-    users(oid PK / email UNIQUE / display_name / password_hash / role /
+    users(oid PK / email UNIQUE / display_name / password_hash / role / status /
           verified / verification_code / verification_code_expires_at /
           last_resend_at / created_at)
     sessions(token PK / user_oid FK→users(oid) ON DELETE CASCADE / expires_at /
              created_at)
 
-`role` (W24c F2 per ADR-0027) is additive — the `ALTER TABLE … ADD COLUMN IF
-NOT EXISTS` below backfills it on DBs created before this column existed.
+`role` (W24c F2) + `status` (W24c F4) are additive — the `ALTER TABLE … ADD
+COLUMN IF NOT EXISTS` lines below backfill them on DBs created before the
+columns existed.
 """
 
 from __future__ import annotations
@@ -39,6 +40,7 @@ CREATE TABLE IF NOT EXISTS users (
     display_name                 TEXT NOT NULL,
     password_hash                TEXT NOT NULL,
     role                         TEXT NOT NULL DEFAULT 'user',
+    status                       TEXT NOT NULL DEFAULT 'active',
     verified                     BOOLEAN NOT NULL DEFAULT FALSE,
     verification_code            TEXT,
     verification_code_expires_at TIMESTAMPTZ,
@@ -52,11 +54,12 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at TIMESTAMPTZ NOT NULL
 );
 ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
 """
 
 _USER_COLS = (
-    "oid, email, display_name, password_hash, role, verified, verification_code, "
-    "verification_code_expires_at, last_resend_at, created_at"
+    "oid, email, display_name, password_hash, role, status, verified, "
+    "verification_code, verification_code_expires_at, last_resend_at, created_at"
 )
 _SESSION_COLS = "token, user_oid, expires_at, created_at"
 
@@ -68,6 +71,7 @@ def _row_to_user(row: dict) -> UserRecord:
         display_name=row["display_name"],
         password_hash=row["password_hash"],
         role=row["role"],
+        status=row["status"],
         verified=row["verified"],
         verification_code=row["verification_code"],
         verification_code_expires_at=row["verification_code_expires_at"],
@@ -105,13 +109,14 @@ class PostgresUsersStore:
             try:
                 cur.execute(
                     f"INSERT INTO users ({_USER_COLS}) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (
                         record.oid,
                         record.email,
                         record.display_name,
                         record.password_hash,
                         record.role,
+                        record.status,
                         record.verified,
                         record.verification_code,
                         record.verification_code_expires_at,
@@ -142,7 +147,7 @@ class PostgresUsersStore:
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
                 "UPDATE users SET email = %s, display_name = %s, password_hash = %s, "
-                "role = %s, verified = %s, verification_code = %s, "
+                "role = %s, status = %s, verified = %s, verification_code = %s, "
                 "verification_code_expires_at = %s, last_resend_at = %s, "
                 "created_at = %s WHERE oid = %s",
                 (
@@ -150,6 +155,7 @@ class PostgresUsersStore:
                     record.display_name,
                     record.password_hash,
                     record.role,
+                    record.status,
                     record.verified,
                     record.verification_code,
                     record.verification_code_expires_at,
@@ -158,6 +164,12 @@ class PostgresUsersStore:
                     record.oid,
                 ),
             )
+
+    def list_users(self) -> list[UserRecord]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(f"SELECT {_USER_COLS} FROM users ORDER BY created_at DESC")
+            rows = cur.fetchall()
+        return [_row_to_user(r) for r in rows]
 
     def add_session(self, record: SessionRecord) -> None:
         with self._connect() as conn, conn.cursor() as cur:

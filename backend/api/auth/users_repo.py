@@ -43,12 +43,16 @@ __all__ = [
     "create_session",
     "find_by_email",
     "find_by_oid",
+    "invite_user",
+    "list_users",
     "mark_verified",
     "regenerate_verification_code",
     "register",
     "reset_repo",
     "resolve_session",
     "revoke_session",
+    "set_user_role",
+    "set_user_status",
 ]
 
 # Sentinel tenant id for self-register users — distinguishes from real Entra
@@ -167,3 +171,57 @@ def resolve_session(token: str) -> AuthenticatedUser | None:
 def revoke_session(token: str) -> bool:
     """Drop session token from the table. Returns True if a session existed."""
     return _store.delete_session(token)
+
+
+# --- W24c F4 — user management (C16 Users Service per ADR-0027) --------------
+
+
+def list_users() -> list[UserRecord]:
+    """All users, newest-first — the admin /users Members tab surface."""
+    return _store.list_users()
+
+
+def invite_user(*, email: str, role: str, display_name: str | None) -> UserRecord:
+    """Create an invited user record (status='invited', no usable password).
+
+    The invite email + accept flow (set password / verify) is a deferred
+    follow-up — F4 lands the record so the Members tab lists the pending
+    invite. Raises ValueError on a duplicate email."""
+    normalized_email = email.strip().lower()
+    if _store.get_user_by_email(normalized_email) is not None:
+        raise ValueError(f"email_already_exists: {normalized_email}")
+    record = UserRecord(
+        oid=generate_user_oid(),
+        email=normalized_email,
+        display_name=(display_name or normalized_email.split("@", 1)[0]).strip(),
+        # Unusable random hash — an invited user cannot log in until the
+        # (deferred) accept flow sets a real password.
+        password_hash=hash_password(generate_session_token()),
+        role=role,
+        status="invited",
+        verified=False,
+    )
+    _store.add_user(record)
+    return record
+
+
+def set_user_status(oid: str, status: str) -> UserRecord | None:
+    """Set account lifecycle status (active / invited / suspended).
+
+    Returns the updated record, or None when the oid is unknown."""
+    user = _store.get_user_by_oid(oid)
+    if user is None:
+        return None
+    updated = user.model_copy(update={"status": status})
+    _store.replace_user(updated)
+    return updated
+
+
+def set_user_role(oid: str, role: str) -> UserRecord | None:
+    """Change a user's RBAC role. Returns the updated record, None if oid unknown."""
+    user = _store.get_user_by_oid(oid)
+    if user is None:
+        return None
+    updated = user.model_copy(update={"role": role})
+    _store.replace_user(updated)
+    return updated

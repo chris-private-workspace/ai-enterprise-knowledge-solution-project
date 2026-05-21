@@ -22,6 +22,10 @@ AuditAction = Literal[
     "identity_patch",
     # F4 admin_api_keys
     "api_keys_alert_threshold_patch",
+    # W24c F4 — RBAC user management (per ADR-0027); W24c F7 adds the kb.* actions.
+    "user.invited",
+    "user.suspended",
+    "role.changed",
 ]
 
 

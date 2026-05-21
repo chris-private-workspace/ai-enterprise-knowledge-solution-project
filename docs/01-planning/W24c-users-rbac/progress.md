@@ -153,4 +153,41 @@ status: active                      # active | closed
 
 **Day 3 F3 Verdict**:F3 complete — ACL middleware `require_role` + auth-time role claim landed。NEW `api/middleware/acl.py`(`require_role` dependency factory)+ `AuthenticatedUser.role` 三路徑 populate + `test_acl_middleware.py` 11 cases。F3.0 role key vocabulary 統一(R6 #5 — Chris pick short form;9 files long→short;`settings-identity.tsx` H7 drift 修正)。5 R6 findings resolved。backend pytest 839 + 0 fail。F4 `/users` Members tab backend next。
 
-<!-- Day 4+ F4 entries land at F4 active flip per CLAUDE.md §10 R2 -->
+## Day 4 — 2026-05-21 — F4 /users Members tab backend
+
+### Done
+
+- **F4 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 mockup `ekp-page-users.jsx` Members tab(`MOCK_USERS` + filter seg + 10-col table)+ `conversations.py`(CRUD route pattern)+ `users_store`/`users_repo` + `server.py` route registration → 6 findings(plan §7 Day 4 row)
+- **F4 schema layer** — `UserRecord` 加 `status: str = "active"` field;`postgres_users_store.py` `users` table 加 `status` column + `ALTER TABLE … ADD COLUMN IF NOT EXISTS` + `_USER_COLS`/`_row_to_user`/`add_user`/`replace_user` 同步;`UsersStore` Protocol 加 `list_users()` + InMemory(newest-first)+ Postgres(`ORDER BY created_at DESC`)impl;`AuditAction` Literal +3(`user.invited`/`user.suspended`/`role.changed`)
+- **F4 NEW `api/schemas/user.py`** — `UserSummary`(Members-tab row,backend subset)+ `UserListResponse{users,total}` + `InviteRequest` + `RoleChangeRequest`;`UserDisplayStatus` 4-態 Literal(`pending` 為 derived)
+- **F4 `users_repo` 4 NEW management functions** — `list_users` / `invite_user`(建 `status="invited"` record,unusable random password)/ `set_user_status` / `set_user_role`(C16 concern,共用 module-level `_store` singleton)
+- **F4 NEW `api/routes/users.py`** — 4 endpoints router-level `require_role("admin")`:`GET /users`(`UserListResponse`,`_to_summary` derive display status)+ `POST /users/invite`(`_reject_tier2_role` + 409 dup)+ `POST /users/{oid}/suspend` + `PATCH /users/{oid}/role`;`_audit` helper 寫 `app.state.audit_log_backend`(actor = `current_user.preferred_username`)
+- **F4 route register** — `server.py` import `users` + `app.include_router(users.router)`(無 `_auth` — router 自帶 `require_role` 已 chain `get_current_user`);endpoint count 45 → **49**
+- **F4 tests** NEW `tests/api/test_users_route.py` 15 cases(GET list + admin gate 403 + 401 + pending derive;invite create/power-reject/dup-409;suspend + 404;role-change + power-reject + 404;mutations-require-admin;invite/suspend audit writes)
+- **F4 committed** `(this commit)`
+
+### Decisions
+
+- **D4.1 — `GET /users` response = backend subset**(R6 #1)— mockup `MOCK_USERS` 有 `queries_7d`/`kbs_owned`/`last_login`/`source`/`group`,但 Tier 1 backend 完全無 track(per-user query volume 需 query log Q6 open;KB ownership 需 ownership model;auth source / Entra group 需 F6 group wiring)。`GET /users` 只返回 `UserRecord` 實際有的(`oid`/`email`/`display_name`/`role`/`status`/`created_at`)— per CLAUDE.md §13 data-contract gap backend wins on field shape。mockup rich columns 喺 F9 frontend 渲染時面對(顯示「—」或省略)。
+- **D4.2 — `UserRecord` 加 `status` field,不取代 `verified`**(R6 #2)— mockup status 4 態(active/pending/invited/suspended)。`UserRecord` 加 `status: str`(3 值 active/invited/suspended);**`pending` = `not verified` derive**,不存。理由:`verified` deeply 用喺 auth flow(`register`/`mark_verified`/`regenerate_verification_code`/login gate),改 `verified`→`status` 會 ripple `users_repo` + `auth.py`。`status`(account lifecycle)與 `verified`(email verification)正交並存。
+- **D4.3 — invite = 建 invited record;email + accept flow defer**(R6 #3)— `POST /users/invite` 建 `UserRecord(status="invited", password_hash=hash_password(random))` — invited user 不能 login until accept。**invite email send + accept flow(set password / verify,或 self-register-detects-invited upgrade)🚧 defer** — 完整 flow 牽涉 C13 email template + `register` flow 改動,係 separate concern。invited record 已滿足 Members tab list 顯示 pending invite(mockup stat「Pending invites」)。
+- **D4.4 — user-management functions 放 `users_repo`(C11 module),route `users.py` 標 C16** — `users_repo` 係 `users` table 嘅 repository,list/invite/suspend/role-change 係佢合理操作範圍;且 F4 route **必須** 共用 `users_repo._store` module-level singleton(否則 F4 `GET /users` 同 self-register/login 係唔同 store instance,睇唔到對方嘅 user)。F4 functions 標 `# W24c F4 (C16 Users Service)`;NEW `routes/users.py` 係 C16 API surface。
+- **D4.5 — `AuditAction` F4 加 3,F7 加剩餘**(R6 #6)— F4.3 audit write 需 `AuditAction` 有對應 action,但 plan F7「Audit log expansion」才 extend `AuditAction`。F4 加佢需要嘅 3 個(`user.invited`/`user.suspended`/`role.changed`);F7 加 `kb.*`(`kb.access.granted`/`kb.config.changed`)+ 90d retention policy。`AuditAction` additive Literal append per F7 D0.2。
+- **D4.6 — `/users` 無 server-side filter;filter seg client-side** — mockup `UsersTab` 嘅 filter(all/admin/editor/user/pending)100% client-side(`MOCK_USERS.filter`)。`GET /users` 返回全部,F9 frontend client-side filter + count。Tier 1 member count 小,無 perf 壓力。
+
+### Acceptance(plan §3 + checklist F4)
+
+- [x] F4.1 `GET /users` 返回全部 members(`UserListResponse`,newest-first);filter seg client-side per mockup
+- [x] F4.2 `POST /users/invite`(建 invited record;email + accept flow 🚧 defer)+ `POST /users/{oid}/suspend` + `PATCH /users/{oid}/role`(power reject 422)
+- [x] F4.3 audit_log writes(`user.invited`/`user.suspended`/`role.changed`)+ router-level `require_role("admin")`
+
+### Verify
+
+- **backend pytest 854 passed**(F3 baseline 839 → +15 `test_users_route.py`)+ 11 skipped + 0 failed — regression 0
+- **mypy `--strict`** — `routes/users.py` / `schemas/user.py` / `users_repo.py` / `users_store.py` 0 error;`postgres_users_store.py` reported errors(psycopg import-not-found + 既有 `dict` type-arg + no-any-return)全部 pre-existing,F4 `list_users` 新 method clean
+- **ruff** — F4 NEW files all clean;`server.py` 28 個 E402(truststore-after-imports 結構)= pre-existing — `git show HEAD:backend/api/server.py` 確認 F4 前已 28,F4 只加 `users` import(top block)+ 1 行 `include_router`,per Karpathy §1.3 surgical 未順手修
+- **endpoint count** 45 → 49(+4 `/users/*`)
+
+**Day 4 F4 Verdict**:F4 complete — `/users` Members tab backend landed。NEW `api/routes/users.py`(4 endpoints,router-level `require_role("admin")` — F3.4「per-endpoint apply」首次兌現)+ NEW `api/schemas/user.py` + `users_repo` 4 management functions + `UserRecord.status` + `UsersStore.list_users` + `AuditAction` +3。6 R6 findings resolved(全 §13 backend-wins / additive field / scope sequencing,auto-adjust)。backend pytest 854 + 0 fail。F5 `/users` Roles tab backend next。
+
+<!-- Day 5+ F5 entries land at F5 active flip per CLAUDE.md §10 R2 -->

@@ -2,7 +2,7 @@
 phase: W24c-users-rbac
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-21  # F3 active-flip → F3.0-F3.4 complete (role vocab unified + acl.py require_role + AuthenticatedUser.role; backend pytest 839)
+last_updated: 2026-05-21  # F4 active-flip → F4.1-F4.3 complete (/users Members tab: routes/users.py 4 endpoints + UserRecord.status; backend pytest 854)
 ---
 
 # W24c-users-rbac — Checklist
@@ -49,9 +49,11 @@ last_updated: 2026-05-21  # F3 active-flip → F3.0-F3.4 complete (role vocab un
 
 ## F4 — `/users` Members tab backend
 
-- [ ] **F4.1** `GET /users` list + filter seg(all/admin/editor/user/pending)
-- [ ] **F4.2** `POST /users/invite` + `POST /users/{id}/suspend` + `PATCH /users/{id}/role`
-- [ ] **F4.3** audit_log writes on Members mutations
+> R6 Day 4 finding(plan §7,6 findings):**(1)** mockup analytics 欄位(queries_7d/kbs_owned/last_login/source/group)backend 無 → `GET /users` = subset(§13);**(2)** status 4 態 → `UserRecord` 加 `status` field;**(3)** invite email + accept flow 🚧 defer;**(4)** `UsersStore` 加 `list_users`;**(5)** `/users` route NEW + `require_role("admin")`(F3.4 首次兌現);**(6)** F4 加 3 個 `AuditAction`,F7 加 kb.*。
+
+- [x] **F4.1** `GET /users` 返回全部 members(`UserListResponse{users,total}`,newest-first)— filter seg(all/admin/editor/user/pending)= client-side per mockup(R6 #1 — backend 返回 subset,analytics 欄位非 Tier 1 state)
+- [x] **F4.2** `POST /users/invite`(建 `status="invited"` record;**invite email + accept flow 🚧 deferred** — C13 territory per R6 #3)+ `POST /users/{oid}/suspend` + `PATCH /users/{oid}/role`(`power` reject 422 per H4)
+- [x] **F4.3** audit_log writes on invite/suspend/role-change — `AuditAction` +3(`user.invited`/`user.suspended`/`role.changed`);全部 endpoint router-level `require_role("admin")`
 
 ## F5 — `/users` Roles tab backend
 

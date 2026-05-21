@@ -43,6 +43,10 @@ class UserRecord(BaseModel):
     # RBAC role key — admin / editor / user / power (W24c F2 per ADR-0027 Option A).
     # New registrations default to 'user'; F4 `PATCH /users/{id}/role` mutates it.
     role: str = "user"
+    # Account lifecycle status — active / invited / suspended (W24c F4 per
+    # ADR-0027). Orthogonal to `verified` (email verification): the /users
+    # admin surface derives the display "pending" from `not verified`.
+    status: str = "active"
     verified: bool = False
     verification_code: str | None = None
     verification_code_expires_at: datetime | None = None
@@ -78,6 +82,10 @@ class UsersStore(Protocol):
 
     def replace_user(self, record: UserRecord) -> None:
         """Overwrite the user with matching oid (must already exist)."""
+        ...
+
+    def list_users(self) -> list[UserRecord]:
+        """All users, newest-first — the admin /users management surface (W24c F4)."""
         ...
 
     def add_session(self, record: SessionRecord) -> None: ...
@@ -125,6 +133,12 @@ class InMemoryUsersStore:
     def replace_user(self, record: UserRecord) -> None:
         with self._lock:
             self._users[record.oid] = record
+
+    def list_users(self) -> list[UserRecord]:
+        with self._lock:
+            return sorted(
+                self._users.values(), key=lambda u: u.created_at, reverse=True
+            )
 
     def add_session(self, record: SessionRecord) -> None:
         with self._lock:

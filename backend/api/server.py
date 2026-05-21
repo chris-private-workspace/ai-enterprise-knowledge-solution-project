@@ -35,6 +35,7 @@ from api.routes import (
     query,
     retrieval_test,
     screenshots,
+    users,
 )
 from api.routes import (
     eval as eval_routes,
@@ -286,3 +287,6 @@ app.include_router(admin_usage_stats.router, tags=["admin"], dependencies=_auth)
 app.include_router(admin_api_keys.router, tags=["admin"], dependencies=_auth)
 # W24-wave-c1 F5 backend hook — /admin/audit-log read endpoint promoted from Wave C2.
 app.include_router(admin_audit_log.router, tags=["admin"], dependencies=_auth)
+# W24c F4 — /users Members tab per ADR-0027 Option A. The router carries its own
+# `require_role("admin")` gate (which chains get_current_user), so no _auth here.
+app.include_router(users.router)
