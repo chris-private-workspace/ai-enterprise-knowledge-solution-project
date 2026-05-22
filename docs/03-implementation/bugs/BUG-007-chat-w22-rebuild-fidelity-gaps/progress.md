@@ -36,6 +36,7 @@ status: closed              # in-progress | closed
 ### Decisions (impl-stage)
 - **D6 — meta-row「2 with screenshots」assertion 移除**:`/2 with screenshots/` 同時命中 meta 行 + `FeedbackBar`(兩個 surface 都正當顯示,mockup `:326` + `:405`)→ `getByText` multiple-match。該 assertion 多餘(「Referenced screenshots」header + 2 img count 已證 `ImageGallery` render),移除而非改 `getAllByText` — Karpathy §1.2 唔過度 assert。
 - **D7 — `mypy` 浮現 pre-existing error 不修**:`query.py` import `generation.crag` → mypy 經 import chain 浮現 `crag.py`/`observe.py` 等既有 error(BUG-007 只改 `query.py` docstring,零 code/type 改動)。per Karpathy §1.3 surgical — pre-existing dead tech-debt 唔順手修,只確認 `stream_composer.py`+`realtime_cost.py`(實 code 改動)0 error。
+- **D8 — `done` handler `costUsd: evt.cost ?? null` boundary-normalize(follow-up commit)**:首個 commit `e6c4fbd` 用 `costUsd: evt.cost`。但 mixed-version transient(新 frontend Fast-Refresh + 舊 backend 未重啟)下舊 `done` event 無 `cost` key → `evt.cost===undefined` → meta 行 `costUsd !== null` 放行 `undefined.toFixed(3)` → render crash。`?? null` 喺 SSE ingestion boundary normalize(`undefined`→`null`)— 屬「validate at system boundaries」正當範圍,非 speculative。Chat tests 重 verify 3 passed。
 
 ### Acceptance（report.md §7）
 - ✅ Root cause confirmed — 3 處 W22 F4 fidelity regression,via mockup + impl + backend SSE 三方 trace
@@ -53,7 +54,8 @@ status: closed              # in-progress | closed
 ### Commits
 | Hash | Subject |
 |---|---|
-| _(this commit)_ | `fix(frontend): restore chat meta-row model+cost, sources toggle, ImageGallery — BUG-007` |
+| `e6c4fbd` | `fix(frontend): restore chat meta-row model+cost, sources toggle, ImageGallery — BUG-007` |
+| _(this commit)_ | `fix(frontend): normalize done-event cost to null when backend omits it — BUG-007 follow-up` |
 
 ---
 

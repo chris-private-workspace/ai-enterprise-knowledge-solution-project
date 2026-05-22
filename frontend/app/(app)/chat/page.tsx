@@ -374,7 +374,9 @@ export default function ChatPage() {
             model: evt.model,
             rerankerUsed: evt.reranker_used,
             latencyMs: evt.latency_ms,
-            costUsd: evt.cost,
+            // Normalize at the SSE boundary — a pre-BUG-007 backend omits
+            // `cost` entirely, so guard the meta-row `costUsd !== null` check.
+            costUsd: evt.cost ?? null,
           }));
         }
       }
