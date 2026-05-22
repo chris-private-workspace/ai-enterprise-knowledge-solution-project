@@ -17,6 +17,7 @@ import logging
 import uuid
 from typing import Annotated
 
+import httpx
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
@@ -44,6 +45,34 @@ def _get_populator(request: Request) -> IndexPopulator | None:
     routes/documents.py) since they can't function without it.
     """
     return getattr(request.app.state, "index_populator", None)
+
+
+def _index_create_hint(exc: Exception) -> str:
+    """An actionable hint for an index-create failure, matched to the cause.
+
+    A 429/5xx is an Azure-side throttle/outage — the kb_id is fine and a retry
+    usually clears it; only a 400 means Azure rejected the index name. Surfacing
+    a blanket "check your kb_id" hint on a 429 sent users debugging a non-issue.
+    """
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code
+        if code == 429:
+            return (
+                "Azure AI Search throttled the request (429) — the KB record was "
+                "rolled back; wait ~1 min and retry. Sustained 429 means the Search "
+                "tier is too low (the Free tier throttles hard and caps at 3 indexes)."
+            )
+        if code >= 500:
+            return (
+                "Azure AI Search returned a server error — the KB record was rolled "
+                "back; retry shortly."
+            )
+        if code == 400:
+            return (
+                "Azure rejected the index name — check kb_id: 2-128 chars, lowercase "
+                "a-z + 0-9 + dashes, no leading/trailing dash, no consecutive dashes."
+            )
+    return "The KB record was rolled back — check backend logs (index_create_failed) and retry."
 
 
 @router.get("/kb", response_model=list[KbStatus])
@@ -105,10 +134,7 @@ async def create_kb(payload: KbCreate, service: KbServiceDep, request: Request) 
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=(
                 f"Azure AI Search index_create_failed for kb_id={payload.kb_id}: "
-                f"{type(exc).__name__}: {exc}. "
-                "Check kb_id matches Azure index-name rules: "
-                "2-128 chars, lowercase a-z + 0-9 + dashes, no leading/trailing dash, "
-                "no consecutive dashes."
+                f"{type(exc).__name__}: {exc}. " + _index_create_hint(exc)
             ),
         ) from exc
 

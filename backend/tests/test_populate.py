@@ -207,6 +207,88 @@ async def test_upload_retries_on_5xx_then_succeeds() -> None:
     assert instance.post.await_count == 2
 
 
+# ─── BUG-005: CH-001 index lifecycle 429/5xx retry ───────────────────────────
+
+
+def _throttled_response() -> MagicMock:
+    """A mock Azure 429 response whose raise_for_status() raises HTTPStatusError."""
+    resp = MagicMock(spec=httpx.Response)
+    resp.status_code = 429
+    resp.text = ""
+    resp.raise_for_status = MagicMock(
+        side_effect=httpx.HTTPStatusError("429", request=MagicMock(), response=resp),
+    )
+    return resp
+
+
+@pytest.mark.asyncio
+async def test_create_index_for_kb_retries_on_429_then_succeeds() -> None:
+    """BUG-005 — a transient Azure 429 on index-create is retried, not hard-failed."""
+    created = _mock_response(201)
+    with patch("indexing.populate.httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value
+        instance.put = AsyncMock(side_effect=[_throttled_response(), created])
+        instance.aclose = AsyncMock()
+
+        async with IndexPopulator("https://x", "k", "idx") as pop:
+            await pop.create_index_for_kb("drive-sop")
+
+    assert instance.put.await_count == 2  # retried once after the 429
+
+
+@pytest.mark.asyncio
+async def test_create_index_for_kb_does_not_retry_on_400() -> None:
+    """BUG-005 — a 400 (bad index name) is a caller error: surface at once, no retry."""
+    bad_request = MagicMock(spec=httpx.Response)
+    bad_request.status_code = 400
+    bad_request.text = "invalid index name"
+    bad_request.raise_for_status = MagicMock(
+        side_effect=httpx.HTTPStatusError("400", request=MagicMock(), response=bad_request),
+    )
+    with patch("indexing.populate.httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value
+        instance.put = AsyncMock(return_value=bad_request)
+        instance.aclose = AsyncMock()
+
+        async with IndexPopulator("https://x", "k", "idx") as pop:
+            with pytest.raises(httpx.HTTPStatusError):
+                await pop.create_index_for_kb("drive-sop")
+
+    assert instance.put.await_count == 1  # 4xx other than 429 is not retried
+
+
+@pytest.mark.asyncio
+async def test_create_index_for_kb_raises_after_429_exhausts_retries() -> None:
+    """BUG-005 — a sustained 429 surfaces after the 3-attempt budget is spent."""
+    with patch("indexing.populate.httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value
+        instance.put = AsyncMock(return_value=_throttled_response())
+        instance.aclose = AsyncMock()
+
+        async with IndexPopulator("https://x", "k", "idx") as pop:
+            with pytest.raises(httpx.HTTPStatusError):
+                await pop.create_index_for_kb("drive-sop")
+
+    assert instance.put.await_count == 3  # stop_after_attempt(3)
+
+
+@pytest.mark.asyncio
+async def test_delete_index_retries_on_429_then_succeeds() -> None:
+    """BUG-005 — delete_index shares the same 429 retry as create_index_for_kb."""
+    deleted = MagicMock(spec=httpx.Response)
+    deleted.status_code = 204
+    with patch("indexing.populate.httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value
+        instance.delete = AsyncMock(side_effect=[_throttled_response(), deleted])
+        instance.aclose = AsyncMock()
+
+        async with IndexPopulator("https://x", "k", "idx") as pop:
+            result = await pop.delete_index("drive-sop")
+
+    assert result is True
+    assert instance.delete.await_count == 2
+
+
 def test_make_chunk_id_sanitizes_forbidden_chars() -> None:
     """Azure AI Search keys: [A-Za-z0-9_=-] only. Spaces / parens / dots → `_`."""
     cid = make_chunk_id(

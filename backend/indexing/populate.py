@@ -4,7 +4,9 @@ Per components/C03-indexing.md §1 + §3 + §5:
 - REST API path (no SDK dep) for W2 baseline; SDK swap deferred per C03 §8 todo
 - Azure AI Search /docs/index endpoint accepts up to 1000 docs per batch
 - Action="mergeOrUpload" — idempotent re-population safe (doc_id key dedup)
-- tenacity retry on 429/5xx
+- tenacity retry on 429/5xx + transport errors — covers both the batch upload()
+  and the CH-001 per-KB index lifecycle calls (create_index_for_kb /
+  delete_index / delete_doc) via the shared `_azure_lifecycle_retry` decorator
 
 Per architecture.md §3.6 the index `ekp-kb-drive-v1` schema field set is the
 serialization target; ChunkRecord.to_search_doc() handles the rename
@@ -35,6 +37,7 @@ import httpx
 import structlog
 from tenacity import (
     retry,
+    retry_if_exception,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
@@ -47,6 +50,33 @@ _API_VERSION = "2024-07-01"
 _AZURE_BATCH_LIMIT = 1000  # Azure AI Search /docs/index hard cap per request
 
 logger = structlog.get_logger(__name__)
+
+
+def _is_retryable_azure_error(exc: BaseException) -> bool:
+    """Whether an Azure AI Search call failure is worth a backoff retry.
+
+    Retry transport errors and Azure throttle/outage responses (429 + 5xx) —
+    those clear on backoff. Never retry other 4xx: a 400 (e.g. a malformed
+    index name) is deterministic, so retrying it only delays the failure.
+    """
+    if isinstance(exc, httpx.TransportError):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code
+        return code == 429 or code >= 500
+    return False
+
+
+# Shared backoff for the CH-001 per-KB index lifecycle calls (create_index_for_kb
+# / delete_index / delete_doc). Mirrors upload()'s retry — 3 attempts, 1-10s
+# exponential — but gated to 429/5xx/transport so a non-retryable 4xx surfaces
+# immediately instead of being retried.
+_azure_lifecycle_retry = retry(
+    retry=retry_if_exception(_is_retryable_azure_error),
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    reraise=True,
+)
 
 
 @dataclass(slots=True, frozen=True)
@@ -204,6 +234,7 @@ class IndexPopulator:
 
     # ─── CH-001: per-KB index lifecycle ──────────────────────────────────────
 
+    @_azure_lifecycle_retry
     async def create_index_for_kb(self, kb_id: str) -> None:
         """Provision the Azure AI Search index for a KB.
 
@@ -215,8 +246,10 @@ class IndexPopulator:
         ADR-0018 multi-KB invariant.
 
         PUT is idempotent — 201 on create-new, 204 on in-place update; both
-        treated as success. 4xx (e.g. Azure rejecting a non-conforming kb_id)
-        raises `httpx.HTTPStatusError` for the caller to surface as 502.
+        treated as success. 429/5xx are retried with backoff (the shared
+        `_azure_lifecycle_retry`); a non-retryable 4xx (e.g. Azure rejecting a
+        non-conforming kb_id) raises `httpx.HTTPStatusError` for the caller to
+        surface as 502.
         """
         assert self._client is not None, "use 'async with' to manage populator lifecycle"
         index_name = self._resolve_index_name(kb_id)
@@ -238,6 +271,7 @@ class IndexPopulator:
 
         logger.info("index_created", kb_id=kb_id, index=index_name)
 
+    @_azure_lifecycle_retry
     async def delete_index(self, kb_id: str) -> bool:
         """Drop the Azure AI Search index for a KB.
 
@@ -267,6 +301,7 @@ class IndexPopulator:
         response.raise_for_status()
         return False  # unreachable — raise_for_status() always raises here
 
+    @_azure_lifecycle_retry
     async def delete_doc(self, kb_id: str, doc_id: str) -> int:
         """Delete all chunks for (kb_id, doc_id) from the per-KB index.
 
