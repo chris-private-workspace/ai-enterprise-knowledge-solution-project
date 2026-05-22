@@ -179,7 +179,7 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
     Vercel AI SDK SSE protocol — `data: {json}\\n\\n` event frames:
         {"type":"text-delta","content":str}  during streaming
         {"type":"citation","citation":{...}}  one per cited chunk
-        {"type":"done","model","latency_ms","refused","reranker_used"}  final
+        {"type":"done","model","cost","latency_ms","refused","reranker_used"}  final
     """
     engine = _engine_or_503(request)
     synthesizer: Synthesizer | None = getattr(request.app.state, "synthesizer", None)

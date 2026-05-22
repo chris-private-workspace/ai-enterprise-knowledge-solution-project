@@ -22,6 +22,7 @@ from observability.realtime_cost import (
     _default_fetcher,
     _rate_for,
     aggregate_generations,
+    estimate_query_cost,
     fetch_realtime_usage,
     total_realtime_usd,
 )
@@ -55,6 +56,33 @@ def test_rate_for_unknown_returns_none() -> None:
     assert _rate_for("claude-opus-4-7") is None
     assert _rate_for("") is None
     assert _rate_for("   ") is None
+
+
+# ---------------------------------------------------------------------------
+# Per-query cost estimate (BUG-007 — stream_composer done event)
+# ---------------------------------------------------------------------------
+
+
+def test_estimate_query_cost_known_deployment() -> None:
+    """gpt-5-5: input $0.005/1k + output $0.015/1k → 1k + 1k = $0.02。"""
+    assert estimate_query_cost("gpt-5-5", 1000, 1000) == pytest.approx(0.02)
+
+
+def test_estimate_query_cost_prefix_tolerant() -> None:
+    """Suffixed deployment names resolve via the same prefix-tolerant lookup。"""
+    assert estimate_query_cost("gpt-5-5-prod", 2000, 500) == pytest.approx(
+        2000 / 1000 * 0.005 + 500 / 1000 * 0.015
+    )
+
+
+def test_estimate_query_cost_unknown_deployment_returns_none() -> None:
+    """No pricing row → None(cost unavailable),never a misleading $0。"""
+    assert estimate_query_cost("claude-opus-4-7", 1000, 500) is None
+    assert estimate_query_cost("", 100, 50) is None
+
+
+def test_estimate_query_cost_zero_tokens() -> None:
+    assert estimate_query_cost("gpt-5-5", 0, 0) == 0.0
 
 
 # ---------------------------------------------------------------------------

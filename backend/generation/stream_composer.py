@@ -11,7 +11,7 @@ Event sequence to client:
     citation    ← one per cited chunk after stream complete
     citation
     ...
-    done        ← final frame (model / total_latency_ms / refused / reranker_used)
+    done        ← final frame (model / cost / total_latency_ms / refused / reranker_used)
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 
 from generation.citation_enrichment import build_citations
+from observability.realtime_cost import estimate_query_cost
 from retrieval.retrieval_engine import RetrievalResult
 
 
@@ -43,11 +44,15 @@ async def compose_query_stream(
             for cit in citations:
                 yield {"type": "citation", "citation": cit.model_dump()}
 
+            deployment = event.get("deployment", "")
+            input_tokens = int(event.get("input_tokens", 0) or 0)
+            output_tokens = int(event.get("output_tokens", 0) or 0)
             yield {
                 "type": "done",
-                "model": event.get("deployment", ""),
-                "input_tokens": int(event.get("input_tokens", 0) or 0),
-                "output_tokens": int(event.get("output_tokens", 0) or 0),
+                "model": deployment,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cost": estimate_query_cost(deployment, input_tokens, output_tokens),
                 "latency_ms": int(retrieval_result.total_latency_ms)
                 + int(event.get("latency_ms", 0) or 0),
                 "refused": bool(event.get("refused", False)),

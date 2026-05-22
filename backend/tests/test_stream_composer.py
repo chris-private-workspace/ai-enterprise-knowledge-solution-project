@@ -68,6 +68,7 @@ async def test_compose_passes_text_deltas_then_citations_then_done() -> None:
     assert done["latency_ms"] == 300 + 800  # retrieval total + synth latency
     assert done["refused"] is False
     assert done["reranker_used"] == "off"
+    assert done["cost"] == pytest.approx(0.0008)  # gpt-5-5: 100/1k*.005 + 20/1k*.015
 
 
 @pytest.mark.asyncio
@@ -152,3 +153,24 @@ async def test_compose_skips_unknown_citation_ids_silently() -> None:
     citation_count = sum(1 for e in out if e["type"] == "citation")
     assert citation_count == 0  # hallucinated id silently skipped per F3 design
     assert out[-1]["type"] == "done"
+
+
+@pytest.mark.asyncio
+async def test_compose_done_cost_is_null_for_unmapped_deployment() -> None:
+    chunks = [_chunk("c1")]
+    synth = _async_iter([
+        {
+            "type": "result",
+            "answer": "x",
+            "citation_ids": [],
+            "refused": False,
+            "input_tokens": 500, "output_tokens": 100, "latency_ms": 1,
+            "deployment": "some-unmapped-deployment",
+        },
+    ])
+
+    out = [e async for e in compose_query_stream(_result(chunks), synth)]
+
+    done = out[-1]
+    assert done["type"] == "done"
+    assert done["cost"] is None  # no _PRICING_TABLE row → cost unavailable, not $0

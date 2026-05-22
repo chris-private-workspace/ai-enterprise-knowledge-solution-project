@@ -4,7 +4,7 @@
  * Backend `/query/stream` emits Vercel AI SDK-style SSE frames (W3 D3 F4):
  *   data: {"type":"text-delta","content":str}\n\n
  *   data: {"type":"citation","citation":{...}}\n\n
- *   data: {"type":"done","model","latency_ms","refused","reranker_used"}\n\n
+ *   data: {"type":"done","model","cost","latency_ms","refused","reranker_used"}\n\n
  *
  * `streamQuery` is an async generator yielding parsed `SseEvent` objects so
  * the chat page can drive React state per-event. We use native fetch streaming
@@ -69,6 +69,8 @@ export interface DoneEvent {
   model: string;
   input_tokens: number;
   output_tokens: number;
+  /** USD cost for the synthesis call — null when the deployment has no pricing row. */
+  cost: number | null;
   latency_ms: number;
   refused: boolean;
   reranker_used: string;

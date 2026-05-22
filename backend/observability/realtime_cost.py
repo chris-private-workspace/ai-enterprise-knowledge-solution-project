@@ -136,6 +136,29 @@ def _rate_for(deployment: str) -> _DeploymentRate | None:
     return None
 
 
+def estimate_query_cost(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+) -> float | None:
+    """USD cost for one LLM call given its deployment + token counts。
+
+    Reuses the `_PRICING_TABLE` per-1k-token rates(single pricing source)so
+    per-query cost attribution and the dashboard aggregation never drift。
+    Returns `None` when the deployment has no pricing row — callers surface
+    that as「cost unavailable」rather than a misleading $0.00。
+    """
+    rate = _rate_for(model)
+    if rate is None:
+        return None
+    usd = 0.0
+    if rate.input_per_1k_usd is not None:
+        usd += (input_tokens / 1000.0) * rate.input_per_1k_usd
+    if rate.output_per_1k_usd is not None:
+        usd += (output_tokens / 1000.0) * rate.output_per_1k_usd
+    return round(usd, 4)
+
+
 # ---------------------------------------------------------------------------
 # Aggregation core
 # ---------------------------------------------------------------------------

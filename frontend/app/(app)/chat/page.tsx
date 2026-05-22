@@ -24,8 +24,10 @@
  *
  * F4 fidelity correction 2026-05-18 — ChatHeader right-side rebuilt to mockup
  * direct-copy: CRAG switch + Show images switch + Focus eye + Sources book.
- * The W20-era 3-mode citation seg-toggle was removed (mockup never had it);
- * citationMode default flipped `sidebar` → `inline` to match no-toggle UX.
+ * The W20-era 3-mode citation seg-toggle was removed (mockup never had it).
+ * citationMode defaults to `sidebar` per mockup (ekp-page-chat.jsx:79) — the
+ * BookOpen header toggle + right CitationPanel render in that mode. BUG-007
+ * reverted a W22 F4 `sidebar`→`inline` default flip that had hidden both.
  * The placement-mode machinery stays in state for future ADR re-introduction.
  *
  * Visual rebuild (mockup-direct per memory rule #1 + rule #2):
@@ -40,8 +42,10 @@
  *   - Inline ChatComposer (textarea + submit)
  *
  * Obsolete W20 separate components are deleted alongside (ConversationHistory,
- * InlineImageCard, ImageGallery, CitationPill, FeedbackBar, CragStrip) — they
- * were custom abstractions not matching mockup component breakdown.
+ * InlineImageCard, CitationPill, FeedbackBar, CragStrip) — they were custom
+ * abstractions not matching mockup component breakdown. (ImageGallery —
+ * mockup ekp-page-chat.jsx:621-664 — was wrongly dropped here in W22 F4 and
+ * restored by BUG-007.)
  *
  * Real Citation schema lacks mockup's `idx` / `preview` / `file_type` /
  * `page` fields → graceful defaults: idx = array index + 1, preview = empty,
@@ -101,14 +105,17 @@ interface Message {
   citations: Citation[];
   isStreaming: boolean;
   refused: boolean;
+  /** Synthesis deployment name (e.g. "gpt-5.5") — populated on `done`. */
+  model: string;
   rerankerUsed: string;
   errorText: string | null;
   cragTriggered: boolean;
   cragIterations: number;
   /** Wall-clock for display ("2:32 PM"). */
   at: number;
-  /** Latency / token / cost — populated on `done`. */
+  /** Latency — populated on `done`. */
   latencyMs: number | null;
+  /** USD synthesis cost — populated on `done`; null when no pricing row. */
   costUsd: number | null;
 }
 
@@ -156,7 +163,9 @@ export default function ChatPage() {
     citation: Citation;
     image: ImageRef;
   } | null>(null);
-  const [citationMode, setCitationMode] = useState<CitationMode>('inline');
+  // Default `sidebar` per mockup ekp-page-chat.jsx:79 — surfaces the BookOpen
+  // header toggle + right CitationPanel (BUG-007).
+  const [citationMode, setCitationMode] = useState<CitationMode>('sidebar');
   const [historyCollapsed, setHistoryCollapsed] = useState(false);
   const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
   const [kbId, setKbId] = useState<string>('');
@@ -258,6 +267,7 @@ export default function ChatPage() {
         citations: m.citations ?? [],
         isStreaming: false,
         refused: false,
+        model: '',
         rerankerUsed: '',
         errorText: null,
         cragTriggered: false,
@@ -297,6 +307,7 @@ export default function ChatPage() {
       citations: [],
       isStreaming: false,
       refused: false,
+      model: '',
       rerankerUsed: '',
       errorText: null,
       cragTriggered: false,
@@ -313,6 +324,7 @@ export default function ChatPage() {
       citations: [],
       isStreaming: true,
       refused: false,
+      model: '',
       rerankerUsed: '',
       errorText: null,
       cragTriggered: false,
@@ -359,8 +371,10 @@ export default function ChatPage() {
             ...m,
             isStreaming: false,
             refused: evt.refused,
+            model: evt.model,
             rerankerUsed: evt.reranker_used,
             latencyMs: evt.latency_ms,
+            costUsd: evt.cost,
           }));
         }
       }
@@ -1074,6 +1088,7 @@ function MessageRow({
         >
           <span style={{ fontSize: 13, fontWeight: 600 }}>EKP</span>
           <span className="text-xs muted mono">
+            {message.model && `${message.model} · `}
             {message.rerankerUsed || 'cohere-v4.0-pro'} · {message.citations.length}{' '}
             citation{message.citations.length === 1 ? '' : 's'}
             {imageCitations.length > 0 && ` · ${imageCitations.length} with screenshots`}
@@ -1082,6 +1097,7 @@ function MessageRow({
           {message.latencyMs !== null && (
             <span className="text-xs muted mono">
               {(message.latencyMs / 1000).toFixed(2)}s
+              {message.costUsd !== null && ` · $${message.costUsd.toFixed(3)}`}
             </span>
           )}
         </div>
@@ -1150,6 +1166,14 @@ function MessageRow({
         {citationMode === 'footnote' && message.citations.length > 0 && (
           <FootnoteList
             citations={message.citations}
+            onOpenScreenshot={onOpenScreenshot}
+          />
+        )}
+
+        {/* Image gallery — mockup ekp-page-chat.jsx:354-357 (2+ image citations) */}
+        {!message.isStreaming && imageCitations.length >= 2 && (
+          <ImageGallery
+            citations={imageCitations}
             onOpenScreenshot={onOpenScreenshot}
           />
         )}
@@ -1251,6 +1275,139 @@ function FootnoteList({
         </li>
       ))}
     </ol>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// ImageGallery — mockup ekp-page-chat.jsx:621-664 ("Referenced screenshots").
+// Renders below the answer when 2+ cited chunks carry embedded images.
+// Thumbnails use the real ImageRef.blob_url (mockup draws synthetic SVGs).
+// ──────────────────────────────────────────────────────────────────────────
+
+function ImageGallery({
+  citations,
+  onOpenScreenshot,
+}: {
+  citations: Citation[];
+  onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
+}) {
+  return (
+    <div style={{ marginTop: 18 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 8,
+        }}
+      >
+        <span
+          className="text-xs muted mono"
+          style={{
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            fontWeight: 600,
+          }}
+        >
+          Referenced screenshots
+        </span>
+        <span className="badge badge-muted">{citations.length}</span>
+        <div className="spacer" style={{ flex: 1 }} />
+        <button type="button" className="btn btn-ghost btn-xs">
+          View all in Image Library →
+        </button>
+      </div>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+          gap: 8,
+        }}
+      >
+        {citations.map((c, i) => {
+          const img = c.embedded_images[0]!;
+          return (
+            <button
+              key={c.chunk_id}
+              type="button"
+              onClick={() => onOpenScreenshot(c, img)}
+              className="btn btn-secondary"
+              style={{
+                padding: 0,
+                height: 'auto',
+                flexDirection: 'column',
+                background: 'oklch(var(--card))',
+                overflow: 'hidden',
+                textAlign: 'left',
+                borderColor: 'oklch(var(--border))',
+              }}
+            >
+              <div
+                style={{
+                  width: '100%',
+                  aspectRatio: '16/9',
+                  overflow: 'hidden',
+                  position: 'relative',
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.blob_url}
+                  alt={img.alt_text}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
+                />
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: 4,
+                    left: 4,
+                    background: 'oklch(var(--accent))',
+                    color: 'oklch(var(--accent-foreground))',
+                    padding: '1px 6px',
+                    borderRadius: 4,
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 10,
+                    fontWeight: 600,
+                  }}
+                >
+                  {i + 1}
+                </span>
+              </div>
+              <div style={{ width: '100%', padding: '8px 10px' }}>
+                <div
+                  style={{
+                    fontSize: 11.5,
+                    fontWeight: 500,
+                    lineHeight: 1.3,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {c.chunk_title}
+                </div>
+                <div
+                  className="text-xs muted mono"
+                  style={{
+                    marginTop: 2,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {c.doc_title}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
