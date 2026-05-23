@@ -896,6 +896,12 @@ function ImageCard({ img, idx }: { img: KbImageItem; idx: number }) {
     'oklch(0.65 0.18 25)',
   ];
   const c = colors[idx % colors.length];
+  // BUG-011: render real screenshot thumbnail via the BUG-010 proxy URL with
+  // onError fallback to the mockup gradient + Layers placeholder. H7 deviation
+  // Option A authorised 2026-05-23 — mockup placeholder is a static-prototype
+  // limitation (no image server), not a design choice.
+  const [imgError, setImgError] = useState(false);
+  const showPlaceholder = !img.url || imgError;
   return (
     <div
       style={{
@@ -909,17 +915,37 @@ function ImageCard({ img, idx }: { img: KbImageItem; idx: number }) {
       <div
         style={{
           height: 130,
-          backgroundImage: `linear-gradient(135deg, ${c.replace(
-            ')',
-            ' / 0.2)',
-          )}, ${c.replace(')', ' / 0.05)')})`,
           position: 'relative',
-          display: 'grid',
-          placeItems: 'center',
-          color: c,
+          ...(showPlaceholder
+            ? {
+                backgroundImage: `linear-gradient(135deg, ${c.replace(
+                  ')',
+                  ' / 0.2)',
+                )}, ${c.replace(')', ' / 0.05)')})`,
+                display: 'grid',
+                placeItems: 'center',
+                color: c,
+              }
+            : { background: 'oklch(var(--muted) / 0.4)' }),
         }}
       >
-        <Layers size={28} />
+        {showPlaceholder ? (
+          <Layers size={28} />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={img.url}
+            alt={img.ocr_text || 'screenshot thumbnail'}
+            loading="lazy"
+            onError={() => setImgError(true)}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+            }}
+          />
+        )}
         <span
           style={{
             position: 'absolute',
