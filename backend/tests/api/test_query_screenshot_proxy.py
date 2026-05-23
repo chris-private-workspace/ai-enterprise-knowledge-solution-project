@@ -47,8 +47,10 @@ def test_proxy_citation_images_rewrites_blob_url() -> None:
 
     out = _proxy_citation_images(citations, _request(), "kb-1")
 
+    # BUG-012 — proxy URL is path-only relative routed via Next.js /api/backend
+    # catch-all so browser <img> stays same-origin and the session cookie flows.
     assert out[0].embedded_images[0].blob_url == (
-        "http://testserver/kb/kb-1/screenshots/abc.png"
+        "/api/backend/kb/kb-1/screenshots/abc.png"
     )
     # The non-URL ImageRef fields survive the rewrite untouched.
     assert out[0].embedded_images[0].checksum_sha256 == "sha0"
@@ -65,9 +67,10 @@ def test_proxy_citation_images_handles_multiple_images() -> None:
     out = _proxy_citation_images(citations, _request("http://api.example/"), "kbX")
 
     urls = [img.blob_url for img in out[0].embedded_images]
+    # BUG-012 — path-only relative URLs; base_url no longer consulted.
     assert urls == [
-        "http://api.example/kb/kbX/screenshots/one.png",
-        "http://api.example/kb/kbX/screenshots/two.png",
+        "/api/backend/kb/kbX/screenshots/one.png",
+        "/api/backend/kb/kbX/screenshots/two.png",
     ]
 
 

@@ -254,16 +254,31 @@ async def list_kb_images(
 
 
 def screenshot_proxy_url(request: Request, kb_id: str, blob_url: str) -> str:
-    """BUG-010 — rewrite a raw screenshot blob URL to the API proxy route.
+    """BUG-010 + BUG-012 — rewrite a raw screenshot blob URL to a same-origin
+    proxy path routed through the Next.js `/api/backend/[...path]` catch-all
+    (W11 D2 R8 mitigation per `frontend/app/api/backend/[...path]/route.ts`).
 
     The stored `blob_url` ends in `/{container}/{sha}.{ext}`; the browser can't
     read the private blob directly, so image URLs are served via
-    `GET /kb/{kb_id}/screenshots/{blob_name}`. An absolute URL (built from
-    `request.base_url`) is required — the frontend origin differs from the API.
+    `GET /kb/{kb_id}/screenshots/{blob_name}`. The previous BUG-010 build used
+    `str(request.base_url)` to produce an absolute URL — but that resolved to
+    the backend's own origin (`http://127.0.0.1:8000`) which is cross-origin
+    from the frontend dev server (`http://localhost:3001`). A cross-origin
+    `<img>` GET does not send the `ekp_session` cookie by default, so the
+    proxy route returned 401 and every thumbnail fell back to the placeholder
+    via BUG-011's `onError` handler (DevTools Network 8/8 red 2026-05-24).
+
+    Returning a path-only URL makes the browser resolve it relative to the
+    current page origin → same-origin from `localhost:3001` → cookies flow →
+    backend `get_current_user` cookie path authenticates → 200 with bytes.
+
+    `request` is kept in the signature for caller-shape stability with the
+    chat citation path (`query.py::_proxy_citation_images`); `del request`
+    explicitly marks it intentionally unused post-fix.
     """
+    del request  # unused after BUG-012 fix; signature retained for caller stability
     blob_name = blob_url.rsplit("/", 1)[-1]
-    base = str(request.base_url).rstrip("/")
-    return f"{base}/kb/{kb_id}/screenshots/{blob_name}"
+    return f"/api/backend/kb/{kb_id}/screenshots/{blob_name}"
 
 
 @router.get("/kb/{kb_id}/screenshots/{blob_name}")
