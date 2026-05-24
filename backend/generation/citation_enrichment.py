@@ -77,11 +77,18 @@ def build_citations(
             hallucinated_ids.append(cid)
             continue
         f = chunk.fields
+        # BUG-021 — doc_format propagated from index schema field (Literal docx/pdf/pptx).
+        # Fallback to "docx" when field absent (legacy chunks pre-W25); guards against
+        # Pydantic validation reject — doc_format field is required in Citation per
+        # ADR-0036 chat surface needs.
+        raw_fmt = str(f.get("doc_format", "") or "").lower()
+        doc_format = raw_fmt if raw_fmt in ("docx", "pdf", "pptx") else "docx"
         citations.append(
             Citation(
                 chunk_id=cid,
                 doc_id=str(f.get("doc_id", "")),
                 doc_title=str(f.get("doc_title", "")),
+                doc_format=doc_format,
                 chunk_title=str(f.get("chunk_title", "")),
                 chunk_index=int(f.get("chunk_index", 0) or 0),
                 section_path=list(f.get("section_path") or []),

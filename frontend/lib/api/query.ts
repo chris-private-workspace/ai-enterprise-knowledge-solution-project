@@ -30,6 +30,9 @@ export interface Citation {
   chunk_id: string;
   doc_id: string;
   doc_title: string;
+  /** BUG-021 — mirror backend Citation.doc_format Literal docx/pdf/pptx;
+   *  drives FileTypeChip rendering instead of unreliable doc_id ext sniff. */
+  doc_format: 'docx' | 'pdf' | 'pptx';
   chunk_title: string;
   chunk_index: number;
   section_path: string[];

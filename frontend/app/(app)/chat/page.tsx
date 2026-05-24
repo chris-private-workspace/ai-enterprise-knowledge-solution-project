@@ -49,15 +49,26 @@
  * wrongly dropped here in W22 F4 and restored by BUG-007. InlineImageCard —
  * mockup ekp-page-chat.jsx:470-498 usage + 581-617 definition — was wrongly
  * dropped here in W22 F4 and restored by BUG-019: mockup intent = inline image
- * card per imageCitation in answer body, ImageGallery `>=2` is the collective
+ * card per imageCitation in answer body, ImageGallery is the collective
  * fallback, not a replacement. CitationPill hover popover — mockup
  * ekp-page-chat.jsx:515-578 — was wrongly dropped here in W22 F4 and the
  * surviving numeric-badge `InlineCitationPills` was gated
  * `citationMode === 'inline'` while mode is fixed at 'sidebar' so it never
  * rendered; restored by BUG-020 as unconditional CitationPillsRow at end of
- * each assistant message. SingleScreenshotStrip — BUG-020 user-pick hybrid
- * option 3 — compact 1-image-citation collective section that mockup `>=2`
- * gate would skip; mockup-spirit-aligned deviation per user UX expectation.)
+ * each assistant message, then BUG-021 added inline marker→pill replacement
+ * inside the answer body so verbose `[chunk-{id}]` markers from the LLM are
+ * rendered as inline numeric pills instead of raw text. SingleScreenshotStrip
+ * — added by BUG-020 as a custom 1-image-citation mini-section, removed by
+ * BUG-021 in favour of lowering the ImageGallery gate to `>=1` so all
+ * image-bearing answers share the canonical "Referenced screenshots" layout
+ * (label / count badge / View-all-in-Image-Library link / numeric badge
+ * top-left on each thumbnail). AnswerBodyMarkdown — BUG-021 + ADR-0036
+ * (react-markdown H2 dep) — backend synthesiser emits markdown (numbered
+ * list / bold / inline code), now rendered formatted instead of plain
+ * `whiteSpace: 'pre-wrap'`. doc_format ext-sniff via `fileTypeFromDocId` is
+ * replaced everywhere by `citation.doc_format` from the schema (BUG-021)
+ * since user-supplied doc_id often lacks a file extension and fell back to
+ * the muted "Unknown" FileTypeChip in citation popovers.)
  *
  * Real Citation schema lacks mockup's `idx` / `preview` / `file_type` /
  * `page` fields → graceful defaults: idx = array index + 1, preview = empty,
@@ -86,12 +97,15 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import {
+  Fragment,
   useEffect,
   useMemo,
   useRef,
   useState,
   type FormEvent,
+  type ReactNode,
 } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useQuery } from '@tanstack/react-query';
 
 import {
@@ -143,13 +157,11 @@ function formatTime(ms: number): string {
   });
 }
 
-function fileTypeFromDocId(docId: string): 'docx' | 'pdf' | 'pptx' | 'unknown' {
-  if (/\.pptx?$/i.test(docId) || /pptx?$/i.test(docId)) return 'pptx';
-  if (/\.pdf$/i.test(docId) || /pdf$/i.test(docId)) return 'pdf';
-  if (/\.docx?$/i.test(docId) || /docx?$/i.test(docId)) return 'docx';
-  return 'unknown';
-}
-
+// `fileTypeFromDocId` removed by BUG-021 — the doc_id ext-sniff was orphaned
+// once every consumer switched to `citation.doc_format` (server-side
+// authoritative Literal). FILE_TYPE_COLORS kept for FileTypeChip styling; the
+// `unknown` entry is dead today (Literal excludes it) but retained as a
+// defensive fallback should the schema ever broaden.
 const FILE_TYPE_COLORS: Record<string, { fg: string; bg: string; border: string }> = {
   docx: { fg: 'oklch(0.55 0.13 240)', bg: 'oklch(0.55 0.13 240 / 0.12)', border: 'oklch(0.55 0.13 240 / 0.25)' },
   pdf: { fg: 'oklch(0.58 0.18 25)', bg: 'oklch(0.58 0.18 25 / 0.12)', border: 'oklch(0.58 0.18 25 / 0.25)' },
@@ -1155,14 +1167,19 @@ function MessageRow({
           </div>
         ) : (
           <div
+            className="chat-answer-body"
             style={{
               fontSize: 14,
               lineHeight: 1.7,
               color: 'oklch(var(--foreground))',
-              whiteSpace: 'pre-wrap',
             }}
           >
-            {message.content || (
+            {message.content ? (
+              <AnswerBodyMarkdown
+                content={message.content}
+                citations={message.citations}
+              />
+            ) : (
               <span className="muted">
                 {message.isStreaming ? 'Thinking…' : '(no content)'}
               </span>
@@ -1215,21 +1232,15 @@ function MessageRow({
             />
           ))}
 
-        {/* Single screenshot strip — BUG-020 user-pick hybrid option 3:
-            preserve mockup `>=2` ImageGallery gate (line 354-357), add a compact
-            "Single screenshot" mini-section when exactly 1 image-bearing
-            citation exists. User UX expectation: "有 image 就見到 collective
-            screenshot section" — mockup design intent skips this for 1 image
-            (inline only) so this is a documented deviation per user pick. */}
-        {!message.isStreaming && imageCitations.length === 1 && (
-          <SingleScreenshotStrip
-            citation={imageCitations[0]!}
-            onOpenScreenshot={onOpenScreenshot}
-          />
-        )}
-
-        {/* Image gallery — mockup ekp-page-chat.jsx:354-357 (2+ image citations) */}
-        {!message.isStreaming && imageCitations.length >= 2 && (
+        {/* Image gallery — mockup ekp-page-chat.jsx:621-664 ("Referenced
+            screenshots" collective list). BUG-021 amendment: gate lowered from
+            `>=2` to `>=1` per user-pick — earlier BUG-020 SingleScreenshotStrip
+            hybrid attempt did not match the mockup gallery layout (label /
+            count badge / view-all link / numeric badge top-left were missing),
+            so the same ImageGallery now handles the 1-image case too. Mockup
+            line 354-357 `>=2` gate intent (1-image = inline only) is the
+            documented deviation per user UX expectation. */}
+        {!message.isStreaming && imageCitations.length >= 1 && (
           <ImageGallery
             citations={imageCitations}
             onOpenScreenshot={onOpenScreenshot}
@@ -1256,6 +1267,135 @@ function MessageRow({
         )}
       </div>
     </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// AnswerBodyMarkdown — BUG-021. Two transforms layered on top of LLM output:
+//   1. Verbose chunk markers `[chunk-{chunk_id}]` (backend synthesiser format)
+//      are parsed and replaced with inline numeric <CitationPill> components
+//      mapped to citation idx. Markers referencing unknown chunk_ids fall back
+//      to the original text (defensive — hallucinated citations are already
+//      logged backend-side, see citation_enrichment.py).
+//   2. The remaining text is rendered via <ReactMarkdown> (ADR-0036 H2 dep)
+//      so backend-emitted markdown (numbered list / bold / inline code) shows
+//      formatted instead of `whiteSpace: 'pre-wrap'` plain text.
+// Pre-process splits content into text+marker tokens, renders each text token
+// via ReactMarkdown and each marker token via CitationPill inline (using
+// Fragment to avoid extra wrapping that would break markdown block flow).
+// ──────────────────────────────────────────────────────────────────────────
+
+const MARKDOWN_COMPONENTS = {
+  p: ({ children, ...rest }: { children?: ReactNode }) => (
+    <p style={{ margin: '0 0 10px 0' }} {...rest}>
+      {children}
+    </p>
+  ),
+  ol: ({ children, ...rest }: { children?: ReactNode }) => (
+    <ol
+      style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7 }}
+      {...rest}
+    >
+      {children}
+    </ol>
+  ),
+  ul: ({ children, ...rest }: { children?: ReactNode }) => (
+    <ul
+      style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7 }}
+      {...rest}
+    >
+      {children}
+    </ul>
+  ),
+  li: ({ children, ...rest }: { children?: ReactNode }) => (
+    <li style={{ marginBottom: 2 }} {...rest}>
+      {children}
+    </li>
+  ),
+  strong: ({ children, ...rest }: { children?: ReactNode }) => (
+    <strong style={{ fontWeight: 600 }} {...rest}>
+      {children}
+    </strong>
+  ),
+  code: ({ children, ...rest }: { children?: ReactNode }) => (
+    <code
+      style={{
+        fontFamily: 'var(--font-mono)',
+        fontSize: 12.5,
+        background: 'oklch(var(--muted) / 0.6)',
+        border: '1px solid oklch(var(--border))',
+        padding: '1px 5px',
+        borderRadius: 3,
+      }}
+      {...rest}
+    >
+      {children}
+    </code>
+  ),
+};
+
+function AnswerBodyMarkdown({
+  content,
+  citations,
+}: {
+  content: string;
+  citations: Citation[];
+}) {
+  // Regex `[chunk-{chunk_id}]` capture group 1 is the chunk_id (mockup line
+  // 457-466 uses inline numeric ids; backend emits the full chunk_id wrapped).
+  const tokens = useMemo(() => {
+    const pattern = /\[chunk-([^\]]+)\]/g;
+    const out: Array<{ kind: 'text'; value: string } | { kind: 'pill'; idx: number; citation: Citation } | { kind: 'raw'; value: string }> = [];
+    let lastIdx = 0;
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(content)) !== null) {
+      if (match.index > lastIdx) {
+        out.push({ kind: 'text', value: content.slice(lastIdx, match.index) });
+      }
+      const id = match[1];
+      const citationIdx = citations.findIndex((c) => c.chunk_id === id);
+      if (citationIdx >= 0) {
+        out.push({
+          kind: 'pill',
+          idx: citationIdx + 1,
+          citation: citations[citationIdx]!,
+        });
+      } else {
+        out.push({ kind: 'raw', value: match[0] });
+      }
+      lastIdx = match.index + match[0].length;
+    }
+    if (lastIdx < content.length) {
+      out.push({ kind: 'text', value: content.slice(lastIdx) });
+    }
+    return out;
+  }, [content, citations]);
+
+  return (
+    <>
+      {tokens.map((t, i) => {
+        if (t.kind === 'pill') {
+          return (
+            <CitationPill
+              key={`pill-${i}`}
+              citation={t.citation}
+              idx={t.idx}
+            />
+          );
+        }
+        if (t.kind === 'raw') {
+          return <Fragment key={`raw-${i}`}>{t.value}</Fragment>;
+        }
+        return (
+          <ReactMarkdown
+            key={`md-${i}`}
+            components={MARKDOWN_COMPONENTS}
+          >
+            {t.value}
+          </ReactMarkdown>
+        );
+      })}
+    </>
   );
 }
 
@@ -1287,7 +1427,10 @@ function CitationPillsRow({ citations }: { citations: Citation[] }) {
 
 function CitationPill({ citation, idx }: { citation: Citation; idx: number }) {
   const [hovered, setHovered] = useState(false);
-  const fileType = fileTypeFromDocId(citation.doc_id);
+  // BUG-021 — use server-side authoritative doc_format from Citation schema
+  // (Literal docx/pdf/pptx). Earlier doc_id ext-sniff fell back to 'unknown'
+  // when doc_id was the user-supplied identifier without `.docx`/`.pdf`/`.pptx`.
+  const fileType = citation.doc_format;
   return (
     <span
       onMouseEnter={() => setHovered(true)}
@@ -1388,103 +1531,11 @@ function CitationPill({ citation, idx }: { citation: Citation; idx: number }) {
   );
 }
 
-// ──────────────────────────────────────────────────────────────────────────
-// SingleScreenshotStrip — BUG-020 user-pick hybrid option 3. Compact "Single
-// screenshot" mini-section for the 1-image-citation case. Mockup `>=2` gate
-// on ImageGallery (line 354-357) leaves the 1-image case with no collective
-// section; this fills that gap per user UX expectation. Mockup-spirit-aligned
-// (label + thumbnail + click→modal) but exact section title is the deviation.
-// ──────────────────────────────────────────────────────────────────────────
-
-function SingleScreenshotStrip({
-  citation,
-  onOpenScreenshot,
-}: {
-  citation: Citation;
-  onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
-}) {
-  const image = citation.embedded_images[0];
-  if (!image) return null;
-  return (
-    <div style={{ marginTop: 18 }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginBottom: 8,
-        }}
-      >
-        <span
-          className="text-xs muted mono"
-          style={{
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            fontWeight: 600,
-          }}
-        >
-          Single screenshot
-        </span>
-      </div>
-      <button
-        type="button"
-        onClick={() => onOpenScreenshot(citation, image)}
-        style={{
-          appearance: 'none',
-          border: '1px solid oklch(var(--border))',
-          borderRadius: 'var(--radius-md)',
-          padding: 0,
-          background: 'oklch(var(--card))',
-          cursor: 'pointer',
-          width: 220,
-          display: 'block',
-          overflow: 'hidden',
-          textAlign: 'left',
-        }}
-      >
-        <img
-          src={image.blob_url}
-          alt={image.alt_text || citation.chunk_title || 'Screenshot'}
-          style={{
-            display: 'block',
-            width: '100%',
-            height: 'auto',
-            maxHeight: 140,
-            objectFit: 'cover',
-            background: 'oklch(var(--muted) / 0.4)',
-          }}
-        />
-        <div style={{ padding: '8px 10px' }}>
-          <div
-            className="text-xs"
-            style={{
-              fontWeight: 500,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-            title={citation.doc_title}
-          >
-            {citation.doc_title}
-          </div>
-          {citation.section_path.length > 0 && (
-            <div
-              className="text-xs muted"
-              style={{
-                marginTop: 1,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {citation.section_path.join(' › ')}
-            </div>
-          )}
-        </div>
-      </button>
-    </div>
-  );
-}
+// SingleScreenshotStrip dropped by BUG-021 — ImageGallery now handles the
+// 1-image case via the lowered `>=1` gate (user-pick reversal of BUG-020
+// option 3 hybrid). Earlier hybrid did not match mockup ImageGallery layout
+// (label / count badge / view-all link / numeric badge top-left), so the
+// canonical ImageGallery is now the single render path.
 
 function FootnoteList({
   citations,
@@ -1849,7 +1900,10 @@ function SourceDocCard({
   onOpenScreenshot: () => void;
 }) {
   const hasImage = citation.embedded_images.length > 0;
-  const fileType = fileTypeFromDocId(citation.doc_id);
+  // BUG-021 — use server-side authoritative doc_format from Citation schema
+  // (Literal docx/pdf/pptx). Earlier doc_id ext-sniff fell back to 'unknown'
+  // when doc_id was the user-supplied identifier without `.docx`/`.pdf`/`.pptx`.
+  const fileType = citation.doc_format;
   return (
     <div
       style={{
@@ -2070,7 +2124,10 @@ function PanelSourceCard({
   onOpenScreenshot: () => void;
 }) {
   const hasImage = citation.embedded_images.length > 0;
-  const fileType = fileTypeFromDocId(citation.doc_id);
+  // BUG-021 — use server-side authoritative doc_format from Citation schema
+  // (Literal docx/pdf/pptx). Earlier doc_id ext-sniff fell back to 'unknown'
+  // when doc_id was the user-supplied identifier without `.docx`/`.pdf`/`.pptx`.
+  const fileType = citation.doc_format;
   return (
     <div
       style={{

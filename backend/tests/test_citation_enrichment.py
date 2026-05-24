@@ -13,6 +13,7 @@ def _chunk(cid: str, **fields_overrides) -> RetrievedChunk:
         "chunk_id": cid,
         "doc_id": "doc-1",
         "doc_title": "Doc One",
+        "doc_format": "docx",  # BUG-021 — required per Citation schema field
         "chunk_title": "Section",
         "chunk_index": 0,
         "section_path": ["A", "B"],
@@ -73,12 +74,27 @@ def test_build_citations_skips_unknown_chunk_ids() -> None:
 
 
 def test_build_citations_populates_fields_from_retrieved() -> None:
-    chunks = [_chunk("c1", doc_id="d-9", doc_title="Manual 9", section_path=["X"])]
+    chunks = [_chunk("c1", doc_id="d-9", doc_title="Manual 9", section_path=["X"], doc_format="pdf")]
     out = build_citations(["c1"], chunks)
     assert out[0].doc_id == "d-9"
     assert out[0].doc_title == "Manual 9"
+    assert out[0].doc_format == "pdf"
     assert out[0].section_path == ["X"]
     assert out[0].relevance_score == 0.42
+
+
+def test_build_citations_doc_format_fallback_to_docx_when_missing() -> None:
+    """BUG-021 — legacy chunks pre-W25 may have empty doc_format; default to 'docx'."""
+    chunks = [_chunk("c1", doc_format="")]
+    out = build_citations(["c1"], chunks)
+    assert out[0].doc_format == "docx"
+
+
+def test_build_citations_doc_format_normalises_unknown_to_docx() -> None:
+    """BUG-021 — unexpected doc_format string (eg 'unknown') falls back to docx to satisfy Literal."""
+    chunks = [_chunk("c1", doc_format="unknown")]
+    out = build_citations(["c1"], chunks)
+    assert out[0].doc_format == "docx"
 
 
 def test_build_citations_empty_list_returns_empty() -> None:

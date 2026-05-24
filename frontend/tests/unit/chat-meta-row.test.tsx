@@ -79,6 +79,7 @@ function citation(idx: number, withImage: boolean) {
     chunk_id: `chunk-${idx}`,
     doc_id: `doc-${idx}.docx`,
     doc_title: `Document ${idx}`,
+    doc_format: 'docx' as const,  // BUG-021 — mirror backend Literal schema
     chunk_title: `Section ${idx}`,
     chunk_index: idx,
     section_path: ['A', 'B'],
@@ -173,7 +174,7 @@ describe('Chat assistant meta row + ImageGallery (BUG-007)', () => {
     expect(screen.getAllByRole('img')).toHaveLength(4);
   });
 
-  it('renders "Single screenshot" mini-section for exactly 1 image citation (BUG-020 user-pick hybrid option 3)', async () => {
+  it('renders the "Referenced screenshots" gallery for exactly 1 image citation (BUG-021 reversal — ImageGallery `>=1` unifies 1- and 2+-image cases)', async () => {
     streamQuery.mockImplementation(() =>
       (async function* () {
         yield { type: 'text-delta', content: 'Answer with one image.' };
@@ -195,12 +196,14 @@ describe('Chat assistant meta row + ImageGallery (BUG-007)', () => {
     renderChat();
     await sendQuery();
 
-    // Single-screenshot strip renders; ImageGallery `>=2` gate skips here.
+    // BUG-021 — same canonical ImageGallery surfaces for 1-image case post-gate
+    // lowering. SingleScreenshotStrip dropped (was BUG-020 hybrid). "Single
+    // screenshot" label must NOT appear; "Referenced screenshots" must.
     await waitFor(() =>
-      expect(screen.getByText('Single screenshot')).toBeInTheDocument(),
+      expect(screen.getByText('Referenced screenshots')).toBeInTheDocument(),
     );
-    expect(screen.queryByText('Referenced screenshots')).not.toBeInTheDocument();
-    // 1 InlineImageCard (BUG-019 inline render) + 1 SingleScreenshotStrip thumbnail = 2 imgs.
+    expect(screen.queryByText('Single screenshot')).not.toBeInTheDocument();
+    // 1 InlineImageCard (BUG-019 inline render) + 1 ImageGallery thumbnail = 2 imgs.
     expect(screen.getAllByRole('img')).toHaveLength(2);
   });
 
@@ -236,6 +239,77 @@ describe('Chat assistant meta row + ImageGallery (BUG-007)', () => {
     expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('2').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('3').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('renders markdown formatting in the answer body (BUG-021 + ADR-0036 react-markdown dep)', async () => {
+    streamQuery.mockImplementation(() =>
+      (async function* () {
+        yield {
+          type: 'text-delta',
+          content:
+            'Lead **bold** intro.\n\n1. First step here\n2. Second step here',
+        };
+        yield { type: 'citation', citation: citation(1, false) };
+        yield {
+          type: 'done',
+          model: 'gpt-5.5',
+          input_tokens: 1,
+          output_tokens: 1,
+          cost: 0.001,
+          latency_ms: 1000,
+          refused: false,
+          reranker_used: 'cohere-v4.0-pro',
+        };
+      })(),
+    );
+
+    renderChat();
+    await sendQuery();
+
+    // <strong> rendered for **bold** + numbered list <ol><li> for `1. ... 2. ...`
+    await waitFor(() => expect(screen.getByText('bold')).toBeInTheDocument());
+    const strong = screen.getByText('bold');
+    expect(strong.tagName).toBe('STRONG');
+    expect(screen.getByText('First step here').closest('li')).not.toBeNull();
+    expect(screen.getByText('Second step here').closest('li')).not.toBeNull();
+  });
+
+  it('replaces verbose [chunk-{id}] markers with inline numeric pills (BUG-021)', async () => {
+    streamQuery.mockImplementation(() =>
+      (async function* () {
+        yield {
+          type: 'text-delta',
+          content:
+            'Architecture overview [chunk-chunk-1] with platform components [chunk-chunk-2].',
+        };
+        yield { type: 'citation', citation: citation(1, false) };
+        yield { type: 'citation', citation: citation(2, false) };
+        yield {
+          type: 'done',
+          model: 'gpt-5.5',
+          input_tokens: 1,
+          output_tokens: 1,
+          cost: 0.001,
+          latency_ms: 1000,
+          refused: false,
+          reranker_used: 'cohere-v4.0-pro',
+        };
+      })(),
+    );
+
+    renderChat();
+    await sendQuery();
+
+    // Verbose marker text must not appear inline; numeric pills replace them.
+    await waitFor(() =>
+      expect(screen.getByText('Architecture overview')).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText(/\[chunk-chunk-1\]/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/\[chunk-chunk-2\]/),
+    ).not.toBeInTheDocument();
   });
 
   it('renders the sources-panel toggle in the header', async () => {

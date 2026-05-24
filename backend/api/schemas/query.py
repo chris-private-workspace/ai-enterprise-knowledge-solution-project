@@ -24,6 +24,7 @@ class Citation(BaseModel):
     chunk_id: str
     doc_id: str
     doc_title: str
+    doc_format: Literal["docx", "pdf", "pptx"]
     chunk_title: str
     chunk_index: int
     section_path: list[str]

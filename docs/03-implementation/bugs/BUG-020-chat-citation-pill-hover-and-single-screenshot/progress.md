@@ -89,3 +89,13 @@ Sev2 postmortem written per `PROCESS.md §4.5` — see `./postmortem.md`(full ti
 - BUG-020 frontmatter `in-progress → done`;checklist 19/20 ticked(T16 🚧 user-eye runtime verify pending consolidated walkthrough per cascade pattern)+ cross-cutting 6/6 ticked
 - Commit:`fix(chat): restore CitationPill hover popover + add SingleScreenshotStrip — BUG-020 + H7 W22 regression`
 - **11-bug cascade closure milestone**:BUG-009/010/011/012/013/014/015/016/017/019/020 all closed within W25 D1-D2 multi-session sequence(2026-05-22 to 2026-05-24;BUG-018 disproved 不計)— image-pipeline backend → chat-presentation 完整 H7 fidelity chain
+
+## Amendment — 2026-05-24 W25 D2 cont (BUG-021 reversal)
+
+**D1.5 SingleScreenshotStrip 設計 BUG-021 reversal**:User-eye verify post-deploy 對比 mockup ImageGallery `>= 2`(line 619-664)4 features inventory(label「Referenced screenshots」/ count badge / view-all link / numeric badge top-left)→ SingleScreenshotStrip 缺曬呢 4 個 features。User explicitly picked Recommended「Drop SingleScreenshotStrip + lower ImageGallery `>= 1`」per BUG-021 AskUserQuestion 2026-05-24 W25 D2 cont。
+
+**Reversal rationale**:BUG-020 option 3 hybrid 提議時嘅 incomplete mockup feature inventory(`feedback_design_fidelity.md` D14 候選 pattern「user-pick reversal as cascade deepens」)— 完整 mockup audit reveals canonical path requires ImageGallery `>= 1` unification 而非 NEW custom mini-section。
+
+**Impact on BUG-020 closure**:Code-level SingleScreenshotStrip function + render call removed by BUG-021 commit;BUG-020 doc 保持 archival(closure standing)+ test renamed per BUG-021;cross-link 加 BUG-021 amendment cite。Net cascade outcome:Issue 2 user UX(「有 image 就見到 collective section」)goal achieved via different path(ImageGallery `>=1` vs SingleScreenshotStrip),冇 user-visible regression — 反而 fidelity improvement(縮圖 numeric badge / view-all link / count badge 全部加返)。
+
+See BUG-021 postmortem for full reversal analysis + D14 catalog candidate proposal。

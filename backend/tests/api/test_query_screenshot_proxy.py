@@ -25,6 +25,7 @@ def _citation(blob_urls: list[str]) -> Citation:
         chunk_id="c1",
         doc_id="d1.docx",
         doc_title="Doc 1",
+        doc_format="docx",  # BUG-021 — required Citation schema field
         chunk_title="Section 1",
         chunk_index=0,
         section_path=[],
