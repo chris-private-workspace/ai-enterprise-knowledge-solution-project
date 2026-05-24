@@ -341,13 +341,36 @@ class LayoutAwareChunker:
         return [replace(c, chunk_index=i) for i, c in enumerate(merged)]
 
     def _should_merge(self, prev: ChunkSpec, curr: ChunkSpec) -> bool:
-        """Both text-kind + both below merge floor. Hard-cap check happens
-        post-encode in _merge_adjacent_shorts (token counts are not strictly
-        additive after rejoining)."""
+        """Both text-kind + both below merge floor + sibling sub-sections of
+        the same non-trivial parent.
+
+        Hard-cap check happens post-encode in _merge_adjacent_shorts (token
+        counts are not strictly additive after rejoining).
+
+        BUG-017 (W25 D2) — sibling-only guard:never merge across section
+        boundaries. ADR-0033 (b) didn't anticipate that merging a section's
+        small intro chunk backward into the previous section's last chunk
+        would inherit prev's `section_path` while carrying curr's
+        `embedded_image_positions`, mis-attributing the image. Two short
+        chunks may consolidate only if they're siblings under the same
+        non-trivial parent — i.e. `section_path[:-1]` are equal AND non-empty.
+        This preserves both image-section attribution AND text-section
+        semantic identity; W25 F1 within-section consolidation benefit is
+        unaffected because most reduction came from sub-subsection siblings
+        (1.1 + 1.2 + 1.3 under "Chapter 1" etc.), which still merge.
+        Top-level chapters never merge (always distinct chapters).
+        """
         if prev.chunk_kind != "text" or curr.chunk_kind != "text":
             return False
         if prev.chunk_token_count >= self.min_chunk_merge_floor:
             return False
         if curr.chunk_token_count >= self.min_chunk_merge_floor:
+            return False
+        # BUG-017 — must be siblings under the same non-trivial parent.
+        prev_parent = prev.section_path[:-1]
+        curr_parent = curr.section_path[:-1]
+        if not prev_parent or not curr_parent:
+            return False
+        if prev_parent != curr_parent:
             return False
         return True

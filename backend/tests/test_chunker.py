@@ -371,6 +371,110 @@ def test_w25_synthetic_corpus_chunk_count_within_twenty_percent_envelope() -> No
     assert [c.chunk_index for c in chunks] == list(range(len(chunks)))
 
 
+# ─── BUG-017 sibling-only merge guard regression coverage ──────────
+
+
+def test_bug017_merge_does_not_cross_section_boundary() -> None:
+    """BUG-017: two short text chunks under DIFFERENT top-level sections
+    must NOT merge — preserves section semantic identity + image attribution.
+
+    Reproduces the production scenario: section "3. Architectural" last
+    short chunk + section "4. High-level architecture" intro short chunk.
+    Pre-fix: backward-merge into section 3's last chunk, inheriting wrong
+    section_path. Post-fix: same-parent guard skips merge → 2 distinct
+    chunks preserved, each with its own correct section_path.
+    """
+    paragraphs = [
+        _heading(1, "3. Architectural principles", 0),
+        _heading(2, "3.7 Idempotency and retry safety", 1),
+        _para("All operations must be idempotent " * 10, 2),  # ~60 tokens
+        _heading(1, "4. High-level architecture", 3),
+        _para("The diagram below presents " * 10, 4),  # ~60 tokens (intro)
+    ]
+    chunks = LayoutAwareChunker().chunk(_build_result(paragraphs))
+    text_chunks = [c for c in chunks if c.chunk_kind == "text"]
+    assert len(text_chunks) == 2, (
+        f"BUG-017: cross-section merge must not fire, got {len(text_chunks)} chunks: "
+        f"{[c.chunk_title for c in text_chunks]}"
+    )
+    # Section 3.7 chunk retains its identity
+    assert text_chunks[0].section_path == [
+        "3. Architectural principles", "3.7 Idempotency and retry safety",
+    ]
+    # Section 4 chunk retains its (separate) identity
+    assert text_chunks[1].section_path == ["4. High-level architecture"]
+
+
+def test_bug017_within_section_siblings_still_merge() -> None:
+    """BUG-017 positive control: sibling sub-sections under same non-trivial
+    parent still merge per W25 F1 ADR-0033 (b) intent (e.g., 1.1 + 1.2 under
+    "Chapter 1"). Existing W25 F1 envelope test depends on this behaviour;
+    this is a focused assertion that the sibling-only guard doesn't over-
+    restrict the W25 F1 within-section consolidation benefit.
+    """
+    paragraphs = [
+        _heading(1, "Chapter 1", 0),
+        _heading(2, "1.1", 1), _para("alpha " * 60, 2),
+        _heading(2, "1.2", 3), _para("beta " * 60, 4),
+    ]
+    chunks = LayoutAwareChunker().chunk(_build_result(paragraphs))
+    text_chunks = [c for c in chunks if c.chunk_kind == "text"]
+    assert len(text_chunks) == 1, (
+        f"BUG-017 sibling merge: siblings under same parent must merge, "
+        f"got {len(text_chunks)} chunks"
+    )
+    # Backward-merge inherits prev (1.1) identity
+    assert text_chunks[0].chunk_title == "1.1"
+    assert "alpha" in text_chunks[0].chunk_text
+    assert "beta" in text_chunks[0].chunk_text
+
+
+def test_bug017_image_section_identity_preserved_under_short_intro() -> None:
+    """BUG-017 image attribution: when section B has a small intro chunk
+    holding an image, and section A's last chunk is also small, the merge
+    must NOT fire — preserves the image's section_path identity (section B).
+
+    This is the exact failure mode reported in W25 D2 user-eye verify:
+    Figure 1 belongs to section 4 visually but was attributed to section
+    3.7's chunk via cross-section backward-merge.
+    """
+    paragraphs = [
+        _heading(1, "3. Architectural principles", 0),
+        _heading(2, "3.7 Idempotency", 1),
+        _para("idempotent ops " * 10, 2),  # ~30 tokens, short
+        _heading(1, "4. High-level architecture", 3),
+        _para("The diagram below " * 10, 4),  # ~30 tokens, short — has image
+    ]
+    images = [
+        EmbeddedImage(
+            image_bytes=b"\x89PNG",
+            alt_text="Figure 1",
+            doc_order=5,  # AFTER section 4 intro paragraph
+            ext="png",
+            sha256="f" * 64,
+        ),
+    ]
+    chunks = LayoutAwareChunker().chunk(_build_result(paragraphs, images=images))
+    text_chunks = [c for c in chunks if c.chunk_kind == "text"]
+    assert len(text_chunks) == 2, (
+        f"BUG-017 image isolation: section-boundary merge must not fire, "
+        f"got {len(text_chunks)} chunks"
+    )
+    # Section 4's chunk owns the image — NOT section 3.7's
+    section_3_chunk = text_chunks[0]
+    section_4_chunk = text_chunks[1]
+    assert section_3_chunk.section_path == [
+        "3. Architectural principles", "3.7 Idempotency",
+    ]
+    assert section_3_chunk.embedded_image_positions == [], (
+        "BUG-017: section 3.7's chunk must NOT carry section 4's image"
+    )
+    assert section_4_chunk.section_path == ["4. High-level architecture"]
+    assert "img@5" in section_4_chunk.embedded_image_positions, (
+        "BUG-017: section 4's chunk must own its image"
+    )
+
+
 def test_chunkspec_has_all_required_fields_for_orchestrator() -> None:
     """F5 orchestrator + F4 embedder need these fields to build ChunkRecord (architecture.md §3.5)."""
     paragraphs = [

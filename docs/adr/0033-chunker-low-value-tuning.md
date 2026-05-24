@@ -175,14 +175,64 @@ Mapped 1-to-1 to W25 plan F1.2 checklist items:
 
 - W25 plan.md F1 deliverable + §8 design defaults Q3
 - Investigation memo `docs/03-implementation/image-chunk-retrieval-investigation-2026-05-23.md`
-- `backend/ingestion/chunker/layout_aware.py:35` `_TOKEN_LOW_VALUE_FLOOR = 100`(W25 D0 R6 grep confirmed)
+- `backend/ingestion/chunker/layout_aware.py:35` `_TOKEN_LOW_VALUE_FLOOR=60`(post-W25 F1 — 100→60 per Decision (a))
 - `backend/ingestion/chunker/layout_aware.py:208-216` `_flush_text_section`(short-chunk emission point)
 - `backend/ingestion/chunker/layout_aware.py:271-280` `_is_low_value`(floor check)
+- `backend/ingestion/chunker/layout_aware.py:343-368` `_should_merge`(post-BUG-017 sibling-only guard amendment 2026-05-24)
 - `backend/retrieval/hybrid.py:4 + :41` `_DEFAULT_FILTER = "enabled eq true and low_value_flag eq false"`(downstream filter that motivates this ADR)
+- `docs/03-implementation/bugs/BUG-017-merge-across-section-boundary-image-attribution/`(amendment record per Implementation Status section)
+- `backend/scripts/diagnose_image_doc_order.py`(W25 D2 BUG-017 diagnostic tool — reusable for future image-attribution investigations)
 - `architecture.md §3.3` chunking philosophy(soft floor cite — to be inline-tagged amended on ADR-0033 acceptance)
 - CLAUDE.md §5.1 H1 architectural change trigger(chunker behaviour ⊂ §3 RAG core component)
 - CLAUDE.md §10 R6 pre-active-flip recursive grep verification(applied at W25 D0 — caught the floor constant location + filter mechanism upfront)
 - Memory `feedback_design_fidelity.md` D9 plan-text-contamination pattern(R6 motivator)
+
+---
+
+## Implementation Status
+
+### 2026-05-23 — Original W25 F1 D3 landed
+
+- `_TOKEN_LOW_VALUE_FLOOR=100→60` + `_MIN_CHUNK_MERGE_FLOOR=160` + `_merge_adjacent_shorts` + `_should_merge` per Decision (a)+(b)
+- 9 NEW unit tests in `backend/tests/test_chunker.py`(21 total chunker tests passing)
+- W25 F2 closeout 2026-05-24 verified Gate 1 R@5 0.8333→**0.9722**(+13.89pp)+ Faithfulness 0.8798→**0.9495**(+6.97pp)+ Correctness 0.6706→**0.7506**(+8.00pp)+ P95 950→964ms;chunk count `sample-document-with-image-1` 121→63(-48%)
+- Commit `796af6c` `feat(chunker): D3 chunker low-value tuning — ADR-0033 — W25 F1`
+
+### 2026-05-24 — BUG-017 sibling-only merge guard amendment(W25 D2)
+
+**Regression surfaced**:W25 D2 user-eye fidelity verify on Document Detail 3-pane(post BUG-015+BUG-016 commit `df38ed3`)showed chunk 8「section 3.7 Idempotency」marked owning Figure 1,which actually belongs to section「4. High-level architecture」per source DOCX。Parser-level diagnostic via `backend/scripts/diagnose_image_doc_order.py`(written same session)confirmed Docling parser attributes pic doc_order=103 to section 4 correctly。Root cause = `_merge_adjacent_shorts` cross-section backward-merge:section 4's small intro chunk got merged into section 3.7's last chunk,inheriting `section_path` while carrying `embedded_image_positions`。
+
+**Reproduction matrix** for `sample-document-with-image-1`:**4 of 8 pictures wrong post-merge**(103/202/348/394);4 correct(323/371/417/513 — where curr's section had enough content,no merge fired)。
+
+**Amendment to Decision (b)**:`_should_merge` guard tightened from「both text-kind + both below floor」to「both text-kind + both below floor + **same-parent-sibling under non-trivial parent**」:
+
+```python
+# BUG-017 (W25 D2) — sibling-only guard
+prev_parent = prev.section_path[:-1]
+curr_parent = curr.section_path[:-1]
+if not prev_parent or not curr_parent:
+    return False  # top-level chapters never merge
+if prev_parent != curr_parent:
+    return False  # different parent
+```
+
+Semantic preserved:
+- ✅ Image-section attribution(image stays with its source section,not borrowed by adjacent prev section)
+- ✅ Text-section semantic identity(merged chunk doesn't mix「3.7 Idempotency text + 4. High-level body」into one bag with section 3.7 title)
+- ✅ W25 F1 within-section consolidation benefit unaffected — most reduction(eg 1.1+1.2+1.3 under「Chapter 1」)comes from same-parent siblings,which still merge
+- ⚠️ Trade-off:cross-section short-shorts no longer merge(eg section 3.7 last chunk + section 4 intro chunk stay distinct),mild chunk-count increase expected post re-ingest
+
+**3 NEW BUG-017 unit tests**(`backend/tests/test_chunker.py`,24 total chunker tests passing):
+- `test_bug017_merge_does_not_cross_section_boundary` — regression seed(section 3.7 + section 4 fixture matching production failure)
+- `test_bug017_within_section_siblings_still_merge` — positive control(siblings under「Chapter 1」)
+- `test_bug017_image_section_identity_preserved_under_short_intro` — image attribution preservation under merge fire-suppression
+
+**Diagnostic artifact**:`backend/scripts/diagnose_image_doc_order.py` reusable for future image-attribution investigations。Run as:
+```
+cd backend && ./.venv/Scripts/python.exe -m scripts.diagnose_image_doc_order <path-to.docx>
+```
+
+**Cross-ref**:`docs/03-implementation/bugs/BUG-017-merge-across-section-boundary-image-attribution/report.md` + `progress.md` + `checklist.md` + `postmortem.md`(Sev2 mandatory)。Commit `fix(chunker): same-section guard for adjacent-short merge — BUG-017 + ADR-0033 amendment`(landed W25 D2)。
 
 ---
 
