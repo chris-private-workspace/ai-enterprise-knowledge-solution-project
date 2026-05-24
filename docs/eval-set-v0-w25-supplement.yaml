@@ -37,10 +37,10 @@ metadata:
   intended_use: "W25 F2/F4/F6 Gate 1 R@5 + image-association measurement on real dev KB sample-doc-with-image-1"
   status: "UNVALIDATED — not Q14 SME-labelled; runner.py keyword-mode (annotation.validated=false)"
 
-  total_queries: 12
+  total_queries: 13
   composition:
     text_queries: 6        # T-series — general retrieval
-    image_queries: 6       # I-series — image-bearing section retrieval
+    image_queries: 7       # I-series — image-bearing section retrieval (I07 added W25 D3 from user real-world chat observation)
 
   target_kb_id: "sample-doc-with-image-1"
   target_doc:
@@ -283,3 +283,33 @@ queries:
       validated: false
       annotator: "W25-supplement-AI"
       date: "2026-05-23"
+
+  # Q-W25-I07 added W25 D3 (2026-05-24) from user chat real-world observation:
+  # query returned only 2 citations covering Scenarios A+B (out of A-E), 0
+  # images. Validates W25 F3 D4 query expansion necessity — original wording
+  # "Integration scenarios" overlaps the §X summary chunk but poorly with
+  # individual A-E scenario chunks (which use scenario-specific vocab like
+  # "Customer service request submission" / "Saga-style multi-system" / etc.).
+  # Single hybrid retrieve hits summary + 1-2 scenarios; D4 reformulation
+  # (scenario A / scenario B / customer service / batch ETL / etc. variants)
+  # + RRF fusion expected to surface A-E scenario chunks (each with image).
+  - query_id: Q-W25-I07
+    query_text: "Show me all the Integration scenarios."
+    kb_id: "sample-document-with-image-1"
+    query_phrasing_source: user-real-2026-05-24
+    difficulty: hard
+    query_type: multi_step_synthesis
+    ground_truth:
+      acceptable_chunk_ids:
+        - "placeholder-w25-i07"
+      expected_answer_keywords:
+        - "Scenario A"
+        - "Scenario B"
+        - "Scenario C"
+        - "Scenario D"
+        - "Scenario E"
+    annotation:
+      validated: false
+      annotator: "W25-supplement-AI"
+      date: "2026-05-24"
+      source_observation: "Day 2 verify chat returned 2 citations / 0 images for 5-scenario doc"

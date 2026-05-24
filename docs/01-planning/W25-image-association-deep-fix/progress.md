@@ -240,3 +240,100 @@ _(見 commit footers)_:
 - `fix(api): exempt screenshot proxy from rate limiter — BUG-014`
 - `feat(eval): W25 F2 closeout — eval-set-v0-w25-supplement.yaml + mapping + R@5 0.9722 verified`
 
+---
+
+## Day 3 — 2026-05-24: BUG-019/020/021/022/023/024 chat-presentation cascade + CH-004 zoom + F3 D4 ADR-0034 kickoff
+
+### Trigger
+
+W25 D2 cascade closed BUG-015 / 016 / 017(Document Detail Wave B + chunker amendment),Day 2 cont user-eye verify on chat 頁面 揭露 6 個 連續 presentation-layer issues post BUG-021 amendment:
+
+- **BUG-019** Sev2 — InlineImageCard removed/regression — restored(commit `d586fc3`)
+- **BUG-020** Sev2 — CitationPill hover popover + SingleScreenshotStrip — restored(commit `b08d480`)
+- **BUG-021** Sev2 — chat-answer rendering 4-fix batch(marker→pill replace + react-markdown via ADR-0036 + doc_format propagation + ImageGallery `>=1` unify)— commit `78f3d36`;BUG-021 amendment commit `3532e4b`(AnswerBodyMarkdown single-render refactor + ScreenshotModal mockup-faithful 2-col rewrite)
+- **BUG-022** Sev1 — `Citation.doc_format` required field broke `/conversations/{id}` stored-data deserialization(BUG-021 backward-compat regression) — fix via Pydantic `= "docx"` default + 8-line comment(commit `2924471`);Sev1 postmortem written per PROCESS.md §4.5
+- **BUG-023** Sev2 — CitationPill popover `<div>` in `<p>` hydration warning(react-markdown `<p>` ancestor + popover inner divs HTML5 spec violation)— fix via 3 `<div>` → `<span style={display}>` surgical(commit `250fdc6` combined with BUG-024)
+- **BUG-024** Sev3 — ImageGallery thumbnail badge idx(subset `i+1`)vs ScreenshotModal idx(full citations `findIndex+1`)mismatch — fix via `allCitations` prop pass + canonical full-citations numbering(commit `250fdc6` combined with BUG-023)
+
+**14-bug cascade closure milestone** — BUG-009-024(13 fixes + BUG-018 disproved 不計)closed within W25 D1-D3;classic「user-eye verify each fix surfaces next sub-issue」pattern;cumulative empirical validation of cascade-detection mechanism(extends from visual / functional surfaces to console errors + numbering inconsistencies + data-shape regressions)。
+
+### Done
+
+**CH-004 ScreenshotModal zoom-to-original feature**(commit `0e19fdf`):
+
+- User report: BUG-021 amendment 2-col layout 令 image 縮細到 ~62% modal width(side panel 佔 ~38%);user 要 click-to-zoom-to-original
+- Spec: `docs/03-implementation/changes/CH-004-screenshot-modal-zoom-to-original/spec.md` — frontend-only enhancement,opt-in progressive disclosure
+- Implementation: `isZoomed` useState + ESC keydown handler scoped useEffect + image `onClick` zoom-in + conditional zoom overlay z-index 200 over modal z-index 100 + dual-close(backdrop / image / ESC)
+- 50 lines LOC Karpathy §1.3 surgical localized to ScreenshotModal function
+- Verify: tsc / lint / Vitest 7/7 preserve
+- H7 fidelity preserve(mockup 2-col baseline unchanged;zoom = NEW affordance on top per design-stage expansion spirit)
+
+**Eval supplement update**:
+
+- Added **Q-W25-I07** to `docs/eval-set-v0-w25-supplement.yaml` — user real-world query 2026-05-24「Show me all the Integration scenarios」
+- `query_phrasing_source: user-real-2026-05-24`(distinct from synthetic),`difficulty: hard`,`expected_answer_keywords: Scenario A/B/C/D/E`
+- `total_queries: 12 → 13`;`composition.image_queries: 6 → 7`
+- Documents D3 observation:single hybrid retrieve returns 2 citations covering scenarios A+B + 0 images — vocabulary overlap between query「Integration scenarios」+ scenario-specific chunks(「Customer service request submission」/「Saga-style multi-system」/ etc.)too low for single-hop retrieval to fetch all 5 chunks
+
+### Diagnosis update
+
+**User real-world observation validates W25 F3 D4 query expansion rationale**:
+
+User query「show me all the Integration scenarios」expected coverage of A-E scenarios(each with image)but actual result:
+- 2 citations returned
+- Footnote 1 + 2 reused across 5 scenario mentions in LLM response(LLM does NOT cite distinct chunks for C/D/E — only paraphrases from same 2 chunks)
+- 0 with screenshots in citation panel
+
+**Root cause(per W25 plan §1.1)**:
+- **Chunker fix(F1)done** — `sample-doc-with-image-1` post-W25 chunks = 63(from 121,-48% via adjacent-short-merge consolidation)
+- **Retrieval(F3 D4 NOT YET implemented)** — single hybrid retrieve cannot expand vocabulary;query「Integration scenarios」matches §X-summary chunk(「five end-to-end scenarios covering...」)well + maybe 1 scenario-specific chunk via lexical overlap;but A-E individual chunks use scenario-specific vocab → top-K hit summary + A or A+B
+- **Citation enrichment(F5 D1 NOT YET implemented)** — even if A-E chunks were retrieved,citation post-process for neighbour images not yet implemented;image association rate stays 0/8 until F5 D1 lands
+
+**This is the textbook target use case for F3 D4 query expansion + F5 D1 citation post-process**:
+- F3 D4 reformulator generates variants(`Customer service request integration` / `Saga-style orchestration scenario` / `Inbound event-driven flow` / `Batch ETL data movement` / etc.)
+- Each variant runs hybrid retrieve → RRF fusion surfaces A-E individual chunks
+- LLM sees 5 distinct chunks → can cite 5 distinct footnotes
+- F5 D1 attaches neighbour images to citations → A-E images surface
+
+### Decisions(Day 3)
+
+- **D3.1** — Q-W25-I07 added as user-real eval supplement entry vs creating new bug folder — observation 100% validates W25 plan rationale(plan §1 explicit framing);adding to eval set creates measurement signal for F4 / F6 lift measurement(pre-F3 baseline ~2/13 image hit if assume Q-W25-I07 same shape as I01-I06;post-F3 expected lift ≥ 5/13)
+- **D3.2** — CH-004 zoom feature handled as Change(not Bug-fix)— mockup 2-col baseline H7-faithful via BUG-021 amendment intentional;user-pick enhancement on top per design-stage expansion spirit per ADR-0025/0026/0027 precedent
+- **D3.3** — **F3 D4 ADR-0034 draft kickoff next**(plan sequence:F2 done → F3 next)— ADR-0034 reserved per `docs/adr/README.md` Next-NNNN footer;Chris approval needed before F3 implementation per CLAUDE.md §6 ADR format
+
+### Verify gates
+
+- BUG-019-024 cumulative commits + CH-004 commit:tsc / lint / Vitest 7/7 / backend pytest baseline preserved(per individual commit footer verify)
+- Eval supplement YAML structure valid(13 queries,T-series 6 + I-series 7 = 13 total composition)
+- W25 progress.md Day 3 entry committed below — chronicles 14-bug cascade closure + CH-004 + F3 prep handoff
+
+### Blockers
+
+無 functional blocker。Implementation blocker(F3 ADR draft awaiting Chris approval before F3 implementation)— normal CLAUDE.md §6 ADR workflow,non-blocking on phase progress per R5。
+
+### Actual vs Planned Effort
+
+| Deliverable | Planned (h) | Actual (h) | Variance |
+|---|---|---|---|
+| BUG-019/020/021 cascade fix(presentation layer)| 0 | ~3 | +3(unplanned cascade discovery via user-eye verify)|
+| BUG-021 amendment(2-col modal rewrite + AnswerBodyMarkdown refactor)| 0 | ~2 | +2 |
+| BUG-022 Sev1 fix(schema default + postmortem)| 0 | ~1 | +1 |
+| BUG-023 + BUG-024 surgical fix + 2 doc folders | 0 | ~1 | +1 |
+| CH-004 ScreenshotModal zoom feature | 1-2 | ~0.8 | -0.2 to -1.2 |
+| Q-W25-I07 eval supplement add | 0 | ~0.1 | +0.1 |
+| W25 Day 3 progress entry | 0 | ~0.3 | +0.3 |
+| ADR-0034 draft kickoff(next)| 2-3(F3.1)| 0(scheduled D4)| pending F3 active flip |
+
+**Cumulative Day 3 effort**:~8h actual vs ~0h planned(全 cascade-driven + enhancement-driven scope expansion outside F3 plan budget)— consistent with W12-W18 / W20-W24 user-eye-verify-driven discovery pattern;F3 D4 implementation still on track for D4-D9 plan window。
+
+### Commits
+
+_(見 commit footers)_:
+- `fix(chat): restore InlineImageCard inline image rendering — BUG-019 + H7 W22 regression`(`d586fc3`)
+- `fix(chat): restore CitationPill hover popover + add SingleScreenshotStrip — BUG-020 + H7 W22 regression`(`b08d480`)
+- `fix(chat): markdown render + marker→pill replace + doc_format propagation + ImageGallery unify — BUG-021 + ADR-0036`(`78f3d36`)
+- `fix(chat): BUG-021 amendments — inline pill flow + mockup-faithful ScreenshotModal 2-col layout`(`3532e4b`)
+- `fix(api): Citation.doc_format default "docx" — BUG-022 BUG-021 backward-compat regression`(`2924471`)
+- `fix(chat): BUG-023 popover div→span + BUG-024 ImageGallery badge idx alignment`(`250fdc6`)
+- `feat(chat): ScreenshotModal zoom-to-original — CH-004`(`0e19fdf`)
+- `docs(planning): W25 D3 progress entry + Q-W25-I07 supplement add + ADR-0034 F3 kickoff`(pending,this commit)
