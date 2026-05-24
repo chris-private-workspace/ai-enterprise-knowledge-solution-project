@@ -173,6 +173,71 @@ describe('Chat assistant meta row + ImageGallery (BUG-007)', () => {
     expect(screen.getAllByRole('img')).toHaveLength(4);
   });
 
+  it('renders "Single screenshot" mini-section for exactly 1 image citation (BUG-020 user-pick hybrid option 3)', async () => {
+    streamQuery.mockImplementation(() =>
+      (async function* () {
+        yield { type: 'text-delta', content: 'Answer with one image.' };
+        yield { type: 'citation', citation: citation(1, true) };
+        yield { type: 'citation', citation: citation(2, false) };
+        yield {
+          type: 'done',
+          model: 'gpt-5.5',
+          input_tokens: 1,
+          output_tokens: 1,
+          cost: 0.001,
+          latency_ms: 2000,
+          refused: false,
+          reranker_used: 'cohere-v4.0-pro',
+        };
+      })(),
+    );
+
+    renderChat();
+    await sendQuery();
+
+    // Single-screenshot strip renders; ImageGallery `>=2` gate skips here.
+    await waitFor(() =>
+      expect(screen.getByText('Single screenshot')).toBeInTheDocument(),
+    );
+    expect(screen.queryByText('Referenced screenshots')).not.toBeInTheDocument();
+    // 1 InlineImageCard (BUG-019 inline render) + 1 SingleScreenshotStrip thumbnail = 2 imgs.
+    expect(screen.getAllByRole('img')).toHaveLength(2);
+  });
+
+  it('renders citation pills unconditionally after answer body (BUG-020 — removes citationMode === "inline" gate)', async () => {
+    streamQuery.mockImplementation(() =>
+      (async function* () {
+        yield { type: 'text-delta', content: 'Answer text.' };
+        yield { type: 'citation', citation: citation(1, false) };
+        yield { type: 'citation', citation: citation(2, false) };
+        yield { type: 'citation', citation: citation(3, false) };
+        yield {
+          type: 'done',
+          model: 'gpt-5.5',
+          input_tokens: 1,
+          output_tokens: 1,
+          cost: 0.001,
+          latency_ms: 1000,
+          refused: false,
+          reranker_used: 'cohere-v4.0-pro',
+        };
+      })(),
+    );
+
+    renderChat();
+    await sendQuery();
+
+    // CitationPill row renders 1, 2, 3 numeric pills unconditionally (citationMode
+    // defaults to 'sidebar' so the W22 gate would have hidden them). PanelSourceCard
+    // in the right Sources panel also surfaces each citation as an idx circle, so
+    // each digit appears at least twice in the DOM — assert that count to verify
+    // both the pill row AND the panel render the citations.
+    await waitFor(() => expect(screen.getByText('Answer text.')).toBeInTheDocument());
+    expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('2').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('3').length).toBeGreaterThanOrEqual(2);
+  });
+
   it('renders the sources-panel toggle in the header', async () => {
     // ChatHeader shows the BookOpen sources-panel toggle in sidebar mode (the
     // mockup default). BUG-007 amendment — a stale `ekp-citation-mode`

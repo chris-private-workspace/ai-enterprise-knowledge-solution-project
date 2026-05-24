@@ -44,13 +44,20 @@
  *   - Inline ChatComposer (textarea + submit)
  *
  * Obsolete W20 separate components are deleted alongside (ConversationHistory,
- * CitationPill, FeedbackBar, CragStrip) — they were custom abstractions not
- * matching mockup component breakdown. (ImageGallery — mockup
- * ekp-page-chat.jsx:621-664 — was wrongly dropped here in W22 F4 and restored
- * by BUG-007. InlineImageCard — mockup ekp-page-chat.jsx:470-498 usage + 581-617
- * definition — was wrongly dropped here in W22 F4 and restored by BUG-019:
- * mockup intent = inline image card per imageCitation in answer body, ImageGallery
- * `>=2` is the collective fallback, not a replacement.)
+ * FeedbackBar, CragStrip) — they were custom abstractions not matching mockup
+ * component breakdown. (ImageGallery — mockup ekp-page-chat.jsx:621-664 — was
+ * wrongly dropped here in W22 F4 and restored by BUG-007. InlineImageCard —
+ * mockup ekp-page-chat.jsx:470-498 usage + 581-617 definition — was wrongly
+ * dropped here in W22 F4 and restored by BUG-019: mockup intent = inline image
+ * card per imageCitation in answer body, ImageGallery `>=2` is the collective
+ * fallback, not a replacement. CitationPill hover popover — mockup
+ * ekp-page-chat.jsx:515-578 — was wrongly dropped here in W22 F4 and the
+ * surviving numeric-badge `InlineCitationPills` was gated
+ * `citationMode === 'inline'` while mode is fixed at 'sidebar' so it never
+ * rendered; restored by BUG-020 as unconditional CitationPillsRow at end of
+ * each assistant message. SingleScreenshotStrip — BUG-020 user-pick hybrid
+ * option 3 — compact 1-image-citation collective section that mockup `>=2`
+ * gate would skip; mockup-spirit-aligned deviation per user UX expectation.)
  *
  * Real Citation schema lacks mockup's `idx` / `preview` / `file_type` /
  * `page` fields → graceful defaults: idx = array index + 1, preview = empty,
@@ -1160,10 +1167,18 @@ function MessageRow({
                 {message.isStreaming ? 'Thinking…' : '(no content)'}
               </span>
             )}
-            {citationMode === 'inline' && message.citations.length > 0 && (
-              <InlineCitationPills citations={message.citations} />
-            )}
           </div>
+        )}
+
+        {/* Citation pills — mockup ekp-page-chat.jsx:515-578 (per-pill hover popover
+            with file icon + doc title + section + chunk title + relevance score).
+            Restored by BUG-020 — W22 F4 dropped CitationPill as a "custom abstraction"
+            and the surviving InlineCitationPills row was gated on
+            `citationMode === 'inline'` while mode is fixed at 'sidebar' → pills
+            never rendered. Now unconditional when citations exist; hover popover
+            replaces the old HTML `title` tooltip per mockup interaction state. */}
+        {!message.isStreaming && message.citations.length > 0 && (
+          <CitationPillsRow citations={message.citations} />
         )}
 
         {/* Footnote citation list */}
@@ -1200,6 +1215,19 @@ function MessageRow({
             />
           ))}
 
+        {/* Single screenshot strip — BUG-020 user-pick hybrid option 3:
+            preserve mockup `>=2` ImageGallery gate (line 354-357), add a compact
+            "Single screenshot" mini-section when exactly 1 image-bearing
+            citation exists. User UX expectation: "有 image 就見到 collective
+            screenshot section" — mockup design intent skips this for 1 image
+            (inline only) so this is a documented deviation per user pick. */}
+        {!message.isStreaming && imageCitations.length === 1 && (
+          <SingleScreenshotStrip
+            citation={imageCitations[0]!}
+            onOpenScreenshot={onOpenScreenshot}
+          />
+        )}
+
         {/* Image gallery — mockup ekp-page-chat.jsx:354-357 (2+ image citations) */}
         {!message.isStreaming && imageCitations.length >= 2 && (
           <ImageGallery
@@ -1232,35 +1260,229 @@ function MessageRow({
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Inline citation pills (citationMode = 'inline')
+// CitationPillsRow — mockup ekp-page-chat.jsx:515-578. Per-pill hover popover
+// shows file icon + doc title + section path + chunk title + relevance score.
+// Restored by BUG-020 — W22 F4 dropped the popover behavior; the surviving
+// numeric-badge row was gated `citationMode === 'inline'` while mode is fixed
+// at 'sidebar' so it never rendered. Now unconditional.
 // ──────────────────────────────────────────────────────────────────────────
 
-function InlineCitationPills({ citations }: { citations: Citation[] }) {
+function CitationPillsRow({ citations }: { citations: Citation[] }) {
   return (
-    <span style={{ marginLeft: 6 }}>
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 4,
+        marginTop: 10,
+        alignItems: 'center',
+      }}
+    >
       {citations.map((c, i) => (
+        <CitationPill key={c.chunk_id} citation={c} idx={i + 1} />
+      ))}
+    </div>
+  );
+}
+
+function CitationPill({ citation, idx }: { citation: Citation; idx: number }) {
+  const [hovered, setHovered] = useState(false);
+  const fileType = fileTypeFromDocId(citation.doc_id);
+  return (
+    <span
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: 18,
+        height: 18,
+        padding: '0 5px',
+        fontSize: 11,
+        fontWeight: 600,
+        background: hovered
+          ? 'oklch(var(--accent) / 0.22)'
+          : 'oklch(var(--accent) / 0.1)',
+        color: 'oklch(var(--accent))',
+        border: '1px solid oklch(var(--accent) / 0.28)',
+        borderRadius: 4,
+        fontFamily: 'var(--font-mono)',
+        cursor: 'default',
+        transition: 'background var(--duration-fast)',
+        position: 'relative',
+      }}
+    >
+      {idx}
+      {hovered && (
         <span
-          key={c.chunk_id}
-          title={`${c.doc_title} · ${c.section_path.join(' › ')}`}
           style={{
-            display: 'inline-block',
-            marginLeft: 4,
-            padding: '0 5px',
-            fontSize: 10.5,
-            fontFamily: 'var(--font-mono)',
-            fontWeight: 600,
-            background: 'oklch(var(--accent) / 0.12)',
-            color: 'oklch(var(--accent))',
-            border: '1px solid oklch(var(--accent) / 0.3)',
-            borderRadius: 3,
-            verticalAlign: 'top',
-            lineHeight: 1.5,
+            position: 'absolute',
+            bottom: 'calc(100% + 6px)',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 320,
+            padding: '10px 12px',
+            background: 'oklch(var(--popover))',
+            border: '1px solid oklch(var(--border))',
+            borderRadius: 'var(--radius-sm)',
+            boxShadow: 'var(--shadow-lg)',
+            fontFamily: 'var(--font-sans)',
+            fontWeight: 400,
+            color: 'oklch(var(--foreground))',
+            textAlign: 'left',
+            zIndex: 10,
+            whiteSpace: 'normal',
           }}
         >
-          {i + 1}
+          <div
+            style={{
+              display: 'flex',
+              gap: 6,
+              alignItems: 'center',
+              marginBottom: 6,
+            }}
+          >
+            <FileTypeChip type={fileType} />
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                flex: 1,
+                minWidth: 0,
+              }}
+            >
+              {citation.doc_title}
+            </span>
+            <span className="mono text-xs muted">
+              {citation.relevance_score.toFixed(3)}
+            </span>
+          </div>
+          {citation.section_path.length > 0 && (
+            <div
+              className="section-path text-xs"
+              style={{ marginBottom: 6 }}
+            >
+              {citation.section_path.map((s, j) => (
+                <span key={j}>{s}</span>
+              ))}
+            </div>
+          )}
+          {citation.chunk_title && (
+            <div
+              style={{
+                fontSize: 12,
+                lineHeight: 1.5,
+                color: 'oklch(var(--foreground) / 0.85)',
+              }}
+            >
+              {citation.chunk_title}
+            </div>
+          )}
         </span>
-      ))}
+      )}
     </span>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// SingleScreenshotStrip — BUG-020 user-pick hybrid option 3. Compact "Single
+// screenshot" mini-section for the 1-image-citation case. Mockup `>=2` gate
+// on ImageGallery (line 354-357) leaves the 1-image case with no collective
+// section; this fills that gap per user UX expectation. Mockup-spirit-aligned
+// (label + thumbnail + click→modal) but exact section title is the deviation.
+// ──────────────────────────────────────────────────────────────────────────
+
+function SingleScreenshotStrip({
+  citation,
+  onOpenScreenshot,
+}: {
+  citation: Citation;
+  onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
+}) {
+  const image = citation.embedded_images[0];
+  if (!image) return null;
+  return (
+    <div style={{ marginTop: 18 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 8,
+        }}
+      >
+        <span
+          className="text-xs muted mono"
+          style={{
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            fontWeight: 600,
+          }}
+        >
+          Single screenshot
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={() => onOpenScreenshot(citation, image)}
+        style={{
+          appearance: 'none',
+          border: '1px solid oklch(var(--border))',
+          borderRadius: 'var(--radius-md)',
+          padding: 0,
+          background: 'oklch(var(--card))',
+          cursor: 'pointer',
+          width: 220,
+          display: 'block',
+          overflow: 'hidden',
+          textAlign: 'left',
+        }}
+      >
+        <img
+          src={image.blob_url}
+          alt={image.alt_text || citation.chunk_title || 'Screenshot'}
+          style={{
+            display: 'block',
+            width: '100%',
+            height: 'auto',
+            maxHeight: 140,
+            objectFit: 'cover',
+            background: 'oklch(var(--muted) / 0.4)',
+          }}
+        />
+        <div style={{ padding: '8px 10px' }}>
+          <div
+            className="text-xs"
+            style={{
+              fontWeight: 500,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+            title={citation.doc_title}
+          >
+            {citation.doc_title}
+          </div>
+          {citation.section_path.length > 0 && (
+            <div
+              className="text-xs muted"
+              style={{
+                marginTop: 1,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {citation.section_path.join(' › ')}
+            </div>
+          )}
+        </div>
+      </button>
+    </div>
   );
 }
 
