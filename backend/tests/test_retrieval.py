@@ -39,9 +39,11 @@ async def test_hybrid_search_payload_shape_matches_spec() -> None:
     assert payload["queryType"] == "semantic"
     assert payload["semanticConfiguration"] == "ekp-semantic-config"
     # ADR-0018 multi-KB invariant: kb_id eq prepended to default filter
+    # ADR-0035 W25 F5 D2: low_value_flag eq false removed from server-side
+    # filter; client-side post-filter handles low_value chunks
     assert (
         payload["filter"]
-        == "kb_id eq 'drive_user_manuals' and enabled eq true and low_value_flag eq false"
+        == "kb_id eq 'drive_user_manuals' and enabled eq true"
     )
     assert payload["vectorQueries"][0]["fields"] == "content_vector"
     assert payload["vectorQueries"][0]["k"] == 50
@@ -278,7 +280,9 @@ async def test_retrieval_engine_default_filter_clause_applied() -> None:
     await engine.retrieve(query="q", kb_id="drive_user_manuals")
 
     call_kwargs = searcher.search.await_args.kwargs
-    assert call_kwargs["filter_clause"] == "enabled eq true and low_value_flag eq false"
+    # ADR-0035 W25 F5 D2: engine baseline filter no longer includes
+    # low_value_flag eq false (moved to client-side post-filter)
+    assert call_kwargs["filter_clause"] == "enabled eq true"
 
 
 @pytest.mark.asyncio

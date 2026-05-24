@@ -141,7 +141,7 @@ class RetrievalEngine:
             kb_id=kb_id,
             top_k=fetch_k,
             filter_clause=filter_clause if filter_clause is not None
-            else "enabled eq true and low_value_flag eq false",
+            else "enabled eq true",  # per ADR-0035 W25 F5 D2 (was: + " and low_value_flag eq false")
             mode=mode,
         )
         search_latency_ms = int((time.perf_counter() - search_start) * 1000)

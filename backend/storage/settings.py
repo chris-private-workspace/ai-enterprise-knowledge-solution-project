@@ -171,6 +171,17 @@ class Settings(BaseSettings):
     citation_neighbour_window: int = 3
     citation_neighbour_max_aux_images: int = 2
 
+    # W25 F5 D2 — retrieval low_value soft-relax per ADR-0035. W2 baseline
+    # used Azure Search server-side OData filter `low_value_flag eq false`
+    # (hard exclude) — diverged from architecture.md §3.5 "deboost" spec
+    # wording. ADR-0035 shifts to server-side filter dropping low_value
+    # clause + client-side Python post-filter: low_value+image chunks
+    # retain with score × image_weight; low_value+no-image dropped;
+    # non-low_value unchanged. Default 0.7 per W25 plan §8 Q5 locked.
+    # Empirical tune to 0.5 / 0.8 / 0.9 per F6 manual verify if needed
+    # (R7 risk mitigation per W25 plan).
+    retrieval_image_low_value_weight: float = 0.7
+
     # Feature flags
     feature_l3_routing_enabled: bool = False
     feature_auth_enabled: bool = False

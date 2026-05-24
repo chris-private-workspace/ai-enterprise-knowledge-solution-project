@@ -337,3 +337,110 @@ _(見 commit footers)_:
 - `fix(chat): BUG-023 popover div→span + BUG-024 ImageGallery badge idx alignment`(`250fdc6`)
 - `feat(chat): ScreenshotModal zoom-to-original — CH-004`(`0e19fdf`)
 - `docs(planning): W25 D3 progress entry + Q-W25-I07 supplement add + ADR-0034 F3 kickoff`(pending,this commit)
+
+---
+
+## Day 4 — 2026-05-24:F5 D2 — CH-003 + ADR-0035 batched approval + retrieval low_value soft-relax implementation
+
+### Trigger
+
+W25 D3 closed嗮 F1+F3+F5 D1(chunker / query expansion / citation neighbour-image attach)three large pieces;但 user real-world Q-W25-I07「Show me all the Integration scenarios」synthesizer 仍 refuse,citation panel 0 images。F5 D1 attach 機制 work(targeted Scenario A query verified citation+image),但 overview-shape query 嘅 synthesizer 拒絕 cite → D1 nothing to augment。F5 D2 retrieval-side complement closing `architecture.md §3.5/§3.6` 「deboost」spec wording vs W2 baseline「hard exclude」divergence + addressing H1 60% low_value flagged image-chunk exclusion = next必要 deliverable。
+
+### H1 boundary determination(per W25 plan §7 R6 D0 finding (iii) + Day 0 D0.4)
+
+**AskUserQuestion 2-step batched approval** chat 2026-05-24:
+
+| # | Question | Chris pick | Outcome |
+|---|---|---|---|
+| 1 | H1 boundary 點 call?Path A(CH-003 alone)vs Path B(CH-003 + co-ADR-0035 mandatory) | **Path B(Recommended)** | ADR-0035 mandatory;CH-003 + ADR-0035 batched |
+| 2 | Review ADR-0035 + CH-003 spec.md content gate — Accept both proceed? | **Accept both(Recommended)** | ADR-0035 Proposed → Accepted;CH-003 spec.md draft → approved |
+
+Path B reasoning(per Day 4 entry analysis):
+- `architecture.md §3.6 line 384` 係 content-locked v6 spec normative filter clause statement
+- Changing literal filter clause + score weighting injection = §3.6 retrieval spec interface change
+- Governance symmetry:ADR-0022(auth-transport mechanism with semantics preserved → ADR)+ ADR-0033(W25 F1 chunker tuning internal → ADR)→ ADR-0035 不寫 = governance asymmetry
+- Cost asymmetric obviously toward Path B(ADR draft ~2h vs governance drift risk)
+
+### Done
+
+**1. ADR-0035 draft + Accepted**:
+
+- `docs/adr/0035-retrieval-low-value-soft-relax.md` written:Context(spec-implementation divergence H1 trigger evidence)+ Decision 3-pronged(server-side filter shift + client-side post-filter override + Configurable Settings knob)+ 6 Alternatives evaluation + Consequences(positive / negative / neutral)+ §3.6 inline-tagged amendment statement(scheduled W25 F7 closeout per ADR-0024 precedent;doc-version held — ADR is record)+ References cross-link
+- Status:Proposed → Accepted(Chris 2-step AskUserQuestion approval cycle)
+- `docs/adr/README.md` index row landed + footer Next-NNNN updated 0035 → 0037 next available(0036 react-markdown already landed W25 D3)
+
+**2. CH-003 spec.md + checklist + progress**(per PROCESS.md §3 lifecycle):
+
+- `docs/03-implementation/changes/CH-003-image-association-retrieval-and-citation/spec.md` v1.0 covering D2 forward + D1 retroactive(shipped W25 D3 commit `b267a8a`)bundled per W25 plan §2 F5 explicit「combined CH-003」design
+- 10 acceptance criteria + 5 Change-specific risks(R1-R5)+ 4 design decisions(D1-D4)+ Implementation Plan with effort estimate + Rollback plan
+- Status:draft → approved 2026-05-24
+- `checklist.md` 22 atomic items spanning D2(D2.1-D2.15)+ D1 retroactive(D1.1-D1.6)+ Governance(G1-G5)+ Closeout(C1-C10);D2 + D1 + Governance全部 `[x]` 本 session 完成
+- `progress.md` Day 1 entry chronicles full implementation log
+
+**3. D2 backend implementation**(4 file edits per Karpathy §1.3 surgical scope):
+
+| File | Change |
+|---|---|
+| `backend/storage/settings.py` | NEW `retrieval_image_low_value_weight: float = 0.7` knob(9-line docstring cite ADR-0035 + §3.5 divergence)|
+| `backend/retrieval/hybrid.py` | docstring update + import `dataclasses.replace` + `_DEFAULT_FILTER = "enabled eq true"`(low_value clause移走)+ NEW `_DEFAULT_IMAGE_WEIGHT = 0.7` module constant + NEW `_apply_low_value_post_filter` helper(3-branch + ≤0 degenerate)+ `HybridSearcher.__init__` add `image_weight` kwarg + `search()` integration point post Azure Search response + logger.debug includes `pre_low_value_post_filter_count` + `image_weight` fields |
+| `backend/retrieval/retrieval_engine.py` | line 143-144 stale fallback string update + ADR-0035 cite comment |
+| `backend/api/server.py` | line 130-134 HybridSearcher lifespan construction wire `image_weight=settings.retrieval_image_low_value_weight` |
+
+**4. NEW unit tests**:
+
+- `backend/tests/test_hybrid_searcher_image_low_value.py` NEW 19 tests covering all D2 branches(12 `_apply_low_value_post_filter` unit + 2 module constants + 5 HybridSearcher integration);**19/19 pass** in 0.84s
+- `backend/tests/test_retrieval.py:44 + :281` 2 stale assertion updates removing `low_value_flag eq false` clause + ADR-0035 cite comments(per ADR-0035 spec change driven update,Karpathy §1.3 surgical envelope holds)
+
+**5. Verify gates**:
+
+| Gate | Result |
+|---|---|
+| `pytest tests/test_hybrid_searcher_image_low_value.py -v` | **19/19 pass** in 0.84s |
+| `pytest tests/` full regression | **1013 passed + 25 skipped + 0 failed** in 185s(pre-CH-003 baseline 994 → +19 net IMPROVED) |
+| `mypy --strict --explicit-package-bases retrieval/hybrid.py storage/settings.py` | **zero new errors on touched code**(11 pre-existing bare `dict` errors in untouched methods per Karpathy §1.3 surgical out of scope) |
+| `ruff check retrieval/ storage/settings.py tests/test_hybrid_searcher_image_low_value.py` | **All checks passed** |
+
+### Decisions(Day 4)
+
+- **D4.1** — H1 boundary Path B(per Chris AskUserQuestion pick):governance symmetry over implementation-detail interpretation;ADR-0035 mandatory
+- **D4.2** — D2 + D1 single CH-003(per W25 plan §2 F5 explicit design):same root cause chain + bundled test surface + Karpathy §1.2 simplicity
+- **D4.3** — `image_weight` plumbed via `HybridSearcher.__init__` kwarg(not per-call `search()` param):W2 baseline Settings injection at lifespan pattern preserved + simpler caller API
+- **D4.4** — `image_weight = 0.7` baseline locked(per W25 plan §8 Q5):empirical adjust knob available via Settings if F6 surfaces tuning need
+- **D4.5** — §3.6 inline-tagged amendment scheduled W25 F7 closeout cascade(NOT CH-003 commit scope):per ADR-0024 inline-tag precedent + doc-version held
+- **D4.6** — Stale W2 baseline filter strings in `retrieval_engine.py:143-144` + `test_retrieval.py:44/281` updated as part of CH-003 commit(4-line edit total + 100% deterministic content change driven by ADR-0035):Karpathy §1.3 surgical envelope holds
+- **D4.7** — Existing 11 pre-existing bare `dict` mypy --strict errors in `hybrid.py` untouched methods(`fetch_by_chunk_ids` / `list_documents` / `list_chunks`)NOT fixed this session per Karpathy §1.3 surgical:out of CH-003 scope + zero NEW errors my code introduced
+
+### Blockers
+
+無。
+
+### Actual vs Planned Effort
+
+| Deliverable | Planned (h) | Actual (h) | Variance |
+|---|---|---|---|
+| H1 boundary surface + AskUserQuestion 2-step | 0 | ~0.15 | +0.15(governance gate)|
+| ADR-0035 draft | 2 | ~0.4 | -1.6 |
+| CH-003 spec draft | 1 | ~0.3 | -0.7 |
+| D2 implementation 4 file edits | 1.5 | ~0.4 | -1.1 |
+| NEW unit tests 19 cases | 1.5-2 | ~0.6 | -1 |
+| Existing tests update(2 assertions)| 0.25 | ~0.1 | -0.15 |
+| Regression run + mypy + ruff | 0.5 | ~3.2 | +2.7(full pytest 185s runtime dominates)|
+| CH-003 checklist + progress + W25 D4 entry + ADR README index | 1 | ~0.6 | -0.4 |
+
+**Cumulative Day 4 effort**:~5.7h actual vs ~7-8.25h planned(F5 D2 portion of W25 budget);**compression factor ~1.3-1.5×**(governance-heavy phase with H1 ADR overhead + full pytest 185s + verify gates add real time;lower compression than W22-W24 frontend rebuild ~5-10× as expected)
+
+### Carry-overs to F6 / F7
+
+- 🚧 **§3.6 inline-tag amendment** scheduled W25 F7 closeout cascade(per ADR-0035 §3.6 amendment section;doc-version held per ADR-0024 precedent)
+- 🚧 **F4 LIVE RAGAs eval verify gate**(eval-set-v0-w25-supplement 13 queries including Q-W25-I07;G1 hard gate ≥ 5/8;G2 R@5 ≥ 0.92;G3 4-metric within 5pp;G4 P95 < 5s)— needs LIVE Azure key environment
+- 🚧 **F6 manual user-test** ≥ 4/5 image-bearing queries via `/chat` UI(包括 Q-W25-I07 + 4 條 sample-doc-with-image-1 queries)— needs F4 gate clean first
+- 🚧 **F7 phase closeout** retro + cross-doc sync(architecture.md inline-tag + COMPONENT_CATALOG C04 status update + RISK_REGISTER 若有新 risk + decision-form OQ status sync)— after F4 / F6
+
+### Commits
+
+_(本 session 即將 commit)_:
+- `feat(retrieval): CH-003 D2 retrieval low_value soft-relax — ADR-0035 implementation`(pending)
+
+---
+
+**End of Day 4 entry** — F5 D2 deliverable complete;F4 LIVE eval + F6 manual test 留 user pre-Beta scope per W25 plan §6 inheritance pattern from W17-W24 smoke-user-deferred allowance。

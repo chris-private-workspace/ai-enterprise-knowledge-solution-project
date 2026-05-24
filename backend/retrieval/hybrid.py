@@ -1,7 +1,11 @@
 """Azure AI Search hybrid retrieval REST client (per architecture.md §3.1 + components/C04 §1).
 
 W2 baseline: BM25 + vector hybrid via Azure AI Search built-in RRF (no custom fusion).
-Filter clause: `enabled eq true and low_value_flag eq false` per architecture.md §3.6.
+Filter clause: `enabled eq true` (server-side OData) + client-side post-filter per
+ADR-0035 W25 F5 D2 — low_value+image chunks retain with score × image_weight;
+low_value+no-image dropped (preserves W2 exclusion for TOC / version-statement style
+chunks); non-low_value unchanged. Closes the `architecture.md §3.5/§3.6` "deboost"
+spec wording vs W2 baseline "hard exclude" divergence.
 
 W16+ ADR-0018 Phase 3 multi-KB invariant: search() requires kb_id parameter; index_name
 dynamically constructed via kb_naming.kb_id_to_index_name (with self.index_name as Tier 1
@@ -23,7 +27,7 @@ Response shape (Azure AI Search /docs/search):
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 import httpx
@@ -38,7 +42,15 @@ from tenacity import (
 from storage.kb_naming import kb_id_filter_clause, kb_id_to_index_name
 
 _API_VERSION = "2024-07-01"
-_DEFAULT_FILTER = "enabled eq true and low_value_flag eq false"
+# Per ADR-0035 W25 F5 D2 — server-side filter no longer includes
+# `low_value_flag eq false`; low_value handling moved to client-side
+# post-filter (see _apply_low_value_post_filter). Closes architecture.md
+# §3.5/§3.6 "deboost" spec wording vs W2 baseline "hard exclude" divergence.
+_DEFAULT_FILTER = "enabled eq true"
+# Per ADR-0035 + W25 plan §8 Q5 locked default. Instance override via
+# `HybridSearcher(image_weight=...)`; production wired from
+# `Settings.retrieval_image_low_value_weight` in `api/server.py` lifespan.
+_DEFAULT_IMAGE_WEIGHT = 0.7
 
 logger = structlog.get_logger(__name__)
 
@@ -51,6 +63,40 @@ class HybridSearchHit:
     fields: dict
 
 
+def _apply_low_value_post_filter(
+    hits: list[HybridSearchHit],
+    *,
+    image_weight: float,
+) -> list[HybridSearchHit]:
+    """Post-filter low_value chunks per ADR-0035 W25 F5 D2.
+
+    Replaces W2 baseline server-side hard-exclude. Per architecture.md
+    §3.5 line 258 ("deboost" spec intent) + §3.6 line 384 amendment:
+
+    - low_value_flag=True + embedded_images_json non-empty → retain with
+      score × image_weight (image-bearing low_value chunks deboost not drop)
+    - low_value_flag=True + no images → drop (preserve W2 exclusion for
+      TOC / version-statement style chunks that lack images)
+    - low_value_flag=False → keep unchanged
+
+    image_weight ≤ 0 is degenerate (effectively drops all image+low_value
+    chunks — handy for A/B measurement); branch explicit to avoid retaining
+    zero-score hits in the result list.
+    """
+    if image_weight <= 0:
+        return [h for h in hits if not h.fields.get("low_value_flag", False)]
+
+    result: list[HybridSearchHit] = []
+    for hit in hits:
+        if not hit.fields.get("low_value_flag", False):
+            result.append(hit)
+            continue
+        images_json = str(hit.fields.get("embedded_images_json", "") or "")
+        if images_json.strip() not in ("", "[]"):
+            result.append(replace(hit, score=hit.score * image_weight))
+    return result
+
+
 class HybridSearcher:
     """Async REST client for Azure AI Search hybrid (BM25 + vector RRF) query."""
 
@@ -60,11 +106,16 @@ class HybridSearcher:
         admin_key: str,
         index_name: str,
         api_version: str = _API_VERSION,
+        image_weight: float = _DEFAULT_IMAGE_WEIGHT,
     ) -> None:
         self.endpoint = endpoint.rstrip("/")
         self.admin_key = admin_key
         self.index_name = index_name
         self.api_version = api_version
+        # Per ADR-0035 W25 F5 D2 — score multiplier for image-bearing
+        # low_value chunks during post-filter. Production wired from
+        # Settings.retrieval_image_low_value_weight in server.py lifespan.
+        self.image_weight = image_weight
         self._client: httpx.AsyncClient | None = None
 
     async def __aenter__(self) -> HybridSearcher:
@@ -227,12 +278,19 @@ class HybridSearcher:
             fields = {k: v for k, v in item.items() if not k.startswith("@search.")}
             hits.append(HybridSearchHit(score=score, fields=fields))
 
+        # ADR-0035 W25 F5 D2 — client-side post-filter low_value chunks
+        # (server-side filter no longer excludes them, see _DEFAULT_FILTER).
+        pre_post_count = len(hits)
+        hits = _apply_low_value_post_filter(hits, image_weight=self.image_weight)
+
         logger.debug(
             "hybrid_search_returned",
             index=index_name,
             kb_id=kb_id,
             mode=mode,
             count=len(hits),
+            pre_low_value_post_filter_count=pre_post_count,
+            image_weight=self.image_weight,
             top_k=top_k,
         )
         return hits
