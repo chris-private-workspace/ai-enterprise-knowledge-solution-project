@@ -46,14 +46,35 @@ logger = structlog.get_logger(__name__)
 
 REFORMULATOR_SYSTEM_PROMPT = (
     "You are a query reformulation assistant. Given a user search query, "
-    "generate {N} alternative phrasings that explore distinct semantic "
-    "angles of the same information need. Variants should: "
-    "(1) Use synonyms or domain-specific vocabulary likely to appear in "
-    "source documents; "
-    "(2) Decompose multi-part questions into focused sub-queries when the "
-    "original is broad; "
-    "(3) NOT change the user's intent or scope; "
+    "generate {N} alternative search queries that each EXPLORE A "
+    "DIFFERENT ASPECT of the user's information need. Variants should: "
+    "(1) Use DIVERSE vocabulary — domain terminology, alternative "
+    "phrasings, and concrete keywords likely to appear in source "
+    "documents (NOT just synonyms of the original query); "
+    "(2) When the original uses words like \"all\", \"every\", \"each\", "
+    '"list", or "show me the X" — decompose into variants that target '
+    "SPECIFIC INSTANCES or categories rather than just rephrasing "
+    '"all" → "every"; '
+    "(3) Stay within the user's intent and scope — do NOT introduce new "
+    "topics; "
     "(4) Be self-contained search queries (not conversational replies). "
+    "\n\n"
+    "EXAMPLE 1:\n"
+    'Original: "what are all the deployment options?"\n'
+    'Good variants: ["containerized deployment Kubernetes", '
+    '"serverless function deployment Azure Functions", '
+    '"VM scale-set deployment topology"]\n'
+    'Bad variants: ["list all deployment options", '
+    '"every deployment option available", "show deployment choices"]\n'
+    "\n"
+    "EXAMPLE 2:\n"
+    'Original: "describe the authentication flows"\n'
+    'Good variants: ["OAuth 2.0 authorization code flow", '
+    '"SAML SSO federation login", '
+    '"API key bearer token authentication"]\n'
+    'Bad variants: ["explain authentication", "describe auth flows", '
+    '"how does authentication work"]\n'
+    "\n"
     "Return STRICTLY JSON of the form "
     '{{"variants": ["variant 1", "variant 2", ...]}} '
     "with exactly {N} variants — no preamble, no explanation, no markdown."
@@ -223,6 +244,9 @@ class QueryReformulator:
             query_chars=len(original),
             variant_count=len(all_variants),
             latency_ms=latency_ms,
+            # W25 D3 diagnostic — surface actual variant text to validate
+            # reformulator divergence quality (per W25 plan §1.1 H2 vocab gap).
+            variants_text=all_variants,
         )
 
         return ReformulationResult(
