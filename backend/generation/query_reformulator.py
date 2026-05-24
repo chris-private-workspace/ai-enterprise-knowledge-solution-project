@@ -75,6 +75,14 @@ REFORMULATOR_SYSTEM_PROMPT = (
     'Bad variants: ["explain authentication", "describe auth flows", '
     '"how does authentication work"]\n'
     "\n"
+    "EXAMPLE 3:\n"
+    'Original: "show me all the integration scenarios"\n'
+    'Good variants: ["customer service request submission API integration", '
+    '"Saga-style multi-system orchestration pattern", '
+    '"inbound event-driven flow Service Bus"]\n'
+    'Bad variants: ["all integration scenarios", "every integration pattern", '
+    '"list integration use cases"]\n'
+    "\n"
     "Return STRICTLY JSON of the form "
     '{{"variants": ["variant 1", "variant 2", ...]}} '
     "with exactly {N} variants — no preamble, no explanation, no markdown."

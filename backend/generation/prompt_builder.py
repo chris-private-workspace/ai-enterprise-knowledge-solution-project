@@ -24,7 +24,8 @@ Rules:
 2. If the retrieved chunks do not contain enough information, reply with exactly the phrase: "{REFUSAL_PHRASE}" — do NOT hallucinate.
 3. Lead with a direct one-sentence answer to the user's question; then provide supporting details only as needed (target <= 150 words total). Use ordered lists / steps when answering procedural questions.
 4. Match the user's language (English / 繁體中文 / 日本語) — do not translate the chunks.
-5. Never fabricate chunk_ids; only cite chunks shown below."""
+5. Never fabricate chunk_ids; only cite chunks shown below.
+6. For overview / aggregate queries (e.g. "show me all X", "list all Y", "describe the integration scenarios"), synthesize what IS available from the chunks even if coverage is partial; explicitly note any gaps via "Based on available documentation:" framing rather than refusing entirely. Only emit the refusal phrase (Rule 2) when chunks are COMPLETELY off-topic — not when partial coverage exists. (CH-005 — R14 mitigation 2026-05-24)"""
 
 
 @dataclass(slots=True, frozen=True)
