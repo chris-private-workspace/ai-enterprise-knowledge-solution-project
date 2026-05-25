@@ -99,28 +99,48 @@ status: in-progress
 
 ---
 
-## Day 2 — 2026-05-25(planned)
+## Day 2 — 2026-05-25:F2 Step 2 top_k sweep 完成 + best combo emerged
 
 ### Done
 
-- (pending — F2 Step 2 top_k sweep 2 NEW runs + Step 2 analysis)
+- F2 A Step 2 active flip — 2 NEW runs holding max_tokens=2000 + dispatch_mode=append:
+  - **Run 2.A**(top_k=2)— 522s runtime / faith=**0.9786** / correctness=**0.7331** / p95_latency=**1061ms** / **Q-W25-I01 控制 PASS (0.69)** / Q-W25-I07 marginal MISS (0.61)
+  - **Run 2.B**(top_k=3)— first try hung 15+ min at silent RAGAs phase → user explicit 指示 restart + retry succeed 482s runtime / faith=0.9945 / correctness=**0.6821 CATASTROPHIC MISS 5.95pp** / **Q-W25-I01 控制 0.00 CATASTROPHIC** / Q-W25-I07 PASS
+- F2 B Step 2 analysis report `step2-top-k-sweep-W28-D2.md` ship — 7 sections / Three-way aggregate / Per-query critical / Per-run G1-G5 / W28 best combo / Operational lessons / F3 trigger evaluation
+- **W28 best combo emerged:Run 2.A (top_k=2, max_tokens=2000, dispatch_mode=append)** — 4 of 5 gates PASS:
+  - **G1 PASS** faith 0.9786 within [0.9651, 1.0]
+  - **G2 PASS** correctness 0.7331 within [0.7216, 0.7616]
+  - G3 marginal MISS 0.09pp(Q-W25-I07 answer_rel=0.61 — borderline judge variance per 7-run cross-config PASS/FAIL flip evidence)
+  - **G4 PASS** Q-W25-I01 control 0.69 ≥ 0.65 threshold
+  - **G5 PASS** latency 1061ms < 1500ms ideal(~63% reduction vs W27 baseline 2897ms)
+- Run 2.B 首 try 15+ min hung 異常 diagnosed:`make_ragas_evaluator` 喺 RAGAs judge phase 唔 emit structlog events;process actually 處理緊 silently 52 judge calls(13 × 4 metrics)
+- Recovery:TaskStop curl + uvicorn + kill python processes + restart fresh + retry succeed
+- **W28+ candidate logged**:`make_ragas_evaluator` 補 structlog stage emit(per query / per metric judge call progress)為 long-running eval debugging operability
 
 ### Decisions / OQ Resolved
 
-- (pending)
+- **W28 best combo locked**:Run 2.A (top_k=2, max_tokens=2000, dispatch_mode=append)
+- **top_k=2 sweet spot** ADR-0037 §2.1 trade-off empirically verified:top_k=1 coverage 不足(W26+W27 G1+G4 MISS)/ top_k=2 best balance(4/5 gates PASS)/ top_k=3 off-topic leak catastrophic(Q-W25-I01 control 0.00)
+- **F3 Step 3 TRIGGERED** per plan §2 F3 trigger condition(4 of 5 gates PASS qualifies)— cross-check dispatch_mode=replace at top_k=2, max_tokens=2000 比較 append vs replace at best combo
+- **NEW finding eval-to-eval variance Q-W25-I07 borderline**:跨 7 個 runs W26+W27+W28 PASS/FAIL flip 3 PASS / 4 FAIL(全部 borderline 0.60-0.70 區間)— judge LLM 非確定性 dominant signal,settings effect 次要
 
 ### Blockers
 
-- (pending)
+- 解決:Run 2.B 首 try 15+ min hung incident → restart pattern + W28+ candidate add structlog emit
 
 ### Actual vs Planned Effort
 
 | Deliverable | Planned (h) | Actual (h) | Variance |
 |---|---|---|---|
+| F2 A Step 2 — 2 NEW runs sequential | ~20 min eval | ~17 min(522 + 482 = 1004s ≈ 17 min)| -3 min |
+| F2 A Run 2.B first hung incident + diagnose + restart | 0(unexpected)| +15-20 min hung wait + 5 min restart | +20-25 min |
+| F2 B Step 2 analysis writeup | ~1h | ~1.5h(加 Q-W25-I07 7-run flip 證據 + Run 2.B hung diagnose docs)| +0.5h |
+
+**D2 actual**:~2.5h vs ~1.5h planned(+1h variance,主要 Run 2.B hung incident)
 
 ### Commits
 
-- (pending)
+- (pending F2 Step 2 commit `docs(eval): W28 F2 Step 2 top_k sweep — 2 NEW RAGAs runs / best combo Run 2.A (top_k=2, max_tokens=2000) / 4 of 5 gates PASS / top_k=3 over-aggregation catastrophic`)
 
 ---
 

@@ -47,17 +47,17 @@ last_updated: 2026-05-25
 
 ### A. Step 2 active flip — 2 NEW runs
 
-- [ ] **Run 2.A top_k=2**:`.env` 改 `PARENT_DOC_TOP_K=2`(holding `PARENT_DOC_MAX_TOKENS_PER_PARENT=<Step 1 best>` + dispatch_mode=append)+ uvicorn restart + POST /eval/run = output `step2-run-2a-metrics-W28-D2-raw.json`
-- [ ] **Run 2.B top_k=3**:`.env` 改 `PARENT_DOC_TOP_K=3` + uvicorn restart + POST /eval/run = output `step2-run-2b-metrics-W28-D2-raw.json`
+- [x] **Run 2.A top_k=2**:`.env` Edit `PARENT_DOC_TOP_K=2` + uvicorn restart + POST /eval/run = output `step2-run-2a-metrics-W28-D2-raw.json`(HTTP 200 / 522s runtime)
+- [x] **Run 2.B top_k=3**:`.env` Edit `PARENT_DOC_TOP_K=3` + uvicorn restart + POST /eval/run = output `step2-run-2b-metrics-W28-D2-raw.json`(first try hung 15+ min at silent RAGAs phase / killed + restart;retry HTTP 200 / 482s runtime)
 
 ### B. Step 2 analysis
 
-- [ ] Markdown report `step2-top-k-sweep-W28-D2.md` — 2 NEW runs aggregate metrics + cross-reference Step 1 top_k=1 best max_tokens combo + best combo pick by G1-G5 aggregate score(加 latency G5)
-- [ ] Hypothesis check:top_k 加大 是否擴大 multi-section coverage benefit 而唔 trigger off-topic leak regression?
+- [x] Markdown report `step2-top-k-sweep-W28-D2.md` — 7 sections / Three-way aggregate / Per-query critical / Per-run G1-G5 evaluation / W28 best combo Run 2.A / Operational lessons Run 2.B 15min hung / F3 trigger evaluation
+- [x] Hypothesis check:**top_k=2 sweet spot** between conservative top-1(coverage 不足)同 aggressive top-3(off-topic leak catastrophic — Q-W25-I01 0.00 + correctness 6.82 MISS 5.95pp);ADR-0037 §2.1 trade-off 條件 empirically verified
 
 ### C. Commit
 
-- [ ] Commit F2 Step 2 `docs(eval): W28 F2 Step 2 top_k sweep — 2 NEW RAGAs runs delta + best combo pick`
+- [ ] Commit F2 Step 2 `docs(eval): W28 F2 Step 2 top_k sweep — 2 NEW RAGAs runs / best combo Run 2.A (top_k=2, max_tokens=2000) / 4 of 5 gates PASS / top_k=3 over-aggregation catastrophic`
 
 ## F3 — Step 3 (optional) dispatch_mode cross-check
 
