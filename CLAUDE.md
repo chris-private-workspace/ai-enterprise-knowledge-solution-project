@@ -551,12 +551,23 @@ Example:`W01-foundation/`、`W02-multi-format-ingestion/`、`W04-crag-eval-shoot
 
 當你 reply 喺 chat 入面:
 
-- 用**繁體中文**回覆(team primary language)— **包括 markdown table heading / section heading / status word**(寫「下一步」唔係「Next」、「項目 / 狀態 / 已完成 / 待驗證」唔係「F / Status / Done / pending」、「驗證閘 / 已 tick」唔係「Verify gates / ticked」)。**只可保留原文**:程式碼識別符 / 檔案路徑 / API 端點 / commit hash / ADR 編號 / vendor 名。詳細 anti-pattern + 2026-05-18 empirical findings 見 memory `feedback_chinese_primary_replies.md`(用戶第二次提醒後 promote 至此 standing instruction 級別)
+- **繁體中文紀律 — Binding Strict Rule(同 H7 design fidelity 同層,user 4 次重複提醒後 escalate)**:
+  - **回覆語言**:繁體中文為主 — **包括 markdown table heading / section heading / status verdict word / narrative bullet lead / connector phrase**
+  - **唯一可以保留原文嘅 6 類**:(1) 程式碼識別符 (函式 / 類別 / 變數名 如 `emit_stage_metadata`) / (2) 檔案路徑 (`backend/generation/prompt_builder.py`) / (3) API 端點 (`/eval/run`) / (4) commit hash + branch 名 / (5) ADR / spec section 編號 (ADR-0038 / architecture.md §3.5 / H1-H7) / (6) vendor / 產品名 (Cohere / Azure AI Search / Next.js)
+  - **Phase Gate verdict 詞** (`PASS` / `FAIL` / `PARTIAL`) 可保留作 vendor convention,**但** narrative 描述要中文(寫「G1 通過」「G2 未達」「Phase Gate 部份通過」配合 verdict word,唔可以「G1 PASS within tolerance」全英文 sentence)
+  - **常違反 mapping**(必 translate):「Next」→「下一步」/ 「Status」→「狀態」/ 「Done」→「已完成」/ 「pending」→「待」/ 「ticked」→「已 tick」/ 「verdict」→「判決」/ 「hypothesis」→「假設」/ 「validated」→「驗證」/ 「refuted」→「反證」/ 「lessons learned」→「教訓」/ 「priority queue locked」→「優先順序鎖定」/ 「recovery」→「恢復」
+  - **Hard enforcement gate**(per memory `feedback_chinese_primary_replies.md` W27 D3 第 4 次違反 escalation):
+    - **每段 reply 之前** think:「呢段 reply 入面所有 non-code 英文 word 是否每個都喺 6 類保留範圍?」非保留範圍 → 立即 translate
+    - **每段 reply 完成後** 強制 final self-check — scan 全文,任何 non-code English phrase = violation
+    - **違反 binding level = H7 design fidelity** 同層 — task 未完(同「大概模仿」mockup 一樣係 broken project signal)
+    - Memory reset 唔再依賴 — **每段 reply** mandatory active self-check,session-internal drift 必須立即 catch
+  - **High-risk surface**(累積 4 次違反 surface):Phase closeout summary / Phase Gate verdict report / hypothesis re-evaluation / multi-section markdown reply 任何含 table + bullet + heading 嘅長文都係 high-risk → 寫呢類回覆要 *逐字* 自檢
+  - 詳細 anti-pattern + W22 D6 + W26 D5 + W27 D3 cumulative empirical findings 見 memory `feedback_chinese_primary_replies.md`
 - **唔好過度 disclaimer**(避免「嗱呢個都係要視乎情況...」呢類 hedging)
 - 重要決定要**明確 surface**,唔好 bury 喺長文最後
 - Code change 要**說明 what + why**,唔需要重複 code 內容
 - 引用 spec 要**標明 section**,e.g. `(per architecture.md §3.5)`
-- 遇到 H1–H6 hard constraint trigger,**第一句就要 STOP and explain**
+- 遇到 H1–H7 hard constraint trigger,**第一句就要 STOP and explain**
 
 當你寫 code:
 
@@ -641,6 +652,11 @@ EKP Tier 1 — Strict Mode
 ---
 
 **End of CLAUDE.md**
+**Version 2.0 — 2026-05-25 中文紀律 binding strict rule promote**(W27 D3 第 4 次違反觸發 user explicit「強調保持使用中文對答」request)。具體變動:
+- §11 Output / Communication Conventions 第 1 條 bullet rewrite — 由 single-line 描述 expand 為 **multi-section binding rule** 包含:6 類唯一可保留原文範圍 / Phase Gate verdict word 例外 / 常違反 mapping(Next/Status/Done/pending/ticked/verdict/hypothesis/validated/refuted/lessons learned/priority queue locked/recovery)/ **Hard enforcement gate**(每段 reply 之前 + 完成後 mandatory self-check) / **violation binding level = H7 design fidelity 同層**(broken project signal)/ memory reset 唔再依賴
+- §11 H1-H6 改 H1-H7(對齊 v1.7 H7 promotion)
+- Memory `feedback_chinese_primary_replies.md` append W27 D3 第 4 次違反 empirical findings(累積 4 次違反 surface catalog:Phase closeout summary / Phase Gate verdict / hypothesis re-evaluation / multi-section markdown reply)+ hard enforcement gate strengthening
+- **Why promote 至 binding strict 等同 H7**:user 重複 4 次提醒(2026-05-10 第 1 次 / 2026-05-18 W22 F6 第 2 次 / 2026-05-25 W26 第 3 次 / 2026-05-25 W27 第 4 次)+ explicit 要求「強調」+「commit and push」signals binding-level enforcement required;same pattern as v1.7 H7 design fidelity promotion(repeated reminder + explicit framing = elevation to hard constraint level)
 **Version 1.9 — 2026-05-19 W22 anti-pattern catalog amendments**(W23 F3 — 3 amendments based on W22 D1+D6+D7+D8+D9 5 個 anti-pattern empirical-finding cumulative cataloged 喺 memory `feedback_design_fidelity.md`)。具體變動:
 - §3.2 Frontend conventions 加 NEW bullet **CSS-first pivot baseline** — mockup `styles-mockup.css` 1073→1048 lines verbatim adoption(per W22 F1 mid-session pivot)係 visual layer baseline;shadcn/ui primitives 限 Radix a11y benefits(Dialog / DropdownMenu / Sheet / Toast / Tabs);Tailwind utility 限 one-off layout。原本「shadcn/ui only」+「Tailwind only」early framing under-represented actual approach;CSS-first baseline 係 W22 implementation reality
 - §10 加 NEW **R6** Pre-active-flip 5-step grep verification recursive scope — apply 唔單只 to code-at-active-flip-time,**也** to **plan-text itself** at plan kickoff;cite W22 D1(F4 ChatHeader)/ D8(F6 KB cluster)/ D9(F7 observability cluster)3 次 cumulative recursive catch evidence;recursive trigger:plan text 引用 pre-W{N-1} surface / naming / wording(common contamination source per W20→W22 inheritance)
