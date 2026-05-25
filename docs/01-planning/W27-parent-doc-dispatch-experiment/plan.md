@@ -4,7 +4,7 @@ name: "Parent-doc dispatch chain append-vs-replace experiment — W26 F2 G failu
 sprint_week: W27
 start_date: 2026-05-25
 end_date: 2026-05-25   # same-day collapse expected per W22-W26 AI compression pattern; will extend if R8 Azure-key-bound F2 G eval defers
-status: active
+status: closed_partial   # per ADR-0038 W27 F3 closeout 2026-05-25 D3 — G1+G4 marginal MISS by <1pp / G2+G3+G5 PASS / Phase Gate PARTIAL per plan §3 policy + Q4 measurement-experiment-fail-policy + Karpathy §1.3 surgical preserve default "replace"
 spec_refs:
   - architecture.md §3.1       # query pipeline (parent-doc post-Context Expander step per ADR-0037)
   - architecture.md §3.5       # ChunkRecord citation contract preservation
@@ -230,6 +230,7 @@ Carry-over from `W26-eval-driven-retrieval-tuning/progress.md` retro:
 |---|---|---|---|
 | 2026-05-25 | Initial plan | W27 kickoff post W26 PARTIAL closeout — Chris pick (a) dispatch chain append-vs-replace experiment + 3 AskUserQuestion Recommended picks(phase 命名 + Setting enum + Both-baseline G eval) | Chris |
 | 2026-05-25 | F0 R6 recursive grep verify Day 0 — ADR-0037 §229 dispatch chain wording vs `prompt_builder.py:55-59` 實作 verified 一致 = replace semantics(top-priority-wins `or` chain;top-1 anchor 嘅 `chunk_text` LLM 完全唔見);W26 D1.35 hypothesis「dispatch replace-vs-append architectural variable」accuracy 由 code reality 確認;**規模 estimate adjust upward** by ~30-70 LOC(~50 → ~80-120 LOC,反映 conditional rendering + 3-4 unit tests + 可選 observability emit field);**render strategy ambiguity surfaced** F1 D1 R6 sub-verify 待 verify(Option (i) single chunk header + `Parent section context:` delimiter sub-section per Karpathy §1.2 simplicity defaulting vs Option (ii) 2 chunk entries — 細節 F1 D1 active flip 前 lock)| W22 D9 plan-text-contamination prevention | AI(R6 recursive scope per CLAUDE.md §10 R6) |
+| 2026-05-25 | F3 closeout PARTIAL per ADR-0038 — Phase Gate G1+G4 marginal MISS by <1pp(faithfulness 0.9591 vs F1 [0.9651,1.0] / Q-W25-I01 control 0.64 vs ≥0.65)/ G2+G3+G5 PASS(correctness above F1 + Q-W25-I07 critical recovery + pytest 1060/0)/ D1.35 hypothesis re-evaluation H1+H4 validated + H2 partially confirmed + H3 refuted / Settings default preserve "replace" + W28+ candidates (b) `max_tokens_per_parent` sweep + (c) RAGAs orchestrator-aware tune elevated / `.env` cleanup W27 F2 marker block removed | W27 F2 G empirical eval delta two-baseline analysis(plan §3 G verdict policy + Q4 measurement-experiment-fail-policy)| Chris α pick PARTIAL closeout |
 
 ---
 

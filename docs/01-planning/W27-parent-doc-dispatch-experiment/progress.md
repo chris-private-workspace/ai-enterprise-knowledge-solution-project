@@ -2,7 +2,7 @@
 phase: W27-parent-doc-dispatch-experiment
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: in-progress
+status: closed_partial    # per ADR-0038 W27 F3 closeout 2026-05-25 D3 — Phase Gate PARTIAL per plan §3 policy
 ---
 
 # Phase W27 — Progress
@@ -159,28 +159,104 @@ status: in-progress
 
 ---
 
-## Day 3 — 2026-05-25(planned)
+## Day 3 — 2026-05-25:F3 closeout PARTIAL + cross-doc sync
 
 ### Done
 
-- (pending — F3 closeout + ADR amendment OR ADR-0038 + cross-doc sync)
+- **NEW ADR-0038 ship** — `docs/adr/0038-parent-doc-dispatch-append-mode-finding.md` Accepted documents:
+  - Phase Gate G1-G6 verdict PARTIAL(G1 + G4 marginal MISS by <1pp / G2 + G3 + G5 PASS)
+  - D1.35 hypothesis 4-axis re-evaluation:H1 + H4 validated / H2 partially confirmed(emerging primary residual)/ H3 refuted by Q-W25-I07 critical recovery
+  - Settings default preserve `parent_doc_dispatch_mode="replace"` per Q4 measurement-experiment-fail-policy + Karpathy §1.3 surgical
+  - W28+ candidate prioritization:(b) `max_tokens_per_parent` 4000→2000/1500 sweep [HIGHEST]+ (c) RAGAs orchestrator-aware tune per R-W26-2 [Second]+ (d) F3 query expansion standalone test [Third]
+  - 3 Alternatives rejected:Option B ADR-0037 amendment ship default flip(marginal regression vs F1 + latency +189% trade-off)/ Option C revert W27 F1 changes(erases D1.35 H4 empirical evidence + W28+ enabler lost)/ Option D silent default flip(R5 governance violation)
+- **`docs/adr/README.md` index sync** — ADR-0038 row append + footer next-NNNN 0038→0039 update
+- **`.env` cleanup** — W27 F2 marker block(3 lines)removed per ADR-0038 §Decision #3;`.env` reconstructed after PowerShell `Out-File -NoNewline` corrupted single-line incident(110 lines proper structure restored,**.env仍 gitignored 不入 commit per H5**)
+- **plan.md frontmatter** — `status: active → closed_partial` per Q4 measurement-experiment-fail-policy(W26 PARTIAL precedent)
+- **plan.md §7 Plan Changelog** — Day 3 closeout entry append documenting Phase Gate verdict + D1.35 hypothesis re-evaluation + W28+ priority
+- **checklist.md F3 + cross-cutting** — all `[x]` ticked / N/A items marked with reason
+- session-start.md §10 + §11 update + RISK_REGISTER R-W26-1 + COMPONENT_CATALOG C05 — (pending,batched into closeout commit)
 
 ### Decisions / OQ Resolved
 
-- (pending)
+- **F3 closeout pathway**:Phase Gate PARTIAL → **NEW ADR-0038 ship documents finding**(Settings default preserve "replace" — non-revert path per Q4 measurement-experiment-fail-policy)
+- **W28+ priority queue locked**:(b) `max_tokens_per_parent` sweep > (c) RAGAs orchestrator-aware tune > (d) F3 query expansion standalone test
+- No OQ resolved this Day
 
 ### Blockers
 
-- (pending)
+- 無 D3 blocker。`.env` corruption incident recovered cleanly(110 lines restored + W27 marker cleanup confirmed via `grep -c`=0)
 
 ### Actual vs Planned Effort
 
 | Deliverable | Planned (h) | Actual (h) | Variance |
 |---|---|---|---|
+| F3 A ADR-0038 ship + README index sync | ~1.5 | ~1 | -0.5 |
+| F3 B plan/checklist/progress cross-doc sync | ~1 | ~0.7 | -0.3 |
+| F3 C `.env` cleanup + reconstruction incident | ~0.2 | ~0.5 | +0.3(PowerShell `Out-File -NoNewline` corrupt incident + Write tool restoration 110 lines per W25 D2.4 newline-handling-on-Windows lesson)|
+
+**D3 actual**:~2.2h vs ~2-3h planned
 
 ### Commits
 
-- (pending)
+- (pending F3 closeout commit `docs(planning): W27 closeout PARTIAL — F2 G append mode marginal MISS G1+G4 / critical recovery G3 (Q-W25-I07) / ADR-0038 ship + cross-doc sync`)
+
+---
+
+## Retro(填於 phase 結束)
+
+### What worked
+
+- **Same-day collapse pattern preserved**(~25-30× real-calendar collapse per W22-W26 pattern):~3 actual days condensed across 2026-05-25(F0 + F1 + F2 + F3 same-day)
+- **R6 recursive verify Day 0 surfaced 2 findings upfront**:scale estimate adjust(~50→80-120 LOC)+ render strategy ambiguity(Option (i) vs (ii))= prevents W22 D9 plan-text-contamination + W23+ post-fact patching
+- **Both-baseline comparison(F1 + W26 F2 G)**delivered cleanest signal:append mode +5.76pp faithfulness vs replace + Q-W25-I07 critical recovery = unambiguous D1.35 H4 validation
+- **Karpathy §1.2 simplicity preserved**:single-variable experiment scope(只測 dispatch_mode `replace` vs `append`)+ Option (i) render strategy(single chunk header vs 2 entries)= clean isolated signal
+- **W26 F2 G existing 7 dispatch tests preserved bit-identical**:`dispatch_mode="replace"` default 嘅 backward-compat assured;regression-guard 全 11 tests PASS post-W27 changes
+- **`get_settings()` lru_cached singleton wire pattern**:synthesizer.py 2 sites surgical change(Karpathy §1.3 — no Synthesizer constructor signature change,no ripple to 11 callers)
+
+### What didn't work / unexpected friction
+
+- **uvicorn entry point confusion**:initial `python -m uvicorn api.server:app` failed with `psycopg.InterfaceError ProactorEventLoop` — Windows ProactorEventLoop × psycopg async incompatibility per W22 D8 stale pattern;correct entry per `api/server.py:343` comment = `python -m api.server`(bypasses uvicorn.Server.run() → uses asyncio.run + SelectorEventLoop)。Recovery <5min once read code comment but surfaces W22 D8 setup.md §8.6 limitation:operational workflow doc未 mention correct entry point(W23 §8.6 + §8.7 cover process kill + test infra but not entry)
+- **HTTP 401 unauthorized on /eval/run**:initial POST failed without Authorization header;`FEATURE_AUTH_MOCK=true` already in `.env` so just need Bearer `dev-token` — recovery <2min but surfaces operational gap:dev-token Bearer pattern 未 documented 喺 evaluator API contract
+- **`.env` PowerShell corruption incident**:`Out-File -NoNewline` 連 newline 都 strip 咗,將 `.env` 110 lines collapsed 到 1 line。Recovery via Write tool with Read-recovered content(W25 D2.4 PowerShell newline-handling lesson 重演 — `-NoNewline` flag 危險!)。Future:`.env` 修改用 Add-Content append-only OR Python `\n.join()` rebuild,**唔可以**用 `Out-File -NoNewline`
+
+### Surprises / discoveries
+
+- **Q-W25-I07 critical synthesizer recovery**(W26 F2 G 0.00/0.00 → W27 PASS):直接 empirical proof of D1.35 H1 citation invariant breakage hypothesis;append mode preserving anchor chunk_text 喺 LLM input = RAGAs faithfulness judge mismatch eliminated for this query class
+- **recall_at_5 +1.92pp unexpected positive**:retrieval-side metric 應該不變(append 只改 LLM prompt rendering),但 W27 0.8936 vs F1+W26 F2 G 0.8744 — likely eval set 量度 嘅 query-class distribution shift(possibly Q-W25-I07 unblocks pass criteria that affects aggregate stat)— need W28+ Setting sweep cross-check
+- **p95_latency +189% trade-off**:2-segment LLM input + 30-40% token growth per query → directly trade off latency vs faithfulness recovery;若 W28+ (b) `max_tokens_per_parent` 4000→1500 sweep close latency gap = potentially close G1 + G4 marginal MISS 同時
+- **H3 chunk_id drift refuted**:Q-W25-I07 PASS in append mode proves W26 F2 G 嘅 0.00 source 係 citation invariant breakage(LLM cite parent siblings outside top-5),not chunk_id drift。Refined hypothesis ceiling clearer for W28+ design
+
+### Carry-overs to W28+
+
+- **(b) `max_tokens_per_parent` 4000→2000/1500 sweep [HIGHEST priority]** — H2 attention dilution direct intervention + latency reduction;~3-5 days plan estimate
+- **(c) RAGAs orchestrator-aware judge tune per R-W26-2 [Second]** — H1+H2 address from judge side(judge consume parent_section_text reference);~5-7 days plan estimate
+- **(d) F3 query expansion standalone test per ADR-0034 [Third]** — orthogonal axis;~3 days
+- **W27 F1 infrastructure preserved as W28+ enabler**:Setting + branch + 4 NEW unit tests 全部 ship 保留;default OFF state means production behavior unchanged
+- **W28+ NOT pre-created per rolling JIT(CLAUDE.md §10 R1)**;next session 由 user 揀 candidate
+- **BUG-027 `/health._check_cohere` engine.reranker private attr drift** — W26 D1 cosmetic surfaced again at W27 D2;W28+ Sev3-4 BUG-fix candidate
+- **W22 D8 setup.md §8.6 update candidate**:加 row 解釋 uvicorn correct entry point `python -m api.server`(NOT `python -m uvicorn`)on Windows per ADR-0023 psycopg async incompatibility — operational workflow doc completion
+
+### ADR triggers
+
+- ✅ **ADR-0038 ship**(2026-05-25 D3)— parent-doc dispatch append-mode finding;Settings default preserve "replace" per Q4 measurement-experiment-fail-policy;W28+ candidates (b) + (c) elevated
+- N/A ADR-0037 amendment — not triggered(marginal MISS 唔達 measurable significant win threshold per ADR-0017 5-amendment precedent;append mode 可 W28+ (b) PASS 後再評估)
+
+### Phase Gate result
+
+- **G1**:⚠️ **MARGINAL MISS 0.6pp** — faithfulness 0.9591 vs F1 ±2pp [0.9651, 1.0]
+- **G2**:✅ **PASS** — correctness 0.7594 within [0.7216, 0.7616] + above F1 baseline
+- **G3**:✅ **PASS** — Q-W25-I07 out of failed_queries(critical synthesizer recovery from W26 F2 G 0.00/0.00)
+- **G4**:⚠️ **MARGINAL MISS 0.01pp** — Q-W25-I01 control answer_relevancy 0.64 vs F1 ≥ 0.65 effective
+- **G5**:✅ **PASS** — pytest 1060 + 25 skipped + 0 failed / ruff clean / dispatch tests 11/11 / mypy delta 0(18 pre-existing W26 baseline errors per CO_W25_mypy_strict_debt 維持)
+- **G6**:✅ **PASS** — measurement-experiment-fail-policy applied(Settings default preserve "replace" 唔觸 revert per ADR-0038 §Decision #1)
+
+**Aggregate verdict**:**Phase Gate PARTIAL** per plan §3 policy(G1 + G4 marginal MISS by <1pp each → ADR-0038 new ship + W28+ candidates (b) + (c) elevated)
+
+### Phase status
+
+- Closeout commit:(pending — F3 cascade pending session-start.md + RISK_REGISTER + COMPONENT_CATALOG sync)
+- Frontmatter status flipped to:`closed_partial`(per Q4 measurement-experiment-fail-policy + W26 PARTIAL precedent)
+- Phase W28+ kickoff trigger:next session user picks (b) `max_tokens_per_parent` sweep OR (c) RAGAs orchestrator-aware tune OR (d) F3 query expansion standalone test(rolling JIT per CLAUDE.md §10 R1)
 
 ---
 

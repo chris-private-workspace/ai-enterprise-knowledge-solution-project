@@ -1,7 +1,7 @@
 ---
 phase: W27-parent-doc-dispatch-experiment
 plan_ref: ./plan.md
-status: in-progress
+status: complete    # per ADR-0038 W27 F3 closeout 2026-05-25 D3 — Phase Gate PARTIAL per plan §3 policy
 last_updated: 2026-05-25
 ---
 
@@ -94,45 +94,43 @@ last_updated: 2026-05-25
 
 ### A. ADR governance per G result
 
-- [ ] G result determination — G3 + G4 雙 PASS OR 任一 FAIL?
-- [ ] **若 PASS** → ADR-0037 amendment per ADR-0017 5-amendment precedent:
-  - [ ] Status「Accepted」→「Accepted; amended 2026-05-25 W27 F3 per dispatch chain append-vs-replace experiment」
-  - [ ] NEW "Amendment 2026-05-25 W27 F3 — append dispatch chain" section
-  - [ ] §6.4 Q-NEW append-vs-replace decision documented
-  - [ ] `parent_doc_dispatch_mode` default flip "replace" → "append" — Settings 改值 + tests update
-- [ ] **若 FAIL** → NEW ADR-0038 ship:
-  - [ ] `docs/adr/0038-parent-doc-dispatch-append-mode-no-improvement.md` — Accepted status documents finding + W27+ candidates (b) Setting sweep + (c) RAGAs orchestrator-aware tune elevated as W28+ priority
-  - [ ] `docs/adr/README.md` index sync(row + footer next-NNNN 0038→0039)
+- [x] G result determination — **PARTIAL**(G1 + G4 marginal MISS by <1pp / G2 + G3 + G5 PASS)
+- [N/A] PASS path ADR-0037 amendment — not triggered per Q4 measurement-experiment-fail-policy(marginal MISS treats same as full FAIL,唔觸 revert/flip per Karpathy §1.3 surgical)
+- [x] **NEW ADR-0038 ship**:
+  - [x] `docs/adr/0038-parent-doc-dispatch-append-mode-finding.md` — Accepted status documents D1.35 hypothesis 4-axis re-evaluation(H1 + H4 validated / H2 partially confirmed / H3 refuted)+ Settings default preserve "replace" per Q4 + W28+ candidates (b) + (c) elevated as highest signal-to-cost priority
+  - [x] `docs/adr/README.md` index sync — row append + footer next-NNNN 0038→0039 update
 
 ### B. Cross-doc sync per CLAUDE.md §10 R3 + R5 + R6
 
-- [ ] plan.md frontmatter `status: draft → closed`(若 PASS)OR `closed_partial`(若 FAIL — measurement-experiment-fail-policy applicable per W26 PARTIAL precedent)
-- [ ] checklist.md cross-cutting 全 tick + 標明 deferred items per 🚧 reason
-- [ ] progress.md retro 7-section + Phase Gate G1-G6 result + What worked / What didn't / Surprises / Carry-overs to W28+ / ADR triggers
-- [ ] session-start.md §10 timeline row update(W27 closed / closed_partial status)
-- [ ] session-start.md §11 W27 CLOSED block prepend(若 PASS)OR W27 PARTIAL closed_partial block prepend(若 FAIL — per W26 PARTIAL precedent)
-- [ ] RISK_REGISTER R-W26-1 update — status flip per result(Mitigated 若 PASS / Confirmed-hypothesis-rejected 若 FAIL — W27+ candidates (b) + (c) elevated)
-- [ ] COMPONENT_CATALOG.md C05 status note 1-line append:「W27 F3 dispatch_mode `replace|append` enum landed;default per G result」
+- [x] plan.md frontmatter `status: active → closed_partial` per Q4 measurement-experiment-fail-policy(W26 PARTIAL precedent)
+- [x] checklist.md cross-cutting 全 tick + N/A items 標明 reason
+- [x] progress.md retro 7-section landed:What worked / What didn't / Surprises / Carry-overs to W28+ / ADR triggers / Phase Gate G1-G6 result
+- [x] session-start.md §10 timeline row update — W27 row `🟡 active` → `✅ closed_partial 2026-05-25` + W28+ row priority queue update
+- [x] session-start.md §11 W27 PARTIAL closed_partial block prepended above W26 CLOSED block(per W26 PARTIAL precedent)
+- [x] RISK_REGISTER R-W26-1 + R-W26-2 update — H1 + H4 validated → R-W26-1 PARTIAL MITIGATED + R-W26-2 PARTIAL DECAY;W28+ candidates (b) + (c) elevated
+- [x] COMPONENT_CATALOG.md C05 status note 1-line append:W27 F1 dispatch_mode enum landed + default "replace" preserved per ADR-0038 measurement-experiment-fail-policy + W28+ priority queue (b)+(c)+(d) summary
 
 ### C. Measurement-experiment-fail-policy applicable per Q4
 
-- [ ] 若 G result FAIL → Settings default preserve "replace" + `enable_parent_doc_retrieval=False` 唔觸 revert per Karpathy §1.3 surgical(同 W26 F2 G FAIL precedent)
-- [ ] 若 G result PASS → Settings default flip "replace" → "append" via ADR-0037 amendment per ADR-0017 5-amendment precedent
+- [x] Settings default preserve "replace" per Karpathy §1.3 surgical(同 W26 F2 G FAIL precedent)— ADR-0038 §Decision #1 governs
+- [N/A] PASS path Settings default flip — not triggered(marginal MISS treats same as FAIL)
+- [x] `.env` cleanup — W27 F2 marker block(3 lines `# W27 F2 active flip` + `ENABLE_PARENT_DOC_RETRIEVAL=true` + `PARENT_DOC_DISPATCH_MODE=append`)removed per ADR-0038 §Decision #3
+- [x] `enable_parent_doc_retrieval` default preserve `False`(unchanged from ADR-0037 Q4 lock)
 
 ### D. Commit
 
-- [ ] Commit F3 closeout `docs(planning): W27 closeout {PASS|PARTIAL} — F2 G append mode {success|failure} + ADR-0037 {amendment|0038 supersede} + cross-doc sync`
+- [x] Commit F3 closeout `docs(planning): W27 closeout PARTIAL — F2 G append mode marginal MISS G1+G4 / critical recovery G3 (Q-W25-I07) / ADR-0038 ship + cross-doc sync`(pending — about to execute)
 
 ---
 
 ## Cross-Cutting
 
-- [ ] All deliverables committed to git
-- [ ] All OQ status changes reflected in `docs/decision-form.md`(若 任何 OQ resolved this phase — 預期無)
-- [ ] All architectural-adjacent decisions documented as ADR(per CLAUDE.md §5.1 H1)— ADR-0037 amendment OR ADR-0038
-- [ ] `progress.md` retro section written
-- [ ] `progress.md` frontmatter status flipped to `closed` OR `closed_partial`
-- [ ] Phase W28+ kickoff trigger noted in retro
+- [x] All deliverables committed to git(F0 kickoff `5a6aab5` + F0 active flip `1df7570` + F1 implementation `50b1db5` + F2 G eval `0dffd87` + F3 closeout commit pending)
+- [N/A] All OQ status changes reflected in `docs/decision-form.md` — no OQ resolved this phase
+- [x] All architectural-adjacent decisions documented as ADR — **NEW ADR-0038** ship documents finding(per CLAUDE.md §5.1 H1 + ADR-0017 5-amendment precedent threshold not met → new ADR over amendment)
+- [x] `progress.md` retro section written(7-section + Phase Gate G1-G6 result + What worked / What didn't / Surprises / Carry-overs / ADR triggers / Phase status)
+- [x] `progress.md` frontmatter status flipped to `closed_partial`(per W26 PARTIAL precedent + Q4 measurement-experiment-fail-policy)— pending closeout commit
+- [x] Phase W28+ kickoff trigger noted in retro — (b) `max_tokens_per_parent` sweep HIGHEST + (c) RAGAs orchestrator-aware tune Second + (d) F3 query expansion standalone test Third
 
 ---
 
