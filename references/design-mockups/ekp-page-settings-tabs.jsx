@@ -227,7 +227,7 @@ function SettingsConnections() {
       icon: IcActivity,
       providers: [
         {
-          id: "langfuse", name: "Langfuse", role: "9-stage trace + cost telemetry · self-hosted",
+          id: "langfuse", name: "Langfuse", role: "10-stage trace + cost telemetry · self-hosted",
           endpoint: "https://langfuse.ekp-beta.ricoh.com",
           region: "Self-hosted (Container Apps)",
           status: "healthy",

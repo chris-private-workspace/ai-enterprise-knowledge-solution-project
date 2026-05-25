@@ -258,7 +258,7 @@ function PageLabsAgents({ onNavigate }) {
         <LabsHeader
           icon={IcCpu}
           title="Multi-Agent Orchestration"
-          subtitle="Replaces single CRAG loop with specialized agents (planner / retriever / verifier / synthesizer / critic). Each agent's sub-trace is collapsible in the 9-stage view."
+          subtitle="Replaces single CRAG loop with specialized agents (planner / retriever / verifier / synthesizer / critic). Each agent's sub-trace is collapsible in the 10-stage view."
           slot="plugs into C05 Generation (L4+ orchestration layer; interface unchanged)"
         />
 

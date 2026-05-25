@@ -373,7 +373,7 @@ function CommandPalette({ open, onClose, onNavigate }) {
     { label: "Chat",       hint: "Ask the knowledge base",            go: () => onNavigate("chat"),      icon: IcChat },
     { label: "Knowledge",  hint: "All KBs",                           go: () => onNavigate("kb"),        icon: IcDatabase },
     { label: "Eval",       hint: "RAGAs metrics · reranker shootout", go: () => onNavigate("eval"),      icon: IcActivity },
-    { label: "Traces",     hint: "9-stage Langfuse debug view",       go: () => onNavigate("traces"),    icon: IcLayers },
+    { label: "Traces",     hint: "10-stage Langfuse debug view",      go: () => onNavigate("traces"),    icon: IcLayers },
     { label: "Settings",   hint: "Profile · theme · sign out",        go: () => onNavigate("settings"),  icon: IcSettings },
   ];
   const kbs = window.MOCK_KBS.map((kb) => ({

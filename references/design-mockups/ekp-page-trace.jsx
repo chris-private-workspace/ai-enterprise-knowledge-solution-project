@@ -1,5 +1,7 @@
-// ekp-page-trace.jsx — /traces/[traceId] per §5.7 + ADR-0020 Debug View
-// 9-stage Langfuse trace with per-stage duration + cost + details
+// ekp-page-trace.jsx — /traces/[traceId] per §5.7 + ADR-0020 Debug View + ADR-0037 W26 F2
+// 10-stage Langfuse trace with per-stage duration + cost + details
+// (Stage 08 Parent-Document Retriever inserted between Context Expander + LLM Synthesis
+// per ADR-0037 §Q5 Option A explicit insert; pre-W26 F2 baseline was 9 stages)
 // 3 viz modes: vertical (default) / waterfall / flame
 
 function PageTrace({ tweaks, onNavigate }) {
@@ -41,13 +43,13 @@ function PageTrace({ tweaks, onNavigate }) {
                 <span className="badge-dot" /> OK
               </span>
             </div>
-            <div className="stat-meta">all 9 stages passed</div>
+            <div className="stat-meta">all 10 stages passed</div>
           </div>
         </div>
 
         {/* Viz mode selector */}
         <div className="row" style={{ marginBottom: 12 }}>
-          <h3 className="card-title">9-stage pipeline</h3>
+          <h3 className="card-title">10-stage pipeline</h3>
           <div className="spacer" />
           <span className="text-xs muted">Visualization →</span>
           <div className="seg">
@@ -305,8 +307,8 @@ function TraceFlame({ trace, expanded, setExpanded }) {
     { name: "Preprocessing", stages: [0, 1],         color: "oklch(0.65 0.10 240)" },
     { name: "Retrieval",     stages: [2, 3],         color: "oklch(0.62 0.13 200)" },
     { name: "CRAG",          stages: [4, 5],         color: "oklch(0.65 0.18 25)" },
-    { name: "Context",       stages: [6],            color: "oklch(0.65 0.14 145)" },
-    { name: "Synthesis",     stages: [7, 8],         color: "oklch(0.60 0.16 285)" },
+    { name: "Context",       stages: [6, 7],         color: "oklch(0.65 0.14 145)" },
+    { name: "Synthesis",     stages: [8, 9],         color: "oklch(0.60 0.16 285)" },
   ];
 
   return (
@@ -418,7 +420,7 @@ function PageTracesList({ onNavigate, tweaks }) {
         <div className="page-header">
           <div>
             <h1 className="page-title">Traces</h1>
-            <p className="page-subtitle">Every <span className="mono">/query</span> call generates a 9-stage Langfuse trace. Correlated by <span className="mono">trace_id</span>.</p>
+            <p className="page-subtitle">Every <span className="mono">/query</span> call generates a 10-stage Langfuse trace. Correlated by <span className="mono">trace_id</span>.</p>
           </div>
           <div className="page-actions">
             <button className="btn btn-secondary btn-sm"><IcFilter size={13} /> Filter</button>

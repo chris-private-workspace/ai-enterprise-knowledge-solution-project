@@ -2,7 +2,7 @@
 
 /**
  * V6 Traces (`/traces/[traceId]`) — per architecture.md v6 §5.7 +
- * `references/design-mockups/ekp-page-trace.jsx:5 PageTrace`.
+ * `references/design-mockups/ekp-page-trace.jsx:5 PageTrace` + ADR-0037 W26 F2.
  *
  * W22 F7.3 (2026-05-18 D5) — complete rewrite for mockup fidelity per
  * CLAUDE.md §5.7 H7. Pre-W22 W18 9-stage Collapsible pattern (533 lines)
@@ -14,14 +14,22 @@
  *     (per W22 D9.c — no `frontend/components/traces/` extraction)
  *   - FinalResponseCard
  *
+ * W26 F2.12 (2026-05-25) — 9→10 stage expansion per ADR-0037 §Q5 Option A
+ * explicit insert. NEW stage 8 "Parent-Document Retriever" inserted between
+ * Context Expander + LLM Synthesis. Mockup `ekp-page-trace.jsx` + `ekp-data.jsx`
+ * MOCK_TRACE synced at same time (mockup is single source of truth — H7 fidelity
+ * preserved by mirroring updated mockup 100%, not approximating). Context category
+ * extended to `[6, 7]` covering both Context Expander + Parent-Document Retriever
+ * (both are post-rerank chunk-aggregation steps).
+ *
  * Viz mode persistence: localStorage `ekp-trace-viz-mode` SSR-safe useEffect
  * read pattern (per W15 D3 conversation-history precedent); mockup
  * `tweaks.traceViz` window-level convention not applicable to Next.js prod.
  *
- * Backend integration preserved: `debugApi.getTrace` + 9-stage `bucketObservations`
- * conceptual mapping unchanged. Backend `TraceDetail.stages[]` is a flat list of
- * raw Langfuse observations; the view maps each onto one of the 9 architecture.md
- * §5.7 stages via name-prefix matching (`PIPELINE_STAGES` below).
+ * Backend integration preserved: `debugApi.getTrace` + 10-stage `bucketObservations`
+ * conceptual mapping. Backend `TraceDetail.stages[]` is a flat list of raw Langfuse
+ * observations; the view maps each onto one of the 10 architecture.md §5.7 stages
+ * (extended via ADR-0037) via name-prefix matching (`PIPELINE_STAGES` below).
  *
  * Backend-wins fallback per CLAUDE.md §13 / W22 D9 for fields the schema doesn't
  * expose (mockup `trace.query`, `trace.user`, `trace.kb_id`, `trace.total_cost_usd`,
@@ -52,7 +60,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { DisabledAffordance } from '@/components/ui/disabled-affordance';
 import { debugApi, type TraceDetail, type TraceStage } from '@/lib/api/debug';
 
-// --- 9 conceptual pipeline stages per architecture.md v6 §5.7 ----------------
+// --- 10 conceptual pipeline stages per architecture.md v6 §5.7 + ADR-0037 ----
 interface PipelineStage {
   id: number;
   name: string;
@@ -115,13 +123,20 @@ const PIPELINE_STAGES: PipelineStage[] = [
   },
   {
     id: 8,
+    name: 'Parent-Document Retriever',
+    description: 'Aggregates top-1 anchor\'s section_path siblings into parent_section_text for LLM context (architecture.md §3.1, ADR-0037 W26 F2; flag-gated default OFF)',
+    obsPrefixes: ['generation.parent_doc_retrieval'],
+    note: 'Only emits a span when enable_parent_doc_retrieval=True (measurement experiment per ADR-0037 Q4).',
+  },
+  {
+    id: 9,
     name: 'LLM Synthesis',
     vendor: 'gpt-5.5',
     description: 'Synthesize answer with citations + refusal logic for out-of-scope queries',
     obsPrefixes: ['synthesizer.synthesize', 'api.query.stream'],
   },
   {
-    id: 9,
+    id: 10,
     name: 'Final Response',
     description: 'End-to-end orchestration aggregate — citation linking, cost, Langfuse trace publish',
     obsPrefixes: ['api.query'],
@@ -513,7 +528,7 @@ export default function TraceDetailPage({
 
         {/* Viz mode selector */}
         <div className="row" style={{ marginBottom: 12 }}>
-          <h3 className="card-title">9-stage pipeline</h3>
+          <h3 className="card-title">10-stage pipeline</h3>
           <div className="spacer" />
           <span className="text-xs muted">Visualization →</span>
           <div className="seg" role="tablist">
@@ -1225,8 +1240,8 @@ function TraceFlame({
     { name: 'Preprocessing', stageIds: [1, 2], color: 'oklch(0.65 0.10 240)' },
     { name: 'Retrieval', stageIds: [3, 4], color: 'oklch(0.62 0.13 200)' },
     { name: 'CRAG', stageIds: [5, 6], color: 'oklch(0.65 0.18 25)' },
-    { name: 'Context', stageIds: [7], color: 'oklch(0.65 0.14 145)' },
-    { name: 'Synthesis', stageIds: [8, 9], color: 'oklch(0.60 0.16 285)' },
+    { name: 'Context', stageIds: [7, 8], color: 'oklch(0.65 0.14 145)' },
+    { name: 'Synthesis', stageIds: [9, 10], color: 'oklch(0.60 0.16 285)' },
   ];
 
   const stageById = new Map(stages.map((s) => [s.id, s]));

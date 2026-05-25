@@ -125,7 +125,9 @@ const MOCK_CHUNKS = [
   { chunk_id: "ch_drive_156_e7", doc_id: "d365_fno_sc_v2.0",  doc_title: "Supply Chain Management — Master Setup v2.0", chunk_title: "Item Master — Storage Dimension Group", chunk_index: 33, section_path: ["SCM", "Item Master", "Dimensions", "Storage"], score: 0.8492, source: "BM25", rerank_delta: +1, chunk_text_preview: "Storage dimension groups govern how inventory is tracked across **site / warehouse / location / pallet / batch**. Once an item posts an inventory transaction, the dimension group is **locked**; changing it requires the inventory-reset utility and an audit log entry.", embedded_images: 0 },
 ];
 
-// 9-stage Langfuse trace per backend/api/schemas/observability.py + §5.7
+// 10-stage Langfuse trace per backend/api/schemas/observability.py + §5.7 +
+// ADR-0037 W26 F2 (Parent-Document Retriever stage 08 inserted between Context
+// Expander + LLM Synthesis; pre-W26 F2 baseline was 9 stages without stage 08)
 const MOCK_TRACE = {
   trace_id: "trace_2026_05_15_a7f4b2c1",
   trace_url: "https://langfuse.ekp-beta.ricoh.com/trace/2026_05_15_a7f4b2c1",
@@ -150,8 +152,9 @@ const MOCK_TRACE = {
     { name: "05 CRAG Confidence Judge", type: "GENERATION", latency_ms: 612, cost_usd: 0.0042, model: "gpt-5.5-pro", input_tokens: 1842, output_tokens: 28, status: "ok", details: { confidence: 0.61, threshold: 0.70, sticky: false, verdict: "RE_RETRIEVE" } },
     { name: "06 Re-retrieve (CRAG L2)", type: "SPAN", latency_ms: 284, cost_usd: 0.0003, status: "ok", details: { strategy: "query_decomposition", new_chunks: 3, replaced: 2, expanded_count: 5 } },
     { name: "07 Context Expander", type: "SPAN", latency_ms: 182, cost_usd: 0.0001, status: "ok", details: { expanded_count: 5, boundary_skip_count: 1, fetch_latency_ms: 142 } },
-    { name: "08 LLM Synthesis", type: "GENERATION", latency_ms: 1842, cost_usd: 0.0198, model: "gpt-5.5", input_tokens: 6212, output_tokens: 488, status: "ok", details: { temperature: 0.2, citations_generated: 5, has_refusal_token: false } },
-    { name: "09 Final Response", type: "SPAN", latency_ms: 170, cost_usd: 0.0012, status: "ok", details: { embedded_image_count: 2, screenshot_attach_count: 0, citation_validate_passed: 5 } },
+    { name: "08 Parent-Document Retriever", type: "SPAN", latency_ms: 95, cost_usd: 0, status: "ok", details: { requested_anchors: 1, parents_fetched: 1, siblings_aggregated: 12, truncated_count: 0, skipped_shallow_count: 0, fetch_latency_ms: 85 } },
+    { name: "09 LLM Synthesis", type: "GENERATION", latency_ms: 1842, cost_usd: 0.0198, model: "gpt-5.5", input_tokens: 6212, output_tokens: 488, status: "ok", details: { temperature: 0.2, citations_generated: 5, has_refusal_token: false } },
+    { name: "10 Final Response", type: "SPAN", latency_ms: 170, cost_usd: 0.0012, status: "ok", details: { embedded_image_count: 2, screenshot_attach_count: 0, citation_validate_passed: 5 } },
   ],
 };
 

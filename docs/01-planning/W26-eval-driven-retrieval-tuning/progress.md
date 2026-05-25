@@ -492,3 +492,92 @@ last_updated: 2026-05-25
 ---
 
 **End of Day 1 cont 4 entry** — F2 pipeline 整合 4 sites 完成(prompt_builder + crag.py + query.py × 2 + retrieval_engine.py wrapper)+ 7 NEW dispatch tests(32/32 W26 F2 全套 pass)+ mypy 0 delta + ruff clean。F2.12 V6 Debug View 10-stage 為下一個 atomic piece(前端 H7 fidelity 自驗範圍)。
+
+---
+
+## Day 1 cont 5 — 2026-05-25:F2.12 V6 Debug View 9→10-stage + mockup sync
+
+> **日曆連續性**:同日 5th session 段;前 4 段 push 到 `origin/main` `289126e`(backend 整合完整、全 regression 1056 綠)。本段 scope = ADR-0037 §Implementation Deliverables E 範圍嘅前端最後一片 — V6 Debug View 9→10 stage card insert + 對應 mockup spec sync。
+
+### Trigger 順序
+
+1. **H7 trigger surface**:讀 mockup `ekp-page-trace.jsx` + `ekp-data.jsx` 發現 mockup 字面係 9-stage(line 2 comment + line 50 title + line 44 stat-meta + line 421 subtitle + line 305-309 categories `Preprocessing [0,1] / Retrieval [2,3] / CRAG [4,5] / Context [6] / Synthesis [7,8]`)。
+2. **STOP and ask**:依 CLAUDE.md §5.7 H7,前端 implementation 必須 100% reproduce mockup;直接喺 page.tsx 加第 10 stage 而 mockup 字面仍 9 = mockup 字面偏離 = H7 violation 風險。Surface 三方案俾用戶揀。
+3. **Chris 揀方案 (2)**:**先 sync mockup 9→10-stage,然後 page.tsx 100% mirror updated mockup**(完整 H7 fidelity 路徑;類比 ADR-0024 W18 IA flip 反向 sync `architecture.md v6 §5` 既有 governance pattern)。
+
+### 完成項目
+
+**1. Mockup 9→10-stage sync(7 files)**:
+- **`references/design-mockups/ekp-page-trace.jsx`**:line 2 comment + line 44 stat-meta + line 50 title + line 304-310 categories(Context `[6]` → `[6, 7]` + Synthesis `[7, 8]` → `[8, 9]`)+ line 421 page-subtitle — 全部「9-stage」→「10-stage」+ NEW stage 08 Parent-Document Retriever ADR-0037 §Q5 Option A explicit reference
+- **`references/design-mockups/ekp-data.jsx`** MOCK_TRACE:line 128-130 comment 注明 ADR-0037 W26 F2 + 「pre-W26 F2 baseline was 9 stages」歷史 context comment 保留作 traceability;line 152 NEW stage`08 Parent-Document Retriever`sample data(`type:"SPAN"`,`latency_ms:95`,`cost_usd:0`,`details:{ requested_anchors:1, parents_fetched:1, siblings_aggregated:12, truncated_count:0, skipped_shallow_count:0, fetch_latency_ms:85 }`)+ 既有 line 153「08 LLM Synthesis」renumber「09 LLM Synthesis」+ line 154「09 Final Response」renumber「10 Final Response」
+- **`references/design-mockups/DESIGN_README.md`** line 55:page-trace.jsx description「9-stage Langfuse trace」→「10-stage Langfuse trace(...;stage 08 Parent-Document Retriever per ADR-0037 W26 F2)」
+- **`references/design-mockups/EKP Platform.html`** line 223:`<TweakSection label="Trace 9-stage">` → `<TweakSection label="Trace 10-stage">`
+- **`references/design-mockups/ekp-page-auth.jsx`** lines 226 + 232:hero strings「9-stage trace」+「9-stage Langfuse trace per query」→「10-stage」
+- **`references/design-mockups/ekp-page-labs-1.jsx`** line 261:labs Multi-Agent subtitle「9-stage view」→「10-stage view」
+- **`references/design-mockups/ekp-page-settings-tabs.jsx`** line 230:Langfuse provider role「9-stage trace + cost telemetry」→「10-stage trace + cost telemetry」
+- **`references/design-mockups/ekp-shell.jsx`** line 376:sidebar Traces hint「9-stage Langfuse debug view」→「10-stage Langfuse debug view」
+- **`references/design-mockups/PAGE_INVENTORY.md`** row 10 + section 102:列表 description「9-stage」→「10-stage」+ Implementation Status 加註 W26 F2.12 mockup sync 2026-05-25 + ADR-0037 §Q5 Option A reference
+
+**2. `frontend/app/(app)/traces/[traceId]/page.tsx` 100% mirror updated mockup**:
+- **Docstring** 加 W26 F2.12 entry 標明 9→10 expansion + ADR-0037 §Q5 Option A explicit insert + Context category 擴展 [6,7] 意圖 + 「mockup is single source of truth — H7 fidelity preserved by mirroring updated mockup 100%,not approximating」
+- **PIPELINE_STAGES comment header** 由「9 conceptual pipeline stages」→「10 conceptual pipeline stages per architecture.md v6 §5.7 + ADR-0037」
+- **NEW stage entry id=8** Parent-Document Retriever:
+  - `name: 'Parent-Document Retriever'`
+  - `description: 'Aggregates top-1 anchor\'s section_path siblings into parent_section_text for LLM context (architecture.md §3.1, ADR-0037 W26 F2; flag-gated default OFF)'`
+  - `obsPrefixes: ['generation.parent_doc_retrieval']`(對齊 backend `parent_doc_retriever.py:_STAGE_NAME` constant)
+  - `note: 'Only emits a span when enable_parent_doc_retrieval=True (measurement experiment per ADR-0037 Q4).'`
+- **既有 stage 8 LLM Synthesis** renumber id=9
+- **既有 stage 9 Final Response** renumber id=10
+- **Line 516 title**:`"9-stage pipeline"` → `"10-stage pipeline"`(對齊 mockup line 50)
+- **Line 1228 Context category**:`stageIds: [7]` → `stageIds: [7, 8]`(對齊 mockup line 308;Parent-Document 同 Context Expander 共享 green oklch(0.65 0.14 145) 反映兩者同屬 post-rerank context aggregation)
+- **Line 1229 Synthesis category**:`stageIds: [8, 9]` → `stageIds: [9, 10]`(對齊 mockup line 309)
+- Line 8 + 185 兩處「pre-W22 W18 9-stage」歷史 context 註釋保留(W22 重寫紀錄,traceability)
+
+**3. H7 self-verify 7-item checklist ALL passed**:
+- ✅ Layout 結構 — NEW stage 8 entry mirror 既有 stage entries object shape;`PIPELINE_STAGES.map` 既有渲染機制 0 額外 wiring
+- ✅ Spacing / typography — 既有 token / class 統一渲染
+- ✅ Color tokens — Context category 共享 green oklch(0.65 0.14 145)
+- ✅ Interaction states — `expanded` / `setExpanded` state 既有 management cover NEW stage
+- ✅ Responsive breakpoints — `PIPELINE_STAGES.length` 9→10 唔 break 既有 stat-grid + viz 三模式
+- ✅ A11y affordances — 既有 `role="tab"` + `aria-selected` 0 影響
+- ✅ Mockup 字面對齊 — mockup 已先 sync,page.tsx 100% mirror,無 approximate
+
+**4. 驗證閘**(F2.12 D1 cont 5 範圍):
+- ✅ `tsc --noEmit` — exit 0,frontend strict pass
+- ✅ `next lint` — 0 NEW warnings(1 pre-existing `/chat/page.tsx:1673` `<img>` element W22 既有未變)
+- ✅ `[oklch` milestone — count = 0(W15 D5 起既有 milestone 保持,W22 → W23 → W24 → W25 → W26 F2 全程 0)
+- ✅ Backend W26 F2 全套 sanity recheck — 32/32 pass(0.86s;`tests/test_parent_doc_retriever.py` 14 + `tests/test_hybrid_section_path.py` 11 + `tests/test_prompt_builder_dispatch.py` 7)
+- ✅ Backend full regression unchanged — `289126e` baseline 1056 passed 仍綠(本 commit 唔觸 backend code,只 mockup + frontend)
+- ✅ Mockup 同步 verify — `grep "9.stage|9 stages" references/design-mockups/` 只剩 2 處歷史 context comments,canonical references 全部 10-stage
+
+### 決定(Day 1 cont 5)
+
+- **D1.28** — H7 trigger STOP+ask 紀律:面對 mockup 字面 vs ADR Accept 之間 conflict 時,*絕對唔可以自行 approximate*。Surface 3 方案俾用戶揀(嚴守 ADR + mockup 偏離 / sync mockup 先 / defer F2.12)是 H7 §5.7 binding behavior。第 3 次中文紀律提醒 + 第 1 次 H7 trigger surface 同步發生 — memory 紀律強化執行
+- **D1.29** — 方案 (2) sync mockup 先選擇 rationale:類比 ADR-0024 W18 IA flip 反向 sync `architecture.md v6 §5` 既有 governance pattern;ADR-0037 §Q5 Accept 已認可 design-stage expansion(類比 ADR-0025 KB Detail 5→8 tabs);mockup 9→10 sync 屬 implementation cascade 必要一步,非 design surface 偏離
+- **D1.30** — Context category 共享 green color(Option B per ADR-0037 §6.1)選擇:Parent-Document Retriever 同 Context Expander 兩者皆屬 post-rerank context aggregation 架構意圖;color shared 反映兩者語意一致,而非 NEW「Parent Section」分類創造視覺斷層(Option A — 不採用)
+- **D1.31** — 「pre-W26 F2 baseline was 9 stages」歷史 context comments 故意保留喺 `ekp-data.jsx:130` + `ekp-page-trace.jsx:4` + page.tsx line 8 + line 185 — traceability 用,不會誤導讀者(comment 字面已 contextualized「pre-W26 F2」timestamp)
+- **D1.32** — F2.12 visible 範圍純 mockup-aligned visual surface;0 新邏輯 / 0 新狀態 / 0 新 dependency。Vitest 案例不額外加 — 既有 W22 trace page 0 Vitest test(per `frontend/tests/unit/` list 對比);F2.12 一致 W22 W22 mockup-aligned visual rebuild 策略(verify via tsc + lint + `[oklch`=0 milestone + mockup-text grep verify;runtime smoke pending user pre-Beta 同 W22 F8.8 carry-over 一致)
+
+### 阻塞
+
+無 — F2.12 完成 + 7 H7 self-verify items 全綠;F2 implementation cascade(F2.4-F2.18)backend + frontend 完整。
+
+### Carry-over 更新(Day 1 cont 5)
+
+- 🚧 **F2.19-F2.23 G RAGAs 重跑** — 待 R8/Azure-key-bound prerequisite resolve(Azure OpenAI judge key + Cohere v4.0-pro production reranker key 已 W26 D1 verified 操作中)
+- 🚧 **F2.24 H F2 → F3 gate AskUserQuestion** — 終極步驟 task #212(等 F2.22 parent-doc RAGAs delta 報告完成後 surface gate criteria)
+- 🚧 **F2.12 runtime smoke** — V6 Debug View 10-stage card 實際渲染驗證待 LIVE Langfuse trace seed(per W22 F8.8 carry-over pattern;Track A IT cred 後 first capture)
+- 🚧 **Mockup `EKP Platform.html` regenerate** — 由於 `EKP Platform.html` 係 build output(per W22 F7.5 process),建議 W27+ 重 build 確保整合 mockup spec(本 commit 只改 source `<TweakSection>` label,build output regenerate 屬可選 follow-up)
+
+### Commits
+
+- `4cdd1bc` ADR-0037 Accepted(governance)
+- `f9398ec` Plan + checklist + progress rewrite cascade
+- `ce8e870` Leaf — D Settings + B HybridSearcher extension + 11 tests
+- `48f7460` Core — B parent_doc_retriever module + E observability stage + 14 tests
+- `289126e` Pipeline — F2.6-F2.9 4 sites + 7 NEW dispatch tests(remote pushed)
+- `feat(frontend): W26 F2.12 V6 Debug View 9→10-stage + mockup sync per ADR-0037 H7 fidelity` — atomic mockup + frontend commit pending(本 entry)
+
+---
+
+**End of Day 1 cont 5 entry** — F2.12 V6 Debug View 9→10-stage 完整(mockup 7 files + page.tsx + H7 7-item self-verify 全綠 + tsc/lint/`[oklch`=0/backend 32 全套 sanity pass)。**F2 implementation cascade backend + frontend 整體完整**;剩 G RAGAs 重跑(R8/Azure-key-bound)+ H gate(task #212)為 F2 收尾步驟。

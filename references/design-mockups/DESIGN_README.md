@@ -52,7 +52,7 @@ When you (a future AI assistant) are asked to build, modify, or extend the real 
 | `ekp-page-kb-extras.jsx` | Images tab + Chunking Lab tab |
 | `ekp-page-doc-detail.jsx` | `/doc-detail/[kbId]/[docId]` 3-pane (outline / chunks / inspector) |
 | `ekp-page-chat.jsx` | `/chat` with Conversation History (Beta+), inline image cards, Sources strip, Feedback widget |
-| `ekp-page-trace.jsx` | `/traces` list + `/traces/[traceId]` 9-stage Langfuse trace (3 viz modes) |
+| `ekp-page-trace.jsx` | `/traces` list + `/traces/[traceId]` 10-stage Langfuse trace (3 viz modes;stage 08 Parent-Document Retriever per ADR-0037 W26 F2) |
 | `ekp-page-eval.jsx` | `/eval` RAGAs 4-metric + Reranker Shootout + Failed queries + CRAG insights |
 | `ekp-page-misc.jsx` | `/kb-upload/[id]` 3-step Pipeline Wizard + original (now-superseded) thin Settings page |
 | `ekp-page-settings-tabs.jsx` | `/settings` 6-tab hub (Profile / Appearance / Connections / Identity & Auth / API Keys & Quotas / Account) |

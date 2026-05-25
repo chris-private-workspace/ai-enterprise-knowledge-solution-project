@@ -223,13 +223,13 @@ function AuthFrame({ children, onToggleTheme, theme }) {
             Knowledge retrieval, grounded in your real documents.
           </div>
           <div style={{ fontSize: 14, lineHeight: 1.6, opacity: 0.8, maxWidth: 380 }}>
-            Hybrid retrieval · Cohere v4.0-pro rerank · CRAG self-correction · 9-stage trace · Image-grounded citations.
+            Hybrid retrieval · Cohere v4.0-pro rerank · CRAG self-correction · 10-stage trace · Image-grounded citations.
           </div>
 
           <div style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 10, fontSize: 12.5 }}>
             {[
               ["R@5 = 97.2%",        "Drive Manuals · D365 F&O ERP corpus"],
-              ["P95 latency 4.2s",   "9-stage Langfuse trace per query"],
+              ["P95 latency 4.2s",   "10-stage Langfuse trace per query"],
               ["100% oklch tokens",  "Light + dark, no Dify dependency"],
             ].map(([metric, sub]) => (
               <div key={metric} style={{ display: "flex", gap: 12, alignItems: "center" }}>
