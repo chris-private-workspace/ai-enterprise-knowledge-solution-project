@@ -254,3 +254,74 @@ last_updated: 2026-05-25
 ---
 
 **End of Day 1 cont entry** — F2 governance complete(A category satisfied G2 hard gate)+ plan rewrite cascade per R3 binding rule + checklist F2 rewrite + progress Day 1 cont entry;F2 implementation gate open per ADR-0037 §Implementation Deliverables list as acceptance contract for next session impl cascade。
+
+---
+
+## Day 1 cont 2 — 2026-05-25:F2 implementation start(D Settings + B HybridSearcher leaf extension)
+
+> **Calendar continuity**:Same calendar day as Day 1 + Day 1 cont — Day 1 cont 2 = 3rd session segment per user instruction 2026-05-25「start F2 implementation」per W22-W25 multi-session-per-calendar-day precedent。Implementation cascade begins from dependency leaves(Settings + HybridSearcher extension)inward toward the parent_doc_retriever module + pipeline wire。
+
+### Done
+
+**1. F2.10 D Settings — 6 NEW knobs**(`backend/storage/settings.py`):
+- `enable_parent_doc_retrieval: bool = False`(Q4 Recommended — default OFF measurement experiment)
+- `parent_doc_section_depth_offset: int = 1`(Q2 Recommended — parent = `section_path[:-1]`)
+- `parent_doc_top_k: int = 1`(Q1 Recommended — top-1 anchor only)
+- `parent_doc_max_tokens_per_parent: int = 4000`(Q3 proposed — ~15 sibling chunks envelope)
+- `parent_doc_max_chunks_per_parent: int = 50`(safety cap)
+- `parent_doc_fallback_to_doc_on_shallow: bool = True`(shallow section_path handling)
+- Block documented per CLAUDE.md §3.3 (W26 F2 context + ADR-0037 ref + AskUserQuestion pick rationale + W27+ sweep capability noted)
+
+**2. F2.5 B HybridSearcher.fetch_chunks_by_section_path method**(`backend/retrieval/hybrid.py`,~85 lines added between `fetch_by_chunk_ids` and `search`):
+- Signature `async def fetch_chunks_by_section_path(parent_path, doc_id, kb_id, *, max_chunks=50) -> list[HybridSearchHit]`
+- OData filter composition:`kb_id eq + doc_id eq + enabled eq true + section_path/any(s: s eq '<seg>')` per parent_path segment joined `and`
+- OData single-quote escaping(doubled per Azure Search spec)— `Scenario A's intro` → `Scenario A''s intro`
+- `orderby chunk_index asc` preserves narrative order
+- `top=max_chunks` hard cap (default 50 matches `Settings.parent_doc_max_chunks_per_parent`)
+- search="*" + filter + orderby = pure filtering retrieval (no BM25/vector ranking)
+- Empty parent_path / empty doc_id → return [] (cost guard, no API call)
+- @retry tenacity decorator mirroring `fetch_by_chunk_ids` pattern (3 attempts, exp backoff)
+- Response shape transformation:Azure Search `value` items → `list[HybridSearchHit]` with `@search.*` system field stripping
+- `enabled eq true` baseline preserved per ADR-0035 W25 F5 D2 (low_value siblings NOT filtered here — caller decides via post-filter applied earlier in pipeline;parent section inclusion is content-aggregation concern, not retrieval-candidacy concern)
+- structlog `hybrid_fetch_chunks_by_section_path` debug log with index + kb_id + doc_id + parent_path_depth + returned count + cap
+
+**3. F2.14 + F2.18 B HybridSearcher tests**(NEW `backend/tests/test_hybrid_section_path.py` ~250 LOC,11 cases):
+- **11/11 PASSED**(0.89s wall-clock)
+- Coverage:empty parent_path guard + empty doc_id guard + filter combines all 5 clauses + OData escaping doubled / 2 sites + orderby chunk_index asc + max_chunks cap parameter + default cap 50 + search="*" filter-only + response shape transform + empty response handling + dynamic index_name per kb_id ADR-0018 invariant
+
+**4. Verify gates**(F2 implementation D1 cont 2 leaf scope):
+- ✅ `pytest tests/test_hybrid_section_path.py -v` — 11/11 pass
+- ✅ `pytest tests/` full regression — **1035 passed + 25 skipped + 0 failed**(W25 baseline 1024 + 11 NEW = exact match)
+- ✅ `mypy --strict --explicit-package-bases retrieval/hybrid.py storage/settings.py tests/test_hybrid_section_path.py` — 0 errors in 3 source files
+- ✅ `ruff check` — All checks passed
+- G6 backend regression preserved hard gate ✅(satisfied for this atomic piece)
+
+### Decisions(Day 1 cont 2)
+
+- **D1.12** — `fetch_chunks_by_section_path` 唔 apply `_apply_low_value_post_filter`(unlike `search()` which does) — semantic split:`search()` is retrieval-candidacy stage(low_value chunks deboosted via post-filter per ADR-0035);`fetch_chunks_by_section_path` is content-aggregation stage(siblings included regardless of low_value flag for parent section completeness)— parent section is about「what's in this logical document section」not「what ranks where」。Documented inline in method docstring per CLAUDE.md §3.3
+- **D1.13** — Test file split — NEW `test_hybrid_section_path.py` instead of extending existing `test_hybrid_searcher_image_low_value.py`。Reason:Karpathy §1.3 surgical(test files topic-cohesive per `image_low_value` topic naming convention)+ semantic split per D1.12 — different filter scope different test scope
+- **D1.14** — Mypy strict catch corrected mid-session(2 unused `type: ignore` defensive annotations removed)— `unittest.mock.MagicMock` + `AsyncMock` assignment to `searcher._client` 唔需要 explicit type:ignore since mypy infers acceptable type compatibility automatically;dead annotation = mypy strict noise
+- **D1.15** — Atomic commit boundary picked(D Settings + B HybridSearcher extension + B tests = single commit `feat(retrieval): W26 F2 D Settings + B HybridSearcher.fetch_chunks_by_section_path per ADR-0037`)— Karpathy §1.3 surgical:leaf primitives are independent + complete + tested + verifiable in isolation;parent_doc_retriever module(F2.4)= next atomic piece consuming these leaves;pipeline wire + observability + V6 frontend + RAGAs re-eval each their own commits
+
+### Blockers
+
+無 — leaf atomic piece complete + verified;next atomic piece = parent_doc_retriever module(F2.4)consuming Settings + HybridSearcher extension。
+
+### Carry-overs(updated Day 1 cont 2)
+
+- 🚧 **F2.4 parent_doc_retriever module**(B core)next atomic commit — consumes Settings + HybridSearcher leaves landed this commit
+- 🚧 **F2.6-F2.9 pipeline integration**(C prompt_builder + crag + query routes)— follows F2.4 atomic commit
+- 🚧 **F2.11-F2.12 observability**(E observe.py stage + V6 frontend 10-stage)— follows F2.6-F2.9
+- 🚧 **F2.13 parent_doc_retriever tests** + **F2.16 final regression** — bundled with F2.4 atomic commit
+- 🚧 **F2.19-F2.23 G RAGAs re-eval** — follows full F2 implementation cascade complete
+- 🚧 **F2.24 H F2 → F3 gate AskUserQuestion** — terminal step,task #212
+
+### Commits
+
+- `4cdd1bc` `docs(adr): ADR-0037 Accepted — parent-document / section-level retrieval (W26 F2 PIVOTED)` — atomic governance commit(+631 / -1 across 2 files)
+- `f9398ec` `docs(planning): W26 F2 PIVOTED scope rewrite + ADR-0037 plan/checklist/progress cascade` — planning cascade commit(+275 / -73 across 3 files)
+- `feat(retrieval): W26 F2 D Settings + B HybridSearcher.fetch_chunks_by_section_path per ADR-0037` — atomic leaf implementation commit(pending this entry)
+
+---
+
+**End of Day 1 cont 2 entry** — F2 leaf atomic piece complete(D + B + tests + verify gates ALL green);F2.4 parent_doc_retriever module next atomic commit consuming these primitives。

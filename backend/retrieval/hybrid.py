@@ -210,6 +210,111 @@ class HybridSearcher:
         wait=wait_exponential(multiplier=1, min=1, max=8),
         reraise=True,
     )
+    async def fetch_chunks_by_section_path(
+        self,
+        parent_path: list[str],
+        doc_id: str,
+        kb_id: str,
+        *,
+        max_chunks: int = 50,
+    ) -> list[HybridSearchHit]:
+        """Fetch all chunks within a doc whose section_path contains every segment in parent_path.
+
+        Per ADR-0037 W26 F2 Parent-Document Retrieval — leaf primitive used by
+        `backend/generation/parent_doc_retriever.py` to aggregate sibling chunks
+        sharing a common parent section. The Azure AI Search index field
+        `section_path` is `Collection(Edm.String)` filterable per architecture.md
+        §3.6 line 364, so the elementwise existence check uses the OData `any()`
+        operator (NOT `search.in()` — that operates on scalar fields only).
+
+        Filter shape::
+
+            kb_id eq '<kb>' and doc_id eq '<doc>' and enabled eq true
+              and section_path/any(s: s eq '<seg_1>')
+              and section_path/any(s: s eq '<seg_2>')
+              ... (one any() clause per parent_path segment)
+
+        Single-quote escaping per OData spec: doubled. Order by `chunk_index asc`
+        preserves narrative order so the caller can concat sibling text in
+        document order.
+
+        `enabled eq true` baseline preserved per ADR-0035 W25 F5 D2 — low_value
+        siblings are NOT filtered here (their inclusion in a parent section is
+        a content-aggregation concern, not a retrieval-candidacy concern;
+        caller decides via the post-filter applied earlier in the pipeline).
+
+        Returns empty list on empty parent_path or empty doc_id (no API call —
+        cost guard). The Tier 1 hard cap `max_chunks=50` per `Settings.
+        parent_doc_max_chunks_per_parent` defends against pathological docs
+        (a section with 1000+ chunks would explode latency + cost).
+        """
+        if not parent_path or not doc_id:
+            return []
+        assert self._client is not None, "use 'async with' to manage searcher lifecycle"
+
+        # ADR-0018: dynamic per-KB index name (Option B b2 dynamic injection)
+        index_name = kb_id_to_index_name(kb_id, legacy_default_index=self.index_name)
+        kb_filter = kb_id_filter_clause(kb_id)
+
+        # OData escaping — double single quotes (per Azure Search spec)
+        escaped_doc = doc_id.replace("'", "''")
+        section_filters = [
+            f"section_path/any(s: s eq '{seg.replace(chr(39), chr(39) + chr(39))}')"
+            for seg in parent_path
+        ]
+        full_filter = " and ".join(
+            [
+                kb_filter,
+                f"doc_id eq '{escaped_doc}'",
+                "enabled eq true",
+                *section_filters,
+            ]
+        )
+
+        url = (
+            f"{self.endpoint}/indexes/{index_name}"
+            f"/docs/search?api-version={self.api_version}"
+        )
+        # search="*" + filter + orderby = pure filtering retrieval (no BM25/vector
+        # ranking) ordered by document narrative position.
+        payload: dict[str, Any] = {
+            "search": "*",
+            "filter": full_filter,
+            "orderby": "chunk_index asc",
+            "top": max_chunks,
+        }
+
+        response = await self._client.post(url, content=json.dumps(payload))
+
+        if response.status_code >= 500 or response.status_code == 429:
+            response.raise_for_status()
+        if response.status_code != 200:
+            response.raise_for_status()
+
+        body = response.json()
+        hits: list[HybridSearchHit] = []
+        for item in body.get("value", []):
+            score = float(item.get("@search.score", 0.0))
+            fields = {k: v for k, v in item.items() if not k.startswith("@search.")}
+            hits.append(HybridSearchHit(score=score, fields=fields))
+
+        logger.debug(
+            "hybrid_fetch_chunks_by_section_path",
+            index=index_name,
+            kb_id=kb_id,
+            doc_id=doc_id,
+            parent_path_depth=len(parent_path),
+            returned=len(hits),
+            cap=max_chunks,
+        )
+        return hits
+
+    @retry(
+        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.TransportError)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=8),
+        reraise=True,
+    )
     async def search(
         self,
         query_text: str,

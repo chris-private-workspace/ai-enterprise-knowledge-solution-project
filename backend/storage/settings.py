@@ -182,6 +182,44 @@ class Settings(BaseSettings):
     # (R7 risk mitigation per W25 plan).
     retrieval_image_low_value_weight: float = 0.7
 
+    # W26 F2 — Parent-Document / Section-Level Retrieval per ADR-0037.
+    # Tier 1 ceiling for "show me all" enumeration queries surfaced by W26 F1
+    # empirical refutation (Cohere v4.0-pro scores P25=0.83 / min=0.67 cannot
+    # differentiate failed vs passed queries — threshold cutoff approach
+    # refuted). section_path-based runtime aggregation post-rerank reuses
+    # ADR-0020 chunk-aggregation pattern (zero schema change — section_path
+    # already indexed Collection(Edm.String) filterable per architecture.md
+    # §3.6 line 364). 6 knob defaults locked via Chris AskUserQuestion
+    # 2026-05-25 D1 cont (Q1 + Q2 + Q4 + Q6 Recommended picks + Q3 + Q5 +
+    # Q7 + Q8 batch-locked). Default False = W26 F2 measurement experiment
+    # only via env override (per ADR-0034 enable_query_expansion precedent —
+    # measurement-first discipline, NOT default flip). See ADR-0037 §
+    # Decision Log for full pick rationale.
+    enable_parent_doc_retrieval: bool = False
+    # Q2 pick — parent = section_path[:-1] (drop last level). Anchor in
+    # ["Doc", "§8: Integration Scenarios", "Scenario A"] → parent =
+    # ["Doc", "§8: Integration Scenarios"] aggregates all 5 scenarios.
+    parent_doc_section_depth_offset: int = 1
+    # Q1 pick — apply parent-doc to top-1 reranked anchor only (conservative
+    # — minimize off-topic leak per F1 evidence Q-W25-I07 top-5 already
+    # contains §3.1 chunk #8 topically off; top-K anchor parent-doc would
+    # aggregate §3 entire section → counterproductive). W27+ may sweep to
+    # 2/3 for multi-section queries.
+    parent_doc_top_k: int = 1
+    # Q3 pick — token budget cap. ~250-300 tokens per chunk × ~15 sibling
+    # chunks ≈ 4000 tokens. Tail-drop truncation by chunk_index ASC
+    # preserves narrative start. Within ADR-0034 P95<5s latency budget.
+    parent_doc_max_tokens_per_parent: int = 4000
+    # Safety cap on siblings fetched per parent (pathological-doc protection
+    # — a section with 1000+ chunks would explode latency + cost). 50 ≈
+    # 12-15K tokens raw before truncation, sufficient envelope.
+    parent_doc_max_chunks_per_parent: int = 50
+    # When anchor's section_path is shallower than the offset would require
+    # (e.g. len=1 + offset=1 → empty parent_path), fall back to doc-level
+    # aggregation (kb_id + doc_id filter). True = graceful fallback;
+    # False = skip expansion for shallow chunks.
+    parent_doc_fallback_to_doc_on_shallow: bool = True
+
     # Feature flags
     feature_l3_routing_enabled: bool = False
     feature_auth_enabled: bool = False

@@ -81,11 +81,11 @@ last_updated: 2026-05-25
   - [ ] **F2.4g** — Cross-doc boundary respect(`doc_id` filter clause per ADR-0020 precedent)
   - [ ] **F2.4h** — Shallow `section_path` fallback to doc-level(`parent_doc_fallback_to_doc_on_shallow=True`;`len(section_path) < section_depth_offset + 1` 觸發)
   - [ ] **F2.4i** — Graceful network error handling(per ADR-0020 precedent — log + return without parent expansion)
-- [ ] **F2.5** — `backend/retrieval/hybrid.py` NEW method `fetch_chunks_by_section_path(parent_path: list[str], doc_id: str, kb_id: str) -> list[HybridSearchHit]`:
-  - [ ] **F2.5a** — OData filter:`kb_id eq '...' and doc_id eq '...' and enabled eq true and section_path/any(s: s eq '<each segment>')` joined `and`
-  - [ ] **F2.5b** — OData escaping(double single quotes for `'`)
-  - [ ] **F2.5c** — Order by `chunk_index ASC`(preserves narrative order)
-  - [ ] **F2.5d** — Hard cap `parent_doc_max_chunks_per_parent=50`(防 pathological doc)
+- [x] **F2.5** — `backend/retrieval/hybrid.py` NEW method `fetch_chunks_by_section_path(parent_path: list[str], doc_id: str, kb_id: str) -> list[HybridSearchHit]` — **DONE 2026-05-25 D1 cont 2**(~85 lines added between `fetch_by_chunk_ids` + `search`):
+  - [x] **F2.5a** — OData filter:`kb_id eq '...' and doc_id eq '...' and enabled eq true and section_path/any(s: s eq '<each segment>')` joined `and` ✅
+  - [x] **F2.5b** — OData escaping(double single quotes for `'`)✅
+  - [x] **F2.5c** — Order by `chunk_index ASC`(preserves narrative order)✅
+  - [x] **F2.5d** — Hard cap `parent_doc_max_chunks_per_parent=50`(防 pathological doc)✅
 
 ### C. Pipeline integration
 - [ ] **F2.6** — `backend/generation/prompt_builder.py` dispatch chain extension:`parent_section_text > expanded_text > chunk_text` fallback chain(Q6 Both on — coexistence with ADR-0020 Context Expander)
@@ -94,14 +94,14 @@ last_updated: 2026-05-25
 - [ ] **F2.9** — `backend/api/routes/query.py` `/query/stream` wire(2nd site per ADR-0020 precedent pattern)
 
 ### D. Settings(6 NEW knobs,defaults per Chris AskUserQuestion picks)
-- [ ] **F2.10** — `backend/storage/settings.py` 6 NEW knobs:
+- [x] **F2.10** — `backend/storage/settings.py` 6 NEW knobs — **DONE 2026-05-25 D1 cont 2**:
   ```python
-  enable_parent_doc_retrieval: bool = False              # Q4 Recommended
-  parent_doc_section_depth_offset: int = 1               # Q2 Recommended
-  parent_doc_top_k: int = 1                              # Q1 Recommended
-  parent_doc_max_tokens_per_parent: int = 4000           # Q3 proposed locked
-  parent_doc_max_chunks_per_parent: int = 50             # safety cap
-  parent_doc_fallback_to_doc_on_shallow: bool = True     # shallow section_path handling
+  enable_parent_doc_retrieval: bool = False              # Q4 Recommended ✅
+  parent_doc_section_depth_offset: int = 1               # Q2 Recommended ✅
+  parent_doc_top_k: int = 1                              # Q1 Recommended ✅
+  parent_doc_max_tokens_per_parent: int = 4000           # Q3 proposed locked ✅
+  parent_doc_max_chunks_per_parent: int = 50             # safety cap ✅
+  parent_doc_fallback_to_doc_on_shallow: bool = True     # shallow section_path handling ✅
   ```
 
 ### E. Observability
@@ -124,11 +124,14 @@ last_updated: 2026-05-25
   - [ ] **F2.13i** — Feature flag off:`enable_parent_doc_retrieval=False` → no-op pass-through(verify no Azure Search call;observability stage emit skipped)
   - [ ] **F2.13j** — Interaction with Context Expander(Q6 Both on):anchor's prev/next already in parent section → no double-expand
   - [ ] **F2.13k** — Citation invariant preservation:`Citation.chunk_text` unchanged(verified via `prompt_builder` dispatch chain test — LLM sees parent section but citation references original anchor)
-- [ ] **F2.14** — `backend/tests/test_hybrid.py` extension — `fetch_chunks_by_section_path` cases:
-  - [ ] **F2.14a** — OData filter syntax correctness(`section_path/any(s: s eq '<segment>')` joined `and`)
-  - [ ] **F2.14b** — OData escaping(`Scenario A's intro` → `Scenario A''s intro` double single quote)
-  - [ ] **F2.14c** — `chunk_index ASC` ordering verified
-  - [ ] **F2.14d** — Hard cap `parent_doc_max_chunks_per_parent=50` enforced
+- [x] **F2.14** — NEW `backend/tests/test_hybrid_section_path.py`(separate file per D1.13 surgical;not extending `test_hybrid_searcher_image_low_value.py`)— **DONE 2026-05-25 D1 cont 2 — 11/11 pass 0.89s**:
+  - [x] **F2.14a** — OData filter syntax correctness(`section_path/any(s: s eq '<segment>')` joined `and`)✅ via `test_filter_combines_kb_doc_enabled_and_section_any_clauses`
+  - [x] **F2.14b** — OData escaping(`Scenario A's intro` → `Scenario A''s intro` double single quote)✅ via `test_odata_single_quote_escaped_doubled`
+  - [x] **F2.14c** — `chunk_index ASC` ordering verified ✅ via `test_payload_uses_orderby_chunk_index_asc`
+  - [x] **F2.14d** — Hard cap `parent_doc_max_chunks_per_parent=50` enforced ✅ via `test_payload_top_uses_max_chunks_cap` + `test_payload_default_max_chunks_is_50`
+  - [x] **F2.14e** — Empty input guards(empty parent_path / empty doc_id)✅ via 2 additional cases
+  - [x] **F2.14f** — Response shape transform + `@search.*` system field strip ✅ via `test_response_transformed_to_hybrid_search_hits`
+  - [x] **F2.14g** — Dynamic index_name per kb_id per ADR-0018 invariant ✅ via `test_url_uses_dynamic_index_name_per_kb_id`
 - [ ] **F2.15** — `pytest tests/test_parent_doc_retriever.py tests/test_hybrid.py -v` pass(NEW ~15 + extension ~5 = ~20 cases)
 - [ ] **F2.16** — `pytest tests/` full regression — count **≥ 1024 baseline + ~20 NEW** = **~1044+**(BUG-025 baseline preserved per G6 hard gate)
 - [ ] **F2.17** — `mypy --strict --explicit-package-bases generation/parent_doc_retriever.py retrieval/hybrid.py` clean(touched code only per Karpathy §1.3 surgical;W25 CO_W25_mypy_strict_debt 11 pre-existing errors out of scope)
