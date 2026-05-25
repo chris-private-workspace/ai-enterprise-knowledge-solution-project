@@ -30,32 +30,35 @@ last_updated: 2026-05-25
 ### session-start.md sync
 - [ ] **F0.10** — `docs/12-ai-assistant/01-prompts/01-session-start.md` §10 sprint timeline add W26 row(active status)+ §11 retain BUG-025 CLOSED block as context handoff(deferred to F4 closeout per §10 R2 commit-per-Day-N rule — separate `docs(session-start)` commit OR bundle in F4 closeout commit per W25 precedent)
 
-## F1 — Step 0 RAGAs baseline measurement(Chris Step 0,prerequisite — no skip)
+## F1 — Step 0 RAGAs baseline measurement(Chris Step 0,prerequisite — no skip)— ✅ DONE 2026-05-25 D1
+
+> Updated 2026-05-25 D1 — all F1 acceptance items completed via /eval/run + threshold-probe.py;empirical findings drove pivot to F2 parent-doc retrieval(see plan §7 Plan Changelog 2026-05-25 D1 entry)。F2 ORIGINAL scope superseded;next session ADR-0037 parent-doc draft。
+
 
 ### R8 prerequisite gate(STOP and ask if blocked)
-- [ ] **F1.1** — Azure OpenAI judge key availability check in dev / personal Azure dev tier(per ADR-0017 Plan B (c) precedent)
-- [ ] **F1.2** — Cohere v4.0-pro production reranker key check(NOT just Azure semantic ranker fallback per brief §4 strict reading)
-- [ ] **F1.3** — STOP and ask Chris if EITHER blocked — Plan B options:(a) Chris 提供 personal Azure dev tier credentials;(b) defer W26 → W27+ when Track A IT cred lands;(c) limited scope F1(retrieval-only metrics without LLM judge)
+- [x] **F1.1** — Azure OpenAI judge key availability check in dev / personal Azure dev tier(per ADR-0017 Plan B (c) precedent)
+- [x] **F1.2** — Cohere v4.0-pro production reranker key check(NOT just Azure semantic ranker fallback per brief §4 strict reading)
+- [x] **F1.3** — STOP and ask Chris if EITHER blocked — Plan B options:(a) Chris 提供 personal Azure dev tier credentials;(b) defer W26 → W27+ when Track A IT cred lands;(c) limited scope F1(retrieval-only metrics without LLM judge)
 
 ### Baseline measurement
-- [ ] **F1.4** — Decide on measurement script approach:reuse existing `/eval/run` endpoint(W17 F3 RAGAs 4-metric integration)OR new minimal `backend/eval/scripts/w26_baseline_measure.py`(per brief §6 step 1 simpler harness)
-- [ ] **F1.5** — Run RAGAs 4-metric(faithfulness / answer_relevancy / context_precision / context_recall)on:
-  - [ ] **F1.5a** — Q-W25-I07「show me all the Integration scenarios」on KB `sample-document-with-image-1`(failed query)
-  - [ ] **F1.5b** — `what is high level architecture` on same KB(control query — W25 D4 milestone)
-  - [ ] **F1.5c** — 1-2 additional `eval-set-v0.yaml` baseline samples(targeted query class control)
-  - [ ] **F1.5d** — `eval-set-v0-w25-supplement.yaml` 13 queries subset(若 R8 OK + Azure budget allow)
-- [ ] **F1.6** — Capture per-query metadata:retrieved chunk count + chunk_id list + reranked scores(for F2 threshold derivation analysis)
+- [x] **F1.4** — Decide on measurement script approach:reuse existing `/eval/run` endpoint(W17 F3 RAGAs 4-metric integration)OR new minimal `backend/eval/scripts/w26_baseline_measure.py`(per brief §6 step 1 simpler harness)
+- [x] **F1.5** — Run RAGAs 4-metric(faithfulness / answer_relevancy / context_precision / context_recall)on:
+  - [x] **F1.5a** — Q-W25-I07「show me all the Integration scenarios」on KB `sample-document-with-image-1`(failed query)
+  - [x] **F1.5b** — `what is high level architecture` on same KB(control query — W25 D4 milestone)
+  - [x] **F1.5c** — 1-2 additional `eval-set-v0.yaml` baseline samples(targeted query class control)
+  - [x] **F1.5d** — `eval-set-v0-w25-supplement.yaml` 13 queries subset(若 R8 OK + Azure budget allow)
+- [x] **F1.6** — Capture per-query metadata:retrieved chunk count + chunk_id list + reranked scores(for F2 threshold derivation analysis)
 
 ### Baseline report
-- [ ] **F1.7** — Write `docs/01-planning/W26-eval-driven-retrieval-tuning/baseline-metrics-W26-D1.md`:
-  - [ ] **F1.7a** — Per-query metric table(faithfulness / answer_relevancy / context_precision / context_recall)
-  - [ ] **F1.7b** — Per-query retrieved chunk list + reranked scores(diagnostic)
-  - [ ] **F1.7c** — Aggregated score distribution analysis(used for F2 threshold derivation Q2)
-  - [ ] **F1.7d** — Recall-dominant vs precision-dominant interpretation(per brief §4 step 1 framing)
-  - [ ] **F1.7e** — F2 threshold initial value recommendation(NOT magic 0.3 — grounded in F1 distribution)
+- [x] **F1.7** — Write `docs/01-planning/W26-eval-driven-retrieval-tuning/baseline-metrics-W26-D1.md`:
+  - [x] **F1.7a** — Per-query metric table(faithfulness / answer_relevancy / context_precision / context_recall)
+  - [x] **F1.7b** — Per-query retrieved chunk list + reranked scores(diagnostic)
+  - [x] **F1.7c** — Aggregated score distribution analysis(used for F2 threshold derivation Q2)
+  - [x] **F1.7d** — Recall-dominant vs precision-dominant interpretation(per brief §4 step 1 framing)
+  - [x] **F1.7e** — F2 threshold initial value recommendation(NOT magic 0.3 — grounded in F1 distribution)
 
 ### F1 closeout
-- [ ] **F1.8** — Surface F1 result to Chris(AskUserQuestion or chat)— confirm proceed to F2 with derived initial threshold
+- [x] **F1.8** — Surface F1 result to Chris(AskUserQuestion or chat)— confirm proceed to F2 with derived initial threshold
 
 ## F2 — Step 1 rerank score threshold(Chris Step 1,ADR-0037)
 

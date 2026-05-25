@@ -1,0 +1,298 @@
+{
+  "reranker_model": "Cohere-rerank-v4.0-pro",
+  "top_k": 5,
+  "kb_id": "sample-document-with-image-1",
+  "queries": [
+    {
+      "query_id": "Q-W25-I01",
+      "query_text": "How does the high-level architecture look like? Show me the system zones.",
+      "chunks_count": 5,
+      "rerank_latency_ms": 1743,
+      "chunks": [
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0011",
+          "score": 0.973403,
+          "section_path": [
+            "4. High-level architecture"
+          ],
+          "low_value_flag": false,
+          "has_images": true
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0001",
+          "score": 0.79027146,
+          "section_path": [
+            "Contents"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0033",
+          "score": 0.67883813,
+          "section_path": [
+            "6. Multi-tenant strategy",
+            "6.1 Tenant topology"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0012",
+          "score": 0.6771325,
+          "section_path": [
+            "4. High-level architecture",
+            "4.1 Component overview"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0038",
+          "score": 0.67026305,
+          "section_path": [
+            "7. Integration patterns by system",
+            "7.1 D365 Finance and Operations"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        }
+      ]
+    },
+    {
+      "query_id": "Q-W25-I07",
+      "query_text": "Show me all the Integration scenarios.",
+      "chunks_count": 5,
+      "rerank_latency_ms": 599,
+      "chunks": [
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0044",
+          "score": 0.9605984,
+          "section_path": [
+            "8. Integration scenarios (end-to-end walkthroughs)"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0008",
+          "score": 0.9201749,
+          "section_path": [
+            "3. Architectural principles",
+            "3.1 Platform composition over platform construction"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0055",
+          "score": 0.92010313,
+          "section_path": [
+            "8. Integration scenarios (end-to-end walkthroughs)",
+            "8.6 Coverage summary"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0001",
+          "score": 0.9040931,
+          "section_path": [
+            "Contents"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0036",
+          "score": 0.90143585,
+          "section_path": [
+            "7. Integration patterns by system"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        }
+      ]
+    },
+    {
+      "query_id": "Q-W25-I02",
+      "query_text": "What are the integration components in the platform?",
+      "chunks_count": 5,
+      "rerank_latency_ms": 509,
+      "chunks": [
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0011",
+          "score": 0.9346581,
+          "section_path": [
+            "4. High-level architecture"
+          ],
+          "low_value_flag": false,
+          "has_images": true
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0044",
+          "score": 0.90949786,
+          "section_path": [
+            "8. Integration scenarios (end-to-end walkthroughs)"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0008",
+          "score": 0.90272975,
+          "section_path": [
+            "3. Architectural principles",
+            "3.1 Platform composition over platform construction"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0039",
+          "score": 0.8951933,
+          "section_path": [
+            "7. Integration patterns by system",
+            "7.2 D365 Customer Engagement (CRM)"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0002",
+          "score": 0.8832763,
+          "section_path": [
+            "1. Executive summary"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        }
+      ]
+    },
+    {
+      "query_id": "Q-W25-I03",
+      "query_text": "What does the deployment topology look like for the integration platform?",
+      "chunks_count": 5,
+      "rerank_latency_ms": 517,
+      "chunks": [
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0032",
+          "score": 0.931612,
+          "section_path": [
+            "6. Multi-tenant strategy"
+          ],
+          "low_value_flag": false,
+          "has_images": true
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0016",
+          "score": 0.90100116,
+          "section_path": [
+            "5. Component detailed design",
+            "5.1 Azure API Management (APIM)",
+            "5.1.2 Deployment topology"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0011",
+          "score": 0.8527394,
+          "section_path": [
+            "4. High-level architecture"
+          ],
+          "low_value_flag": false,
+          "has_images": true
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0002",
+          "score": 0.84265614,
+          "section_path": [
+            "1. Executive summary"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0000",
+          "score": 0.8405733,
+          "section_path": [
+            "DCE_Integration_Platform_Implementation_Plan"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        }
+      ]
+    },
+    {
+      "query_id": "Q-W25-T04",
+      "query_text": "How is CI-CD pipeline set up in the implementation plan?",
+      "chunks_count": 5,
+      "rerank_latency_ms": 557,
+      "chunks": [
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0074",
+          "score": 0.9143117,
+          "section_path": [
+            "12. Development workflow",
+            "12.3 CI/CD pipeline"
+          ],
+          "low_value_flag": true,
+          "has_images": false
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0075",
+          "score": 0.83256364,
+          "section_path": [
+            "12. Development workflow",
+            "12.3 CI/CD pipeline",
+            "Pull request pipeline"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0066",
+          "score": 0.8298232,
+          "section_path": [
+            "11. Execution plan and phases",
+            "11.1 Phase 0 \u2014 Foundation (2 to 4 weeks)",
+            "Deliverables"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0073",
+          "score": 0.7783799,
+          "section_path": [
+            "12. Development workflow",
+            "12.1 Source code organisation"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        },
+        {
+          "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0025",
+          "score": 0.67542213,
+          "section_path": [
+            "5. Component detailed design",
+            "5.5 Azure Data Factory and Storage",
+            "5.5.1 Pipelines"
+          ],
+          "low_value_flag": false,
+          "has_images": false
+        }
+      ]
+    }
+  ],
+  "distribution": {
+    "count": 25,
+    "min": 0.67026305,
+    "p25": 0.8298232,
+    "p50_median": 0.8951933,
+    "p75": 0.9143117,
+    "max": 0.973403,
+    "mean": 0.852830056
+  }
+}
