@@ -2,10 +2,12 @@
 
 W2 baseline: BM25 + vector hybrid via Azure AI Search built-in RRF (no custom fusion).
 Filter clause: `enabled eq true` (server-side OData) + client-side post-filter per
-ADR-0035 W25 F5 D2 — low_value+image chunks retain with score × image_weight;
-low_value+no-image dropped (preserves W2 exclusion for TOC / version-statement style
-chunks); non-low_value unchanged. Closes the `architecture.md §3.5/§3.6` "deboost"
-spec wording vs W2 baseline "hard exclude" divergence.
+ADR-0035 W25 F5 D2 (amended 2026-05-25 per Sev2 BUG-025) — symmetric deboost:
+low_value chunks retain with score × image_weight regardless of image presence;
+non-low_value unchanged. Closes the `architecture.md §3.5/§3.6` "deboost" spec
+wording vs W2 baseline "hard exclude" divergence. The pre-amendment asymmetric
+drop branch (low_value+no-image dropped) silently regressed text-only overview/
+aggregate queries — see BUG-025 postmortem for assumption-error analysis.
 
 W16+ ADR-0018 Phase 3 multi-KB invariant: search() requires kb_id parameter; index_name
 dynamically constructed via kb_naming.kb_id_to_index_name (with self.index_name as Tier 1
@@ -68,32 +70,33 @@ def _apply_low_value_post_filter(
     *,
     image_weight: float,
 ) -> list[HybridSearchHit]:
-    """Post-filter low_value chunks per ADR-0035 W25 F5 D2.
+    """Post-filter low_value chunks per ADR-0035 W25 F5 D2 (amended 2026-05-25 BUG-025).
 
-    Replaces W2 baseline server-side hard-exclude. Per architecture.md
-    §3.5 line 258 ("deboost" spec intent) + §3.6 line 384 amendment:
+    Symmetric deboost (matches architecture.md §3.5 "deboost" spec literal intent
+    + §3.6 line 384 amendment):
 
-    - low_value_flag=True + embedded_images_json non-empty → retain with
-      score × image_weight (image-bearing low_value chunks deboost not drop)
-    - low_value_flag=True + no images → drop (preserve W2 exclusion for
-      TOC / version-statement style chunks that lack images)
+    - low_value_flag=True → retain with score × image_weight (regardless of
+      image presence); spec "deboost" semantics — keep in pool but lower-ranked
     - low_value_flag=False → keep unchanged
 
-    image_weight ≤ 0 is degenerate (effectively drops all image+low_value
-    chunks — handy for A/B measurement); branch explicit to avoid retaining
-    zero-score hits in the result list.
+    The pre-BUG-025 asymmetric drop branch (low_value+no-image → drop) silently
+    regressed text-only overview/aggregate queries on KBs with low_value-flagged
+    enumeration sections (e.g. scenario lists). Per ADR-0035 amendment 2026-05-25,
+    symmetric deboost closes that regression while preserving the spec intent.
+
+    image_weight ≤ 0 is degenerate (drops all low_value chunks — A/B measurement
+    branch); preserved to enable empirical comparison between asymmetric (pre-BUG-025) /
+    symmetric (post-BUG-025) / drop-all (degenerate) behaviors.
     """
     if image_weight <= 0:
         return [h for h in hits if not h.fields.get("low_value_flag", False)]
 
     result: list[HybridSearchHit] = []
     for hit in hits:
-        if not hit.fields.get("low_value_flag", False):
-            result.append(hit)
-            continue
-        images_json = str(hit.fields.get("embedded_images_json", "") or "")
-        if images_json.strip() not in ("", "[]"):
+        if hit.fields.get("low_value_flag", False):
             result.append(replace(hit, score=hit.score * image_weight))
+        else:
+            result.append(hit)
     return result
 
 

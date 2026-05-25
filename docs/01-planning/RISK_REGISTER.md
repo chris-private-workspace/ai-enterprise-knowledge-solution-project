@@ -2,7 +2,7 @@
 artifact: risk-register-living
 version: 1.0
 status: active
-last_updated: 2026-05-24
+last_updated: 2026-05-25
 spec_baseline: docs/architecture.md §8 (frozen v5)
 catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 ---
@@ -29,7 +29,8 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 | **R8** ★ | **Ricoh corp proxy blocks PyPI large wheels + cloud HTTPS SSL inspection** | W1 D1+D2 incident;D5 retest;2026-05-03 partial mitigation;**2026-05-04 permanent fix** | 🟠 High | C12 (primary) + impacts C01 / C06 / C08 | 🟢 **Mitigated 2026-05-04 via `truststore` package**(P2 permanent fix superseding P1 home network);Microsoft enterprise Python pattern,使 Python TLS 用 Windows Cert Store(corp root CA via GPO already trusted there)— Python SDK / urllib / httpx 全 cloud HTTPS work under VPN;P1 home network 仍 fallback if Windows Cert Store somehow misses CA |
 | **R9** ★ | **MCR DNS intercept on Docker image pull** | W1 D1 incident | 🟡 Medium | C12 | 🟢 Mitigated(Azurite npm fallback + docker.io direct path);long-term IT whitelist desirable |
 | **R10** ★ | **Q2 sample manual delivery delay** | W1 D1 OQ partial | 🟠 High | C01 (primary) + C06 (chunk_id discovery) | 🟡 Active(W1 D4 partial unblock:6 docs arrived,F6/Q17/Q18 cleared;F8 Docling 仍 W2 D2 plan)|
-| **R14** ★ | **Synthesizer overview-query refuse rate** | W25 D4 user-test 2026-05-24 | 🟡 Medium | C05 + C04 | 🔴 Open(F1+F3+F5 D1+F5 D2 retrieval+delivery works on targeted queries;synthesizer-side strictness 仍 untouched layer;CH-005 W26+ candidate)|
+| **R14** ★ | **Synthesizer overview-query refuse rate** | W25 D4 user-test 2026-05-24 | 🟡 Medium | C05 + C04 | ⛔ **Mis-diagnosed framing — superseded by R15 per BUG-025 2026-05-25**(root cause re-attributed to retrieval-side `_apply_low_value_post_filter` asymmetric drop NOT synthesizer-side over-refuse;CH-005 commit `8418b57` prompt change technically valid but functionally orthogonal to true root cause;see BUG-025 report + postmortem for assumption-error analysis)|
+| **R15** ★ | **ADR-0035 `_apply_low_value_post_filter` asymmetric drop regression** | BUG-025 surface 2026-05-25 post CH-005 ship | 🟡 Sev2 Medium | C04 | 🟢 **Mitigated 2026-05-25 via BUG-025 Path A symmetric deboost amendment**(`low_value` 一律 retain × `image_weight` regardless of image presence;ADR-0035 amended W25.5 + 6 preventive controls PC1-PC6 captured in postmortem to prevent recurrence)|
 | **R11** ★ | **Langfuse health endpoint degradation**(NEW)| W1 D5 closeout finding 2026-05-02 | 🟡 Medium(triaged Sev3 → escalated BUG-001 instance) | C07 + C12 | 🟢 **Closed 2026-05-02**(BUG-001 Path B Docker Desktop GUI restart + clean compose up postgres+langfuse,Langfuse `/api/public/health` HTTP 200 verified sustained)。Mitigation:Path B recovery procedure documented in BUG-001 + W2 carry-over to C07/C12 design notes;daily morning health check ritual added W2+。BUG-001 closed same-day 2026-05-02 |
 | **R12** ★ | **Azurite SDK signature mismatch**(W2 D3) | W2 D3 F3 sanity testing 2026-05-05 | 🟢 Resolved | C12 (primary) + C01 (impacts F3 screenshot upload local verification) | 🟢 **Resolved 2026-05-22 via BUG-009** — root cause = 顯式 path-style `BlobEndpoint` connection string;改用 SDK 捷徑 `UseDevelopmentStorage=true`(行 Azurite-correct path-style canonicalization)→ blob round-trip SUCCESS。獨立疊加:Azurite launch `--skipApiVersionCheck`(SDK 12.28 `x-ms-version` 新過 Azurite 3.35.0)。`documents.py` `ScreenshotUploader` 由 `uploader=None` wire 返。詳見 R12 entry 下方 + `BUG-009-azurite-blob-upload-403/` |
 | **R13** ★ | **truststore depends on Ricoh corp root CA in Windows Cert Store** | W2 D5 cont 2026-05-04(R8 mitigation side-effect awareness)| 🟢 Low(operational accepted)| C12 (primary) | ⚫ **Accepted 2026-05-04** — `truststore.inject_into_ssl()` 信任 OS trust store 而非 `certifi`。**Dependency chain**:Ricoh IT GPO push corp root CA into Windows Cert Store → Windows updates trigger refresh → `truststore` 即生效。**Failure modes**:(a)Workstation 唔 join Ricoh AD domain → corp CA absent → cloud HTTPS fail(自帶 fallback:disconnect VPN go home network)。(b)Corp CA rotation by Ricoh IT 後 Windows GPO 未推送 → 短暫 fail until Windows update。(c)Linux / macOS dev workstation 唔有 GPO push → 需 manual install corp CA into OS trust store(W7+ cloud deploy worker uses managed identity,no proxy issue)。**Decay**:呢 risk 對 Tier 1 dev workstation 有效,Tier 2 production 用 Azure managed identity bypasses 全部 cert chain |
@@ -216,7 +217,9 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 
 ---
 
-### R14 ★ — Synthesizer Overview-Query Refuse Rate(NEW W25 D4 Finding — OPEN 2026-05-24)
+### R14 ★ — Synthesizer Overview-Query Refuse Rate(W25 D4 Finding — ⛔ MIS-DIAGNOSED 2026-05-24 → SUPERSEDED BY R15 PER BUG-025 2026-05-25)
+
+> **Framing update 2026-05-25 per BUG-025**:Initial W25 D4 root-cause hypothesis attributed Q-W25-I07 refuse to synthesizer-side over-refuse;post CH-005 ship 2026-05-25 user-eye verify proved synthesizer-side fix functionally ineffective → AI investigation traced 5-layer chain → confirmed retrieval-side `_apply_low_value_post_filter` asymmetric drop as true root cause(see [[R15]] entry below + BUG-025 report + postmortem)。CH-005 commit `8418b57` retained per Chris pick(Rule 6 + EXAMPLE 3 仍係 reasonable improvements for overview/aggregate framing semantics — functionally orthogonal to retrieval-side regression)。R14 entry preserved for audit trail + R15 cross-ref。
 
 | Field | Value |
 |---|---|
@@ -229,7 +232,23 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 | **Mitigation candidates** | (i)Synthesizer system prompt tuning — relax cite-confidence threshold or add「if multiple meta/intro chunks present, synthesize from collective context rather than refuse」instruction(屬 CH-005 candidate W26+);(ii)CRAG confidence_judge threshold lowering(`Settings.crag_confidence_threshold = 0.70` → 0.60 trial);(iii)F3 reformulator prompt strengthening to favor scenario-specific keywords(NOT general "scenario" terms)|
 | **Active blockers** | F4 LIVE eval run pending Azure key environment;F6 manual user-test pending sample query expansion |
 | **Decay date / review** | W26+ candidate(post W25 closeout — needs design pick from candidates (i)/(ii)/(iii)+ AskUserQuestion cycle if H1 boundary 觸 §3.1 CRAG threshold)|
-| **Cross-ref** | W25 plan §1.1 Path III scope(retrieval + delivery only);W25 plan §2 F6 manual user-test acceptance;memory `feedback_synthesizer_overview_refuse_w25_d4.md`(NEW)— W25 D4 finding pattern documented for future synthesizer-side fix candidates |
+| **Cross-ref** | W25 plan §1.1 Path III scope(retrieval + delivery only);W25 plan §2 F6 manual user-test acceptance;memory `project_synthesizer_overview_refuse_w25_d4.md` — W25 D4 finding pattern;**[[R15]] BUG-025 supersede entry below**(2026-05-25 root-cause re-attribution) |
+
+---
+
+### R15 ★ — ADR-0035 `_apply_low_value_post_filter` Asymmetric Drop Regression(Sev2 — Mitigated 2026-05-25 BUG-025)
+
+| Field | Value |
+|---|---|
+| **Component(s)** | **C04** Retrieval Engine(`backend/retrieval/hybrid.py` `_apply_low_value_post_filter` policy)|
+| **Severity** | 🟡 **Sev2 Medium**(silent regression vs pre-W25 baseline;text-only overview/aggregate query class affected — non-trivial subset;pre-Beta caught no production user impact)|
+| **First observed** | 2026-05-25(post CH-005 ship — Chris user-eye chat UI retry confirmed Q-W25-I07 still 0 citations + refuse despite uvicorn restart + reloaded prompt changes → AI investigation surfaced retrieval-side root cause)|
+| **Symptom** | Pre-W25 baseline Q-W25-I07「show me all the Integration scenarios」returns partial A+B scenarios(text-only)→ post-W25 closeout 0 citations + refuse。Control「what is high level architecture」(image-bearing content)still works ✅ — asymmetric query-class regression。User feedback verbatim 2026-05-25:「現在連一些的內容也返回不了;而 query: what is high level architecture 反而沒有問題」 |
+| **Root cause** | ADR-0035 `_apply_low_value_post_filter` asymmetric drop branch(`low_value + no-image → DROP`)+ ADR-0033 chunker re-tune(`_TOKEN_LOW_VALUE_FLOOR` 100→60 + adjacent-short-merge)combined effect:short-structured text-only scenario-enumeration chunks flagged `low_value` then **silently dropped** at retrieval → synthesizer receives empty chunks list → Rule 2 REFUSAL_PHRASE emitted。ADR-0035 design assumption errored (assumed text-only low_value = TOC/version-statement noise — empirically false for scenario-enumeration content)|
+| **Detection gap** | (G1)Test design encoded spec assumption error — `test_low_value_without_images_dropped` 系列 12 tests **asserted drop = correct** when implementation matched wrong spec;(G2)F4 LIVE RAGAs eval deferred(R8/Azure-key-bound);(G3)F6 manual user-test sample 2/8 query coverage gap;(G4)W25 D4 retro mis-diagnosed framing locked R14 attribution without retrieval-side investigation;(G5)Pre-W25 baseline regression check absent;(G6)Spec wording ambiguity「deboost」not honored by implementation for text-only subset — see BUG-025 postmortem §4 |
+| **Fix applied** | BUG-025 Path A symmetric deboost amendment(2026-05-25):`_apply_low_value_post_filter` rewrite — low_value 一律 retain × `image_weight`(regardless of image presence)+ ADR-0035 amendment(NOT supersede)+ 6 revised test semantics + architecture.md §3.6 line 384 re-amended + single atomic commit per Chris pick |
+| **Preventive controls** | Per BUG-025 postmortem §5:**PC1** retrieval-policy change → ≥ 5-query manual user-test across query class taxonomy before W{N}-closeout;**PC2** test naming honest about spec assumptions;**PC3** ADR review checkpoint for「assumption」language;**PC4** pre-phase regression baseline capture protocol(CH-007 W26+ candidate);**PC5** R14-style mis-diagnosed framing trigger when ≤ 25% query coverage;**PC6** spec-implementation divergence detector(CH-008 W26+ candidate)|
+| **Cross-ref** | BUG-025 `docs/03-implementation/bugs/BUG-025-retrieval-low-value-no-image-silent-drop/`(report + checklist + progress + postmortem);ADR-0035 amended `docs/adr/0035-retrieval-low-value-soft-relax.md` Status「Accepted; amended 2026-05-25 W25.5」+ NEW "Amendment 2026-05-25 W25.5 BUG-025" section;[[R14]] (synthesizer) mis-diagnosed predecessor entry above;CH-005 `docs/03-implementation/changes/CH-005-synthesizer-overview-aggregate-query-handling/` spec frontmatter superseded-by-bug-025;commit `8418b57` retained |
 
 ---
 

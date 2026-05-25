@@ -1,16 +1,17 @@
-"""Hybrid retrieval low-value soft-relax tests per ADR-0035 W25 F5 D2 + CH-003.
+"""Hybrid retrieval low-value soft-relax tests per ADR-0035 W25 F5 D2 (amended 2026-05-25 BUG-025).
 
-Covers `_apply_low_value_post_filter` behavior + HybridSearcher integration:
+Covers `_apply_low_value_post_filter` symmetric deboost behavior + HybridSearcher integration:
 
-- low_value_flag=True + embedded_images_json non-empty → retain with score × image_weight
-- low_value_flag=True + no images (`[]` / empty string / whitespace) → drop
-- low_value_flag=False → keep unchanged regardless of images
+- low_value_flag=True → retain with score × image_weight (regardless of image presence)
+- low_value_flag=False → keep unchanged
 - image_weight knob override (0.5 / 0.8 / 0.9 empirical tuning)
-- image_weight=0 degenerate case (drop all low_value image-bearing too)
+- image_weight ≤ 0 degenerate case → drop all low_value (A/B measurement branch preserved)
 - HybridSearcher init image_weight kwarg + default 0.7
 - _DEFAULT_FILTER no longer contains `low_value_flag eq false` (server-side filter shift)
 
 Per CLAUDE.md §5.6 H6 — retrieval critical pipeline test coverage.
+Pre-BUG-025 asymmetric drop branch (low_value+no-image → drop) inverted to
+symmetric retain × image_weight per amended ADR-0035.
 """
 
 from __future__ import annotations
@@ -65,25 +66,34 @@ def test_low_value_with_images_retained_with_weight() -> None:
     assert result[0].fields["chunk_id"] == "test-chunk-1.00"
 
 
-def test_low_value_without_images_dropped() -> None:
-    """ADR-0035 (b): low_value=True + no images (`[]`) → drop (W2 exclusion preserved)."""
+def test_low_value_without_images_retained_with_weight_per_bug_025() -> None:
+    """ADR-0035 amended (BUG-025): low_value=True + no images (`[]`) → retain × image_weight.
+
+    Pre-BUG-025 behavior dropped this case (asymmetric drop branch). Post-amendment
+    symmetric deboost retains with score × image_weight to honor §3.5 "deboost"
+    spec intent for text-only low_value chunks (e.g. scenario enumeration sections).
+    """
     hits = [_hit(0.9, low_value=True, images_json="[]")]
     result = _apply_low_value_post_filter(hits, image_weight=0.7)
-    assert result == []
+    assert len(result) == 1
+    assert result[0].score == pytest.approx(0.9 * 0.7)  # 0.63
+    assert result[0].fields["chunk_id"] == "test-chunk-0.90"
 
 
-def test_low_value_empty_string_images_dropped() -> None:
-    """Edge case: low_value=True + empty embedded_images_json string → drop."""
+def test_low_value_empty_string_images_retained_per_bug_025() -> None:
+    """Edge case (BUG-025 amended): low_value=True + empty images string → retain × weight."""
     hits = [_hit(0.9, low_value=True, images_json="")]
     result = _apply_low_value_post_filter(hits, image_weight=0.7)
-    assert result == []
+    assert len(result) == 1
+    assert result[0].score == pytest.approx(0.9 * 0.7)
 
 
-def test_low_value_whitespace_images_dropped() -> None:
-    """Edge case: low_value=True + whitespace-only embedded_images_json → drop."""
+def test_low_value_whitespace_images_retained_per_bug_025() -> None:
+    """Edge case (BUG-025 amended): low_value=True + whitespace-only images → retain × weight."""
     hits = [_hit(0.9, low_value=True, images_json="   ")]
     result = _apply_low_value_post_filter(hits, image_weight=0.7)
-    assert result == []
+    assert len(result) == 1
+    assert result[0].score == pytest.approx(0.9 * 0.7)
 
 
 def test_non_low_value_unchanged_regardless_of_images() -> None:
@@ -99,18 +109,19 @@ def test_non_low_value_unchanged_regardless_of_images() -> None:
 
 
 def test_mixed_hits_preserve_order_and_apply_selectively() -> None:
-    """Realistic mix: 3 non-low_value + 1 low_value+image + 1 low_value+empty.
-    Result should be [non_lv, non_lv, low_lv*weight, non_lv] (low_lv+empty dropped)."""
+    """Realistic mix (post-BUG-025 symmetric deboost): 3 non-low_value + 1 low_value+image
+    + 1 low_value+empty. All 5 retained: low_value chunks both × weight, non-low_value unchanged."""
     hits = [
         _hit(1.0, low_value=False),
         _hit(0.9, low_value=False),
         _hit(0.8, low_value=True, images_json='[{"checksum_sha256": "a"}]'),
-        _hit(0.7, low_value=True, images_json="[]"),  # drops
+        _hit(0.7, low_value=True, images_json="[]"),  # post-BUG-025: retain × 0.5 = 0.35
         _hit(0.6, low_value=False),
     ]
     result = _apply_low_value_post_filter(hits, image_weight=0.5)
     scores = [h.score for h in result]
-    assert scores == [1.0, 0.9, pytest.approx(0.4), 0.6]  # 0.8 × 0.5 = 0.4
+    assert scores == [1.0, 0.9, pytest.approx(0.4), pytest.approx(0.35), 0.6]
+    # 0.8 × 0.5 = 0.4 (image-bearing low_value); 0.7 × 0.5 = 0.35 (text-only low_value, BUG-025)
 
 
 def test_image_weight_knob_override_empirical_tuning() -> None:
@@ -162,14 +173,20 @@ def test_missing_low_value_field_treated_as_false() -> None:
     assert result[0].score == 0.5
 
 
-def test_missing_embedded_images_json_treated_as_empty() -> None:
-    """Defensive: low_value=True + missing embedded_images_json field → drop."""
+def test_missing_embedded_images_json_treated_as_low_value_retained_per_bug_025() -> None:
+    """Defensive (BUG-025 amended): low_value=True + missing embedded_images_json field → retain × weight.
+
+    Pre-BUG-025 behavior dropped this defensive case; post-amendment symmetric
+    deboost treats missing images field same as present — retain × image_weight.
+    embedded_images_json is no longer a branching signal in retain decision.
+    """
     hit = HybridSearchHit(
         score=0.6,
         fields={"chunk_id": "legacy", "low_value_flag": True},  # no embedded_images_json
     )
     result = _apply_low_value_post_filter([hit], image_weight=0.7)
-    assert result == []
+    assert len(result) == 1
+    assert result[0].score == pytest.approx(0.6 * 0.7)  # 0.42
 
 
 # ---------------------------------------------------------------------------
@@ -234,8 +251,8 @@ async def test_hybrid_search_payload_filter_drops_low_value_clause() -> None:
 
 @pytest.mark.asyncio
 async def test_hybrid_search_applies_post_filter_to_response_low_value() -> None:
-    """End-to-end: server returns low_value chunks (no longer filtered by OData);
-    client-side post-filter applies score × 0.7 to image-bearing, drops non-image."""
+    """End-to-end (BUG-025 amended): server returns low_value chunks (no OData filter);
+    client-side post-filter applies score × 0.7 to ALL low_value (symmetric deboost)."""
     body = {
         "value": [
             {
@@ -266,13 +283,14 @@ async def test_hybrid_search_applies_post_filter_to_response_low_value() -> None
         async with HybridSearcher("https://x", "k", "idx", image_weight=0.7) as s:
             hits = await s.search("q", [0.0] * 1024, kb_id="drive_user_manuals", top_k=10)
 
-    # 3 returned by Azure Search server → post-filter drops 1 (low-value no-image)
-    # → 2 retained (non-low-value full score + low-value-with-image × 0.7)
-    assert len(hits) == 2
+    # 3 returned by Azure Search server → post-filter retains all 3 (BUG-025 symmetric)
+    # → non-low-value full score + 2 low_value chunks × 0.7
+    assert len(hits) == 3
     chunk_ids = [h.fields["chunk_id"] for h in hits]
-    assert chunk_ids == ["non-low-value", "low-value-with-image"]
+    assert chunk_ids == ["non-low-value", "low-value-with-image", "low-value-no-image"]
     assert hits[0].score == pytest.approx(1.0)
-    assert hits[1].score == pytest.approx(0.9 * 0.7)  # 0.63
+    assert hits[1].score == pytest.approx(0.9 * 0.7)  # 0.63 — image-bearing low_value
+    assert hits[2].score == pytest.approx(0.8 * 0.7)  # 0.56 — text-only low_value (BUG-025)
 
 
 @pytest.mark.asyncio

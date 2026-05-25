@@ -1,8 +1,8 @@
 # ADR-0035: Retrieval low-value soft-relax — server-side filter shift + client-side score weighting policy
 
-**Date**: 2026-05-24
-**Status**: Accepted
-**Approver**: Chris(chat 2026-05-24 AskUserQuestion 2-step:(1)「Path B — CH-003 + co-ADR-0035 mandatory(Recommended)」H1 boundary pick;(2)「Accept both — proceed implementation(Recommended)」content accept gate)
+**Date**: 2026-05-24(initial)+ amended 2026-05-25 W25.5 per Sev2 BUG-025
+**Status**: Accepted; amended 2026-05-25 W25.5 per Sev2 BUG-025
+**Approver**: Chris(chat 2026-05-24 AskUserQuestion 2-step:(1)「Path B — CH-003 + co-ADR-0035 mandatory(Recommended)」H1 boundary pick;(2)「Accept both — proceed implementation(Recommended)」content accept gate);amendment approver Chris(chat 2026-05-25 AskUserQuestion 2-step:(1)「Path A symmetric deboost」mitigation pick;(2)「Amend ADR-0035(Recommended)」+「Single atomic commit(Recommended)」governance shape pick)
 **Phase context**: `W25-image-association-deep-fix` F5 D2 deliverable + CH-003 co-shipped
 **Related**:
 - ADR-0033 chunker low-value tuning(W25 F1 sibling — closes H1 60% low_value ratio at chunker-side)
@@ -62,28 +62,34 @@ Spec 兩處用 "**deboost**" 字眼(語義 = 降分但保留於 retrieval pool),
 
 ```python
 # backend/retrieval/hybrid.py — NEW helper applied after Azure Search response
+# AMENDED 2026-05-25 W25.5 per Sev2 BUG-025 — symmetric deboost (was asymmetric drop)
 def _apply_low_value_post_filter(
     hits: list[HybridSearchHit],
     *,
     image_weight: float = 0.7,
 ) -> list[HybridSearchHit]:
-    """Post-filter low_value chunks per ADR-0035 W25 F5 D2 deliverable.
+    """Post-filter low_value chunks per ADR-0035 W25 F5 D2 (amended 2026-05-25 BUG-025).
 
-    - low_value_flag=True AND embedded_images_json non-empty → retain with score × image_weight
-    - low_value_flag=True AND no images → drop (preserve W2 exclusion semantics for non-image low_value)
+    Symmetric deboost (matches architecture.md §3.5 "deboost" spec literal intent):
+
+    - low_value_flag=True → retain with score × image_weight (regardless of image presence)
     - low_value_flag=False → keep unchanged
+
+    image_weight ≤ 0 is degenerate path (drops all low_value — A/B branch preserved).
     """
+    if image_weight <= 0:
+        return [h for h in hits if not h.fields.get("low_value_flag", False)]
+
     result: list[HybridSearchHit] = []
     for hit in hits:
-        if not hit.fields.get("low_value_flag", False):
-            result.append(hit)
-            continue
-        images_json = str(hit.fields.get("embedded_images_json", "") or "")
-        if images_json and images_json.strip() not in ("", "[]"):
+        if hit.fields.get("low_value_flag", False):
             result.append(replace(hit, score=hit.score * image_weight))
-        # else: low_value AND no images → drop
+        else:
+            result.append(hit)
     return result
 ```
+
+> **Original (pre-BUG-025) asymmetric drop branch** — see "Amendment 2026-05-25 W25.5 BUG-025 — symmetric deboost" section below for evolution rationale。
 
 Integration point:`HybridSearcher.search()` 之 Azure Search response decode 後、return list[HybridSearchHit] 之前。
 
@@ -154,11 +160,73 @@ retrieval_image_low_value_weight: float = 0.7  # per ADR-0035 W25 F5 D2; empiric
 
 Per W25 plan §2 F7 cross-doc sync + ADR-0024 precedent for inline-tagged amendment(doc-version held — ADR is record per W17 precedent):
 
-**Current `architecture.md §3.6 line 384`**:
+**Original `architecture.md §3.6 line 384`**(pre-W25):
 > **Query 時 filter**:`enabled eq true and low_value_flag eq false`(default deboost low value chunks)
 
-**Amended to**(W25 F7 phase closeout cascade — inline-tagged):
-> **Query 時 filter**:`enabled eq true`(server-side OData)+ **client-side post-filter**:`low_value_flag=True AND embedded_images_json non-empty` → retain with score × 0.7;`low_value_flag=True AND no images` → drop(per ADR-0035 W25 F5 D2 amendment;doc-version held)
+**Re-amended 2026-05-25 W25.5 per Sev2 BUG-025**(supersedes 2026-05-24 W25 D4 wording):
+> **Query 時 filter**:`enabled eq true`(server-side OData)+ **client-side symmetric deboost post-filter**:`low_value_flag=True` → retain with score × 0.7(regardless of image presence;matches §3.5 "deboost" spec literal intent);`low_value_flag=False` → unchanged(per ADR-0035 W25 F5 D2 amended W25.5 BUG-025;doc-version held)
+
+---
+
+## Amendment 2026-05-25 W25.5 BUG-025 — symmetric deboost
+
+### Trigger
+
+Sev2 BUG-025 surfaced 2026-05-25 same-session as CH-005 ship:Q-W25-I07「show me all the Integration scenarios」regression vs pre-W25 baseline(0 citations + refuse vs partial A+B return)。CH-005 R14 synthesizer-side mitigation attempt(commit `8418b57`)proven functionally ineffective because synthesizer receives empty chunks list — root cause is **retrieval-side asymmetric drop branch in ADR-0035 implementation**,not synthesizer-side over-refuse。
+
+See:
+- `docs/03-implementation/bugs/BUG-025-retrieval-low-value-no-image-silent-drop/report.md`(symptom + 5-whys + acceptance criteria)
+- `docs/03-implementation/bugs/BUG-025-retrieval-low-value-no-image-silent-drop/postmortem.md`(Sev2 mandatory postmortem + 6 preventive controls PC1-PC6)
+
+### Assumption error identified
+
+Original ADR-0035 Decision (b) + Alternative E rationale assumed:**「text-only low_value chunks = TOC/version-statement noise — should be dropped to preserve W2 exclusion semantics」**。
+
+Empirical signal post-W25 closeout shows assumption errored:**text-only low_value chunks legitimately include scenario-enumeration content**(short list-like sections with valuable content,not noise)。ADR-0033 chunker re-tune(`_TOKEN_LOW_VALUE_FLOOR` 100→60 + adjacent-short-merge)increases the population of legitimate text-only low_value chunks,amplifying impact of the asymmetric drop branch。
+
+### Decision evolution
+
+**Pre-BUG-025 asymmetric drop**(W25 D4 landed):
+- `low_value=True + image` → retain × 0.7 ✅
+- `low_value=True + no-image` → **DROP** ❌(violates §3.5 "deboost" intent for text-only subset)
+- `low_value=False` → unchanged ✅
+
+**Post-BUG-025 symmetric deboost**(W25.5 landed):
+- `low_value=True` → retain × `image_weight`(regardless of image presence — matches §3.5 "deboost" spec literal intent)
+- `low_value=False` → unchanged
+- `image_weight ≤ 0` degenerate path preserved as A/B measurement branch(drops all low_value — useful for empirical comparison between asymmetric / symmetric / drop-all behaviors)
+
+### Why amendment not supersede
+
+Chris pick 2026-05-25 AskUserQuestion:**「Amend ADR-0035(Recommended)」**over「NEW ADR-0036 supersede」。Rationale:
+- Precedent ADR-0017 5 amendments(R8 corp-proxy mitigation pattern)— amendment validated pattern for behavioral evolution within same decision family
+- Same decision family(retrieval low-value handling)— supersede ADR would fragment decision narrative
+- ADR sequence stays lean — NEW ADRs reserved for materially separate decisions
+- Preserve W25 D4 timeline context within single ADR(asymmetric → symmetric is a behavioral refinement, not a new decision class)
+
+### What does NOT change
+
+- Server-side OData filter `_DEFAULT_FILTER = "enabled eq true"`(Decision (a)— preserved)
+- `Settings.retrieval_image_low_value_weight: float = 0.7` default knob(Decision (c)— preserved)
+- `low_value_flag` chunker flagging semantics(out of scope — ADR-0033 chunker logic unchanged)
+- CH-003 F5 D1 citation neighbour-image attach(unchanged — will now fire more often as more low_value chunks reach synthesizer's citation pool)
+- F4 LIVE RAGAs eval scope(deferred W26+;BUG-025 fix surfaces independent of LIVE eval)
+- F6 manual user-test 5-query taxonomy(captured as preventive control PC1 in postmortem)
+
+### Consequences of amendment
+
+**Positive**:
+- Closes Q-W25-I07-class regression(text-only overview/aggregate queries now retrieve chunks instead of silent drop)
+- Implementation literal-matches §3.5「deboost」spec wording(removes the residual spec-implementation divergence that survived original W25 D4 landing)
+- Test design corrected:`test_low_value_without_images_dropped` 系列 inverted to `test_low_value_without_images_retained_with_weight_per_bug_025` — tests now encode correct spec interpretation
+
+**Negative**:
+- Slightly increases top_k chunk count (some text-only low_value now ranked × 0.7 deboost instead of dropped)— may push some non-low_value chunks slightly down;F6 manual verify will catch if image-bearing low_value crowds top_k(R7 preserved)
+- ADR-0035 footprint grows(Status + Decision (b) + §3.6 inline-tag + NEW Amendment section + References)— ADR-0017-style amendment fan-out
+
+**Neutral**:
+- Decision (b) code-block update preserves degenerate `image_weight ≤ 0` path → A/B branch still available for empirical measurement(asymmetric was implicitly removable by `image_weight=0`;now both behaviors selectable via knob)
+- BUG-025 single atomic commit per Chris pick `(d) Single atomic commit (Recommended)` — docs + code + tests bundled in one commit
 
 ---
 
@@ -175,3 +243,7 @@ Per W25 plan §2 F7 cross-doc sync + ADR-0024 precedent for inline-tagged amendm
 - CH-003 spec `docs/03-implementation/changes/CH-003-image-association-retrieval-and-citation/spec.md`(co-shipped)
 - Investigation memo `docs/03-implementation/image-chunk-retrieval-investigation-2026-05-23.md`
 - W25 progress `docs/01-planning/W25-image-association-deep-fix/progress.md` Day 4 entry(ADR-0035 active flip + D2 implementation log)
+- BUG-025 report `docs/03-implementation/bugs/BUG-025-retrieval-low-value-no-image-silent-drop/report.md`(Sev2 + 5-whys + acceptance criteria — driver for 2026-05-25 W25.5 amendment)
+- BUG-025 postmortem `docs/03-implementation/bugs/BUG-025-retrieval-low-value-no-image-silent-drop/postmortem.md`(Sev2 mandatory § 1-6 + 6 preventive controls PC1-PC6)
+- CH-005 `docs/03-implementation/changes/CH-005-synthesizer-overview-aggregate-query-handling/`(mis-diagnosed R14 mitigation,functionally ineffective;commit `8418b57` retained as reasonable prompt improvement,frontmatter superseded-by-bug-025)
+- ADR-0017 — amendment precedent(5 R8 occurrence amendments validate pattern)

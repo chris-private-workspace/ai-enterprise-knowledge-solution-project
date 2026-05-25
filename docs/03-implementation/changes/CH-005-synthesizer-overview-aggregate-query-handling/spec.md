@@ -1,11 +1,21 @@
 ---
 change_id: CH-005
-title: "Synthesizer overview-aggregate query handling — Rule 6 + F3 reformulator prompt strengthening (R14 mitigation)"
-status: approved           # draft | proposed | approved | active | done | cancelled
+title: "Synthesizer overview-aggregate query handling — Rule 6 + F3 reformulator prompt strengthening (R14 mitigation — MIS-DIAGNOSED, superseded by BUG-025)"
+status: superseded-by-bug-025  # draft | proposed | approved | active | done | cancelled | superseded-by-X
 created: 2026-05-24
 approved: 2026-05-24       # Chris batched accept gate chat 2026-05-24「Accept spec — proceed implementation」
-completed: TBD
+superseded: 2026-05-25     # post user-eye verify proved synthesizer-side fix functionally ineffective; root cause re-attributed to retrieval-side R15 per BUG-025
 target_completion: 2026-05-24  # W25 carry-over same-session per AI compression precedent
+supersedes_status_note: |
+  Implementation commit `8418b57` (Rule 6 SYSTEM_PROMPT add + EXAMPLE 3 REFORMULATOR_SYSTEM_PROMPT add)
+  RETAINED per Chris pick 2026-05-25 — prompts are reasonable improvements for overview/aggregate
+  framing semantics independent of retrieval-side root cause. CH-005 R14 framing mis-diagnosed
+  (synthesizer-side over-refuse) — true root cause was C04 retrieval-side `_apply_low_value_post_filter`
+  asymmetric drop (low_value + no-image → silent drop) which produced empty chunks list at synthesizer,
+  bypassing Rule 6 trigger condition (need ≥1 chunk to "Based on available documentation: synthesize").
+  See `docs/03-implementation/bugs/BUG-025-retrieval-low-value-no-image-silent-drop/` for root cause
+  analysis + Sev2 postmortem + 6 preventive controls PC1-PC6. CH-005 spec content + tests preserved
+  for audit trail; R14 entry in RISK_REGISTER flipped to "Mis-diagnosed, superseded by R15".
 affects_components: [C05]    # C05 Generation Pipeline (both Synthesizer + F3 Query Reformulator live in C05)
 spec_refs:
   - architecture.md §3.1               # Query pipeline + Synthesizer + L2 CRAG (Reformulator already inline-tagged per ADR-0034)

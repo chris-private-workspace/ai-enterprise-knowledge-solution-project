@@ -400,15 +400,15 @@ EKP Platform
 
 **Query 時 filter**:`enabled eq true and low_value_flag eq false`(default deboost low value chunks)
 
-> **W25 F5 D2 amendment per ADR-0035**(2026-05-24,doc-version held — ADR is record):
+> **W25 F5 D2 amendment per ADR-0035 + W25.5 re-amendment per Sev2 BUG-025**(initial 2026-05-24 + amended 2026-05-25,doc-version held — ADR is record):
 > Server-side OData filter shifted to `enabled eq true`(low_value clause移走)+
-> **client-side Python post-filter**:`low_value_flag=True AND embedded_images_json
-> non-empty` → retain with score × `Settings.retrieval_image_low_value_weight`(default
-> 0.7);`low_value_flag=True AND no images` → drop(W2 exclusion preserved for non-image
-> low_value);non-low_value → unchanged。Closes spec wording「deboost」(§3.5 line 258)
-> vs W2 baseline「hard exclude」divergence;image-bearing low_value chunks now retain
-> ranking position vs prior systematic hard-drop。See `backend/retrieval/hybrid.py`
-> `_apply_low_value_post_filter`。
+> **client-side Python symmetric deboost post-filter**:`low_value_flag=True` → retain
+> with score × `Settings.retrieval_image_low_value_weight`(default 0.7)**regardless of
+> image presence**(matches §3.5 line 258「deboost」spec literal intent);`low_value_flag=
+> False` → unchanged。Closes spec wording「deboost」vs W2 baseline「hard exclude」
+> divergence + closes Sev2 BUG-025 text-only low_value silent drop regression(see
+> BUG-025 report + postmortem for assumption-error analysis + PC1-PC6 preventive controls)。
+> See `backend/retrieval/hybrid.py` `_apply_low_value_post_filter`。
 
 ### 3.7 C13 Email Verification Service(v6 amendment per ADR-0014 hybrid auth)
 
