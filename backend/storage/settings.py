@@ -220,6 +220,20 @@ class Settings(BaseSettings):
     # False = skip expansion for shallow chunks.
     parent_doc_fallback_to_doc_on_shallow: bool = True
 
+    # W27 F1 — parent-doc dispatch chain mode per ADR-0037 amendment candidate.
+    # W26 F2 G RAGAs delta FAIL (faithfulness -8.36pp + correctness -6.12pp +
+    # Q-W25-I07 0.00/0.00 + Q-W25-I01 control regression) 觸發 R-W26-1 hypothesis:
+    # current replace semantics (prompt_builder._format_chunk top-priority-wins
+    # `or` chain — parent_section_text > expanded_text > chunk_text) 導致 LLM
+    # cite parent siblings outside top-5 reranked set → RAGAs judge faithfulness
+    # mismatch (judge compares retrieved top-5 vs LLM-cited chunks). Append
+    # mode 將 anchor chunk_text + parent section context 兩段都 render 入 LLM
+    # input,citation invariant preserved → judge mismatch eliminated hypothesis.
+    # Default "replace" preserves W26 F2 G semantics per Q4 measurement-
+    # experiment-fail-policy. W27 F2 G PASS → ADR-0037 amendment default flip;
+    # FAIL → NEW ADR-0038 documents finding + default preserved per Karpathy §1.3.
+    parent_doc_dispatch_mode: Literal["replace", "append"] = "replace"
+
     # Feature flags
     feature_l3_routing_enabled: bool = False
     feature_auth_enabled: bool = False
@@ -273,7 +287,9 @@ class Settings(BaseSettings):
     jwks_cache_ttl_s: int = 3600
     # Allowed JWT issuer pattern — defaults to Entra ID v2.0 endpoint per tenant.
     azure_jwt_issuer_template: str = "https://login.microsoftonline.com/{tenant_id}/v2.0"
-    azure_jwks_uri_template: str = "https://login.microsoftonline.com/{tenant_id}/discovery/v2.0/keys"
+    azure_jwks_uri_template: str = (
+        "https://login.microsoftonline.com/{tenant_id}/discovery/v2.0/keys"
+    )
 
     # Logging / Environment
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"

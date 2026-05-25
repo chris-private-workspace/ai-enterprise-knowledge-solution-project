@@ -97,3 +97,79 @@ def test_dispatch_handles_missing_parent_section_text_key() -> None:
     msgs = build_prompt("test query", [chunk])
     user_msg = msgs.messages[1]["content"]
     assert "expanded only" in user_msg
+
+
+# ─── W27 F1 — dispatch_mode enum branching tests per ADR-0037 amendment candidate ───
+# R-W26-1 hypothesis test:append mode renders BOTH anchor chunk_text + parent
+# section context (2 segments) instead of replace mode's top-priority-wins `or`
+# chain — preserves citation invariant against RAGAs faithfulness judge mismatch.
+
+
+def test_format_chunk_dispatch_replace_mode_preserves_w26_semantics() -> None:
+    """W27 F1 — `dispatch_mode="replace"` explicit 同 backward-compat default 行為一致。
+
+    Regression-guard against W26 F2 G existing 7 dispatch tests:replace branch
+    必須 top-priority-wins (`parent_section_text > expanded_text > chunk_text`)。
+    """
+    chunk = _chunk_with_fields(
+        expanded_text="expanded fallback",
+        parent_section_text="parent section wins on replace",
+    )
+    msgs = build_prompt("test query", [chunk], dispatch_mode="replace")
+    user_msg = msgs.messages[1]["content"]
+    assert "parent section wins on replace" in user_msg
+    assert "expanded fallback" not in user_msg  # replace branch — expanded NOT rendered
+    assert "raw chunk text fallback" not in user_msg  # replace branch — chunk_text NOT rendered
+
+
+def test_format_chunk_dispatch_append_mode_includes_both_segments() -> None:
+    """W27 F1 — append mode render BOTH anchor chunk_text + parent section context。
+
+    Core hypothesis test:LLM input contains anchor's raw chunk_text 主段 + delimiter
+    + parent section context 段;preserves citation invariant against judge mismatch.
+    """
+    chunk = _chunk_with_fields(
+        chunk_text="anchor chunk raw text here",
+        parent_section_text="Sibling A\n\nSibling B\n\nSibling C",
+    )
+    msgs = build_prompt("test query", [chunk], dispatch_mode="append")
+    user_msg = msgs.messages[1]["content"]
+    # 主段 — anchor chunk_text raw
+    assert "anchor chunk raw text here" in user_msg
+    # delimiter — explicit "Parent section context:" sub-section
+    assert "Parent section context:" in user_msg
+    # parent section context segment
+    assert "Sibling A" in user_msg
+    assert "Sibling C" in user_msg
+
+
+def test_format_chunk_dispatch_append_mode_no_parent_section_falls_back_to_replace_chain() -> None:
+    """W27 F1 — append mode + 無 parent_section_text → 退回 replace chain (expanded > chunk)。
+
+    Falsy parent_section_text → no 2-segment render;Test-deterministic equivalence
+    with replace branch when parent-doc retriever returns empty (flag off OR no anchor)。
+    """
+    chunk = _chunk_with_fields(expanded_text="expanded result without parent")
+    msgs = build_prompt("test query", [chunk], dispatch_mode="append")
+    user_msg = msgs.messages[1]["content"]
+    assert "expanded result without parent" in user_msg
+    assert "Parent section context:" not in user_msg  # 無 parent → 無 delimiter
+
+
+def test_format_chunk_dispatch_append_mode_citation_chunk_id_preserved() -> None:
+    """W27 F1 — append mode citation invariant explicit verification。
+
+    Per architecture.md §3.5 Citation contract:LLM cites anchor chunk_id 即使
+    parent_section_text 已 render — append branch 唔改 citation surface。
+    """
+    chunk = _chunk_with_fields(
+        chunk_id="kb-test_doc-X_chunk-0042",
+        parent_section_text="full parent section text appended after anchor",
+    )
+    msgs = build_prompt("test query", [chunk], dispatch_mode="append")
+    user_msg = msgs.messages[1]["content"]
+    # Citation marker uses anchor's chunk_id regardless of dispatch mode
+    assert "[chunk-kb-test_doc-X_chunk-0042]" in user_msg
+    # Both segments rendered (sanity check)
+    assert "raw chunk text fallback" in user_msg  # anchor chunk_text
+    assert "full parent section text appended" in user_msg  # parent context

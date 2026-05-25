@@ -30,6 +30,7 @@ from tenacity import (
 from generation.prompt_builder import REFUSAL_PHRASE, build_prompt
 from observability.observe import observe_llm_async
 from retrieval.retrieval_engine import RetrievedChunk
+from storage.settings import get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -41,7 +42,7 @@ class SynthesisResult:
     """Synthesizer output — answer text + ordered cited chunk_ids + cost trace."""
 
     answer: str
-    citation_ids: list[str]   # ordered unique chunk_ids cited in answer
+    citation_ids: list[str]  # ordered unique chunk_ids cited in answer
     refused: bool
     input_tokens: int
     output_tokens: int
@@ -123,7 +124,11 @@ class Synthesizer:
     ) -> SynthesisResult:
         assert self._client is not None, "use 'async with' to manage Synthesizer lifecycle"
 
-        prompt = build_prompt(query, chunks)
+        prompt = build_prompt(
+            query,
+            chunks,
+            dispatch_mode=get_settings().parent_doc_dispatch_mode,
+        )
         start = time.perf_counter()
         completion = await self._client.chat.completions.create(
             **self._completion_kwargs(
@@ -187,7 +192,11 @@ class Synthesizer:
         """
         assert self._client is not None, "use 'async with' to manage Synthesizer lifecycle"
 
-        prompt = build_prompt(query, chunks)
+        prompt = build_prompt(
+            query,
+            chunks,
+            dispatch_mode=get_settings().parent_doc_dispatch_mode,
+        )
         start = time.perf_counter()
         accumulated = ""
         input_tokens = 0

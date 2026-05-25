@@ -50,28 +50,57 @@ status: in-progress
 
 ---
 
-## Day 1 — 2026-05-25(planned)
+## Day 1 — 2026-05-25:F1 implementation landed
 
 ### Done
 
-- (pending — F1 implementation:Setting + prompt_builder branch + ≥ 3 unit tests)
+- F1 D1 R6 sub-verify locked Option (i) single chunk header + `Parent section context:` delimiter sub-section per Chris AskUserQuestion Recommended pick(plan §4 R4 mitigation closed before active flip)
+- F1 A:`backend/storage/settings.py` NEW field `parent_doc_dispatch_mode: Literal["replace", "append"] = "replace"`(line 223;default preserves W26 F2 G semantics per Q4 measurement-experiment-fail-policy)
+- F1 B:`backend/generation/prompt_builder.py` `_format_chunk` 函數 branch on `dispatch_mode` keyword-only parameter:
+  - `"replace"` branch — preserve `or` chain top-priority-wins semantics(`parent_section_text > expanded_text > chunk_text`)— W26 F2 G behavioral parity preserved
+  - `"append"` branch — render 2-segment format:anchor `chunk_text` 主段 + `Parent section context:` delimiter + parent_section_text 段;若 `parent_section_text` falsy → 退回 replace chain `expanded_text > chunk_text`
+  - `build_prompt(...)` signature extended `*, dispatch_mode: str = "replace"`(backward-compat preserved by default for all 11 existing test sites)
+- F1 B wire:`backend/generation/synthesizer.py` 2 call sites(`synthesize` + `synthesize_stream`)wire `dispatch_mode=get_settings().parent_doc_dispatch_mode` via lru_cached singleton(production code path picks Settings value at runtime;no Synthesizer constructor change per Karpathy §1.3 surgical)
+- F1 C:4 NEW unit tests in `backend/tests/test_prompt_builder_dispatch.py`(7 existing W26 F2 tests preserved bit-identical;total 11):
+  - `test_format_chunk_dispatch_replace_mode_preserves_w26_semantics` — regression-guard
+  - `test_format_chunk_dispatch_append_mode_includes_both_segments` — core hypothesis test
+  - `test_format_chunk_dispatch_append_mode_no_parent_section_falls_back_to_replace_chain` — falsy fallback
+  - `test_format_chunk_dispatch_append_mode_citation_chunk_id_preserved` — citation invariant verification
+- F1 D:**11/11 dispatch tests PASS + 14/14 synthesizer tests PASS**(25/25 touched-test-set);ruff check clean + ruff format auto-fix applied(3 files cosmetic reformat — `Text` block + `user_msg` f-string compaction);mypy 18 pre-existing W26 baseline errors per `CO_W25_mypy_strict_debt`(NOT W27 caused)
+- Render strategy decision locked Option (i) per Chris AskUserQuestion Recommended pick;preview format example:
+  ```
+  [chunk-abc123] Title
+    Section: Doc > §8 > Scenario A
+    Text: <anchor chunk_text raw>
+  
+    Parent section context:
+    <parent_section_text 1500 tokens aggregated>
+  ```
 
 ### Decisions / OQ Resolved
 
-- (pending)
+- F1 D1 design decision:Approach B(`dispatch_mode` keyword-only parameter to `_format_chunk` + `build_prompt`)over Approach A(read Settings inside `_format_chunk`)per Karpathy §1.2 testable + decouples Settings IO;backward-compat 由 default `dispatch_mode="replace"` 保留 existing 11 callers(synthesizer 2 sites explicitly wire production Settings;tests + other call sites preserve W26 default behavior)
+- No OQ resolved this Day
 
 ### Blockers
 
-- (pending — R8 prerequisite check at F2 D2 may surface here if Azure/Cohere key env not available)
+- 無 D1 blocker。R8 prerequisite check 屬於 F2 D2 scope(Azure OpenAI judge + Cohere v4.0-pro reranker key environment)— defer to F2 active flip
 
 ### Actual vs Planned Effort
 
 | Deliverable | Planned (h) | Actual (h) | Variance |
 |---|---|---|---|
+| F1 A Setting addition | ~0.5 | ~0.5 | 0 |
+| F1 B prompt_builder branching + synthesizer wire | ~2 | ~1.5 | -0.5(synthesizer wire 比預期 simpler — `get_settings()` lru_cached singleton 已存在)|
+| F1 C 4 NEW unit tests | ~1.5 | ~1 | -0.5 |
+| F1 D code quality gates | ~1 | ~1 | 0 |
+
+**D1 actual**:~4h vs ~5h planned(per W22-W26 AI compression pattern ~25× real-calendar collapse)
 
 ### Commits
 
-- (pending)
+- Backend pytest full regression check **1060 passed + 25 skipped + 0 failed** in 3m42s(W26 baseline 1056 → +4 net IMPROVED matches 4 NEW W27 F1 dispatch tests;regression 0)
+- (pending F1 commit `feat(generation): W27 F1 dispatch mode enum + append branch + 4 NEW unit tests per ADR-0037 amendment candidate`)
 
 ---
 

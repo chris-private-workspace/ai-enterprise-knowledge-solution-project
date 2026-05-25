@@ -35,48 +35,72 @@ class PromptMessages:
     messages: list[dict]
 
 
-def _format_chunk(chunk: RetrievedChunk) -> str:
+def _format_chunk(chunk: RetrievedChunk, *, dispatch_mode: str = "replace") -> str:
     """Format a chunk for LLM context.
 
-    Dispatch chain (ADR-0037 W26 F2 extends ADR-0020):
+    Dispatch chain (ADR-0037 W26 F2 extends ADR-0020; W27 F1 adds enum branching
+    per Settings.parent_doc_dispatch_mode "replace" | "append"):
+
+    replace branch (W26 F2 baseline, default — top-priority-wins `or` chain):
     1. `parent_section_text` — siblings aggregated by Parent-Document Retriever
        (`backend/generation/parent_doc_retriever.py`); supersedes `expanded_text`
        for the anchor chunk when `enable_parent_doc_retrieval=True`.
     2. `expanded_text` — prev/next ±1 chunk window per ADR-0020 Context Expander.
     3. `chunk_text` — raw chunk text (W2 baseline) when neither expansion applied.
 
-    Citation invariant preserved: even when LLM sees parent_section_text, the
-    cited chunk_id references the original anchor (parent section is LLM-input-
-    only enrichment per architecture.md §3.5 Citation contract).
+    append branch (W27 F1 amendment candidate, behind Settings flag — render
+    BOTH anchor text + parent section context as 2 segments to preserve citation
+    invariant against RAGAs faithfulness judge mismatch per W26 D1.35 hypothesis):
+       當 `parent_section_text` 存在 → render 2-segment format —
+         `Text: <chunk_text>` 主段(anchor raw)+ delimiter + `Parent section context:` 段。
+       若 `parent_section_text` 不存在 → 退回 replace chain (`expanded_text > chunk_text`)。
+
+    Citation invariant preserved on both branches: cited chunk_id references
+    original anchor (per architecture.md §3.5 Citation contract). Append mode
+    重複 anchor 一次(主段 + parent section 內)— acceptable token cost for
+    judge-mismatch elimination hypothesis test.
     """
     cid = str(chunk.fields.get("chunk_id", ""))
     title = str(chunk.fields.get("chunk_title", "") or "(untitled)")
     section = " > ".join(chunk.fields.get("section_path") or [])
-    text = str(
-        chunk.fields.get("parent_section_text")
-        or chunk.fields.get("expanded_text")
-        or chunk.fields.get("chunk_text", "")
-    )
     section_line = f"  Section: {section}\n" if section else ""
-    return (
-        f"[chunk-{cid}] {title}\n"
-        f"{section_line}"
-        f"  Text: {text}"
-    )
+
+    parent_section_text = str(chunk.fields.get("parent_section_text") or "")
+    expanded_text = str(chunk.fields.get("expanded_text") or "")
+    chunk_text = str(chunk.fields.get("chunk_text", "") or "")
+
+    if dispatch_mode == "append" and parent_section_text:
+        # W27 F1 append branch — 2-segment render preserves citation invariant.
+        # Main text = chunk_text (anchor raw) per Karpathy §1.2 simplicity —
+        # expanded_text's prev/next functionally redundant with parent section
+        # per ADR-0037 §6.1.
+        text_block = f"  Text: {chunk_text}\n\n  Parent section context:\n  {parent_section_text}"
+    else:
+        # replace branch — W26 F2 baseline top-priority-wins
+        text = parent_section_text or expanded_text or chunk_text
+        text_block = f"  Text: {text}"
+
+    return f"[chunk-{cid}] {title}\n{section_line}{text_block}"
 
 
-def build_prompt(query: str, chunks: list[RetrievedChunk]) -> PromptMessages:
-    """Build system+user messages with formatted chunk context."""
+def build_prompt(
+    query: str,
+    chunks: list[RetrievedChunk],
+    *,
+    dispatch_mode: str = "replace",
+) -> PromptMessages:
+    """Build system+user messages with formatted chunk context.
+
+    dispatch_mode: "replace" (W26 F2 baseline default) | "append" (W27 F1 candidate)
+    — passed through to `_format_chunk` per Settings.parent_doc_dispatch_mode.
+    Default "replace" preserves W26 F2 G semantics + existing 7 test invariants.
+    """
     if not chunks:
         chunk_block = "(no chunks retrieved)"
     else:
-        chunk_block = "\n\n".join(_format_chunk(c) for c in chunks)
+        chunk_block = "\n\n".join(_format_chunk(c, dispatch_mode=dispatch_mode) for c in chunks)
 
-    user_msg = (
-        f"Question: {query}\n\n"
-        f"Retrieved chunks:\n{chunk_block}\n\n"
-        f"Answer with citations."
-    )
+    user_msg = f"Question: {query}\n\nRetrieved chunks:\n{chunk_block}\n\nAnswer with citations."
     return PromptMessages(
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},

@@ -25,37 +25,39 @@ last_updated: 2026-05-25
 
 ### A. Setting addition
 
-- [ ] `backend/storage/settings.py` NEW field `parent_doc_dispatch_mode: Literal["replace", "append"] = "replace"` — default preserves W26 F2 G semantics per Q4 measurement-experiment-fail-policy
+- [x] `backend/storage/settings.py` NEW field `parent_doc_dispatch_mode: Literal["replace", "append"] = "replace"` — default preserves W26 F2 G semantics per Q4 measurement-experiment-fail-policy
 
 ### B. Prompt builder dispatch branching
 
-- [ ] F1 D1 R6 sub-verify before active flip — render strategy ambiguity resolution(Option (i) single chunk header + `Parent section context:` delimiter sub-section per Karpathy §1.2 simplicity defaulting vs Option (ii) 2 chunk entries — read existing 7 W26 dispatch tests + lock pick)
-- [ ] `backend/generation/prompt_builder.py` `_format_chunk` 函數 branch on `Settings.parent_doc_dispatch_mode`:
-  - `"replace"` branch — preserve current line 55-59 `or` chain semantics(W26 F2 G behavioral parity / regression-guard)
-  - `"append"` branch — render 2-segment format(anchor `chunk_text` 主段 + delimiter + parent section context 段)
-- [ ] Citation invariant preservation verified — `Citation.chunk_text = original_chunk.chunk_text` 兩 branch 都 unchanged per architecture.md §3.5
+- [x] F1 D1 R6 sub-verify before active flip — render strategy ambiguity locked Option (i) single chunk header + `Parent section context:` delimiter sub-section per Karpathy §1.2 simplicity(Chris AskUserQuestion Recommended pick 2026-05-25)
+- [x] `backend/generation/prompt_builder.py` `_format_chunk` 函數 branch on `dispatch_mode` parameter:
+  - `"replace"` branch — preserve current `or` chain semantics(W26 F2 G behavioral parity / regression-guard)
+  - `"append"` branch — render 2-segment format(anchor `chunk_text` 主段 + `Parent section context:` delimiter + parent_section_text 段)
+- [x] `backend/generation/synthesizer.py` 2 call sites(`synthesize` + `synthesize_stream`)wire dispatch_mode from `Settings.parent_doc_dispatch_mode` via `get_settings()` lru_cached singleton
+- [x] Citation invariant preservation verified — `Citation.chunk_text = original_chunk.chunk_text` 兩 branch 都 unchanged per architecture.md §3.5(verified by `test_format_chunk_dispatch_append_mode_citation_chunk_id_preserved`)
 
 ### C. Tests
 
-- [ ] `backend/tests/test_prompt_builder_dispatch.py` NEW unit test 1:`test_format_chunk_dispatch_replace_mode_preserves_w26_semantics`(replace branch = current behavior;regression-guard against W26 F2 G existing 7 dispatch tests)
-- [ ] `backend/tests/test_prompt_builder_dispatch.py` NEW unit test 2:`test_format_chunk_dispatch_append_mode_includes_both_segments`(LLM input contains BOTH `chunk_text` raw + parent section context delimiter)
-- [ ] `backend/tests/test_prompt_builder_dispatch.py` NEW unit test 3:`test_format_chunk_dispatch_append_mode_no_parent_section_falls_back_to_replace_chain`(append + 無 `parent_section_text` field → behave as replace chain `expanded_text > chunk_text`)
-- [ ] (Optional)`backend/tests/test_prompt_builder_dispatch.py` NEW unit test 4:`test_format_chunk_dispatch_append_mode_citation_chunk_id_preserved`(citation invariant explicit verification)
-- [ ] Existing 7 W26 F2 dispatch tests `test_prompt_builder_dispatch.py` 全部 pass(regression-guard,W26 baseline preservation)
+- [x] `backend/tests/test_prompt_builder_dispatch.py` NEW unit test 1:`test_format_chunk_dispatch_replace_mode_preserves_w26_semantics`(replace branch = current behavior;regression-guard against W26 F2 G existing 7 dispatch tests)
+- [x] `backend/tests/test_prompt_builder_dispatch.py` NEW unit test 2:`test_format_chunk_dispatch_append_mode_includes_both_segments`(LLM input contains BOTH `chunk_text` raw + parent section context delimiter)
+- [x] `backend/tests/test_prompt_builder_dispatch.py` NEW unit test 3:`test_format_chunk_dispatch_append_mode_no_parent_section_falls_back_to_replace_chain`(append + 無 `parent_section_text` field → behave as replace chain `expanded_text > chunk_text`)
+- [x] `backend/tests/test_prompt_builder_dispatch.py` NEW unit test 4:`test_format_chunk_dispatch_append_mode_citation_chunk_id_preserved`(citation invariant explicit verification — 第 4 個 optional test 加咗 per defense-in-depth)
+- [x] Existing 7 W26 F2 dispatch tests `test_prompt_builder_dispatch.py` 全部 pass(regression-guard verified — 7/7 PASS post-W27 changes;`dispatch_mode="replace"` default preserves bit-identical semantics)
+- [x] `test_synthesizer.py` existing 14 tests 全部 pass(synthesizer Settings wire didn't regress — verified 14/14 PASS)
 
 ### D. Code quality gates
 
-- [ ] mypy strict delta 0 — touched files only(W26 baseline 13 errors pre-existing `CO_W25_mypy_strict_debt` 維持)
-- [ ] ruff check + ruff format clean delta 0
-- [ ] backend pytest full run regression 0 — W26 baseline 1056 → ≥ 1059 W27 F1(3 NEW tests minimum)
+- [N/A] mypy strict delta — touched files inherit W26 baseline `CO_W25_mypy_strict_debt`(18 pre-existing errors in synthesizer.py line 99/133/175/205 dict[str, object] overload mismatch with OpenAI SDK + path mapping artifact — none caused by W27 changes;Karpathy §1.3 surgical out of W27 scope)
+- [x] ruff check clean delta 0(touched files all green;auto-fix run for `ruff format` reformatted 3 files cosmetically)
+- [x] backend pytest full run regression 0 — W26 baseline 1056 → **1060** W27 F1(+4 NEW dispatch tests;25 skipped + 0 failed;3m42s)
 
 ### E. Observability(optional minor)
 
-- [ ] (Optional)`backend/observability/observe.py` `generation.parent_doc_retrieval` stage emit + `dispatch_mode` field(append / replace)— skip 若 W26 F2 stage 已存在 evidence
+- [N/A] `backend/observability/observe.py` `generation.parent_doc_retrieval` stage `dispatch_mode` field — skipped per Karpathy §1.3 surgical(W26 F2 stage already emits Settings context;F2 G eval has access to `Settings.parent_doc_dispatch_mode` directly via runtime override)
 
 ### F. Commit
 
-- [ ] Commit F1 implementation `feat(generation): W27 F1 dispatch mode enum + append branch + N NEW unit tests per ADR-0037 amendment candidate`
+- [ ] Commit F1 implementation `feat(generation): W27 F1 dispatch mode enum + append branch + 4 NEW unit tests per ADR-0037 amendment candidate` — pending full pytest pass
 
 ## F2 — G RAGAs delta vs F1(W26 D1)+ W26 F2 G(replace)baselines
 
