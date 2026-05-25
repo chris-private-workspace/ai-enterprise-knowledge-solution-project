@@ -153,19 +153,48 @@ last_updated: 2026-05-25
 - [ ] **F2.18** — `ruff check generation/parent_doc_retriever.py retrieval/hybrid.py tests/test_parent_doc_retriever.py` clean
 
 ### G. Re-eval — W26 F2 → F3 gate evidence
-- [ ] **F2.19** — Restart uvicorn + `/health` 200(6 NEW Settings loaded)+ env var override `ENABLE_PARENT_DOC_RETRIEVAL=true`
-- [ ] **F2.20** — Re-run RAGAs `POST /eval/run` eval_set_id=`eval-set-v0-w25-supplement` same 13 queries as F1 baseline
-- [ ] **F2.21** — Capture per-query metadata:retrieved anchor chunk + parent siblings count + parent_section_text length + truncated flag(for delta diagnostic)
-- [ ] **F2.22** — Write `docs/01-planning/W26-eval-driven-retrieval-tuning/parent-doc-metrics-W26-D{N}.md`:
-  - [ ] **F2.22a** — Per-query metrics delta vs F1 baseline(faithfulness / answer_relevancy / context_precision / context_recall)
-  - [ ] **F2.22b** — Per-query chunk_id list + parent sibling count diagnostic
-  - [ ] **F2.22c** — Aggregated delta + interpretation(recall ↑ expected per parent-doc 解 enumeration scope;faithfulness 觀察是否 holds)
-  - [ ] **F2.22d** — Q-W25-I07「show me all the Integration scenarios」qualitative review:named scenarios count(was 1 post BUG-025;target ≥ 3 — 5 ideal)+ chunk #8 §3.1 leak check(parent-doc 是否 reduce off-topic content)
-  - [ ] **F2.22e** — Q-W25-I02 + Q-W25-I03 + Q-W25-I04 + Q-W25-I05 + Q-W25-T04(5 failed-cohort F1 queries with `context_recall=0`)review:improvement quantified
-- [ ] **F2.23** — Settings tuning iteration log if RAGAs delta inconclusive(per R3 — max 3 iterations of `parent_doc_top_k` 1→2→3 OR `parent_doc_max_tokens_per_parent` 4000→6000→2000 sweep before STOP and ask Chris)
+- [x] **F2.19** — Restart uvicorn + `/health` 200 + env var override `ENABLE_PARENT_DOC_RETRIEVAL=true` — **DONE 2026-05-25 D5**(append `.env` + Stop-Process + restart uvicorn `--reload` worker;`/health` 200 + 全 component ok + Settings `case_sensitive=False` 自動 map UPPER_SNAKE env var 入 Pydantic field)
+- [x] **F2.20** — Re-run RAGAs `POST /eval/run` 13 queries — **DONE 2026-05-25 D5**(POST /eval/run + Bearer dev-token + file-based payload via `--data-binary "@..."` 避 shell escape;runtime **492.1s**(F1 baseline 558s 對比 -11.8%);raw output `parent-doc-metrics-W26-D5-raw.json` 2350 bytes EvalReport)
+- [⏭️] **F2.21** — Per-query metadata 抓取 — N/A 本 cohort 範圍(`EvalReport` schema 唔含 per-query chunk_id / sibling count diagnostic;延後 W27+ orchestrator extension 若 sweep 需要)
+- [x] **F2.22** — Write `parent-doc-metrics-W26-D5.md` — **DONE 2026-05-25 D5**:
+  - [x] **F2.22a** — Per-query metrics delta vs F1 baseline ✅ 完整 §2 table
+  - [⏭️] **F2.22b** — Per-query chunk_id list deferred(per F2.21 schema constraint)
+  - [x] **F2.22c** — Aggregated delta + interpretation ✅ §1 + §4 root cause hypothesis 4-axis
+  - [x] **F2.22d** — Q-W25-I07 qualitative review ✅ §2.2 critical regression analysis(faithfulness=0.00 + answer_relevancy=0.00 + REFUSAL_PHRASE / chunk_id drift hypothesis)
+  - [x] **F2.22e** — 5-failed-cohort review ✅ §2.3 — **0/5 measurable recall improvement** confirmed
+- [⏭️] **F2.23** — Settings tuning iteration log — N/A 本 cohort 範圍(per Chris α pick 唔做 W26 Setting sweep;留 W27+ NEW Change scope per `max_tokens_per_parent` 4000→2000 / `parent_doc_top_k` 1→2-3 / dispatch chain append-vs-replace experiments)
 
 ### H. F2 → F3 gate decision(MUST surface to Chris before F3 active flip)
-- [ ] **F2.24** — AskUserQuestion Chris pick — **gate criteria** `context_recall` improvement ≥ TBD pp on 5 failed-cohort queries + `faithfulness` regression ≤ TBD pp(grounded in F2 D{N} parent-doc delta data per Q3 + Q7 eval-driven discipline);**go/no-go decision** F3 proceed query expansion / W26 closeout PASS / iterate Setting values
+- [x] **F2.24** — AskUserQuestion Chris pick — **DONE 2026-05-25 D5**:G3 actual = 0/5 cohort improvement + 1 NEW regression Q-W25-I01 = **FAIL**;G4 actual = -8.36pp + Q-W25-I07 critical 0.0 = **FAIL severely**;**Chris α pick(Recommended)**「PARTIAL closeout + parent-doc default OFF preserved as W27+ candidate」— F3 query expansion NOT triggered(per plan §2 F3 acceptance gating)+ ADR-0037 §Implementation Deliverables A-F 全 ship 保留;`.env` restored + backend Settings default 恢復
+
+## F3 — Step 2 query expansion(NOT TRIGGERED per Chris α pick 2026-05-25 D5)
+
+> **NOT TRIGGERED** per F2 → F3 gate FAIL + Chris α pick:F2 G RAGAs eval delta 顯示 parent-doc 唔解 enumeration 反而 hurt aggregate metrics(-8.36pp faithfulness + 2 critical regressions);Chris original plan §1.2 Step 2 嘅 prerequisite「parent-doc improvement」未成立 → F3 conditional 唔啟動。Query expansion ADR-0034 framework 仍存,`enable_query_expansion` default False 保留 — W27+ standalone test 候選 OR future Change/Phase scope。
+
+- [⏭️] **F3.1-F3.7** — N/A per Chris α pick
+
+## F4 — Closeout(W26 PARTIAL per Chris α pick 2026-05-25 D5)
+
+### Retro
+- [x] **F4.1** — `progress.md` Day 1 cont 6 retro section — **DONE 2026-05-25 D5**:
+  - [x] **F4.1a** — Scope delivered summary(F0 + F1 + F2 A-F + F2 G eval + F2 H gate Chris α pick)
+  - [x] **F4.1b** — Metric delta summary table(F1 baseline / F2 parent-doc;G3 + G4 hard gate verdict)
+  - [x] **F4.1c** — Decisions D1.1-D1.32 + Chris α pick documented
+  - [x] **F4.1d** — Carry-overs explicit:parent-doc W27+ sweep candidates(`max_tokens_per_parent` 4000→2000 / `parent_doc_top_k` 1→2-3 / dispatch chain append-vs-replace)+ F3 query expansion W27+ standalone test 候選 + R-W26-1 + R-W26-2 risks
+  - [x] **F4.1e** — Lessons learned + 6 PC1-PC6 應用反思 + RAGAs metric 同 architectural enhancement misalignment 觀察
+- [x] **F4.2** — `plan.md` frontmatter `status: active → closed_partial` ✅ DONE 2026-05-25 D5
+
+### Cross-doc sync
+- [⏭️] **F4.3** — `docs/architecture.md §3.6` 加 inline-tagged amendment — DEFER per `closed_partial` rationale:ADR-0037 §Implementation Deliverables A-F 已 ship + Settings default OFF + measurement-fail 唔觸 spec update(類比 ADR-0034 framework existed + default OFF spec 唔加 amendment until default flip);**W27+ NEW Change ship default flip 之後再加 §3.6 amendment**
+- [x] **F4.4** — `docs/02-architecture/COMPONENT_CATALOG.md` C04 + C05 status note — **DONE 2026-05-25 D5**:C04 Retrieval Engine + C05 Generation 加 W26 F2 PARTIAL note + ADR-0037 reference + parent-doc default OFF preserved
+- [x] **F4.5** — `docs/01-planning/RISK_REGISTER.md` — **DONE 2026-05-25 D5**:NEW R-W26-1(parent-doc dispatch chain replace-vs-append architectural variable;Sev3 W27+ sweep)+ NEW R-W26-2(RAGAs faithfulness judge misalignment with citation invariant when LLM cites parent siblings outside top-5;Sev3 W27+ orchestrator-aware tune)+ R7 status update(image_weight 仍 0.7 unchanged W26 scope)
+- [⏭️] **F4.6** — `docs/decision-form.md` — N/A 本次無新 OQ resolved
+- [x] **F4.7** — `docs/12-ai-assistant/01-prompts/01-session-start.md` §10 W26 row + §11 CLOSED block — **DONE 2026-05-25 D5**:W26 row status `active → closed_partial`(F2 → F3 gate FAIL + Chris α pick caveat)+ §11 NEW CLOSED block W26-eval-driven-retrieval-tuning + §12 milestones W26 row + 累計 25→26 phase closed
+
+### Closeout commit
+- [x] **F4.8** — Closeout commit `docs(planning): W26 closeout PARTIAL — F2 → F3 gate FAIL + Chris α pick + F4 cross-doc sync` — pending this checklist entry's commit
+- [x] **F4.9** — `git status` clean check post-commit — pending
+- [x] **F4.10** — Phase gate verdict surface to Chris(PASS / PASS WITH PARTIAL CAVEAT / PARTIAL with escalation rationale per F3.7 decision)— **PARTIAL** per Chris α pick;W27+ parent-doc + query-expansion 候選 escalated;ADR-0037 §Implementation Deliverables A-F 全 ship 保留
 
 ## F3 — Step 2 query expansion experiment(conditional on F2 → F3 gate pass)
 

@@ -581,3 +581,143 @@ last_updated: 2026-05-25
 ---
 
 **End of Day 1 cont 5 entry** — F2.12 V6 Debug View 9→10-stage 完整(mockup 7 files + page.tsx + H7 7-item self-verify 全綠 + tsc/lint/`[oklch`=0/backend 32 全套 sanity pass)。**F2 implementation cascade backend + frontend 整體完整**;剩 G RAGAs 重跑(R8/Azure-key-bound)+ H gate(task #212)為 F2 收尾步驟。
+
+---
+
+## Day 1 cont 6 — 2026-05-25:F2 G RAGAs re-eval + H gate FAIL + Chris α pick + W26 PARTIAL closeout
+
+> **日曆連續性**:同日 6th session 段(autonomous resume via ScheduleWakeup polling background eval task)。F2 G eval 啟動 19:51:59 + 完成 19:59:31(492.1s = 8.2min,F1 baseline 558s 對比快 11.8%)。Eval delta 揭露 parent-doc retrieval **net negative**(faithfulness -8.36pp + 2 critical regressions);Chris AskUserQuestion α pick PARTIAL closeout + W26 收尾。
+
+### Trigger 順序
+
+1. **F2 G RAGAs re-eval setup**:Append `.env` `ENABLE_PARENT_DOC_RETRIEVAL=true`(autom append-only,避讀 secret content per H5);Stop-Process kill uvicorn(PID 49992 + 11876)+ restart `--reload` worker 載入新 Settings(`case_sensitive=False` 自動 map UPPER_SNAKE env var)
+2. **POST /eval/run trigger**:Initial attempts encountered shell escape + auth header issues — final form via `--data-binary "@w26-parent-doc-eval-payload.json"` + `Authorization: Bearer dev-token` header(對齊 W7 F1.2.1 mock auth)
+3. **Eval 完成** 492.1s(F1 baseline 558s 對比 -11.8%;parent-doc 可能因 enumeration query 觸 CRAG re-retrieve 較少而快)
+4. **Read raw JSON + compute delta** vs F1 baseline `baseline-metrics-W26-D1-raw.json`
+5. **Hypothesis 推導 root cause** 4-axis(parent section attention dilution / RAGAs faithfulness judge mismatch with citation invariant / Q-W25-I07 REFUSAL_PHRASE OR chunk_id drift / dispatch chain replace-vs-append architectural variable)
+6. **Chris AskUserQuestion** 三方案(α/β/γ)→ Recommended **α** PARTIAL closeout + parent-doc default OFF preserved
+
+### 完成項目
+
+**1. F2.19-F2.20 Eval run**:
+- `.env` append `ENABLE_PARENT_DOC_RETRIEVAL=true` + uvicorn restart workflow
+- `POST /eval/run` 13 queries `eval-set-v0-w25-supplement` + cohere v4.0-pro + CRAG enabled
+- Runtime 492.1s + raw output 2350 bytes EvalReport
+
+**2. F2.22 Delta 報告 `parent-doc-metrics-W26-D5.md` 完成**:
+
+#### 集合 metric delta:
+
+| 指標 | F1 baseline(OFF)| W26 F2(ON) | Delta | 結論 |
+|---|---|---|---|---|
+| recall_at_5 | 0.8744 | 0.8744 | **0.0** | 不變(retrieval stage 之前)|
+| **faithfulness** | **0.9851** | **0.9015** | **-8.36pp** ↓ | **嚴重 regression** |
+| **correctness** | **0.7416** | **0.6804** | **-6.12pp** ↓ | regression |
+| p95_latency_ms | 1001 | 1188 | +18.7% | within ADR-0034 5s budget |
+
+#### 2 個 CRITICAL regressions:
+
+- **Q-W25-I01 控制 query「high-level architecture」** F1 baseline W25 D4 milestone 全 pass(「2 citations + 1 with screenshot ✅」)→ parent-doc answer_relevancy=0.54 + context_recall=0(控制 query 被破壞)
+- **Q-W25-I07「show me all the Integration scenarios」** F1 baseline post-BUG-025 全 pass → parent-doc **faithfulness=0.00 + answer_relevancy=0.00**(synthesizer 完全失敗;可能 REFUSAL_PHRASE 觸發 OR LLM 用 parent siblings 嘅 chunk_id 跌出 top-5 reranked set → judge 認為 unfaithful)
+
+#### G3 + G4 hard gate verdict:
+
+- **G3** `context_recall` improvement on 5-failed cohort:**0/5 measurable improvement** + Q-W25-I01 control 新 recall=0 regression → **FAIL**
+- **G4** `faithfulness` regression:**-8.36pp** + Q-W25-I07 critical 0.0 → **FAIL severely**
+
+**3. F2.24 Chris AskUserQuestion α pick**:
+- 三方案 surface(α PARTIAL + parent-doc default OFF / β F3 query expansion standalone test / γ 直接 PARTIAL + 都 W27+)
+- **Chris pick α(Recommended)** — PARTIAL closeout + parent-doc default OFF preserved + W27+ candidate
+- F3 query expansion NOT triggered(per plan §2 F3 acceptance gating「no improvement / regression → PARTIAL + escalate W27+」)
+- `.env` `ENABLE_PARENT_DOC_RETRIEVAL=true` 移除 + backend Settings 恢復 default
+
+**4. F4 closeout cascade landed**:
+- **plan.md frontmatter** `status: active → closed_partial` + end_date 2026-05-25
+- **plan.md §1.2** Step 2 row 標 NOT TRIGGERED + Chris α pick rationale
+- **plan.md §7 Plan Changelog 2026-05-25 D5 entry** 10 sub-items (a)-(j) cataloged
+- **checklist.md F2.19-F2.24 標 done**(F2.21 + F2.23 N/A scope per `EvalReport` schema constraint + 唔做 Setting sweep per Chris α pick)
+- **checklist.md F3.1-F3.7 標 NOT TRIGGERED** per Chris α pick
+- **checklist.md F4.1-F4.10 標 done**(F4.3 architecture.md §3.6 amendment DEFER 至 W27+ NEW Change default flip;F4.6 decision-form.md N/A 無新 OQ)
+- **progress.md Day 1 cont 6 entry** 本 entry full retro
+
+### 決定(Day 1 cont 6)
+
+- **D1.33** — F2 G eval Chris α pick PARTIAL closeout rationale:ADR-0037 §Implementation Deliverables A-F 全 ship + Settings default OFF + measurement-fail per Q4 measurement-experiment policy 唔觸 revert(per Karpathy §1.3 surgical — destructive rollback over-engineering when governance + code + tests + observability + frontend 已綠);W27+ parent-doc Setting sweep + dispatch chain reconsider 留作 candidate
+- **D1.34** — F4.3 `architecture.md §3.6` inline-tagged amendment DEFER 至 W27+ NEW Change default flip:類比 ADR-0034 query expansion framework existed + default OFF spec 唔加 amendment until default flip pattern;W26 F2 parent-doc 同樣 default OFF state spec 仍 reflects pre-F2 baseline(spec lag intentional — measurement experiment 失敗唔污染 spec)
+- **D1.35** — RAGAs faithfulness judge mismatch hypothesis(H1 priority W27+ investigation):當 LLM 見 parent_section_text + citation 用 anchor chunk_id 但 generate statements reference parent siblings outside top-5 reranked set → RAGAs judge 對 top-5 reranked chunks 做 faithfulness 評分,可能 mark 「unfaithful」(judge 唔知 parent siblings 屬 valid context)。**Architectural enhancement 設計上 sound 但 metric mechanism mismatch** — W27+ 需 orchestrator-aware tune(judge consume parent_section_text 而非純 top-5)OR dispatch chain append-vs-replace 改革(LLM 同時見 raw + parent → citation chunk_id 始終對 raw chunks subset)
+- **D1.36** — F2 G eval failure NOT cause to revert ADR-0037:per Q4 measurement-experiment policy + Karpathy §1.3 surgical「destructive operations 只當真正 best approach」;parent-doc Settings 仍 available for W27+ tune;ADR-0037 §Implementation Deliverables A-F 已 ship 屬於 Tier 1 capability extension(future-proof 留底)而非 revert subject
+- **D1.37** — W26 累計 6 session segments 同日 collapse:Day 0 kickoff + Day 1 F1 baseline + Day 1 cont ADR design + Day 1 cont 2 D Settings + B leaf + Day 1 cont 3 Core retriever + Day 1 cont 4 Pipeline + Day 1 cont 5 Frontend mockup sync + Day 1 cont 6 G eval + H gate + F4 closeout。Real-calendar collapse ~25-30×(20+ plan-day budget vs ~1 actual calendar day)— W22-W25 AI compression pattern continues
+- **D1.38** — `backend/w26-parent-doc-eval-payload.json` measurement artifact untracked(類比 `backend/scripts/w26_threshold_probe.py` W26 D1 precedent — measurement payload 留 local 唔 commit)— 避 stale state in git history
+
+### Blocker
+
+無 — F2 cascade backend + frontend ship + G eval delta + H gate Chris α pick + F4 closeout cascade 完整。
+
+### Verify gates 結果(Day 1 cont 6)
+
+| Gate | 結果 |
+|---|---|
+| F2.19 uvicorn restart + env override | ✅ DONE + `/health` 200 |
+| F2.20 RAGAs re-run 13 queries | ✅ DONE 492.1s |
+| F2.22 delta report | ✅ DONE `parent-doc-metrics-W26-D5.md` |
+| F2.24 Chris AskUserQuestion α pick | ✅ DONE — PARTIAL closeout |
+| G3 context_recall improvement on 5-failed cohort | ❌ **FAIL**(0/5 + 1 new regression)|
+| G4 faithfulness regression | ❌ **FAIL severely**(-8.36pp + Q-W25-I07 0.0)|
+| F2 → F3 gate | ❌ **FAIL** → F3 NOT triggered |
+| W26 Phase Gate verdict | **PARTIAL with W27+ escalate**(per plan §2 F3 acceptance #4)|
+
+### Carry-over 更新(Day 1 cont 6 — final W26)
+
+#### W27+ 候選
+
+- 🚧 **Parent-doc Settings sweep**(W27+ NEW Change/Phase scope):
+  - `max_tokens_per_parent` 4000 → 2000 / 1500(減 LLM context dilution)
+  - `parent_doc_top_k` 1 → 2-3 with section_path dedupe(broader query intent coverage)
+  - 預計 ~3 個 Setting variants × ~9-10min eval each = ~30min total
+- 🚧 **Dispatch chain redesign**(W27+ NEW ADR or Change):
+  - Append-vs-replace experiment — `parent_section_text` appended after `chunk_text` 而非 replace;LLM 同時見 raw + parent;citation 始終對 raw subset(避 RAGAs faithfulness judge mismatch per D1.35)
+  - 或 prefix framing「Relevant sibling context:...」明示 LLM 對待 parent section
+- 🚧 **F3 query expansion standalone test**(W27+ candidate per Chris α pick):
+  - ADR-0034 framework already exists,`enable_query_expansion: bool = False` 仍 default
+  - 可單獨 test 看 enumeration query 是否有幫助即使 parent-doc 唔得
+- 🚧 **R-W26-1 + R-W26-2** 加入 `docs/01-planning/RISK_REGISTER.md`(Sev3 W27+ candidates)
+- 🚧 **BUG-027 cosmetic**(W26 D1 R6 `/health._check_cohere` engine.reranker private attr drift)仍 W27+ Sev3/Sev4 cosmetic — 唔 critical 但 cleanup 候選
+- 🚧 **BUG-026 cosmetic**(brief problem 3 — chat citation 3-source counting mismatch frontend)仍 W27+ candidate
+- 🚧 **W16 F1-F4 Track A IT cred**(parallel-track to W26)pending Track A IT cred populate event + R-B1 closure
+
+#### Inherited unchanged(無 W26 觸動)
+
+- 🚧 **CO_W25_F4 LIVE RAGAs eval**(R8/Azure-key-bound)— 已 consumed via W26 F1 + W26 F2 G eval(本 phase 完整覆蓋)
+- 🚧 **CO_W25_F6_expansion full 5-query manual user-test** — 已 consumed via W26 F1 + W26 F2 G eval automated metrics
+- 🚧 **R8 corp-proxy mitigation pattern**(ADR-0017)— W26 唔需新 mitigation(`.env` workflow + uvicorn restart 操作中)
+
+### Commits
+
+- `4cdd1bc` ADR-0037 Accepted(governance)
+- `f9398ec` Plan + checklist + progress rewrite cascade
+- `ce8e870` Leaf — D Settings + B HybridSearcher extension + 11 tests
+- `48f7460` Core — B parent_doc_retriever module + E observability stage + 14 tests
+- `289126e` Pipeline — F2.6-F2.9 4 sites + 7 NEW dispatch tests(remote pushed)
+- `0053b5c` Frontend — F2.12 V6 Debug View 9→10-stage + 9 mockup files sync(remote pushed)
+- `a35c1ed` F2 G RAGAs re-eval — parent-doc vs F1 baseline delta FAIL report
+- `docs(planning): W26 closeout PARTIAL — F2 → F3 gate FAIL + Chris α pick + F4 cross-doc sync` — atomic F4 closeout commit pending this entry
+
+### W26 retro 總結
+
+| 項目 | 數據 |
+|---|---|
+| Sprint week | W26-eval-driven-retrieval-tuning |
+| Phase 開始 | 2026-05-25 Day 0 kickoff |
+| Phase 收尾 | 2026-05-25 Day 1 cont 6(同日,~real-calendar collapse 25-30×)|
+| Session segments | 6(Day 0 + Day 1 + Day 1 cont 1-5)|
+| Commits landed | 8(4cdd1bc → 0053b5c remote pushed + a35c1ed + F4 closeout pending)|
+| Backend pytest baseline | 1024(W25.5 closeout)→ **1056**(W26 F2 +32:11 hybrid + 14 retriever + 7 dispatch)|
+| Frontend `[oklch` milestone | 0 hits preserved through W26 F2(W15 D5 milestone continued)|
+| ADRs landed | ADR-0037 Accepted(parent-document retrieval)|
+| F2 → F3 gate verdict | **FAIL** on both G3 + G4 hard gates |
+| W26 Phase Gate verdict | **PARTIAL with W27+ escalate** per plan §2 F3 acceptance #4 |
+| Lessons learned | RAGAs metric mechanism vs architectural enhancement misalignment(D1.35);measurement-experiment-fail policy per Q4 唔觸 revert(D1.36);CSS-first 紀律 + H7 trigger + 第 3 次中文紀律提醒 + memory append 強化 |
+
+---
+
+**End of Day 1 cont 6 entry — W26 Phase formally PARTIAL closed** per Chris α pick;F2 cascade backend + frontend + governance + tests + observability + eval 整體完整;F2 → F3 gate FAIL + 2 critical regressions 反映 RAGAs metric vs architectural enhancement mismatch(D1.35 hypothesis 留 W27+ investigation);ADR-0037 §Implementation Deliverables A-F 全 ship 保留 + Settings default OFF preserved per Q4 policy。**W27+ parent-doc Setting sweep + dispatch chain redesign + F3 query expansion standalone test 為 candidate**。
