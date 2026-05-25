@@ -104,28 +104,58 @@ status: in-progress
 
 ---
 
-## Day 2 — 2026-05-25(planned)
+## Day 2 — 2026-05-25:F2 G RAGAs eval landed PARTIAL
 
 ### Done
 
-- (pending — F2 G RAGAs eval delta vs F1 + W26 F2 G baselines;R8 prerequisite gate)
+- F2 A R8 prerequisite check — keys present + W26 D5 same-day environment continuity confirmed(per Chris AskUserQuestion Recommended pick W27 D2)
+- F2 B active flip — `.env` append-only 3 lines(`# W27 F2 active flip` marker + `ENABLE_PARENT_DOC_RETRIEVAL=true` + `PARENT_DOC_DISPATCH_MODE=append`)+ kill 3 orphan uvicorn workers(per W22 D8 stale pattern)+ fresh restart via `python -m api.server`(SelectorEventLoop fix per `api/server.py:343` Windows-compatible entry — initial `python -m uvicorn` attempt fail with `psycopg.InterfaceError ProactorEventLoop` — corrected pattern per W22 D8 finding)
+- F2 B initial POST `/eval/run` HTTP 401 unauthorized(missing Bearer)— diagnosed:`feature_auth_mock=true` already enabled per `.env` → Bearer `dev-token` 加入 → HTTP 200 + 544s runtime(~9 min,close to W26 D5 492s precedent)
+- F2 C aggregated metrics(raw JSON `append-mode-metrics-W27-D2-raw.json`):
+  - **recall_at_5 0.8936**(F1 baseline 0.8744 / W26 F2 G 0.8744 = **+1.92pp** both)
+  - **faithfulness 0.9591**(F1 0.9851 = **-2.60pp** | W26 F2 G 0.9015 = **+5.76pp**)
+  - **correctness 0.7594**(F1 0.7416 = **+1.78pp** ✅ | W26 F2 G 0.6804 = **+7.90pp** ✅)
+  - **p95_latency 2897ms**(F1 1001ms = +189.4% | W26 F2 G 1188ms = +143.9% ⚠️ 2-segment LLM input cost)
+- F2 D Phase Gate G1-G5 evaluation:
+  - **G1 MARGINAL MISS**:faithfulness 0.9591 vs F1 ±2pp [0.9651, 1.0] = 0.6pp below tolerance
+  - **G2 PASS** ✅:correctness 0.7594 within [0.7216, 0.7616] + above F1 baseline
+  - **G3 PASS** ✅:Q-W25-I07 PASSED(out of failed_queries — D1.35 hypothesis citation invariant CRITICAL RECOVERY from W26 F2 G 0.00/0.00)
+  - **G4 MARGINAL MISS**:Q-W25-I01 control answer_relevancy 0.64 vs F1 ≥ 0.65 effective = 0.01pp below tolerance(W26 F2 G 0.54 大幅 +10pp recovery)
+  - **G5 PASS** ✅:pytest 1060 + ruff clean + dispatch tests 11/11 + W27 F1 commit `50b1db5`
+- F2 E `append-mode-metrics-W27-D2.md` analysis report with 6 sections:集合指標 two-baseline delta + per-query 比較 + Phase Gate G1-G6 evaluation + D1.35 hypothesis 4-axis root cause re-evaluation + W28+ candidate prioritization + F3 closeout recommendation
 
 ### Decisions / OQ Resolved
 
-- (pending)
+- **Phase Gate verdict**:**PARTIAL** per plan §3 policy(G1 + G4 marginal MISS → ADR-0038 new + W28+ candidates (b) + (c) elevated)
+- **D1.35 hypothesis 4-axis re-evaluation**:
+  - H1 Citation invariant breakage:✅ **VALIDATED PARTIAL** by Q-W25-I07 critical recovery
+  - H2 Parent section attention dilution:⚠️ **PARTIALLY CONFIRMED** by G4 control regression remains + 2 NEW context_precision fails + p95_latency +189% evidence
+  - H3 Q-W25-I07 REFUSAL_PHRASE/chunk_id drift:✅ **REFUTED** — Q-W25-I07 完整 recovery proves chunk_id drift 唔係 root cause
+  - H4 Dispatch replace-vs-append architectural variable:✅ **VALIDATED** — faith +5.76pp / correctness +7.90pp / Q-W25-I07 全 recovery vs W26 F2 G
+- **W28+ candidate prioritization**(per F3 closeout decision tree):
+  1. HIGHEST(b)`max_tokens_per_parent` 4000→2000/1500 sweep — H2 attention dilution direct intervention + latency reduction
+  2. Second(c)RAGAs orchestrator-aware judge tune(R-W26-2)— H1+H2 from judge side
+  3. Third(d)F3 query expansion standalone test — ADR-0034 orthogonal axis
 
 ### Blockers
 
-- (pending — R8 partial → STOP and ask Chris per W25 F4 / W26 F1 precedent)
+- 無 D2 blocker。F3 closeout ready
 
 ### Actual vs Planned Effort
 
 | Deliverable | Planned (h) | Actual (h) | Variance |
 |---|---|---|---|
+| F2 A R8 prerequisite check | ~0.5 | ~0.3 | -0.2 |
+| F2 B `.env` flip + uvicorn restart + auth recovery | ~1 | ~1.2 | +0.2(uvicorn entry point + auth Bearer diagnose surcharge)|
+| F2 C eval run 13 queries | ~8-10 min(eval runtime)| 9 min | 0 |
+| F2 D Phase Gate G1-G5 evaluation | ~1 | ~0.5 | -0.5 |
+| F2 E analysis report 6-section | ~2 | ~1.5 | -0.5 |
+
+**D2 actual**:~3.5h(eval runtime included)vs ~4-6h planned
 
 ### Commits
 
-- (pending)
+- (pending F2 commit `docs(eval): W27 F2 G RAGAs append mode delta vs F1 + W26 F2 G baselines — G1+G4 marginal MISS / G2+G3+G5 PASS / Phase Gate PARTIAL`)
 
 ---
 
