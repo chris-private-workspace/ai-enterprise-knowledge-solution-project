@@ -530,6 +530,11 @@ references/DIFY_PINNED_COMMIT.txt
 3. 讀 active phase 嘅 `checklist.md`(知 next un-checked item;active phase = `git status` + 最新 W{NN}-{name} folder)
 4. 讀 active phase 嘅 `progress.md` 最近 3 個 Day-N entries(知 context + blockers + carry-overs)
 5. Run `git status --short` + `git log --oneline -5`(知 working tree state)
+5b. **若本 session 預期會做 backend restart / eval run / RAGAs eval / Langfuse trace 操作 → 先 pre-flight endpoint health check**(per PC-W33-1 + PC-W34-1,W34 F2.3 audit_log 30s gap + W35 F1.3 Docker stuck 經驗驅動):
+   - `Invoke-WebRequest -Uri http://localhost:3000/api/public/health -TimeoutSec 30`(預期 `StatusCode 200` — Langfuse endpoint;若 Docker `unhealthy` flag 但 endpoint 200 OK = timing artifact 不阻擋)
+   - `docker exec ekp-postgres psql -U langfuse -d postgres -c "SELECT 1;"`(預期 `1 row` ready_for_query — Postgres handshake)
+   - **重要 distinguishing**:Docker `(unhealthy)` container status ≠ endpoint reachability。Docker health check 有 timing artifact(W34 W35 案例 Langfuse `Up X mins (unhealthy)` 但 `/api/public/health` 200 OK with 30s timeout cover warmup)。**以 endpoint 200 為準**,不以 Docker flag 為準。
+   - 若 endpoint 唔 reachable → surface 至 user before destructive ops(per CLAUDE.md "Executing actions with care" + destructive 操作 explicit instruction)
 6. 唔清楚 / item acceptance criteria 模糊 → ask user(per §13 When in Doubt)
 
 **Compact 後嘅特殊處理**:`/compact` 觸發後 context 重組,AI **必須 re-read 步驟 1–4**。原因:compact summary 對 active session work(commits / tests / files)retain ~95%,但對 standing instructions(§3 **13 components** / §9 **22 OQ snapshot** / §13 紀律 9 項 / 權威排序 7-tier)retention 只有 ~60%,容易令 AI 答出 generic correct 但缺 EKP-specific structure 嘅 reply。Re-read 後唔需主動 summarize(用戶問先講),但要確保下一個 reply 對齊 SITUATION + active phase。
