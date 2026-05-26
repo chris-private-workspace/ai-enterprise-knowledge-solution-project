@@ -112,8 +112,8 @@ last_updated: 2026-05-26
 
 ### D. Commit + push
 
-- [ ] F3 closeout commit — F2.1 instrumentation + F2 evidence + retro + cross-doc sync atomic(per W31-W33 closeout pattern)
-- [ ] Push origin/main(per W33 user-instruction precedent)
+- [x] F3 closeout commit `0087092` — `feat(observability): W34 F2 structlog stage timing + 10-run latency profile + W34 closeout PASS — G2 LLM emit dominant 92% + decision tree intersect W35+ Rule 8 wording tighten OPTIONAL`(18 files changed,2152 insertions / 33 deletions)
+- [x] Push origin/main `ba0ab8b..0087092`(W34 3 commits cumulative same-day same pattern as W33 `6b99a93..ba0ab8b`)
 
 ---
 
