@@ -11,8 +11,12 @@ W33 F2 evidence (~57-91% slower than W32 baseline).
 from __future__ import annotations
 
 import json
+import sys
 import time
 import urllib.request
+
+# W36 PC-W35-1 — reconfigure stdout utf-8 防 Windows cp1252 default 撞 unicode print
+sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
 BACKEND = "http://127.0.0.1:8000"
 AUTH = "Bearer dev-token"
@@ -72,7 +76,7 @@ def main() -> int:
     for fq in failed:
         if fq.get("query_id", "").startswith("_"):
             continue  # orchestrator notes
-        print(f"  {fq.get('query_id', '?'):20s} → {fq.get('metric_failed')} : {fq.get('got', '')[:80]}")
+        print(f"  {fq.get('query_id', '?'):20s} -> {fq.get('metric_failed')} : {fq.get('got', '')[:80]}")
 
     # W26 F1 baseline comparison
     print("\n=== W34 vs W26 F1 baseline ===")
@@ -90,11 +94,11 @@ def main() -> int:
             verdict = ""
             if metric == "faithfulness":
                 if w34_val >= 0.9651:
-                    verdict = "G1 preserve ✅"
+                    verdict = "G1 preserve OK"
                 elif w34_val >= 0.9351:
-                    verdict = "G1 flag ⚠️"
+                    verdict = "G1 flag [WARN]"
                 else:
-                    verdict = "G1 break 🚨 trigger F1.5"
+                    verdict = "G1 break [ALERT] trigger F1.5"
             print(f"  {metric:<20s} {baseline:<10.4f} {w34_val:<10.4f} {delta_pp:+.2f}      {verdict}")
 
     return 0

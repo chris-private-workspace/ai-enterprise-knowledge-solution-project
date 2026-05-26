@@ -12,14 +12,22 @@ Aggregates per-stage mean latency vs W34 F2 baseline:
 - W34 I07 avg_cit 6 / I01 avg_cit 10.2
 
 W35 Option C expected (per plan §3 G2 + G3):
-- I07 avg_cit ≤ 5 AND I01 avg_cit ≤ 8 → G2 drop
-- synth_llm_completion ≤ 14098ms (-10% W34) → G3 drop
+- I07 avg_cit <= 5 AND I01 avg_cit <= 8 -> G2 drop
+- synth_llm_completion <= 14098ms (-10% W34) -> G3 drop
+
+W36 PC-W35-1 — unicode print 修正(cp1252 fallback bug fix):
+- sys.stdout.reconfigure(encoding="utf-8") at start
+- ASCII fallback for math operators (<= >= ->) avoid Windows cp1252 crash
 """
 from __future__ import annotations
 
 import json
+import sys
 import time
 import urllib.request
+
+# W36 PC-W35-1 — reconfigure stdout utf-8 防 Windows cp1252 default 撞 unicode print
+sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
 BACKEND = "http://127.0.0.1:8000"
 AUTH = "Bearer dev-token"
@@ -107,7 +115,7 @@ def main() -> int:
 
     print(f"\n=== G2 + G3 decision tree per plan §3 ===")
     g2_pass = i07_avg_cit <= 5 and i01_avg_cit <= 8
-    print(f"  G2 cit count drop (I07 ≤ 5 AND I01 ≤ 8): {'PASS' if g2_pass else 'inconclusive/null'}")
+    print(f"  G2 cit count drop (I07 <= 5 AND I01 <= 8): {'PASS' if g2_pass else 'inconclusive/null'}")
 
     with open("w35-f2-aggregate.json", "w", encoding="utf-8") as f:
         json.dump({

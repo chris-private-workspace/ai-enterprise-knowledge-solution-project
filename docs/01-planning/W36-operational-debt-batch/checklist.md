@@ -55,27 +55,27 @@ last_updated: 2026-05-26
 
 ## F3 — PC-W35-1 runner cp1252 修正(~30min)
 
-### F3.1 修正範疇識別
+### F3.1 修正範疇識別 — ✅ 完成
 
-- [ ] F3.1.a `backend/w34-f1-ragas-runner.py:75`(`→`)+ line 95(`⚠️`)+ line 97(`🚨`)
-- [ ] F3.1.b `backend/w33-f2-runner.py:80,82,89`(`≥`)
-- [ ] F3.1.c `backend/w34-f2-runner.py:100,101`(`→`)
-- [ ] F3.1.d `backend/w35-f2-runner.py:15,16,110`(`≤`,`→`)
-- [ ] F3.1.e 可選 `backend/w35-f1-ragas-runner.py` 預檢(已 ASCII safe 但 confirm)
+- [x] F3.1.a `backend/w34-f1-ragas-runner.py:75`(`→` → `->`)+ line 93/95/97(`✅⚠️🚨` → `OK [WARN] [ALERT]`)
+- [x] F3.1.b `backend/w33-f2-runner.py:80,82,89`(`≥` → `>=`)
+- [x] F3.1.c `backend/w34-f2-runner.py:100,101`(`→` → `->`)
+- [x] F3.1.d `backend/w35-f2-runner.py:15,16,110`(`≤` → `<=`,`→` → `->`)
+- [x] F3.1.e `backend/w35-f1-ragas-runner.py` 預檢 — 已 ASCII safe 不需改
 
-### F3.2 修正策略(預設 path iii 兩者結合)
+### F3.2 修正策略(預設 path iii 兩者結合)— ✅ 完成
 
-- [ ] F3.2.a 每 runner 開首加 `import sys; sys.stdout.reconfigure(encoding="utf-8")`(Python 3.7+ 支援)
-- [ ] F3.2.b 部分 unicode 字符 ASCII 簡化避免 log 亂碼:`→` → `->` / `≥` → `>=` / `≤` → `<=` / `⚠️` → `[WARN]` / `🚨` → `[ALERT]`
+- [x] F3.2.a 4 個 runner 開首全部加 `import sys; sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]`
+- [x] F3.2.b ASCII 簡化全部完成:`→` → `->` / `≥` → `>=` / `≤` → `<=` / `⚠️` → `[WARN]` / `🚨` → `[ALERT]` / `✅` → `OK`
 
-### F3.3 驗證
+### F3.3 驗證 — ✅ 完成
 
-- [ ] F3.3.a 改完 runner dry-run(不需實際 hit backend,只 import + main 開首 print 確保唔 crash)
-- [ ] F3.3.b ruff PASS 所有 5 個 modified files
+- [x] F3.3.a 4 個 runner AST parse PASS — `ast.parse(open(f).read())` 驗證 syntactic valid
+- [x] F3.3.b W36 嘅 specific edits 全部 ruff clean — 沒 introduce 新 errors;**8 個 pre-existing ruff issues 不屬 W36 scope**(F401 os unused + F841 cit_ids unused + F541 f-string × 6,全屬 W33-W35 寫 runner 留底)— Karpathy §1.3 strict 唔清非自己 mess
 
 ### F3.4 commit
 
-- [ ] F3.4.a commit `fix(tooling): W36 F3 PC-W35-1 runner cp1252 print encoding — ASCII fallback + sys.stdout.reconfigure utf-8`
+- [ ] F3.4.a commit `fix(tooling): W36 F3 PC-W35-1 runner cp1252 print encoding — ASCII fallback + sys.stdout.reconfigure utf-8(4 runner files)`
 
 ## F4 — 收尾 + 跨文件同步 + commit + push
 

@@ -14,8 +14,12 @@ prompt token / engine-fetch / mixed) per W33 retro decision tree.
 from __future__ import annotations
 
 import json
+import sys
 import time
 import urllib.request
+
+# W36 PC-W35-1 — reconfigure stdout utf-8 防 Windows cp1252 default 撞 unicode print
+sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
 BACKEND = "http://127.0.0.1:8000"
 AUTH = "Bearer dev-token"
@@ -97,8 +101,8 @@ def main() -> int:
                   f, indent=2, ensure_ascii=False)
     print("\nWrote w34-f2-aggregate.json")
     print("\nStage-level timings:see backend uvicorn-restart-w34-v2.log.err for structlog JSON events:")
-    print("  synthesizer_call → synth_overall_latency_ms / synth_prompt_build_latency_ms / synth_llm_completion_latency_ms / synth_expand_citations_latency_ms")
-    print("  expand_citations_list_chunks_batch → unique_docs_count / expand_list_chunks_batch_latency_ms")
+    print("  synthesizer_call -> synth_overall_latency_ms / synth_prompt_build_latency_ms / synth_llm_completion_latency_ms / synth_expand_citations_latency_ms")
+    print("  expand_citations_list_chunks_batch -> unique_docs_count / expand_list_chunks_batch_latency_ms")
 
     return 0
 
