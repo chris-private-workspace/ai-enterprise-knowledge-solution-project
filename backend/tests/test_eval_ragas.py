@@ -133,3 +133,60 @@ async def test_run_eval_pipeline_surfaces_below_threshold_queries() -> None:
     ]
     assert attention_rows
     assert any("faithfulness" in f.metric_failed for f in attention_rows)
+
+
+def test_w36_ragas_attention_thresholds_per_metric_calibration() -> None:
+    """W36 F2 (d) — verify per-metric attention thresholds dict locked.
+
+    Pre-W36 was single `_RAGAS_ATTENTION_THRESHOLD = 0.70`. W36 calibration:
+    - faithfulness / answer_relevancy / context_precision = 0.65(降低 surface
+      borderline benign answer_relevancy 0.6X cluster per W35 evidence)
+    - context_recall = 0.0(keyword-mode artifact 不 surface 至 Q14 SME-validate
+      reference_answer cascade ships)
+    """
+    from eval.orchestrator import _RAGAS_ATTENTION_THRESHOLDS
+
+    assert _RAGAS_ATTENTION_THRESHOLDS["faithfulness"] == 0.65
+    assert _RAGAS_ATTENTION_THRESHOLDS["answer_relevancy"] == 0.65
+    assert _RAGAS_ATTENTION_THRESHOLDS["context_precision"] == 0.65
+    # context_recall threshold = 0.0 effectively skips keyword-mode artifact surface
+    assert _RAGAS_ATTENTION_THRESHOLDS["context_recall"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_w36_context_recall_keyword_mode_artifact_not_surfaced() -> None:
+    """W36 F2 (d.2) — context_recall=0.00 keyword-mode artifact 不 surface 至
+    failed_queries(per ragas_evaluator.py:75-77 W17 F3 fallback known limitation,
+    until Q14 SME reference_answer ships)。
+
+    Builds an evaluator where context_recall=0.0(keyword-mode artifact)while
+    faithfulness=0.95(high)+ other metrics 0.85 — only the high-confidence path
+    matters here, so no metric should surface as below-threshold; especially
+    context_recall=0.0 must NOT be in any metric_failed list per W36 calibration.
+    """
+
+    def _kw_mode_evaluator(sample: RagasQuerySample) -> dict:
+        return {
+            "faithfulness": 0.95,
+            "answer_relevancy": 0.85,
+            "context_precision": 0.80,
+            "context_recall": 0.0,  # 模擬 keyword-mode artifact per W17 F3 fallback
+            "input_tokens": 0,
+            "output_tokens": 0,
+        }
+
+    report = await run_eval_pipeline(
+        eval_set_path=_EVAL_SET_V0,
+        engine=_FakeEngine(),
+        max_main_queries=2,
+        synthesizer=_FakeSynthesizer(),
+        ragas_evaluator=_kw_mode_evaluator,
+        judge_deployment="gpt-5-4-mini",
+    )
+    # context_recall=0.0 → 不 surface 因 W36 threshold = 0.0
+    for f in report.failed_queries:
+        if f.expected.startswith(">="):
+            assert "context_recall" not in f.metric_failed, (
+                f"W36 (d.2) regression: context_recall=0.0 keyword-mode artifact "
+                f"surfaced 至 failed_queries:{f.metric_failed}"
+            )

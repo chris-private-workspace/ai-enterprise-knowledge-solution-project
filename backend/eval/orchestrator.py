@@ -43,10 +43,31 @@ from retrieval.retrieval_engine import RetrievalEngine
 
 logger = structlog.get_logger(__name__)
 
-# Below this RAGAs faithfulness OR answer_relevancy score a query is surfaced in
-# failed_queries for reviewer attention (matches the eval-methodology §"borderline
-# cluster" attention threshold; not a hard gate).
-_RAGAS_ATTENTION_THRESHOLD = 0.70
+# W36 F2 (d) per-metric attention thresholds dict (was single 0.70 constant pre-W36).
+#
+# Below the per-metric threshold a query is surfaced in failed_queries for reviewer
+# attention (matches eval-methodology §"borderline cluster" attention threshold;
+# not a hard gate).
+#
+# W36 calibration drivers:
+# - 0.70 → 0.65 for faithfulness / answer_relevancy / context_precision: W35 Option C
+#   F1.4 evidence shows borderline answer_relevancy 0.6X cluster (0.61-0.66) reflects
+#   RAGAs `AnswerRelevancy` cosine-similarity-based scoring boundary; 0.70 surfaces
+#   benign borderline scores as failures. 0.65 aligns the attention surface with
+#   observed natural baseline post-Rule 8 Option C tightening (W35 closed PASS).
+# - 0.0 for context_recall: per ragas_evaluator.py:75-77 reference fallback
+#   (`expected_keywords` joined as pseudo-reference when SME-validate Q14
+#   reference_answer cascade pending). `context_recall=0.00` is a known keyword-mode
+#   artifact (LLM judge correctly identifies that retrieved contexts do not
+#   literally contain the joined keyword string), NOT a real regression. Setting
+#   threshold = 0.0 effectively skips context_recall from failed_queries surface
+#   until Q14 SME ships real reference answers (eval-set-v1-final.yaml W15 F1 CO).
+_RAGAS_ATTENTION_THRESHOLDS = {
+    "faithfulness": 0.65,        # W36 calibration (was 0.70 pre-W36)
+    "answer_relevancy": 0.65,    # W36 calibration (was 0.70 pre-W36) — answer_relevancy=0.6X 邊緣 benign
+    "context_precision": 0.65,   # W36 calibration (was 0.70 pre-W36)
+    "context_recall": 0.0,       # W36 — keyword-mode artifact 不 surface(per ragas_evaluator.py:75-77 W17 F3 fallback)
+}
 
 _RECALL_ONLY_NOTE = (
     "RAGAs 4-metric not run — no Azure OpenAI judge credential configured "
@@ -178,15 +199,21 @@ async def run_eval_pipeline(
                     metric_failed=["faithfulness", "answer_relevancy", "context_precision", "context_recall"],
                 ))
             else:
+                # W36 F2 (d) — per-metric thresholds dict;context_recall threshold=0.0
+                # skips keyword-mode artifact from surface(per _RAGAS_ATTENTION_THRESHOLDS
+                # docstring above)
                 low = [
                     m for m in ("faithfulness", "answer_relevancy", "context_precision", "context_recall")
-                    if getattr(qr, m) < _RAGAS_ATTENTION_THRESHOLD
+                    if getattr(qr, m) < _RAGAS_ATTENTION_THRESHOLDS[m]
                 ]
                 if low:
+                    expected_str = ", ".join(
+                        f">= {_RAGAS_ATTENTION_THRESHOLDS[m]} ({m})" for m in low
+                    )
                     failed.append(FailedQueryDetail(
                         query_id=qr.query_id,
                         query="(below attention threshold)",
-                        expected=f">= {_RAGAS_ATTENTION_THRESHOLD}",
+                        expected=expected_str,
                         got=", ".join(f"{m}={getattr(qr, m):.2f}" for m in low),
                         metric_failed=low,
                     ))

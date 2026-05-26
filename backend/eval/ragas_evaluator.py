@@ -117,29 +117,70 @@ def make_ragas_evaluator(
     context_precision_m = ContextPrecision(llm=wrapped_llm)
     context_recall_m = ContextRecall(llm=wrapped_llm)
 
+    async def _ascore_metric(
+        metric_name: str,
+        ascore_call: Callable[[], object],
+        sample_query_id: str,
+    ) -> float:
+        """W36 F2 (b) — per-metric try/except isolation per PC-W34-2.
+
+        Catches ragas / instructor library exceptions (InstructorRetryException +
+        其他 transient parse failure) per-metric → fallback 0.0 + structlog warning
+        so single bad query 唔拖跨整個 4-metric eval pass。Without 呢個 isolation
+        W34 F1 Q-W25-I06+I07 InstructorRetryException 會 throw 上 RagasRunner →
+        whole sample marked errored 而失 other 3 metrics 嘅 score。
+        """
+        try:
+            r = await ascore_call()
+            return float(r.value)
+        except Exception as exc:  # noqa: BLE001 — ragas/instructor exception chain unpredictable
+            logger.warning(
+                "ragas_metric_exception_fallback",
+                metric=metric_name,
+                query_id=sample_query_id,
+                exception_type=type(exc).__name__,
+                error=str(exc)[:200],
+            )
+            return 0.0
+
     async def _ascore_all(sample: RagasQuerySample) -> dict:
         reference = sample.reference or " ".join(sample.expected_keywords) or sample.answer
-        scores: dict[str, float | int] = {}
-        r = await faithfulness_m.ascore(
-            user_input=sample.question,
-            response=sample.answer,
-            retrieved_contexts=sample.contexts,
-        )
-        scores["faithfulness"] = float(r.value)
-        r = await answer_relevancy_m.ascore(user_input=sample.question, response=sample.answer)
-        scores["answer_relevancy"] = float(r.value)
-        r = await context_precision_m.ascore(
-            user_input=sample.question,
-            reference=reference,
-            retrieved_contexts=sample.contexts,
-        )
-        scores["context_precision"] = float(r.value)
-        r = await context_recall_m.ascore(
-            user_input=sample.question,
-            retrieved_contexts=sample.contexts,
-            reference=reference,
-        )
-        scores["context_recall"] = float(r.value)
+        scores: dict[str, float | int] = {
+            "faithfulness": await _ascore_metric(
+                "faithfulness",
+                lambda: faithfulness_m.ascore(
+                    user_input=sample.question,
+                    response=sample.answer,
+                    retrieved_contexts=sample.contexts,
+                ),
+                sample.query_id,
+            ),
+            "answer_relevancy": await _ascore_metric(
+                "answer_relevancy",
+                lambda: answer_relevancy_m.ascore(
+                    user_input=sample.question, response=sample.answer,
+                ),
+                sample.query_id,
+            ),
+            "context_precision": await _ascore_metric(
+                "context_precision",
+                lambda: context_precision_m.ascore(
+                    user_input=sample.question,
+                    reference=reference,
+                    retrieved_contexts=sample.contexts,
+                ),
+                sample.query_id,
+            ),
+            "context_recall": await _ascore_metric(
+                "context_recall",
+                lambda: context_recall_m.ascore(
+                    user_input=sample.question,
+                    retrieved_contexts=sample.contexts,
+                    reference=reference,
+                ),
+                sample.query_id,
+            ),
+        }
         # ragas 0.4.3 doesn't expose per-metric token usage — cost via Langfuse
         # trace correlation per architecture.md §7.
         scores["input_tokens"] = 0

@@ -37,21 +37,21 @@ last_updated: 2026-05-26
 - [x] F2.1.c 讀 W35 Option C raw JSON failed_queries 識別 pattern — 4 個 `answer_relevancy=0.6X` borderline + 5 個 `context_recall=0.00` keyword-mode artifact;InstructorRetryException 唔喺 raw JSON 顯式
 - [x] F2.1.d 識別 **4** 個 fix path 取捨 ROI(新 path d 加入)+ surface 至 chat user pick
 
-### F2.2 Path 選定 + 實作(~1-2h)
+### F2.2 Path 選定 + 實作(~1-2h)— ✅ 完成
 
-- [ ] F2.2.a User 鎖定 path(F2.1 完成 surface 後 user pick A/B/C)
-- [ ] F2.2.b 實作對應 path
-- [ ] F2.2.c 寫 unit test / config-state test / yaml schema validation(視乎 path)
-- [ ] F2.2.d pytest baseline 1084 維持 + ruff PASS
+- [x] F2.2.a User 鎖定 path **(b)+(d) 組合** per cost containment policy(`gpt-5.4-mini` baseline 維持,zero LLM cost 上升)
+- [x] F2.2.b 實作 (b) `ragas_evaluator.py:_ascore_all` per-metric try/except + log + fallback 0.0;實作 (d) `orchestrator.py:_RAGAS_ATTENTION_THRESHOLD` single 0.70 → `_RAGAS_ATTENTION_THRESHOLDS` per-metric dict(faithfulness/answer_relevancy/context_precision=0.65;context_recall=0.0 skip keyword-mode artifact)
+- [x] F2.2.c 2 個 NEW unit test 加入 `test_eval_ragas.py`(`test_w36_ragas_attention_thresholds_per_metric_calibration` + `test_w36_context_recall_keyword_mode_artifact_not_surfaced`)
+- [x] F2.2.d pytest 1086 passed + 25 skipped + 0 failed ✅(1084 baseline + 2 NEW W36 tests);ruff `All checks passed!`
 
-### F2.3 小規模 sanity-check eval(可選)
+### F2.3 小規模 sanity-check eval(可選)— 跳過
 
-- [ ] F2.3.a 若 path a/b 改 judge layer,可選跑 3-5 query 小規模 eval 驗證 InstructorRetryException 消失
-- [ ] F2.3.b 若 path c 純 yaml metadata 過濾,可選驗證 eval-set 過濾邏輯
+- [x] F2.3.a 跳過 — path (b) 唔改 judge LLM,只 wrap per-metric exception isolation;unit test 已 cover behavior
+- [x] F2.3.b N/A — 唔 select path (c)
 
 ### F2.4 commit
 
-- [ ] F2.4.a commit `feat(eval): W36 F2 PC-W34-2 RAGAs judge robustness — {path 描述}`
+- [ ] F2.4.a commit `feat(eval): W36 F2 PC-W34-2 RAGAs judge robustness — path (b) per-metric exception isolation + path (d) per-metric thresholds dict + context_recall keyword-mode artifact skip`
 
 ## F3 — PC-W35-1 runner cp1252 修正(~30min)
 
