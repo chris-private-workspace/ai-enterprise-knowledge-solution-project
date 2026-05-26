@@ -16,8 +16,8 @@ last_updated: 2026-05-26
 - [x] F0.3 起草 `plan.md` 7 段 per W35 收尾 phase 模板
 - [x] F0.4 起草 `checklist.md` 原子化勾選項(本文件)
 - [x] F0.5 起草 `progress.md` Day 0 — 啟動行動 + R6 3 catches 報告 + W35 baseline 參考 + F-phase pre-implementation surface
-- [ ] F0.6 啟動 commit — `docs(planning): kickoff W36-operational-debt-batch + R6 Day 0 catch 3 HIGHEST candidates surface PC-W34-1 session-start protocol + PC-W34-2 RAGAs judge + PC-W35-1 runner cp1252`
-- [ ] F0.7 session-start.md §10 W36 row append `🟡 active 2026-05-26`(commit hash post F0.6)+ W35 已 closed 維持 + W37+ rolling JIT row defer
+- [x] F0.6 啟動 commit `bb15ce0` — `docs(planning): kickoff W36-operational-debt-batch + R6 Day 0 catch 3 HIGHEST candidates surface PC-W34-1 session-start protocol + PC-W34-2 RAGAs judge + PC-W35-1 runner cp1252`
+- [x] F0.7 session-start.md §10 W36 row append `🟡 active 2026-05-26`(commit `bb15ce0`)+ W35 commits cumulative 7 補入 + W37+ rolling JIT row preserved(commit `2ffce8d`)
 
 ## F1 — PC-W34-1 session-start protocol amend(~30min,純文檔)
 

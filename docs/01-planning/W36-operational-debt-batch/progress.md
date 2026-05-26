@@ -81,14 +81,15 @@ F3 修正策略預設 = **(iii) 兩者結合**(per Karpathy §1.3 surgical + fut
 
 ### Commits
 
-(F0.6 commit pending — combined kickoff plan + checklist + progress + R6 3 catches)
+- `bb15ce0` — F0.6 啟動 commit(plan + checklist + progress + R6 3 catches,3 files / 452 insertions)
+- `2ffce8d` — F0.7 session-start.md §10 W36 row append active + W35 row commits backfill
 
 ### Carry-overs / Blockers
 
 - F0.5 progress.md Day 0 entry(本文件)— done
-- F0.6 啟動 commit — pending
-- F0.7 session-start.md §10 W36 row append — pending(commit hash post F0.6)
-- D1 trigger:F1 純文檔 amend + F2.1 audit + F2.1.d user pick path A/B/C + F3 runner 修正 + F4 收尾
+- F0.6 啟動 commit `bb15ce0` — done
+- F0.7 session-start.md §10 W36 row append commit `2ffce8d` — done
+- **D1 trigger 序列**:F1 純文檔 amend(自主可做)→ F2.1 audit(自主)→ F2.1.d 後 surface chat user pick path A/B/C → F2.2+F2.3+F2.4 → F3 runner 修正(自主)→ F4 收尾
 
 ---
 
