@@ -19,21 +19,23 @@ last_updated: 2026-05-26
 - [x] F0.6 啟動 commit `bb15ce0` — `docs(planning): kickoff W36-operational-debt-batch + R6 Day 0 catch 3 HIGHEST candidates surface PC-W34-1 session-start protocol + PC-W34-2 RAGAs judge + PC-W35-1 runner cp1252`
 - [x] F0.7 session-start.md §10 W36 row append `🟡 active 2026-05-26`(commit `bb15ce0`)+ W35 commits cumulative 7 補入 + W37+ rolling JIT row preserved(commit `2ffce8d`)
 
-## F1 — PC-W34-1 session-start protocol amend(~30min,純文檔)
+## F1 — PC-W34-1 CLAUDE.md §10.3 protocol amend(~30min,純文檔)— ✅ 完成
 
-- [ ] F1.1 讀 `docs/12-ai-assistant/01-prompts/01-session-start.md` §10.3 6 步啟動 protocol 現況
-- [ ] F1.2 起草新增 step 5b(或 6c)pre-flight endpoint health check 含具體 PowerShell command(`Invoke-WebRequest /api/public/health` + `docker exec ekp-postgres psql SELECT 1`)
-- [ ] F1.3 amend §10.3 加入新步驟 + 解釋 Docker `unhealthy` flag = timing artifact ≠ endpoint reachability
-- [ ] F1.4 commit `docs(prompts): W36 F1 PC-W34-1 session-start §10.3 pre-flight endpoint health check`
+**R3 amend 2026-05-26**:F1 amend 對象修正為 **`CLAUDE.md §10.3`**(line 524-538)。
+
+- [x] F1.1 讀 `CLAUDE.md` §10.3 line 524-535 — 6 步啟動 protocol 現況確認
+- [x] F1.2 step 5b 起草 — pre-flight endpoint health check conditional trigger 「backend restart / eval run / RAGAs eval / Langfuse trace」+ PowerShell command 完整
+- [x] F1.3 amend `CLAUDE.md §10.3` 加入 step 5b + 解釋 Docker `(unhealthy)` flag ≠ endpoint reachability + 失敗 path 至 user surface
+- [x] F1.4 commit `3f65531` — `docs(claude-md): W36 F1 PC-W34-1 §10.3 pre-flight endpoint health check + R3 plan amend F1 target session-start.md → CLAUDE.md`
 
 ## F2 — PC-W34-2 RAGAs judge robustness(~2-3h)
 
-### F2.1 現狀 audit(~30min)
+### F2.1 現狀 audit(~30min)— ✅ 完成
 
-- [ ] F2.1.a 讀 `backend/eval/ragas_evaluator.py:65-100` `make_ragas_evaluator` 完整實作
-- [ ] F2.1.b 讀 `backend/storage/settings.py` `azure_openai_deployment_llm_judge` default + `.env` 實際值
-- [ ] F2.1.c 讀 W35 F1.4 Option B + Option C raw JSON failed_queries 識別 InstructorRetryException pattern + answer_relevancy 0.6X 邊緣失敗
-- [ ] F2.1.d 識別 3 個 fix path 取捨 ROI(path a judge LLM 升級 / path b JSON 解析穩健化 / path c yaml metadata 過濾)+ surface 至 chat user pick
+- [x] F2.1.a 讀 `backend/eval/ragas_evaluator.py:1-157` 完整實作 — `patch_for_gpt5` shim 已 prepared GPT-5 reasoning judge + `_MIN_MAX_COMPLETION_TOKENS = 4096` floor 防 faithfulness JSON truncate;`_ascore_all` 直接 call ragas metric `ascore` 冇 explicit InstructorRetryException catch
+- [x] F2.1.b 讀 `backend/storage/settings.py:65-67` 揭示 3 個 LLM deployments + `.env` 實際 override(`llm_judge=gpt-5.4-mini` / `llm_eval_judge=gpt-5.4-mini` `gpt-5-5-pro` Azure 可能未配)
+- [x] F2.1.c 讀 W35 Option C raw JSON failed_queries 識別 pattern — 4 個 `answer_relevancy=0.6X` borderline + 5 個 `context_recall=0.00` keyword-mode artifact;InstructorRetryException 唔喺 raw JSON 顯式
+- [x] F2.1.d 識別 **4** 個 fix path 取捨 ROI(新 path d 加入)+ surface 至 chat user pick
 
 ### F2.2 Path 選定 + 實作(~1-2h)
 
