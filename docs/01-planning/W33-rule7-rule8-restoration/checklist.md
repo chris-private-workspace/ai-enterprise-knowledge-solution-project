@@ -83,8 +83,8 @@ last_updated: 2026-05-26
 
 ### D. Commit + push
 
-- [ ] F3 closeout commit — combined with F2 evidence(per W31+W32 closeout pattern;prompt edit + tests + retro + cross-doc sync atomic)
-- [ ] Push origin/main(per W32 user-instruction precedent)
+- [x] F3 closeout commit `355f58c` — `docs(planning): W33 closeout PASS — Rule 7 v2 + Rule 8 cross-section breadth ADD value vs W32 (h') baseline + G1b-DISTINCT-EQUAL + LATENCY-CONCERN CAVEAT`(4 files changed,178 insertions / 37 deletions)
+- [x] Push origin/main `6b99a93..355f58c`(4 commits cumulative same-day same-pattern as W32 `09805d6..6b99a93` push)
 
 ---
 
