@@ -16,8 +16,8 @@ last_updated: 2026-05-26
 - [x] F0.3 Draft `plan.md` 7-section per W32 closed-phase template
 - [x] F0.4 Draft `checklist.md` atomic items derived from plan §2 deliverables(this file)
 - [x] F0.5 Draft `progress.md` Day 0 entry — kickoff action + R6 catch report + W32 sequential ship rationale + Karpathy §1.1 G1 redefinition surface
-- [ ] F0.6 Commit kickoff `docs(planning): kickoff W33-rule7-rule8-restoration + sequential ship on W32 (h') baseline + R6 Day 0 verify`
-- [ ] F0.7 session-start.md §10 W33 row append `🟡 active 2026-05-26` + W34+ rolling JIT row defer + W32 row 維持 closed PASS
+- [x] F0.6 Commit kickoff `c56afa0` — `docs(planning): kickoff W33-rule7-rule8-restoration + sequential ship on W32 (h') baseline + R6 Day 0 verify`
+- [x] F0.7 session-start.md §10 W33 row append `🟡 active 2026-05-26` + W34+ rolling JIT row defer + W32 row 維持 closed PASS
 
 ## F1 — Implementation(D1 estimate — short single-axis ~1-2h)
 
