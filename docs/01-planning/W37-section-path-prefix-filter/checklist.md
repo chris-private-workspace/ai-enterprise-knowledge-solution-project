@@ -47,7 +47,7 @@ last_updated: 2026-05-27
 ### F1.4 驗證 + commit — ✅
 
 - [x] F1.4.a backend pytest **1091 passed + 25 skipped + 0 failed**(W36 baseline 1086 + 5 NEW W37 = 1091 exact match);ruff `All checks passed!`(W37 specific edits);mypy strict citation_expansion.py + settings.py 自身 0 errors(13 pre-existing 全屬 observability/retrieval/context_expander W22-W34 wave 留底,Karpathy §1.3 surgical 不屬 W37 scope)
-- [ ] F1.4.b commit `feat(generation): W37 F1 (j') section_path prefix filter for _find_neighbour_chunks — additive constraint depth=0 default preserve W36 baseline + Settings NEW knob`
+- [x] F1.4.b commit `da557ab` — `feat(generation): W37 F1 (j') section_path prefix filter for _find_neighbour_chunks — additive constraint depth=0 default preserve W36 baseline + Settings NEW knob`(5 files / +274 / -25)
 
 ## F2 — 5-run reproducibility verify(~30-45min)
 

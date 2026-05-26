@@ -164,7 +164,7 @@ Per `memory/feedback_judge_llm_cost_policy.md`(W36 saved 2026-05-26):
 - ✅ F1.2 `_find_neighbour_chunks` signature 加 `cited_section_path` + `section_path_prefix_depth` 兩 keyword-only params + 9-行 filter block + `expand_citations` 3-tuple propagation
 - ✅ F1.3 5 NEW unit tests PASS + helper extension(`_doc_chunk` + `_settings`)backward-compat
 - ✅ F1.4 backend pytest 1091 + ruff PASS + mypy strict W37 files clean
-- ⏳ F1.4.b commit pending
+- ✅ F1.4.b commit `da557ab` — `feat(generation): W37 F1 (j') section_path prefix filter for _find_neighbour_chunks — additive constraint depth=0 default preserve W36 baseline + Settings NEW knob`(5 files / +274 / -25)
 
 ### F1 verification snapshot
 
