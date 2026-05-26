@@ -169,10 +169,21 @@ async def expand_citations(
         return answer_text, citation_ids, []
 
     # Parallel fetch full doc chunk lists per unique doc — W25 F5 D1 line 71-74 pattern
+    # W34 F2.1.e — stage timing instrumentation (Karpathy §1.3 surgical;observability only)
+    # Per W33 retro #2 latency profile breakdown:determine if engine-fetch IO cost is
+    # dominant in W33 +57-91% latency vs W32 baseline.
+    import time as _time  # noqa: PLC0415 — local import for timing-only scope
+    list_chunks_batch_start = _time.perf_counter()
     doc_ids = sorted(cited_by_doc.keys())
     fetched_chunks = await asyncio.gather(
         *(engine.list_chunks(kb_id, did) for did in doc_ids),
         return_exceptions=True,
+    )
+    list_chunks_batch_latency_ms = int((_time.perf_counter() - list_chunks_batch_start) * 1000)
+    logger.info(
+        "expand_citations_list_chunks_batch",
+        unique_docs_count=len(doc_ids),
+        expand_list_chunks_batch_latency_ms=list_chunks_batch_latency_ms,
     )
 
     chunks_by_doc: dict[str, list[dict[str, Any]]] = {}

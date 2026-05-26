@@ -139,11 +139,22 @@ class Synthesizer:
         """
         assert self._client is not None, "use 'async with' to manage Synthesizer lifecycle"
 
+        # W34 F2.1.a — stage timing instrumentation (Karpathy §1.3 surgical;observability
+        # only — no behavior change). Per W33 retro #2 latency profile breakdown:determine
+        # if W33 +57-91% latency vs W32 is LLM emit / prompt token / engine-fetch dominant.
+        synth_overall_start = time.perf_counter()
+
+        # F2.1.b prompt-build sub-stage timing
+        prompt_build_start = time.perf_counter()
         prompt = build_prompt(
             query,
             chunks,
             dispatch_mode=get_settings().parent_doc_dispatch_mode,
         )
+        prompt_build_latency_ms = int((time.perf_counter() - prompt_build_start) * 1000)
+
+        # F2.1.c LLM chat completion sub-stage timing (existing `latency_ms` preserved
+        # for backward compat with cost_dashboard.py / Langfuse trace parsing).
         start = time.perf_counter()
         completion = await self._client.chat.completions.create(
             **self._completion_kwargs(
@@ -164,15 +175,20 @@ class Synthesizer:
         # raw dicts — caller extends retrieved_chunks for build_citations to avoid
         # Rule 5「hallucinated」filter dropping W32-added citation_ids。
         expanded_neighbor_chunks: list[RetrievedChunk] = []
+        # F2.1.d expand_citations overall sub-stage timing
+        expand_citations_start = time.perf_counter()
         if not refused and engine is not None and kb_id is not None:
             answer_text, citation_ids, expanded_neighbor_chunks = await expand_citations(
                 answer_text, citation_ids, chunks,
                 engine=engine, kb_id=kb_id, settings=get_settings(),
             )
+        expand_citations_latency_ms = int((time.perf_counter() - expand_citations_start) * 1000)
 
         usage = getattr(completion, "usage", None)
         input_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
         output_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+
+        synth_overall_latency_ms = int((time.perf_counter() - synth_overall_start) * 1000)
 
         logger.info(
             "synthesizer_call",
@@ -183,6 +199,11 @@ class Synthesizer:
             citations_count=len(citation_ids),
             refused=refused,
             chunks_in=len(chunks),
+            # W34 F2.1 stage timing fields (additive,backward compat preserved)
+            synth_overall_latency_ms=synth_overall_latency_ms,
+            synth_prompt_build_latency_ms=prompt_build_latency_ms,
+            synth_llm_completion_latency_ms=latency_ms,
+            synth_expand_citations_latency_ms=expand_citations_latency_ms,
         )
 
         return SynthesisResult(

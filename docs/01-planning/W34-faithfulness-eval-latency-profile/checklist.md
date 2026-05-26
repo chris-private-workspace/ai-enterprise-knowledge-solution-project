@@ -1,7 +1,7 @@
 ---
 phase: W34-faithfulness-eval-latency-profile
 plan_ref: ./plan.md
-status: active
+status: closed   # per F3 closeout 2026-05-26 — Phase Gate PASS measurement-only phase complete + decision tree intersect actionable verdict
 last_updated: 2026-05-26
 ---
 
@@ -56,64 +56,63 @@ last_updated: 2026-05-26
 
 ### F1.6 Commit + progress.md Day 1
 
-- [ ] F1.6.a Commit `feat(eval): W34 F1 build_ragas_samples engine + kb_id propagation per W32 (h') parity + LIVE RAGAs eval evidence — G1 preserve faith 0.9836 / correctness +2.53pp`
+- [x] F1.6.a Commit `448cb3b` — `feat(eval): W34 F1 build_ragas_samples engine + kb_id propagation per W32 (h') parity + LIVE RAGAs eval evidence — G1 preserve faith 0.9836 / correctness +2.53pp`
 - [x] F1.6.b progress.md Day 1 entry — F1.0 patch + F1.2 eval result + decision tree G1 preserve + F1.5 NOT triggered + actual vs planned effort table
 
 ## F2 — Latency profile structlog stage timing(A.2,~1-2h)
 
 ### F2.1 Structlog stage timing instrumentation
 
-- [ ] F2.1.a `synthesizer.synthesize` overall — log `synth_overall_latency_ms` at return
-- [ ] F2.1.b prompt-build sub-stage — wrap `build_prompt(...)` with timer + log `synth_prompt_build_latency_ms`
-- [ ] F2.1.c LLM chat completion sub-stage — wrap `client.chat.completions.create(...)` with timer + log `synth_llm_completion_latency_ms` + `prompt_tokens` + `completion_tokens`
-- [ ] F2.1.d `citation_expansion.expand_citations` overall — log `expand_citations_overall_latency_ms`
-- [ ] F2.1.e `engine.list_chunks` parallel batch sub-stage — wrap `asyncio.gather` with timer + log `expand_list_chunks_batch_latency_ms` + `unique_docs_count`
-- [ ] F2.1.f Same log binding pattern as existing W22 observability(no new logger / convention)
+- [x] F2.1.a `synthesizer.synthesize` overall — `synth_overall_latency_ms` logged at return
+- [x] F2.1.b prompt-build sub-stage — `synth_prompt_build_latency_ms`(measured 0ms — prompt cost negligible)
+- [x] F2.1.c LLM chat completion sub-stage — `synth_llm_completion_latency_ms`(existing `latency_ms` field preserved for backward compat)
+- [x] F2.1.d `citation_expansion.expand_citations` overall — `synth_expand_citations_latency_ms`
+- [x] F2.1.e `engine.list_chunks` parallel batch — NEW event `expand_citations_list_chunks_batch` with `unique_docs_count` + `expand_list_chunks_batch_latency_ms`
+- [x] F2.1.f Same structlog `logger.info` pattern as existing W22 observability(no new logger / convention)
 
 ### F2.2 5-run latency measurement
 
-- [ ] F2.2.a Q-W25-I07 5 runs back-to-back + Q-W25-I01 5 runs back-to-back via `backend/w34-f2-runner.py`
-- [ ] F2.2.b Capture per-run JSON + structlog JSON via `2>backend/w34-f2-structlog.log`
-- [ ] F2.2.c Aggregate per-stage mean latency across 10 runs
+- [x] F2.2.a Q-W25-I07 5 runs + Q-W25-I01 5 runs via `backend/w34-f2-runner.py`(per-run JSON `w34-f2-{i07,i01}-run-{1-5}.json`)
+- [x] F2.2.b Backend stderr log `uvicorn-restart-w34-v3.log.out` captures structlog JSON events
+- [x] F2.2.c Aggregate 10-run mean — I07 avg total 62.2s + I01 avg total 53.4s + synth_overall avg 16974ms + synth_llm_completion avg 15665ms + synth_expand_citations avg 1308ms + synth_prompt_build avg 0ms
 
 ### F2.3 Aggregate dominant cost determination
 
-- [ ] F2.3.a Per-stage breakdown table(LLM emit / prompt token / engine-fetch / other)
-- [ ] F2.3.b Identify dominant cost(>50% of W33-W32 +57-91% latency slowdown)
-- [ ] F2.3.c W35+ priority queue update per F2 outcome
-- [ ] F2.3.d Decision branch:LLM emit / prompt token / engine-fetch / mixed
+- [x] F2.3.a Per-stage breakdown table — LLM emit 92% / engine-fetch 8% / prompt token 0%(of synth_overall)+ audit_log 30s gap = Langfuse retry overhead
+- [x] F2.3.b Dominant cost identified — **synth_llm_completion 15665ms = 92% of synth_overall(>>50% threshold)**
+- [x] F2.3.c W35+ priority queue update — Rule 8 wording tighten elevated;prompt token reduction + engine-fetch async pool DEMOTED LOW priority(F2 evidence ROI low)
+- [x] F2.3.d Decision branch:**G2 LLM emit dominant** ✅
 
 ### F2.4 Commit + progress.md Day 2
 
-- [ ] F2.4.a Commit `feat(observability): W34 F2 structlog stage timing + 10-run latency profile`
-- [ ] F2.4.b progress.md Day 2 entry — instrumentation summary + 10-run latency table + dominant cost verdict
+- [ ] F2.4.a Commit `feat(observability): W34 F2 structlog stage timing + 10-run latency profile + LLM emit dominant verdict`
+- [x] F2.4.b progress.md Day 2 entry — instrumentation summary + 10-run latency table + dominant cost verdict + decision tree intersect
 
 ## F3 — Decision tree analysis + closeout
 
 ### A. Combined decision tree(F1 outcome × F2 outcome)
 
-- [ ] A.1 RAGAs branch determined(preserve / flag / break)
-- [ ] A.2 Latency branch determined(LLM emit / prompt token / engine-fetch / mixed)
-- [ ] A.3 Intersect → W35+ ship recommendation matrix(per plan §3.F3.A)
+- [x] A.1 RAGAs branch = **G1 preserve**(faith 0.9836 ≥ 0.9651 + correctness +2.53pp IMPROVED)
+- [x] A.2 Latency branch = **G2 LLM emit dominant**(synth_llm_completion 92% of synth_overall)
+- [x] A.3 Intersect → **W35+ Rule 8 wording tighten OPTIONAL refinement**(no urgent revert,production preserved per plan §F3.A intersect)
 
 ### B. Cross-doc sync per CLAUDE.md §10 R3 + R5 + R6
 
-- [ ] plan.md frontmatter status `active → closed` per outcome
-- [ ] checklist.md cross-cutting tick + N/A reason
-- [ ] progress.md retro 7-section
-- [ ] session-start.md §10 W34 row `🟡 active` → `✅ closed`
-- [ ] session-start.md §11 W34 CLOSED block prepend
-- [ ] RISK_REGISTER NEW R candidate(if F1.4 verdict = break OR flag)
-- [ ] ADR README — no NEW ADR expected per plan §1 + §4 R5
+- [x] plan.md frontmatter `status: active → closed`(measurement-only PASS verdict)
+- [x] checklist.md cross-cutting tick + N/A reason(this file)
+- [x] progress.md retro 7-section(What Worked + What Didn't / Surprises + Carry-overs + ADR Triggers + Phase Gate Result + W35+ Priority Queue Locked + Actual vs Planned Effort)
+- [ ] session-start.md §10 W34 row `🟡 active` → `✅ closed` + §11 W34 CLOSED block prepend
+- [ ] 🚧 RISK_REGISTER NEW R candidate — DEFERRED W35+(G1 preserve outcome means no NEW risk material this phase;PC-W34-1 + PC-W34-2 catalogued as procedural carry-overs not risk-register-grade)
+- [x] ADR README — no NEW ADR(F1.0 kwargs propagation + F2.1 structlog instrumentation both non-architectural per plan §1 + §4 R5)
 
 ### C. `.env` cleanup + W35+ priority queue evaluation
 
-- [ ] `.env` cleanup — W29 env override preserved unchanged(no `.env` change this phase)
-- [ ] W35+ candidate prioritization per F1.4 + F2.4 intersect outcome(Rule 8 wording tighten / Rule 7 v2 compact / engine-fetch async pool / partial revert / multi-axis combined / preserve do-nothing)
+- [x] `.env` cleanup — W29 env override preserved unchanged(no `.env` change this phase)
+- [x] W35+ candidate prioritization update per F3 decision tree intersect — HIGHEST optional Rule 8 wording tighten + PC-W34-1 + PC-W34-2 + (j') + PC-W33-1 + PC-W32-1/2 preserved + DEMOTED prompt token reduction + engine-fetch async pool + lower priority (g')/(i')/(B'.a)/(ii)/(k) + long-term (c)/(e)/(f)/BUG-026+027/W22 D8/W16 F1-F4(documented retro §W35+ Priority Queue Locked)
 
 ### D. Commit + push
 
-- [ ] F3 closeout commit — combined with F1 + F2 evidence(per W31-W33 closeout pattern atomic)
+- [ ] F3 closeout commit — F2.1 instrumentation + F2 evidence + retro + cross-doc sync atomic(per W31-W33 closeout pattern)
 - [ ] Push origin/main(per W33 user-instruction precedent)
 
 ---

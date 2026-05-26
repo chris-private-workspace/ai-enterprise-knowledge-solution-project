@@ -1,6 +1,6 @@
 ---
 phase: W34-faithfulness-eval-latency-profile
-status: active
+status: closed   # per F3 closeout 2026-05-26 — Phase Gate PASS measurement-only phase complete (F1 G1 preserve faith 0.9836 + correctness +2.53pp / F2 G2 LLM emit dominant 92% / decision tree intersect → W35+ Rule 8 wording tighten OPTIONAL refinement)
 last_updated: 2026-05-26
 component_scope: C05 Generation Pipeline (latency profile) + C06 Eval Framework (RAGAs eval)
 adr_refs:
