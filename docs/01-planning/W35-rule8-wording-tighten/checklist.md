@@ -16,8 +16,8 @@ last_updated: 2026-05-26
 - [x] F0.3 Draft `plan.md` 7-section per W34 closed-phase template
 - [x] F0.4 Draft `checklist.md` atomic items derived from plan §2 deliverables(this file)
 - [x] F0.5 Draft `progress.md` Day 0 entry — kickoff action + R6 catch report + 3 wording options surface + W34 F1+F2 baseline reference + decision tree pre-implementation surface
-- [ ] F0.6 Commit kickoff — `docs(planning): kickoff W35-rule8-wording-tighten + R6 Day 0 catch Rule 8 verbatim wording + test assertions lock + 3 wording options surface`
-- [ ] F0.7 session-start.md §10 W35 row append `🟡 active 2026-05-26`(commit hash post-F0.6)+ W34 row 維持 closed PASS + W36+ rolling JIT row defer
+- [x] F0.6 Commit kickoff `b2f4ca3` — `docs(planning): kickoff W35-rule8-wording-tighten + R6 Day 0 catch Rule 8 verbatim wording + test assertions lock + 3 wording options surface`
+- [x] F0.7 session-start.md §10 W35 row append `🟡 active 2026-05-26`(commit `b2f4ca3`)+ W34 row 4 commits backfilled `aa1c24e`+`448cb3b`+`0087092`+`6734161` + W36+ rolling JIT row preserved(commit `8c08557`)
 
 ## F1 — Rule 8 wording tighten + LIVE RAGAs eval(~2-3h)
 

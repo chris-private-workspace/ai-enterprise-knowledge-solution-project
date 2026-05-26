@@ -95,13 +95,15 @@ F1.1 必須同步 update 全部 5 個 phrase 至 W35 tightened wording。任何 
 
 ### Commits
 
-(F0.6 commit pending — combined kickoff plan + checklist + progress + R6 catch)
+- `b2f4ca3` — F0.6 kickoff(plan + checklist + progress combined,3 files / 543 insertions)
+- `8c08557` — F0.7 session-start.md §10 W35 row append active + W34 closeout commits backfilled
 
 ### Carry-overs / Blockers
 
-- F0.5 progress.md Day 0 entry(this file)— in progress
-- F0.6 kickoff commit — pending
-- F0.7 session-start.md §10 W35 row append — pending(commit hash post-F0.6)
+- F0.5 progress.md Day 0 entry(this file)— done
+- F0.6 kickoff commit `b2f4ca3` — done
+- F0.7 session-start.md §10 W35 row append commit `8c08557` — done
+- **D1 trigger**:F1.0.a Option A/B/C lock — user pick required(default Option B working candidate);plan §1 + progress.md Day 0 「3 候選 wording」 surface ready
 
 ---
 
