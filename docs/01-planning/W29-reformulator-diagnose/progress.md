@@ -55,12 +55,12 @@ User Recommended pick:**W29-reformulator-diagnose — H1+H2+H3 audit 先**(optio
 - ✅ `plan.md` v1.0 drafted per W28 closed-phase 7-section template
 - ✅ `checklist.md` v1.0 drafted per W28 atomic items pattern
 - ✅ `progress.md` Day 0 entry written(this entry)
-- ⏳ Commit `docs(planning): kickoff W29-reformulator-diagnose + R6 path (iii) already-shipped catch + scope redirect to audit-first` pending
-- ⏳ session-start.md §10 timeline row W29 active append + §11 W28 closed_block preserve pending
+- ✅ Commit `docs(planning): kickoff W29-reformulator-diagnose + R6 path (iii) already-shipped catch + scope redirect to audit-first`(commit `51ee31e` 2026-05-26)
+- ✅ session-start.md §10 timeline row W29 active append + W30+ rolling JIT row + W28 closed row preserved(landed in `51ee31e`)
 
 ### Commits
 
-- pending kickoff commit
+- `51ee31e` docs(planning): kickoff W29-reformulator-diagnose + R6 path (iii) already-shipped catch + scope redirect to audit-first(4 files changed,+471 / -1)
 
 ### Blockers / 🚧 deferred
 

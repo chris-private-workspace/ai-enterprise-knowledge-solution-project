@@ -18,8 +18,8 @@ last_updated: 2026-05-26
 - [x] Draft `plan.md` per W28 closed-phase template — 7-section structure + frontmatter + §2 F0-F4 deliverables + §3 G1-G5 + §4 R1-R6 + §5 D0-D2 + §6 W28+W25 carry-overs + §7 Changelog
 - [x] Draft `checklist.md` per W28 closed-phase template — atomic items derived from plan §2 deliverables
 - [x] Draft `progress.md` Day 0 entry — kickoff action + R6 catch detail + commit hash placeholder
-- [ ] Commit `docs(planning): kickoff W29-reformulator-diagnose + R6 path (iii) already-shipped catch + scope redirect to audit-first` per CLAUDE.md §10 R1 binding
-- [ ] session-start.md §10 timeline row update — W29 active status entry append + W30+ rolling JIT row 更新 + W28 row 維持 closed
+- [x] Commit `docs(planning): kickoff W29-reformulator-diagnose + R6 path (iii) already-shipped catch + scope redirect to audit-first` per CLAUDE.md §10 R1 binding(commit `51ee31e`)
+- [x] session-start.md §10 timeline row update — W29 active status entry append + W30+ rolling JIT row 更新 + W28 row 維持 closed(landed in `51ee31e`)
 
 ## F1 — H1+H2+H3 Diagnose(audit-only,no code change)
 
