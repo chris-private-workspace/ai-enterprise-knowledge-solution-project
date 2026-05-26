@@ -4,7 +4,7 @@ name: "Reformulator behavior diagnose — H1 RRF surface / H2 vocab-corpus misma
 sprint_week: W29
 start_date: 2026-05-26
 end_date: 2026-05-26    # same-day collapse expected per W22-W28 AI compression pattern; extend to 2026-05-27 if F3 surgical fix scope expands
-status: active
+status: closed_partial   # per W29 F4 closeout 2026-05-26 — Phase Gate PARTIAL per plan §3 G5 measurement-experiment-fail-policy(G1 strict 0/5 = FAIL;Setting tune retrieval-side improvement +40pp net positive 但 synthesizer-side cite rate marginal 20% — bottleneck shifted from retrieval to synthesizer;Path A `.env` Setting env override preserved + Settings.py default unchanged per Q4;NEW W30+ candidate (i') synthesizer prompt elevated HIGHEST priority — redirect from original (ii) CRAG threshold per Run 5 synthesizer-cite-bottleneck evidence)
 spec_refs:
   - architecture.md §3.1      # query pipeline (reformulator + RAG-fusion locus per ADR-0034)
   - architecture.md §3.5      # ChunkRecord citation contract preservation

@@ -2,8 +2,9 @@
 phase: W29-reformulator-diagnose
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active
+status: closed_partial   # per W29 F4 closeout 2026-05-26 — Phase Gate PARTIAL per Q4 measurement-experiment-fail-policy
 start_date: 2026-05-26
+end_date: 2026-05-26
 last_updated: 2026-05-26
 ---
 
@@ -148,5 +149,103 @@ F3 surgical fix candidate paths(per f2-root-cause-W29-D1.md):
 - **Path C**(Wire reformulator into eval/orchestrator)— ~4-6h work,closes H4 systemic gap,but does NOT solve G1
 - **Path D**(No-op + PARTIAL closeout)— accept reality;reasonable enumerate-from-intro answer + PARTIAL closeout per Q4
 - **Path E**(A + C combined)— ~8-10h work,thorough close
+
+---
+
+## Day 0 cont — 2026-05-26 (F3 Path A + F4 closeout)
+
+### F3 Path A execution
+
+**Iteration 1**(v1)— `QUERY_EXPANSION_PER_VARIANT_OVERFETCH=4→8` + `QUERY_EXPANSION_RRF_K=60→30` via `.env` env override + backend reload via `touch backend/storage/settings.py` WatchFiles auto-reload。Single curl test:**citations=2 with §8.4 chunk-0051 cited**(first-ever post-W25 D4)。
+
+**Iteration 2**(v2)— more aggressive `4→12` + `60→15`。Single curl test:**regression**(citations=1 only intro-chunk;top-5 still had §8.4 but synthesizer didn't cite)。`k=15` too aggressive — top-rank-in-each-variant 過重 → intro-chunk RRF dominance restored。
+
+**v1 reverted + 5-run reproducibility test**:
+
+| Run | Citations | Walkthrough cited | §8.x in top-5 | Cited IDs |
+|----:|----------:|------------------:|--------------:|-----------|
+| 1   | 1         | 0                 | 0             | 0044 |
+| 2   | 2         | **1 (§8.4)** ✅  | 1             | 0044/**0051** |
+| 3   | 1         | 0                 | 0             | 0044 |
+| 4   | 1         | 0                 | 0             | 0044 |
+| 5   | 1         | 0(但 top-5 有 §8.4) | 1            | 0044 |
+
+**Aggregate**:
+- Walkthrough chunk surfaced top-5:**2/5 = 40%**(+40pp vs pre-tune baseline 0%)retrieval-side improvement ✅
+- Walkthrough chunk cited:**1/5 = 20%**(+20pp vs pre-tune 0%)synthesizer-side marginal improvement
+- Run 5 critical:§8.4 chunk-0051 surfaced top-5 但 synthesizer 只 cite chunk-0044 intro → **synthesizer-side cite-decision bottleneck**
+
+### G1 PRIMARY gate evaluation
+
+- G1 strict (≥ 2 distinct §8.x walkthrough citations):**0/5 = 0% STRICT FAIL** ❌
+- G1 relaxed (≥ 1 §8.x walkthrough cited):1/5 = 20% marginal
+- G1 relaxed^2 (any §8.x surfaced top-5):2/5 = 40% confirmed retrieval improvement
+
+### F4 closeout — PARTIAL per Q4 measurement-experiment-fail-policy
+
+User F4 AskUserQuestion Recommended pick:**F4 PARTIAL closeout per Q4 + path (i) synthesizer prompt elevate W30+**(redirected from original (ii) CRAG threshold per Run 5 synthesizer-cite-bottleneck evidence)。
+
+### Decisions logged
+
+- **D29.F3.1**:Path A v1(overfetch=8 + rrf_k=30)final tune values — `.env` env override **PRESERVED**(net positive +40pp retrieval improvement;NEW W30+ baseline)
+- **D29.F3.2**:Settings.py defaults **UNCHANGED**(per Q4 measurement-experiment-fail-policy — G1 strict 0/5 FAIL ≠ clear measurable production win)
+- **D29.F3.3**:Path v2(overfetch=12 + rrf_k=15)**rejected** — too aggressive regression evidence
+- **D29.F4.1**:Phase Gate G1-G5 verdict = **PARTIAL** per Q4
+- **D29.F4.2**:**NEW W30+ candidate (i')** synthesizer prompt tune elevated HIGHEST priority(per Run 5 evidence — synthesizer cite-layer surgical bottleneck identified;原 path (ii) CRAG threshold降至 second priority — H1 boundary higher risk)
+- **D29.F4.3**:**NEW W30+ candidate (k)** wire reformulator into `backend/eval/orchestrator.py` — close H4 systemic gap(per F2 evidence;separate axis from G1)
+
+---
+
+## Retrospective
+
+### 1. Phase status
+
+**PARTIAL closeout** per Q4 measurement-experiment-fail-policy:
+- G1 strict (≥ 2 §8.x walkthrough citations) — 0/5 FAIL
+- G2 pytest regression — N/A no code change
+- G3 ruff/mypy — N/A no code touched
+- G4 audit evidence committed ✅(F1 5 outputs + F2 root cause + F3 multi-run report)
+- G5 fail-policy applied ✅(PARTIAL closeout + W30+ (i') elevate)
+
+### 2. What worked
+
+- **R6 Day 0 recursive grep verify caught path (iii) already-shipped** before any code change → saved 2-3 days of redundant reformulator prompt strengthening work(W25 F3 D4 EXAMPLE 3 line 78-84 already covers Q-W25-I07 specific decomposition)
+- **F1 5 audit sub-deliverables completed same-day** per W22-W28 AI compression pattern — Langfuse API + Azure Search corpus listing + Backend `/query` direct call all unblocked
+- **F2 root cause classification disambiguated W26-W28 G3 marginal MISS** — H4 NEW eval coverage gap finding(eval/orchestrator.py bypasses reformulator entirely;W26-W28 eval verdict reflect single-query baseline NOT reformulator-path performance)
+- **F3 Path A iterative tuning**(v1 → v2 → v1 reverted)demonstrated **+40pp retrieval-side improvement** confirmed — first-ever §8.x walkthrough top-5 surface post-W25 D4
+
+### 3. What didn't work
+
+- **Standalone reformulator test 3/3 APIConnectionError** — corp proxy intercepts new Python httpx processes;Langfuse API + backend `/query` curl 路徑成功 confirmed backend reformulator IS working(93% success rate per 14/15 obs)。Standalone test artifact 反而 misleading — should have invested earlier in Langfuse API audit instead of standalone
+- **v2 Setting tune regression**(overfetch=12 + rrf_k=15)— RRF k=15 too aggressive restored intro-chunk dominance;v1 (overfetch=8 + rrf_k=30) remains best
+- **G1 strict (≥ 2 walkthrough) acceptance criteria 過高** — synthesizer-side cite-decision layer is the remaining cap;path (i) synthesizer prompt elevation needed
+
+### 4. Surprises
+
+- **Synthesizer refuse pattern naturally disappeared**(W25 D4「refused: True」→ W29 D0「refused: False」)— W25.5 BUG-025 symmetric deboost + W26-W28 retrieval cumulative improvement closed refuse without explicit synthesizer prompt tune。 W19+ candidate (g) original framing as「Synthesizer enumeration-refuse fix」 已 self-closed since W25.5
+- **Reformulator EXAMPLE 3 EXACT match §8.1 corpus chunk_title 4-word literal**(「Customer service request submission」)— eval-set-v0-w25-supplement.yaml comment line literally describes this vocab so reformulator prompt author was aware of corpus structure;but RRF + Cohere rerank pipeline still 不夠 friendly to specific-vocab variants 對 token-dense intro chunks
+- **Run 5 chunk-0051 surfaced top-5 但 synthesizer 未 cite** — synthesizer prompt 唔 reliably 用 surface chunks for citations even when retrieval succeeds;cite-confidence layer係 unmitigated bottleneck
+
+### 5. Carry-overs to W30+(rolling JIT NOT pre-created)
+
+- **(i')** NEW HIGHEST priority — Synthesizer system prompt tune(option A「synthesize from collective context」instruction / option B cite-confidence threshold relax / option C「prefer §X.Y specific chunks over §X overview chunks」directive)— 估 ~2-3 days
+- (ii)** Path (ii) CRAG threshold trial — H1 boundary route — STOP+ask + ADR-route — downgrade to second priority per W29 evidence
+- **(k)** NEW Wire reformulator + fused_retrieve into `backend/eval/orchestrator.py` — close H4 systemic gap — eval-side measurement infrastructure improvement(~4-6h)— separate axis from G1
+- (c) RAGAs orchestrator-aware judge tune per R-W26-2 — 大幅降低 priority(W28 already closed G1+G2+G4+G5;只 trigger 若 W30+ (i') 完 producing G3 full PASS evidence)
+- (d) F3 query expansion standalone test — subsumed by W29 F1.1+F1.2 audit
+- NEW (e) `make_ragas_evaluator` structlog stage emit — operability axis retained
+- NEW (f) `tests/test_settings_defaults.py` — quick win retained
+- BUG-026 UI count + BUG-027 cosmetic / W22 D8 setup.md §8.6 / W16 F1-F4 Track A IT cred — parallel track
+
+### 6. ADR triggers
+
+- **No NEW ADR ship** per W29 PARTIAL closeout — Settings.py defaults unchanged(per Q4 measurement-experiment-fail-policy);`.env` env override preserved as local-dev baseline
+- **ADR-0034 NOT amended** — reformulator prompt + framework unchanged;Settings defaults `query_expansion_per_variant_overfetch=2` + `query_expansion_rrf_k=60` preserved
+
+### 7. Process improvements / preventive controls
+
+- **PC-W29-1**:R6 Day 0 grep verify saved ~2-3 days redundant work — formalize 「check existing implementation BEFORE proposing strengthening」pattern in PROCESS.md(W30+ candidate)
+- **PC-W29-2**:Langfuse API audit + backend `/query` direct call > standalone Python script for backend behavior verification — standalone vulnerable to corp proxy intercept(ADR-0017 R8 pattern);prefer backend already-running process direct probe
+- **PC-W29-3**:eval pipeline coverage gap detection — when phase plan involves「ADR-NNNN framework should affect G3」,verify framework IS wired into eval orchestrator BEFORE relying on eval G3 verdict(W29 H4 catch:W26-W28 eval verdict 系 reflective of single-query baseline NOT reformulator-path performance)
 
 ---

@@ -1,7 +1,7 @@
 ---
 phase: W29-reformulator-diagnose
 plan_ref: ./plan.md
-status: active
+status: closed_partial   # per W29 F4 closeout 2026-05-26 — Phase Gate PARTIAL per Q4 measurement-experiment-fail-policy
 last_updated: 2026-05-26
 ---
 
@@ -38,7 +38,7 @@ last_updated: 2026-05-26
 
 ### C. F1 commit
 
-- [ ] Commit F1 diagnose `docs(analysis): W29 F1 H1+H2+H3+H4 diagnose — 5 audit outputs + NEW H4 eval coverage gap found`
+- [x] Commit F1 + F2 combined `docs(analysis): W29 F1+F2 diagnose + root cause — H1+H4 NEW combined dominant + path (iii) refuted`(commit `7b6082e`)
 
 ## F2 — Root cause confirm + markdown report
 
@@ -49,75 +49,73 @@ last_updated: 2026-05-26
 
 ### B. F2 commit
 
-- [ ] Commit F2 root cause `docs(analysis): W29 F2 root cause confirm — H1 RRF surface + H4 NEW eval coverage gap combined dominant + F3 Path A/C/E proposal`
+- [x] Commit F2 root cause combined with F1(commit `7b6082e` includes both F1 5 raw outputs + F2 markdown report)
 
 ## F3 — Surgical fix based on confirmed root cause(scope-conditional)
 
-### A. Scope-conditional fix
+### A. Scope-conditional fix — Path A applied per F2 H1 dominant + user pick (Recommended)
 
-- [ ] **若 F2 = H1 RRF dominant** → Candidate (a) `QUERY_EXPANSION_PER_VARIANT_OVERFETCH` tune OR Candidate (b) RRF `k` parameter tune
-- [ ] **若 F2 = H2 vocab-corpus mismatch dominant** → Candidate (c) EXAMPLE 3 vocab replace with F1.2 actual corpus tokens
-- [ ] **若 F2 = H3 fallback gap dominant** → Candidate (d) `QUERY_EXPANSION_LATENCY_CAP_S` tune OR Candidate (e) reformulator error handling strengthen
-- [ ] **若 F2 = None / judge noise alone** → F3 = no-op surgical fix(文件化 finding;G1 user-test predicted FAIL → PARTIAL closeout path)
+- [x] **F2 = H1 RRF dominant** → Candidate (a) `QUERY_EXPANSION_PER_VARIANT_OVERFETCH` 4→8 + (b) `QUERY_EXPANSION_RRF_K` default 60 → 30 env override applied
+- [N/A] H2 / H3 / None branch — not triggered per F2 verdict
+- [x] **Iteration v2 tested**(overfetch=12 + rrf_k=15)→ regression confirmed too aggressive → reverted v1
+- [x] **5-run reproducibility test**:retrieval +40pp(2/5 §8.x top-5)/ synthesizer cite +20pp(1/5 §8.x cited)— bottleneck shifted to synthesizer
 
 ### B. F3 tests
 
-- [ ] F3 unit test 2+ NEW(若 reformulator prompt OR result_fusion touched — covering enumeration query path + W25 D4 Q-W25-I07 baseline)
-- [ ] Backend pytest 1060 baseline preserved(regression 0)
-- [ ] ruff + mypy strict on touched code clean(W26 baseline 18 pre-existing 維持)
+- [N/A] F3 unit test 2+ NEW — no code change(Setting env override only,zero touch backend modules);unit test approval not applicable per scope
+- [x] Backend pytest 1060 baseline preserved(regression 0)— no code change to break
+- [x] ruff + mypy strict on touched code clean — no code touched per Path A surgical scope
 
 ### C. F3 commit
 
-- [ ] Commit F3 surgical fix `feat/fix({scope}): W29 F3 {candidate} — {root cause} surgical fix + {N} NEW tests`
+- [x] Commit F3 evidence will be batched with F4 closeout commit per W29 closeout pattern
 
 ## F4 — User-test verify + closeout
 
 ### A. Q-W25-I07 user-test verify (PRIMARY G1)
 
-- [ ] Backend restart via `python -m api.server` per W27 D2 lesson
-- [ ] curl POST `/query` 「show me all the Integration scenarios」+ Bearer dev-token + assert citations ≥ 2 distinct chunk_ids 對應 §8.1-§8.5 A-E walkthrough(exclude intro chunk-0044 / TOC chunk-0001 / chunk-0008 / chunk-0036 by-system)
-- [ ] Chat UI retry verify(user-eye secondary surface)
+- [x] Backend reload via `touch backend/storage/settings.py` + WatchFiles auto-reload(代替 full restart per ADR-0023 lifespan client-pool preserve)
+- [x] curl POST `/query` 「Show me all the Integration scenarios」+ Bearer dev-token 5-run reproducibility → 0/5 ≥ 2 distinct §8.x walkthrough cited(strict G1 FAIL)/ 1/5 ≥ 1 walkthrough cited / 2/5 §8.x in top-5
+- [N/A] Chat UI retry verify(curl evidence already sufficient — synthesizer randomness same path)
 
 ### B. Phase Gate G1-G5 evaluation
 
-- [ ] G1 user-test ≥ 2 distinct A-E walkthrough citations
-- [ ] G2 backend pytest 1060 baseline preserved
-- [ ] G3 ruff + mypy strict on touched code clean
-- [ ] G4 F1 5 audit outputs + F2 root cause report committed (evidence base)
-- [ ] G5 measurement-experiment-fail-policy applied — 若 G1 FAIL → PARTIAL closeout + path (ii) CRAG threshold elevate W30+ + ADR-0034 reaffirm
+- [x] G1 user-test ≥ 2 distinct A-E walkthrough citations — **0/5 STRICT FAIL** (5-run reproducibility test 2026-05-26)
+- [x] G2 backend pytest 1060 baseline preserved — no code change per Path A surgical scope
+- [x] G3 ruff + mypy strict on touched code clean — no code touched
+- [x] G4 F1 5 audit outputs + F2 root cause + F3 multi-run report committed (commits `7b6082e` + closeout)
+- [x] G5 measurement-experiment-fail-policy applied — G1 strict FAIL → **PARTIAL closeout** + path (i) synthesizer prompt elevate W30+ per user F4 pick(redirected from original path (ii) CRAG threshold per Run 5 synthesizer-cite-bottleneck evidence)
 
 ### C. Cross-doc sync per CLAUDE.md §10 R3 + R5 + R6
 
-- [ ] plan.md frontmatter `status: active → closed`(若 PASS)OR `closed_partial`(若 G1 FAIL)
-- [ ] checklist.md cross-cutting 全 tick + N/A items 標明 reason
-- [ ] progress.md retro 7-section + Phase Gate G1-G5 result + What worked / What didn't / Surprises / Carry-overs to W30+ / ADR triggers
-- [ ] session-start.md §10 timeline row update — W29 row `🟡 active` → `✅ closed` / `✅ closed_partial 2026-05-26`
-- [ ] session-start.md §11 W29 CLOSED block prepend (per W26-W28 precedent)
-- [ ] RISK_REGISTER R15 status flip per result (G1 PASS → 🟢 Mitigated / G1 FAIL → preserve current + W30+ candidate log)
-- [ ] COMPONENT_CATALOG.md C05 status note 1-line append (若 F3 touched reformulator / result_fusion)
-- [ ] ADR README index sync (若 ADR-0034 amendment OR NEW ADR ship)
+- [x] plan.md frontmatter `status: active → closed_partial` — done
+- [x] checklist.md cross-cutting 全 tick + N/A items 標明 reason — this commit
+- [x] progress.md retro 7-section + Phase Gate G1-G5 result — this commit
+- [x] session-start.md §10 timeline row update — W29 row `🟡 active` → `✅ closed_partial 2026-05-26`
+- [x] session-start.md §11 W29 CLOSED_PARTIAL block prepend (per W26+W27 PARTIAL precedent)
+- [N/A] RISK_REGISTER R15 — preserve current state (W25.5 BUG-025 closure unaffected by W29 finding;NEW R-W29-1「Synthesizer §8.x walkthrough cite inconsistency」eligible for W30+ scope)
+- [N/A] COMPONENT_CATALOG.md C05 — no F3 code change touched reformulator / result_fusion;Settings.py defaults unchanged
+- [N/A] ADR README index sync — no NEW ADR ship + no ADR-0034 amendment(Settings.py defaults preserved per Q4)
 
 ### D. `.env` cleanup + W30+ priority queue evaluation
 
-- [ ] `.env` cleanup — 任何 F1 audit env override 移除(W29 audit 預期 read-only,但仍 sanity check)
-- [ ] W30+ candidate prioritization update:
-  - 若 W29 G1 PASS → path (i)(ii) decay W30+ candidates;NEW (h) Q-W25-I07-like enumeration corpus expansion candidate elevate
-  - 若 W29 G1 FAIL → path (ii) CRAG threshold trial elevate per Q4 fallback(H1 boundary route — STOP+ask + ADR governance)
+- [x] `.env` Setting tune env override PRESERVED `per_variant_overfetch=8 + rrf_k=30`(per user F4 pick — net positive +40pp retrieval improvement;Settings.py defaults unchanged per Q4)
+- [x] W30+ candidate prioritization update — **path (i) synthesizer prompt elevated HIGHEST priority** per F3 Run 5 evidence(redirected from original (ii) CRAG threshold)/ (ii) CRAG threshold trial H1 boundary downgrade / (c) RAGAs orchestrator-aware tune retained / (d) F3 query expansion standalone subsumed / NEW (e) make_ragas_evaluator structlog stage / NEW (f) Settings-default-tests / **NEW (k) wire reformulator into eval/orchestrator.py(close H4 systemic gap — separate axis from G1)** / BUG-026 / BUG-027 / W22 D8 setup.md / W16 Track A IT cred parallel track
 
 ### E. Commit
 
-- [ ] Commit F4 closeout `docs(planning): W29 closeout {PASS|PARTIAL} — F1-F2 diagnose + F3 {surgical fix|no-op} + Q-W25-I07 user-test {PASS|FAIL} + cross-doc sync`
+- [x] Commit F4 closeout `docs(planning): W29 closeout PARTIAL — F3 Path A Setting tune +40pp retrieval improvement / G1 strict 0/5 FAIL / synthesizer-side bottleneck identified Run 5 / path (i) synthesizer prompt elevate W30+`
 
 ---
 
 ## Cross-Cutting
 
-- [ ] All deliverables committed to git
-- [ ] All OQ status changes reflected in `docs/decision-form.md`(W29 no OQ deps expected — likely N/A)
-- [ ] All architectural-adjacent decisions documented as ADR(F3 may amend ADR-0034;ship NEW ADR if F2 H2 confirms structural example-corpus alignment policy needed)
-- [ ] `progress.md` retro section written
-- [ ] `progress.md` frontmatter status flipped to `closed` / `closed_partial`
-- [ ] Phase W30+ kickoff trigger noted in retro
+- [x] All deliverables committed to git(F0 `51ee31e` + F1+F2 `7b6082e` + F4 closeout commit pending)
+- [N/A] All OQ status changes reflected in `docs/decision-form.md` — no OQ resolved this phase
+- [N/A] All architectural-adjacent decisions documented as ADR — Settings env override only,no ADR-0034 amendment(per Q4 measurement-experiment policy — Settings.py defaults unchanged)
+- [x] `progress.md` retro section written — 7-section per closeout commit
+- [x] `progress.md` frontmatter status flipped to `closed_partial`
+- [x] Phase W30+ kickoff trigger noted in retro — (i') synthesizer prompt elevated HIGHEST priority + W29 path-i evidence base
 
 ---
 
