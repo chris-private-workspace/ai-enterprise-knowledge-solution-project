@@ -15,8 +15,8 @@ last_updated: 2026-05-26
 - [x] F0.2 R6 Day 0 recursive grep verify — `prompt_builder.py:28` SYSTEM_PROMPT current state confirmed only Rule 1-6 present(W30 Rule 7 REVERTED per `e192464`)+ `Settings.py` L198-243 parent-doc + dispatch knobs current state confirmed + `synthesizer.py` synthesize+synthesize_stream call sites confirmed no existing post-hoc citation expansion logic + `citation_image_neighbors.py` W25 F5 D1 pattern confirmed as parallel reference for B'.c → **no shipped-pattern conflict for B'.b / B'.c / Rule 7 v2**(W31 multi-axis subset all 3 axes 新 work,not redundant)
 - [x] F0.3 Draft `plan.md` 7-section per W30 closed-phase template
 - [x] F0.4 Draft `checklist.md` atomic items derived from plan §2 deliverables(this file)
-- [ ] F0.5 Draft `progress.md` Day 0 entry — kickoff action + R6 catch report + (B'.b + B'.c + Rule 7 v2) multi-axis subset user pick rationale
-- [ ] F0.6 Commit kickoff `docs(planning): kickoff W31-synthesizer-cite-multi-axis + R6 Day 0 no-shipped-pattern confirm + (B'.b + B'.c + Rule 7 v2) multi-axis subset pick`
+- [x] F0.5 Draft `progress.md` Day 0 entry — kickoff action + R6 catch report + (B'.b + B'.c + Rule 7 v2) multi-axis subset user pick rationale
+- [x] F0.6 Commit kickoff `3a838b5` — `docs(planning): kickoff W31-synthesizer-cite-multi-axis + R6 Day 0 no-shipped-pattern confirm + (B'.b + B'.c + Rule 7 v2) multi-axis subset pick`
 - [ ] F0.7 session-start.md §10 W31 row append `🟡 active 2026-05-26` + W32+ rolling JIT row defer + W30 row 維持 closed_partial
 
 ## F1 — Implementation(D1 estimate)

@@ -54,8 +54,8 @@ last_updated: 2026-05-26
 ### F0 next steps
 
 - **F0.5** Draft this progress.md Day 0 entry(this section)— ✅ done
-- **F0.6** Commit kickoff `docs(planning): kickoff W31-synthesizer-cite-multi-axis + R6 Day 0 no-shipped-pattern confirm + (B'.b + B'.c + Rule 7 v2) multi-axis subset pick`(next action)
-- **F0.7** session-start.md §10 W31 row append + W32+ rolling JIT row defer + W30 row 維持 closed_partial(post-F0.6 commit)
+- **F0.6** Commit kickoff `3a838b5` — `docs(planning): kickoff W31-synthesizer-cite-multi-axis + R6 Day 0 no-shipped-pattern confirm + (B'.b + B'.c + Rule 7 v2) multi-axis subset pick` ✅
+- **F0.7** session-start.md §10 W31 row append + W32+ rolling JIT row defer + W30 row 維持 closed_partial(active now)
 - **D1** start:F1 implementation cascade(prompt + module + Settings + wire + tests)
 
 ### Day 0 Actual vs Planned Effort table
