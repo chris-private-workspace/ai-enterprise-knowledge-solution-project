@@ -4,7 +4,7 @@ name: "Synthesizer SYSTEM_PROMPT NEW Rule 7 — prefer §X.Y specific section ch
 sprint_week: W30
 start_date: 2026-05-26
 end_date: 2026-05-26   # same-day collapse expected per W22-W29 AI compression pattern
-status: active
+status: closed_partial   # per W30 F3 closeout 2026-05-26 — Phase Gate PARTIAL per plan §3 G5 measurement-experiment-fail-policy(G1 strict 0/5 + G1 relaxed 0/5 + G1 marginal 0pp 改善 vs W29 baseline = G1 fully FAIL;walkthrough cite rate UNCHANGED 20%;2-citation rate +20pp moderate behavior change but not targeting §8.1-§8.5 walkthrough — Run 5 cited §8.6 Coverage summary 而非 §8.1-§8.5 walkthrough;§8.x top-5 surface 2/5→1/5 -20pp regression but likely reformulator stochasticity)。**Rule 7 REVERTED per Karpathy §1.3 surgical** + plan G5 G1 fully FAIL branch — change without measurable G1 benefit → revert(don't accumulate prompt complexity);W31+ Option B「cite-confidence threshold relax」elevate為 next surgical attempt;Rule 7 wording 「specific subsection」 empirical 顯示 too abstract — LLM interpreted liberally(§8.6 Coverage summary 都 qualify)not narrowly §8.1-§8.5 walkthrough
 spec_refs:
   - architecture.md §3.2     # synthesizer + citation contract
   - architecture.md §3.5     # citation invariant

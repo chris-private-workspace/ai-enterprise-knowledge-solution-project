@@ -1,0 +1,59 @@
+=== W30 F2 — 5-run Reproducibility Verify Q-W25-I07 ===
+
+Captured: 2026-05-26 W30 D0
+Backend state: ENABLE_QUERY_EXPANSION=true / per_variant_overfetch=8 (W29 baseline preserve) / rrf_k=30 (W29 baseline preserve) / W28 amended parent-doc Settings preserve / enable_parent_doc_retrieval=False per Q4
+Active change: backend/generation/prompt_builder.py SYSTEM_PROMPT NEW Rule 7「PREFER specific subsection chunks over overview/intro chunk」 directive (W30 F1 commit pending)
+Method: touch prompt_builder.py mtime → WatchFiles reload (verify via /health=ok) → 5 curl POST /query Q-W25-I07 back-to-back
+
+=== Per-run detail ===
+
+| Run | Citations | Walkthrough cited | §8.x in top-5 | Top-5 IDs (chunk-NNNN) | Cited IDs |
+|----:|----------:|------------------:|--------------:|-------------------------|-----------|
+| 1   | **2**     | **1 (§8.4)** ✅  | 1             | 0044/0039/0068/**0051**/0008 | 0044/**0051** |
+| 2   | 1         | 0                 | 0             | 0036/0044/0008/0042/0068 | 0044 |
+| 3   | 1         | 0                 | 0             | 0044/0008/0036/0039/0017 | 0044 |
+| 4   | 1         | 0                 | 0             | 0044/0039/0008/0036/0038 | 0044 |
+| 5   | **2**     | 0(§8.6 cited NOT §8.1-§8.5)| 0      | 0044/0008/0036/0039/**0055** | 0044/**0055**(§8.6 Coverage summary)|
+
+=== Aggregate stats vs W29 F3 baseline(Path A overfetch=8 + rrf_k=30 5-run)===
+
+| Metric | W29 baseline | W30 Rule 7 | Delta | Verdict |
+|---|---|---|---|---|
+| Walkthrough cite rate(distinct A-E §8.1-§8.5)| 1/5 = 20% | 1/5 = 20% | **0pp** | **IDENTICAL — no improvement** |
+| 2-citation response rate                       | 1/5 = 20% | 2/5 = 40% | +20pp | Behavior change(more 2-citation)|
+| §8.x walkthrough chunk in top-5 surface       | 2/5 = 40% | 1/5 = 20% | **-20pp** | **REGRESSION**(retrieval-side variance — likely reformulator stochasticity not Rule 7-induced) |
+| Avg citations per response                     | 1.2        | 1.4        | +17% | Moderate increase |
+| `refused: True` rate                           | 0/5        | 0/5        | 0pp | Same — refuse pattern remains closed since W25.5 |
+
+=== Critical observations ===
+
+1. **Walkthrough cite rate UNCHANGED**(W30 Rule 7 didn't move primary KPI)。 Run 1 cited §8.4 chunk-0051 — same single-run win pattern as W29 Run 2(both cited §8.4 chunk-0051 when surfaced top-5)。
+2. **2-citation behavior change**(1/5 → 2/5)— Rule 7 prompt language may have nudged LLM to look beyond single intro citation,but didn't reliably target §8.1-§8.5 walkthrough preference。 Run 5 NEW evidence:cited chunk-0044 intro + chunk-0055 §8.6 Coverage summary — §8.6 是 specific subsection but **NOT** §8.1-§8.5 individual walkthrough。
+3. **§8.x top-5 surface down**(2/5 → 1/5)— retrieval-side regression。 Rule 7 是 prompt-level change,**NOT** retrieval-side。 Most likely reformulator stochasticity(每 run generates 3 variants → different fan-out → different RRF surface);5 runs is small sample。
+4. **Rule 7 wording 「specific subsection」可能 too abstract** — LLM interpreted「specific subsection」liberally,§8.6 Coverage summary 都 qualify as「specific subsection」per §8 hierarchy,not narrowly §8.1-§8.5 walkthrough。
+
+=== Phase Gate G1-G5 verdict ===
+
+| Gate | Pass criteria | Result | Status |
+|---|---|---|---|
+| **G1 strict** | ≥ 2 distinct §8.x walkthrough cited in ≥ 1 single run | 0/5 (zero runs achieved 2 distinct walkthroughs) | **FAIL** ❌ |
+| **G1 relaxed** | ≥ 1 §8.x walkthrough cited per run for ≥ 3/5 runs (60%) | 1/5 = 20%(only Run 1 cited §8.4)| **FAIL** ❌ |
+| **G1 marginal** | >20% improvement vs W29 baseline 20% walkthrough cite rate | 0pp improvement(IDENTICAL)| **FAIL** ❌ |
+| G2 | Backend pytest 1060 baseline preserved | **1061 passed**(+1 NEW Rule 7 unit test)+ 25 skipped + 0 failed | **PASS** ✅ |
+| G3 | ruff + mypy strict on touched code clean | ruff PASS;mypy `--strict` module-path config quirk(pre-existing per W26 baseline 18 errors + `CO_W25_mypy_strict_debt` carryover — NOT W30-induced;Rule 7 是 pure string literal,no type implication)| **PASS conditional** ✅ |
+| G4 | NEW unit test PASS | `test_system_prompt_includes_rule_7_prefer_specific_over_overview` PASS / 12/12 prompt_builder_dispatch tests PASS | **PASS** ✅ |
+| **G5** | measurement-experiment-fail-policy applied if G1 marginal/FAIL | G1 fully FAIL(no improvement)+ §8.x top-5 surface regression -20pp(though likely stochastic)→ **per plan §3 G5「G1 fully FAIL+REGRESS → revert Rule 7 + W31+ Option B elevate」** | **revert direction** |
+
+=== F3 closeout decision direction ===
+
+Per **Karpathy §1.3 surgical principle**(change without measurable benefit → revert,don't accumulate prompt complexity)+ **plan §3 G5 policy**:
+
+**Option α: Revert Rule 7 + PARTIAL closeout**(Karpathy §1.3 strict reading)
+- Pros:no prompt complexity carry without measurable benefit;clean revert;respects Karpathy §1.3
+- Cons:loses the 2-citation behavior change(+20pp)which may benefit other query shapes not tested
+
+**Option β: Keep Rule 7 + PARTIAL closeout**(2-citation behavior change credit)
+- Pros:non-destructive change;some behavior signal positive(2-citation rate UP);prompt iteration learning preserved
+- Cons:walkthrough cite rate unchanged → adding prompt complexity without measurable G1 effect
+
+**Recommended per Karpathy §1.3 strict + plan G5 explicit fallback**:**Option α revert** — W31+ Option B(cite-confidence threshold relax)elevate as next path forward;Rule 7 wording shown empirically too abstract to specifically target §8.1-§8.5 walkthrough。
