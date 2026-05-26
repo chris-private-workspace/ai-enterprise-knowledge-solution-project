@@ -92,7 +92,14 @@ async def build_ragas_samples(
         try:
             retrieval = await engine.retrieve(query=question, kb_id=q_kb_id, top_k=5)
             contexts = [str(c.fields.get("chunk_text", "")) for c in retrieval.chunks]
-            synth = await synthesizer.synthesize(question, retrieval.chunks)  # type: ignore[attr-defined]
+            # W34 F1.0.a — propagate `engine + kb_id` per W32 F1.1.a synthesizer
+            # signature for production-parity RAGAs eval. Without these kwargs the
+            # (h') engine-fetch citation expansion does NOT fire — eval would
+            # measure prompt-layer only, missing the W32 mechanical backbone that
+            # ships in /query + /chat. PC-W32-2 integration gap realization.
+            synth = await synthesizer.synthesize(  # type: ignore[attr-defined]
+                question, retrieval.chunks, engine=engine, kb_id=q_kb_id,
+            )
             answer = str(getattr(synth, "answer", ""))
         except Exception as exc:  # noqa: BLE001 — surface as an empty sample; RagasRunner errors it
             logger.warning("ragas_sample_build_failed", query_id=query_id, error=str(exc))
