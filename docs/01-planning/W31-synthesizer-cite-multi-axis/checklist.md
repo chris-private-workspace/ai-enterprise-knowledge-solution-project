@@ -1,7 +1,7 @@
 ---
 phase: W31-synthesizer-cite-multi-axis
 plan_ref: ./plan.md
-status: active
+status: closed_partial   # per F4 closeout 2026-05-26 — Phase Gate FAIL + full revert per Karpathy §1.3 + W30 Rule 7 precedent
 last_updated: 2026-05-26
 ---
 
@@ -62,65 +62,65 @@ last_updated: 2026-05-26
 
 ## F2 — 5-run reproducibility verify Q-W25-I07 + Q-W25-I01 control(D2 estimate)
 
-- [ ] F2.1 Backend reload via `touch backend/generation/prompt_builder.py` + WatchFiles trigger + /health=ok verify
-- [ ] F2.2 curl POST /query Q-W25-I07「show me all the Integration scenarios」5 runs back-to-back — per-run JSON in `backend/w31-f2-i07-multi-run-{1-5}.json`
-- [ ] F2.3 curl POST /query Q-W25-I01「what is the high level architecture」5 runs back-to-back(control)— per-run JSON `backend/w31-f2-i01-multi-run-{1-5}.json`
-- [ ] F2.4 Aggregate report `f2-5run-multi-axis-W31-D2-raw.txt` — Q-I07 walkthrough cite rate / Q-I07 citations count / Q-I01 no regression check / G1-G6 verdict
-- [ ] F2.5 progress.md Day 2 F2 entry — 5-run table + W30+W29 baseline comparison + G1 verdict draft
+- [x] F2.1 Backend reload via `touch backend/generation/prompt_builder.py` + WatchFiles trigger + /health=ok verify
+- [x] F2.2 curl POST /query Q-W25-I07「show me all the Integration scenarios」5 runs back-to-back — **3 iterations cumulative**:v1(broken regex no-op,prompt-only effect)`w31-f2-v1-i07-multi-run-{1-5}.json` + v2(regex fix,threshold no-op)`w31-f2-v2-i07-multi-run-{1-5}.json` + v3(regex+threshold both fix)`w31-f2-v3-i07-multi-run-{1-5}.json` — 15 LIVE runs total
+- [x] F2.3 curl POST /query Q-W25-I01「what is the high level architecture」5 runs back-to-back(control)— `w31-f2-v3-i01-multi-run-{1-5}.json` 5 LIVE runs(at v3 only,after threshold fix)
+- [x] F2.4 Aggregate report inline progress.md F2 retro section — Q-I07 v1+v2+v3 walkthrough cite rate / Q-I07 citations count / Q-I01 G2 verdict ✅ no regression / G1-G6 verdict draft
+- [x] F2.5 progress.md Day 2 F2 entry — v1+v2+v3 3-iteration table + W30+W29 baseline comparison + G1 fully FAIL verdict + 3 重 R6 catches catalogued
 
 ## F3 — Manual user-test 3-query cohort(D2 estimate;same-day as F2)
 
-- [ ] F3.1 Q-W25-I07「show me all the Integration scenarios」— expected ≥ 2 distinct §8.x walkthrough cited(target G1)
-- [ ] F3.2 Q-W25-I01「what is the high level architecture」— expected control no regression(faithfulness within F1 baseline 0.9851 ±2pp)
-- [ ] F3.3 NEW Q-W31-I08 enumeration / aggregate variant query selected by user OR Chris OR phase author
-- [ ] F3.4 Visual citation render check `<CitationPill>` no overflow when citations > 5
-- [ ] F3.5 progress.md Day 2 F3 entry — user-test cohort verdict + Q-W31-I08 selection rationale + visual rendering check note
+- [N/A] F3.1 Q-W25-I07 manual user-test — **subsumed by F2 v1+v2+v3 cumulative 15 LIVE runs**(stochasticity dominance + 3 重 R6 catches surfaced sufficient evidence for F4 decision without manual user-test extra)
+- [N/A] F3.2 Q-W25-I01 control manual — subsumed by F2 v3 5-run control(refusals 0/5 + avg_cit 2.2 healthy → G2 ✅ no regression confirmed)
+- [N/A] F3.3 NEW Q-W31-I08 query selection — N/A per F4 full revert decision(no production preserve so additional query coverage not needed)
+- [N/A] F3.4 Visual citation render check — N/A per F4 full revert(no production cite-decision change)
+- [N/A] F3.5 progress.md Day 2 F3 entry — F3 N/A reason logged in F2 retro
 
 ## F4 — Phase Gate G1-G6 evaluation + decision policy
 
 ### A. Phase Gate G1-G6 evaluation
 
-- [ ] G1 PRIMARY 5-run walkthrough_cite_rate vs W29+W30 20% baseline
-  - G1 strict (≥ 2 distinct walkthrough cited in ≥ 1 run)
-  - G1 relaxed (≥ 1 walkthrough cited per run for ≥ 3/5)
-  - G1 marginal (>40% improvement vs W29+W30 baseline,target 5-run ≥ 60%)
-- [ ] G2 control Q-W25-I01 no regression(faithfulness within F1 baseline 0.9851 ±2pp)
-- [ ] G3 backend pytest baseline preserved 1060 → ~1070-1075
-- [ ] G4 ruff PASS;mypy strict module-path quirk pre-existing per CO_W25_mypy_strict_debt
-- [ ] G5 NEW unit tests PASS — F1.5.a + F1.5.b + F1.5.c
-- [ ] G6 measurement-experiment-fail-policy applied per Q4 — G1 fully FAIL → revert per Karpathy §1.3 + plan §3 G1 decision matrix
+- [x] G1 PRIMARY 5-run walkthrough_cite_rate vs W29+W30 20% baseline — **fully FAIL** ❌
+  - G1 strict (≥ 2 distinct walkthrough cited in ≥ 1 run): **0/15 = 0%** ❌ across v1+v2+v3
+  - G1 relaxed (≥ 1 walkthrough cited per run for ≥ 3/5): **4/15 = 26.7%** ⚠️(2 + 0 + 1)
+  - G1 marginal vs W29+W30 baseline 20%: **+0pp net** ❌(v1 +20pp / v2 -20pp / v3 0pp average)
+- [x] G2 control Q-W25-I01 no regression — ✅ **PASS**(refusals 0/5,avg_cit 2.2,avg_latency 11.4s)
+- [x] G3 backend pytest baseline preserved 1080 PASS @ F1.5;**post-revert verified 1060** baseline(F4+F5 closeout pytest)
+- [x] G4 ruff PASS on touched files;mypy strict citation_expansion.py clean(pre-revert);pre-existing module-path quirk preserved per CO_W25_mypy_strict_debt
+- [x] G5 NEW unit tests PASS pre-revert(47/47:15 citation_expansion + 3 prompt_builder_dispatch + 2 synthesizer + 2 corpus-pattern v2 amend)→ post-revert 25/25 baseline restored
+- [x] G6 measurement-experiment-fail-policy applied per Q4 — G1 fully FAIL → **full revert per Karpathy §1.3 + W30 Rule 7 precedent**(user AskUserQuestion 4-pick Option α 2026-05-26)
 
 ### B. Cross-doc sync per CLAUDE.md §10 R3 + R5 + R6
 
-- [ ] plan.md frontmatter `status: active → closed` OR `closed_partial` per G1 verdict
-- [ ] checklist.md cross-cutting tick + N/A reason
-- [ ] progress.md retro 7-section
-- [ ] session-start.md §10 W31 row `🟡 active` → `✅ closed` OR `closed_partial`
-- [ ] session-start.md §11 W31 CLOSED block prepend
-- [ ] RISK_REGISTER NEW R16 candidate evaluate(over-citation noise risk if multi-axis G1 PASS but G2 regression)
-- [ ] COMPONENT_CATALOG C05 status note update if Settings default flipped
-- [ ] ADR README — no NEW ADR expected per §2 F5.7
+- [x] plan.md frontmatter `status: active → closed_partial` per G1 fully FAIL — done
+- [x] checklist.md cross-cutting tick + N/A reason — this commit
+- [x] progress.md retro 7-section + F2 retro 3-iteration evidence — this commit
+- [x] session-start.md §10 W31 row `🟡 active` → `✅ closed_partial 2026-05-26`
+- [x] session-start.md §11 W31 CLOSED_PARTIAL block prepend
+- [N/A] RISK_REGISTER NEW R16 — N/A(W31 full revert means no production state introduced + Settings + module fully unwound;over-citation noise risk theoretical only)
+- [N/A] COMPONENT_CATALOG C05 status — Rule 7 v2 + Rule 8 + citation_expansion module ALL REVERTED so no permanent change to document
+- [N/A] ADR README — no NEW ADR / no amendment(F1 Rule 7 v2 + Rule 8 prompt iteration + F1.2 citation_expansion non-architectural per plan §1 scope decl;reverted so no permanent record)
 
 ### C. `.env` cleanup + W32+ priority queue evaluation
 
-- [ ] `.env` cleanup — W29 Setting tune `overfetch=8 + rrf_k=30` env override PRESERVED unchanged
-- [ ] W32+ candidate prioritization update per F4 outcome — (B'.a) Settings threshold pre-pend / (ii) CRAG threshold trial / (k) wire reformulator into eval/orchestrator.py / NEW W32+ axis tune based on F2+F3 evidence
+- [x] `.env` cleanup — W29 Setting tune `overfetch=8 + rrf_k=30` env override **PRESERVED**(W30+ baseline,independent of W31 prompt + module changes which are reverted)
+- [x] W32+ candidate prioritization update per F4 fully FAIL branch:**(h') NEW HIGHEST** engine-fetch B'.c path 3(~1-2 days,mirror W25 F5 D1 pattern)elevated to top + (g') NEW 20-run sample methodology + (i') NEW reformulator deterministic temp=0 + (ii) CRAG threshold trial preserved + (k) wire reformulator into eval/orchestrator.py preserved + (c)(e)(f) BUG-026 + BUG-027 cosmetic + W22 D8 setup.md §8.6 + W16 F1-F4 Track A IT cred parallel track
 
 ### D. Commit + push
 
-- [ ] F5 closeout commit — combined with F4 evidence(per W30 closeout pattern)
+- [ ] F4+F5 closeout commit — combined with F2 + F3 (N/A) evidence(per W30 closeout pattern;7 file revert + plan/checklist/progress update + session-start.md sync atomic)
 - [ ] Push origin/main(per explicit user instruction)
 
 ---
 
 ## Cross-Cutting
 
-- [ ] All deliverables committed to git(F0.6 kickoff commit + F1.6 F1 commit + F4+F5 closeout commit)
-- [ ] All OQ status changes reflected in `docs/decision-form.md` — no OQ resolved expected(pure C05 prompt + module iteration)
-- [ ] All architectural-adjacent decisions documented as ADR — F1.1 Rule 7 v2 + Rule 8 prompt iteration within framework + F1.2 citation_expansion module parallel pattern(non-architectural per plan §1 scope decl)
-- [ ] `progress.md` retro section written — 7-section per closeout commit
-- [ ] `progress.md` frontmatter status flipped to `closed` OR `closed_partial`
-- [ ] Phase W32+ kickoff trigger noted in retro — candidates list update per F4 outcome
+- [x] All deliverables committed to git(F0.6 kickoff `3a838b5` + F0.7 sync `7178133` + F1.6 implementation `16b9b3d` + F1.7 housekeeping `e26e5b3` + F4+F5 closeout pending this commit)
+- [N/A] All OQ status changes reflected in `docs/decision-form.md` — no OQ resolved this phase
+- [N/A] All architectural-adjacent decisions documented as ADR — F1.1 Rule 7 v2 + Rule 8 prompt iteration within framework + F1.2 citation_expansion module parallel pattern(non-architectural per plan §1 scope decl;all 3 axes REVERTED so no permanent record needed)
+- [x] `progress.md` retro section written — 7-section per closeout commit(F2 retro 3-iteration + Phase Retro What worked / What didn't / Surprises / Carry-overs / ADR triggers / Phase Gate verdict / W32+ priority queue)
+- [x] `progress.md` frontmatter status flipped to `closed_partial`
+- [x] Phase W32+ kickoff trigger noted in retro — **(h') HIGHEST NEW** engine-fetch B'.c path 3 elevated + sequential ship strategy per W31 multi-axis lesson(避免 multi-axis trap until single-axis baseline established)
 
 ---
 

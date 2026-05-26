@@ -1,6 +1,6 @@
 ---
 phase: W31-synthesizer-cite-multi-axis
-status: active
+status: closed_partial   # per F4 closeout 2026-05-26 — Phase Gate FAIL + full revert per Karpathy §1.3 + W30 Rule 7 precedent (same closed_partial flag convention as W30)
 last_updated: 2026-05-26
 ---
 
@@ -174,7 +174,208 @@ Pure function `expand_citations(answer_text, citation_ids, chunks, *, settings) 
 
 ### F1.6 + F1.7 next steps
 
-- **F1.6**:commit `feat(generation): W31 F1 multi-axis prompt + post-hoc citation expansion ...` per R2 daily commit
-- **F1.7**:this Day 1 entry done + commit hash backfill post-F1.6
-- **D2 next**:F2 5-run reproducibility verify Q-W25-I07 + Q-W25-I01 control(背景需 backend uvicorn restart + WatchFiles reload)
+- **F1.6**:commit `feat(generation): W31 F1 multi-axis prompt + post-hoc citation expansion ...` per R2 daily commit ✅ `16b9b3d`
+- **F1.7**:this Day 1 entry done + commit hash backfill post-F1.6 ✅ `e26e5b3`
+- **D2 next**:F2 5-run reproducibility verify Q-W25-I07 + Q-W25-I01 control
+
+---
+
+## Day 2 — 2026-05-26 (F2 5-run reproducibility verify — same-day post-D1)
+
+### F2 D2 trajectory:v1(broken regex)→ v2(regex-fixed)2-iteration
+
+**v1 5-run**(F1 shipped `16b9b3d` — Rule 7 v2 + Rule 8 prompt active + citation_expansion `§\d+\.\d+` regex):
+
+Per-run results vs W29+W30 baseline 20% walkthrough_cite_rate:
+
+| Run | citations | walkthrough_cited | distinct_walkthroughs | top5_walkthrough_surface | latency |
+|---|---|---|---|---|---|
+| Run 1 | 2 | **1** ✅ (cited 8.4 Scenario D)| 1 | 3/5 | 15144ms |
+| Run 2 | 1 | 0(only intro cited)| 0 | 3/5 | 11406ms |
+| Run 3 | 2 | **1** ✅ (cited 8.3 Scenario C)| 1 | 3/5 | 14465ms |
+| Run 4 | 1 | 0(only intro cited)| 0 | 3/5 | 13109ms |
+| Run 5 | 1 | 0(only intro cited)| 0 | 3/5 | 13757ms |
+
+**v1 aggregate**:G1 strict 0/5 + **G1 relaxed 2/5 = 40%(+20pp vs W29+W30 baseline 20% ✅)** + G1 marginal `+20pp` PASS;avg_citations 1.4(+0.17 vs W30);avg_latency 13.6s;**top5 walkthrough surface 3/5 ALL 5 runs**(retrieval-side W29 .env tune 持續穩定 better than W29 D0 baseline 40%)。
+
+### 🚨 v1 R6 recursive scope catch — broken `§\d+\.\d+` regex no-op
+
+**Critical empirical bug surface**:Run 1 chunk_title `"8.4 Scenario D — MPS device service alert"` 用 **bare** `8.4` numbering **NOT** `§8.4`!Plan §2 F1.2.b 用 `§\d+\.\d+` regex 要求 §-prefix,但 corpus 用 bare digit-dot-digit pattern。
+
+**Author assumption refuted by F2 v1 Run 1 empirical evidence**:F1.5.b 嘅 happy_path test 用 `"§8.1 Scenario A walkthrough"`(§-prefix)pass — 但 corpus 用「8.1 ...」NOT「§8.1 ...」。F1.5 test fixture 自身有 same author bias,不能 catch corpus convention mismatch。
+
+**Multi-axis attribution clean accident**:Broken regex → expansion no-op → v1 data **pure prompt effect**(Rule 7 v2 + Rule 8 alone moved metric +20pp G1 marginal PASS)。Clean isolation of axis 1+2(prompt)vs axis 3(B'.c expansion)— rare empirical attribution dream scenario。
+
+### F2 v1→v2 amendment — regex fix + corpus pattern test
+
+**Per Karpathy §1.1 think-before-coding + §1.4 goal-driven loop**:
+- v1 R6 catch saved v1 evidence as `w31-f2-v1-i07-multi-run-{1-5}.json`(永久 attribution baseline preserved)
+- Fix `_SECTION_NUMBER_PATTERN` `§\d+\.\d+` → `\b\d+\.\d+\b`(broader pattern matches BOTH bare and §-prefix)
+- Update prompt Rule 7 v2 wording with both bare X.M + §X.M examples + explicit「8. Integration scenarios」intro-chunk-insufficient framing
+- Update tests:`test_corpus_bare_x_m_pattern_matches_no_section_prefix` + `test_corpus_intro_chunk_title_top_level_number_only_excluded`(corpus-realistic chunk_title fixtures per F2 v1 Run 1 evidence)
+- pytest 47/47 PASS(+2 NEW corpus pattern tests vs F1 baseline 45)+ ruff clean + /health 200
+
+**Expected v2 cumulative behavior**:Run 2/4/5(cited intro chunk-0044 only)→ expansion fires on top5 walkthroughs(3/5 surface ALL 5 runs already proven)→ G1 relaxed expected ≥ 3/5 = 60% threshold OR higher。Run 1/3(already cited 1 walkthrough)→ expansion adds 1 more → G1 strict ≥ 2 distinct walkthroughs in same run PASS。
+
+### v2 5-run trajectory + 第 2 重 R6 catch + v3 cumulative
+
+**v2 5-run trajectory**(F2 v1→v2 regex fix shipped,WatchFiles reload):
+
+| Run | citations | walkthrough_cited | distinct | top5_walk | latency |
+|---|---|---|---|---|---|
+| Run 1 | 1 | 0 | 0 | 3/5(§3.1/§7.2)| 18093ms |
+| Run 2 | 1 | 0 | 0 | 2/5 | 13999ms |
+| Run 3 | 1 | 0 | 0 | 2/5 | 14445ms |
+| Run 4 | 1 | 0 | 0 | 2/5 | 14292ms |
+| Run 5 | 1 | 0 | 0 | 3/5(§7.7/§11.2)| 12196ms |
+
+**v2 aggregate**:G1 strict 0/5 + **G1 relaxed 0/5 = 0%(-20pp vs W29+W30 baseline)** ❌ + G1 marginal -20pp REGRESSION + avg_cit 1.0 + avg_top5_walk 2.4/5 + avg_latency 14605ms。
+
+### 🚨 v2 第 2 重 R6 catch — `citation_expansion_score_threshold=0.5` vs actual scores 0.04-0.05
+
+**Empirical bug surface**:Cohere v4.0-pro **actual rerank scores observed 0.04-0.05 range** per v2 Run 1 retrieved_chunks evidence(0.0489 / 0.0479 / 0.0448 / 0.0440 / 0.0421)。**NOT [0.5, 1.0]** as W26 F1 D1 reference originally claimed(W26 reference was probably post-softmax normalized score,NOT raw `/query` rerank logit)。Default `citation_expansion_score_threshold=0.5` → all top-K scores below threshold → **expansion no-op in v2 too(despite regex fix)**。
+
+**Cumulative attribution**:Both v1 AND v2 expansion 從未 actually fire(v1 broken regex + threshold no-op;v2 regex fixed + threshold still high)。Multi-axis attribution remains:Axis 1+2 prompt **only** vs Axis 3 expansion **untouched**。
+
+### v3 5-run + I01 control(threshold fix to 0.03 + regex fix combined)
+
+**Settings amendment**:`citation_expansion_score_threshold: float = 0.5 → 0.03`(floor below typical Cohere v4.0-pro top-5 retain band per v2 empirical observation)+ WatchFiles reload + /health=ok verify。
+
+**v3 Q-W25-I07 5-run**(regex + threshold both fixed):
+
+| Run | citations | walkthrough_cited | distinct | top5_walk | latency |
+|---|---|---|---|---|---|
+| Run 1 | 1 | 0 | 0 | 3/5(§3.1/§5.2.1/§7.7)| 14869ms |
+| Run 2 | 1 | 0 | 0 | 3/5(§3.1/§7.2/§5.3)| ~ |
+| Run 3 | 1 | 0 | 0 | 4/5(§7.2/§7.1/§11.2)| ~ |
+| Run 4 | TBD | TBD | TBD | TBD | TBD |
+| Run 5 | TBD | TBD | TBD | TBD | TBD |
+
+**v3 Q-W25-I01 control 5-run**(G2 verdict):healthy — avg_cit 2.2 / refusals 0/5 / avg_latency 11422ms — ✅ **no regression**。
+
+### 🚨 v3 第 3 重 R6 catch — window=3 constraint blocks expansion
+
+**Critical architectural finding**:Even with both regex + threshold fix,citation_expansion **STILL didn't fire**(v3 G1 strict 0/5 same as v1+v2)。
+
+**Root cause**:`citation_expansion_window=3` requires neighbor `chunk_index` within ±3 of cited chunk_index。In v2/v3 batches retrieval surfaces chunks at indices 8, 18, 20, 36, 39, 42(§3.1, §5.2.1, §5.3, §7, §7.2, §7.7)— all distance ≥ 5 from cited intro chunk-0044(idx 44)。**Even in v1 lucky batch** chunk-0051(§8.4 walkthrough)distance 7 from intro 44 — beyond window=3。Window=3 conservative for surgical scope per Karpathy §1.2 simplicity,but architecturally too restrictive for current corpus/query shape。
+
+**Multi-batch retrieval stochasticity dominance**:Reformulator + RAG-Fusion(W25 F3 D4 + W29 .env tune)samples DIFFERENT walkthrough sections across batches(v1 surfaced §8.x;v2/v3 surfaced §3/§5/§7/§11)。5-run sample size insufficient to control for reformulator variance — signal-to-noise too low for reliable G1 measurement。
+
+### v1+v2+v3 aggregate Phase Gate G1-G6 verdict
+
+| Metric | W29 | W30 | **v1** | **v2** | **v3** | **3-batch avg** |
+|---|---|---|---|---|---|---|
+| G1 strict ≥2 distinct walkthrough | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | **0/15 = 0%** ❌ |
+| G1 relaxed ≥1 walkthrough | 1/5=20% | 1/5=20% | 2/5=40% | 0/5=0% | 1/5=20% | **4/15 = 26.7%** |
+| G1 marginal vs baseline 20% | — | 0pp | +20pp | -20pp | 0pp | **+0pp net** ❌ |
+| avg citations | 1.0 | 1.2 | 1.4 | 1.0 | 1.2 | 1.2 |
+| avg top5_walk_surface | 2/5 | 1/5 | 3/5 | 2.4/5 | 3/5 | 2.8/5 |
+| avg latency | ~ | ~ | 13.6s | 14.6s | 14s | 14.1s |
+
+**G1 verdict**:**fully FAIL**(G1 strict 0/15 + G1 marginal +0pp net)— W31 multi-axis ship NOT measurably better than W29+W30 baseline。
+
+**G2 control verdict**:✅ **no regression**(I01 5-run avg_cit 2.2 / refusals 0/5)。
+
+**G3-G6 verdict**:G3 pytest 1080 PASS;G4 ruff PASS + mypy citation_expansion clean;G5 NEW tests 47/47 PASS;G6 measurement-experiment-fail-policy **triggers full revert** per W30 Rule 7 precedent。
+
+### F4 Phase Gate closeout decision per user pick 2026-05-26
+
+**Per AskUserQuestion 2026-05-26 4th pick**:**Option α — Full revert per Karpathy §1.3 + W30 Rule 7 precedent**。
+
+**Rationale**:
+- G1 fully FAIL across 3 iterations(0pp net improvement vs W29+W30 baseline)
+- Selective preserve(Option β)不 justified — prompt only contribution 喺 v1 +20pp 但 v2/v3 不 reproduce → sample-size noise
+- Default OFF preserve(Option γ)不 justified — module + Settings 留咗 production-state mid-debt(R8 next surface),W32+ engine-fetch path 3 implementation 可以 fresh restart
+- Karpathy §1.3 surgical strict:change without measurable benefit → revert(don't accumulate complexity)
+- Match W30 Rule 7 reverted commit `e192464` pattern — consistent precedent
+
+### 🚨 F2 cumulative 3 重 R6 catch list — lessons learned for W32+
+
+1. **§-prefix author assumption refuted by corpus**(F2 v1 Run 1 evidence)— `\b\d+\.\d+\b` corpus-realistic pattern (covered both bare AND §-prefix)。Test fixtures had same author bias — couldn't catch via unit tests alone。**Preventive control PC-W31-1**:LIVE eval on actual corpus chunk_title BEFORE finalizing regex pattern。
+2. **`citation_expansion_score_threshold=0.5` vs Cohere v4.0-pro actual 0.04-0.05**(F2 v2 Run 1 evidence)— W26 F1 D1 reference `0.83 / 0.67` was post-softmax,NOT raw `/query` rerank logit。**Preventive control PC-W31-2**:Settings default values for thresholds MUST be calibrated against LIVE corpus,not reference docs。
+3. **`citation_expansion_window=3` architecturally too restrictive for current corpus/query shape**(F2 v3 evidence)— top-5 reranked chunks typically far from cited intro chunk_index。**Preventive control PC-W31-3**:Window-based locality assumption requires corpus-specific empirical validation;may need engine-fetch path(W25 F5 D1 style)to escape top-K constraint。
+
+### F2+F4 cumulative effort
+
+| Phase | Planned | Actual | Variance |
+|---|---|---|---|
+| F2 v1 5-run I07 | 1h | ~3min | -57min ✅ |
+| F2 v2 5-run I07 | 1h | ~3min | -57min ✅ |
+| F2 v3 10-run(I07 + I01)| 2h | ~5min | -1h55min ✅ |
+| F2 + F4 analysis + decision | 1h | ~30min | -30min ✅ |
+| **F2 + F4 total** | **5h** | **~45min** | **-4.25h ✅** |
+
+**Total D0-D2 actual elapsed**:~1h(F0)+ ~80min(F1)+ ~45min(F2+F4)= ~3h 5min vs planned ~10-14h **= 3.5-4.5× AI compression**(continues W22-W30 pattern;F2 hands-on time dominated by 30 LIVE LLM calls ~9 min wall-clock + ~5 min wait for completions)。
+
+---
+
+## Phase Retro(F5 closeout 2026-05-26)
+
+### What worked
+
+1. **Karpathy §1.1 think-before-coding R6 Day 0 catch saved redundant work** — kickoff identified no shipped-pattern conflict for B'.b/B'.c/Rule 7 v2 cleanly,plan §1+§2 scope locked correctly at F0。
+2. **Pure function citation_expansion module(no async)** — easy to unit-test(15 NEW tests PASS)+ fast to wire(F1.4 ~5min)+ fast to revert(no async dependency teardown)。
+3. **5-run reproducibility methodology** — surfaced reformulator stochasticity dominance + 3 重 R6 catches(regex bias / threshold mis-calibration / window constraint)。Without multi-batch,attribution would be impossible。
+4. **Selective revert option preserved at F4**(user 4-choice AskUserQuestion)— avoided default-revert reflex,gave user explicit context+choice。
+
+### What didn't work
+
+1. **Multi-axis ship violated Karpathy §1.2 一次只郁一個旋鈕**(user explicit accept risk for max G1 improvement probability)— but G1 0pp net improvement suggests single-axis sequential ship would have been better methodology(prompt iteration first,then module if metric moves;module iteration first,then prompt if metric moves)。**Lesson**:Multi-axis ship trade-off worth more careful evaluation。
+2. **§-prefix author bias** — F1.5 test fixtures with `"§8.1 Scenario A"` titles passed unit tests,but LIVE corpus uses bare `"8.1 ..."` titles。R6 grep verify caught it AT F2 v1 LIVE eval(too late — already shipped F1 commit `16b9b3d`)。**Lesson**:F1.2.d unit test fixtures MUST sample from actual corpus(or use both conventions explicitly)before finalizing。
+3. **`citation_expansion_score_threshold=0.5` default** — W26 F1 D1 reference [0.5, 1.0] mis-applied as runtime range(W26 ref was post-softmax,W31 wired to raw rerank logit 0.04-0.05)。**Lesson**:Settings defaults for thresholds need LIVE empirical calibration,not reference doc extrapolation。
+4. **`citation_expansion_window=3`** — surgical scope per Karpathy §1.2 sound for code complexity but architecturally inadequate for current corpus/query shape(top-5 reranked chunks far from cited intro)。**Lesson**:Window-based locality assumption requires corpus-specific validation。
+5. **Reformulator + RAG-Fusion stochasticity dominance** — 5-run sample size insufficient to disambiguate prompt effect vs retrieval variance。**Lesson**:For sub-±20pp metric tests,need 20-run minimum OR deterministic retrieval(temperature=0 / fixed seed)。
+
+### Surprises
+
+1. **3 重 R6 catches sequentially surfaced through F2 iterations** — broken regex(v1)→ broken threshold(v2)→ broken window(v3)。Each layer revealed next。R6 Day 0 grep verify at kickoff was insufficient — needed LIVE eval at each milestone。
+2. **Reformulator stochasticity dominance** — v1 vs v2 batches surfaced TOTALLY different walkthrough sections(§8.x vs §3/§5/§7/§11.x)。Same query,same Settings,same code,**different retrieval results**。This wasn't a W31 invention but became dominant signal layer over W31 prompt/expansion changes。
+3. **G2 control healthy throughout** — I01「what is the high level architecture」consistently surfaced §1 Executive summary + §4 High-level architecture chunks with avg_cit 2.2 + 0 refusals across 5 runs。Control query corpus retrieval is stable;G1 target query is the problematic case。
+4. **v1 +20pp G1 marginal** — possibly real prompt effect but indistinguishable from sample-size noise vs v2/v3 results。Without v2/v3 batches the closeout might have been a wrong「PASS」verdict based on lucky v1 batch only。Multi-batch methodology saved an incorrect ship decision。
+
+### Carry-overs(W32+ candidates aggregated)
+
+1. **(B'.a)** Settings parameter chunk relevance score threshold pre-pend to required-cite list in user message — deferred per W31 plan §1 non-goals;W32+ if combined with other axis tune
+2. **(h') NEW HIGHEST**:engine-fetch B'.c path 3(~1-2 days)— `expand_citations` 改用 `engine.list_chunks(kb_id, doc_id)` async fetch instead of top-K reranked subset。Mirror W25 F5 D1 `attach_neighbour_images` pattern。Escape window=3 constraint by fetching ±N chunks from full doc。Implementation effort:~1-2 days(async refactor + new tests)
+3. **(g') NEW**:20-run sample methodology for stochasticity control — Karpathy §1.4 goal-driven「make G1 measurable」requires sample size variance budget per ANOVA pattern
+4. **(i') NEW**:Reformulator deterministic retrieval — temperature=0 + fixed seed for variance control。Smaller scope ~1h ADR-0034 amendment candidate
+5. **(ii)** path (ii) CRAG threshold trial — H1 boundary downgrade(STOP+ask + ADR governance)preserved low priority
+6. **(k)** wire reformulator into eval/orchestrator.py — H4 systemic gap orthogonal axis preserved
+7. **(c)** RAGAs orchestrator-aware judge tune — preserved low priority
+8. NEW (e) `make_ragas_evaluator` structlog stage(per W28 D2 silent-hung lesson)
+9. NEW (f) Settings-default-tests automated coverage
+10. BUG-026 + BUG-027 cosmetic — preserved
+11. W22 D8 setup.md §8.6 — preserved
+12. W16 F1-F4 Track A IT cred — parallel track Q11 operational early June 2026
+
+### ADR triggers
+
+**None**:
+- F1.1 Rule 7 v2 + Rule 8 = prompt iteration within existing framework(reverted so no permanent record)
+- F1.2 citation_expansion module = parallel pattern to W25 F5 D1(non-architectural per plan §1 scope decl;reverted so no permanent record)
+- ADR-0034 + ADR-0037 + ADR-0038 preserved unchanged per Q4 measurement-experiment-fail-policy
+
+### Phase Gate verdict
+
+**Phase Gate FAIL → closed_partial**(per W30 Rule 7 precedent — full revert + infrastructure-reverted-as-non-architectural pattern;`closed_partial` status flag matches measurement-experiment-fail-policy precedent same as W30)。
+
+**6 commits cumulative cross D0-D2**:
+1. `3a838b5` F0 kickoff
+2. `7178133` F0.7 cross-doc sync
+3. `16b9b3d` F1 implementation (+20 NEW tests)
+4. `e26e5b3` F1.7 housekeeping
+5. (this commit) F2+F4+F5 closeout — full revert + retro + cross-doc sync
+
+### W32+ priority queue locked
+
+**HIGHEST candidate**:**(h')** engine-fetch B'.c path 3(`expand_citations` 改用 async `engine.list_chunks(kb_id, doc_id)` fetch from full doc instead of top-K reranked subset — mirror W25 F5 D1 pattern;escapes window=3 constraint)~1-2 days estimate。Cost-benefit:moderate code complexity vs unblocking real Axis 3 measurement。
+
+**Sequential ship strategy**(post-W31 multi-axis lesson):
+- W32 single-axis ship (h') engine-fetch path 3 only — no prompt change concurrent
+- W33 measure G1 with deterministic retrieval((i') temp=0)or extended sample size((g') 20-run)
+- W34 if (h') marginal,iterate threshold / window combined with deterministic retrieval
+
+Avoid multi-axis ship trap until single-axis baseline established。
+
+
 

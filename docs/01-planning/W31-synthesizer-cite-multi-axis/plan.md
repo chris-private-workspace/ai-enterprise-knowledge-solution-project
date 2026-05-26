@@ -1,6 +1,6 @@
 ---
 phase: W31-synthesizer-cite-multi-axis
-status: active   # kickoff 2026-05-26 same-day as W30 closeout per W22-W30 AI compression pattern
+status: closed_partial   # per F4 closeout 2026-05-26 — Phase Gate FAIL + full revert per Karpathy §1.3 + W30 Rule 7 precedent (same closed_partial flag convention as W30)
 last_updated: 2026-05-26
 component_scope: C05 Generation Pipeline
 adr_refs:
@@ -222,3 +222,6 @@ Per ADR-0037 Q4 + W26+W27+W30 precedent:G1 fully FAIL → revert all 3 axes per 
 | 2026-05-26 | initial | Plan drafted F0 D0 kickoff | W30 retro carry-over (B') HIGHEST + Rule 7 v2 combined ship per user pick AskUserQuestion 2026-05-26 |
 | 2026-05-26 | §1 + §2 | (B') subset locked to B'.b + B'.c + Rule 7 v2 per user 2nd AskUserQuestion pick(B'.a deferred W32+;Karpathy §1.2 risk acknowledged for max G1 marginal improvement probability)| Multi-axis attempt 增加 G1 marginal improvement 概率 per W29+W30 single-axis PARTIAL trajectory |
 | 2026-05-26 | §6 | W29 `.env` env override + W28 Settings defaults + W30 Rule 7 revert state baseline confirmed at kickoff | R6 Day 0 recursive grep verify against prompt_builder.py:28 SYSTEM_PROMPT current state(only Rule 1-6 present post-W30 revert)+ Settings.py L198-243 |
+| 2026-05-26 | F2 v1→v2 amendment | regex `§\d+\.\d+` → `\b\d+\.\d+\b`(corpus-realistic pattern)+ prompt Rule 7 v2 wording 加 bare X.M examples | F2 v1 Run 1 LIVE eval empirical evidence — corpus chunk_title uses bare「8.4 Scenario D」not「§8.4」;§-prefix author bias refuted |
+| 2026-05-26 | F2 v2→v3 amendment | `citation_expansion_score_threshold` default 0.5 → 0.03 | F2 v2 Run 1 LIVE eval evidence — Cohere v4.0-pro raw `/query` rerank scores observed 0.04-0.05 range(NOT [0.5, 1.0] as W26 F1 D1 post-softmax reference)|
+| 2026-05-26 | F4 closeout policy | Phase Gate FAIL → full revert per Karpathy §1.3 + W30 Rule 7 precedent(user AskUserQuestion 4-pick Option α) | v1+v2+v3 3-iteration aggregate G1 strict 0/15 + G1 marginal +0pp net vs W29+W30 baseline 20% → 3 重 R6 catches surfaced(§-prefix author bias / threshold mis-calibration / window=3 constraint)+ reformulator stochasticity dominance — Karpathy §1.3 surgical change without measurable benefit → revert all 3 axes |
