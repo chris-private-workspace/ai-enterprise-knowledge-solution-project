@@ -23,57 +23,57 @@ last_updated: 2026-05-26
 
 ### F1.0 Surgical edit(`backend/generation/prompt_builder.py:30`)
 
-- [ ] F1.0.a Lock Option(default B,user override pick A/C 之前彈性)— surface 喺 progress.md Day 1 entry beginning + 加 chat 提示 user confirm
-- [ ] F1.0.b Edit Rule 8 line wording from W33 verbatim → W35 tightened wording per locked Option(single-line edit prompt_builder.py:30)
-- [ ] F1.0.c Update attribution comment trail — `(W33 F1.1.b ...)` → `(W35 F1.0 — Rule 8 wording tighten from W33 verbatim restoration per W34 G2 LLM emit dominant 92% verdict)`
-- [ ] F1.0.d ruff `backend/generation/prompt_builder.py` clean
+- [x] F1.0.a Option B locked initially per user pick 2026-05-26
+- [x] F1.0.b Edit Rule 8 line wording Option B applied
+- [x] F1.0.c Attribution comment updated per Option B
+- [x] F1.0.d ruff `All checks passed!` ✅
 
 ### F1.1 Test assertions sync(`backend/tests/test_prompt_builder_dispatch.py:207-221`)
 
-- [ ] F1.1.a Update `test_system_prompt_includes_rule_8_cite_breadth` 5 assertions per locked Option wording phrases
-- [ ] F1.1.b Update test docstring 「Restored verbatim from W31 commit 16b9b3d」 → 「Tightened W35 from W33 verbatim restoration per W34 G2 LLM emit dominant 92%」
-- [ ] F1.1.c Rule 7 v2 + Rule 6 non-regression assertions unchanged
-- [ ] F1.1.d Decide rename `test_system_prompt_includes_rule_8_cite_breadth` → `test_system_prompt_includes_rule_8_cite_sufficient` OR preserve original name(F1.0.a lock 同時決定)
+- [x] F1.1.a Function renamed `_cite_breadth` → `_cite_sufficient` + 5 Option B assertions
+- [x] F1.1.b Test docstring updated W33→W35 trajectory
+- [x] F1.1.c Rule 7 v2 + Rule 6 non-regression assertions unchanged
+- [x] F1.1.d Function rename decision = `_cite_sufficient`(umbrella concept across A/B/C options)
 
 ### F1.2 pytest baseline preserve
 
-- [ ] F1.2.a Run `python -m pytest tests/test_prompt_builder_dispatch.py -v` — expect 3 NEW Rule 7 v2 + Rule 8 + Rule 6 tests + pre-existing tests all pass
-- [ ] F1.2.b Run full pytest suite — expect 1084(W34 closeout)→ 1084 pass + 25 skip + 0 fail
+- [x] F1.2.a Scoped pytest test_prompt_builder_dispatch.py = **14 passed** ✅
+- [x] F1.2.b Full pytest suite = **1084 passed + 25 skipped + 0 failed in 384.38s** ✅(W34 closeout exact preserve)
 
 ### F1.3 Backend explicit kill+restart(per PC-W32-1 + PC-W33-1 + PC-W34-1)
 
-- [ ] F1.3.a Verify Langfuse :3000 + Postgres :5432 reachable(PC-W33-1)
-- [ ] F1.3.b Verify Langfuse `/api/public/health` 200(PC-W34-1)+ Postgres `SELECT 1` ready_for_query handshake(PC-W34-1)
-- [ ] F1.3.c Kill existing uvicorn + restart `python -m api.server` + bind :8000 wait ~5min lifespan
+- [x] F1.3.a Postgres `SELECT 1` = 1 ready_for_query ✅(PC-W33-1)
+- [x] F1.3.b Langfuse `/api/public/health` 200 OK ✅(PC-W34-1,需 30s timeout cover post-restart warmup);Docker UI 一度卡住 user 重啟 Docker
+- [x] F1.3.c 冇 existing backend on :8000 → 直接 start fresh `python -m api.server` → 5/5 /health components OK
 
-### F1.4 Invoke /eval/run + capture EvalReport
+### F1.4 Invoke /eval/run + capture EvalReport(Option B initial)
 
-- [ ] F1.4.a `backend/w35-f1-ragas-runner.py`(adapt `w34-f1-ragas-runner.py`)POST /eval/run with Bearer dev-token + `{"eval_set_id": "eval-set-v0-w25-supplement"}` + capture full EvalReport JSON
-- [ ] F1.4.b Raw JSON save `backend/w35-f1-ragas-eval-raw.json`
-- [ ] F1.4.c Expected runtime ~10-12 min(W34 F1 reference 642s)
+- [x] F1.4.a `backend/w35-f1-ragas-runner.py` created(adapt W34 runner + W34 F1 baseline 0.9836 / 0.7669 / 0.8936 / 1331ms reference + W34 -2pp envelope 0.9637)
+- [x] F1.4.b Raw JSON `w35-f1-option-b-raw.json`(renamed F1.7 audit trail);Option C result `w35-f1-option-c-raw.json`
+- [x] F1.4.c **runtime Option B 478s + Option C 475s** vs W34 642s = **-25% / -26%** ⭐
 
 ### F1.5 Aggregate vs W34 F1 baseline
 
-- [ ] F1.5.a 4-metric mean comparison table(W35 / W34 F1 / W26 F1 / W34 -2pp envelope / delta pp)
-- [ ] F1.5.b failed_queries detail
-- [ ] F1.5.c Per-query metric breakdown(I07 + I01 specifically + other 11)
-- [ ] F1.5.d Decision tree branch verdict per plan §3 G1
+- [x] F1.5.a 4-metric mean comparison table(Option B + Option C / W34 F1 / delta pp)— inline progress.md Day 1
+- [x] F1.5.b failed_queries detail Option B 11 / Option C 10(I07 came back vs Option B)
+- [x] F1.5.c Per-query metric breakdown documented
+- [x] F1.5.d Decision tree branch verdict per plan §3 G1 — **G1 preserve Option B / G1 IMPROVED Option C ⭐**
 
 ### F1.6 Decision tree application
 
-- [ ] F1.6.a Determine outcome branch — preserve / flag / break per plan §3 G1 thresholds
-- [ ] F1.6.b If F1.7 contingency triggered → execute and add comparison
-- [ ] F1.6.c Document W36+ candidate priority queue update per outcome
+- [x] F1.6.a Outcome branch Option B = preserve;Option C = IMPROVED(beyond preserve)
+- [x] F1.6.b F1.7 contingency triggered per Option B correctness -5pp side effect(user lock path (β))
+- [x] F1.6.c W36+ priority queue update — DEMOTE Option A more aggressive;PRESERVE PC-W34-1/2 housekeeping(documented progress.md Day 1)
 
-### F1.7 Contingency(only if F1.6.a outcome = "break" OR "flag")
+### F1.7 Contingency Option B → Option C re-tighten(per user lock path (β) 2026-05-26)
 
-- [ ] F1.7.a If "break":revert prompt_builder.py:30 Rule 8 wording back to W33 verbatim + revert test assertions + git commit revert(no merge to main 之前 user lock)
-- [ ] F1.7.b If "flag":evaluate Option A / B / C re-tighten OR partial revert per user decision
+- [x] F1.7.a NOT applicable(G1 preserved,no "break")
+- [x] F1.7.b Option C re-tighten — plan §7 changelog amendment R3 + prompt_builder.py:30 B→C + test_prompt_builder_dispatch.py 5 assertions B→C + pytest 14 PASS + ruff PASS + raw JSON rename + backend kill PID 32632 + restart → 5/5 OK + F1.4 re-run Option C 475s → G1 IMPROVED 0.9876 + p95 -17% + correctness -1.90pp from W26 baseline
 
 ### F1.8 Commit + progress.md Day 1
 
-- [ ] F1.8.a Commit `feat(generation): W35 F1 Rule 8 wording tighten「cite SUFFICIENT chunks」 + test assertions sync + LIVE RAGAs eval evidence`
-- [ ] F1.8.b progress.md Day 1 entry — F1.0 wording lock + F1.1 test sync + F1.4 eval result + decision branch + (F1.7 contingency if triggered)+ actual vs planned effort
+- [ ] F1.8.a Commit `feat(generation): W35 F1 Rule 8 wording tighten Option C re-tighten + LIVE RAGAs eval evidence — G1 IMPROVED 0.9876 + p95 -17% + runtime -26%`(combined Option B initial ship + F1.7 Option C contingency lifecycle)
+- [x] F1.8.b progress.md Day 1 entry — F1.0 + F1.1 + F1.2 + F1.3 + F1.4 Option B + F1.5+F1.6 decision verdict Option B + F1.7 contingency Option C + Option C final verdict + W36+ priority queue update + carry-overs
 
 ## F2 — Latency re-verify(A.2,~1h)
 

@@ -175,11 +175,16 @@ def test_format_chunk_dispatch_append_mode_citation_chunk_id_preserved() -> None
     assert "full parent section text appended" in user_msg  # parent context
 
 
-# ─── W33 F1.2.a — Rule 7 v2 + Rule 8 prompt restoration tests + Rule 6 non-regression ───
+# ─── W33 F1.2.a + W35 F1.7 — Rule 7 v2 + Rule 8 Option C re-tighten + Rule 6 non-regression ───
 # Sequential ship on W32 (h') baseline established (engine-fetch citation expansion):
 # Rule 7 v2 = specificity preference (§X.M numbering > overview/coverage-summary chunks).
-# Rule 8   = cite breadth (cite ALL chunks with partial overlap, not just most representative).
-# Verbatim restoration from W31 commit 16b9b3d (reverted via 09805d6 per W31 multi-axis fail).
+# Rule 8   = cite chunks that support each fact (W35 Option C re-tighten — F1.7 contingency from
+#            Option B per F1.4 correctness -5pp regression; Option C minimal change wording:
+#            soft cap「typically 1-2 per fact」 + explicit anti-pattern「avoid citing multiple
+#            overlapping chunks that convey the same information」).
+# Rule 7 v2 preserved verbatim from W31 commit 16b9b3d (reverted W31 → restored W33 → preserved W35).
+# Rule 8 W33 source = W31 commit 16b9b3d verbatim → W35 F1.0 Option B first divergence (regressed
+#         correctness -5pp) → W35 F1.7 Option C re-tighten preserves multi-cite freedom.
 
 
 def test_system_prompt_includes_rule_7_v2_specificity_preference() -> None:
@@ -204,21 +209,26 @@ def test_system_prompt_includes_rule_7_v2_specificity_preference() -> None:
     assert "Step 3.2" in SYSTEM_PROMPT
 
 
-def test_system_prompt_includes_rule_8_cite_breadth() -> None:
-    """W33 F1.2.a — Rule 8 wording present in SYSTEM_PROMPT.
+def test_system_prompt_includes_rule_8_cite_sufficient() -> None:
+    """W35 F1.7 — Rule 8 wording Option C re-tighten present in SYSTEM_PROMPT.
 
-    Restored verbatim from W31 commit 16b9b3d. Key phrases per W31 plan §F1.1.b
-    B'.b prompt instruction layer for cite-confidence threshold relax.
+    Option C locked after F1.4 Option B outcome surprise (G1 faith preserve OK +
+    runtime -25% ⭐ but correctness -5pp regression — W34 0.7669 → W35 Opt B
+    0.7169 = W26 baseline 0.7416 -2.47pp BELOW). Option C minimal change wording:
+    soft cap「typically 1-2 per fact」 + explicit anti-pattern「avoid citing
+    multiple overlapping chunks that convey the same information」 — preserves
+    multi-cite freedom without over-abstract「different angle」 framing that
+    caused Option B over-conservative cite + sparse answer.
     """
     from generation.prompt_builder import SYSTEM_PROMPT
 
-    # Core cite-ALL-overlapping-chunks framing
-    assert "cite ALL of them" in SYSTEM_PROMPT
-    assert "partial information" in SYSTEM_PROMPT
-    assert "each fact in the answer should be backed by every chunk" in SYSTEM_PROMPT
-    # Two-chunks-same-scenario explicit example
-    assert "two chunks describe the same scenario" in SYSTEM_PROMPT
-    assert "both warrant a citation marker" in SYSTEM_PROMPT
+    # Core cite-chunks-that-support framing (W35 Option C)
+    assert "cite the chunks that support each fact" in SYSTEM_PROMPT
+    assert "partial information" in SYSTEM_PROMPT  # lead-in preserved
+    assert "typically 1-2 per fact" in SYSTEM_PROMPT  # soft cap
+    # Anti-redundancy explicit (replaces Option B「non-redundant detail」 abstract)
+    assert "avoid citing multiple overlapping chunks" in SYSTEM_PROMPT
+    assert "convey the same information" in SYSTEM_PROMPT
 
 
 def test_system_prompt_rule_6_ch005_preserved_non_regression() -> None:

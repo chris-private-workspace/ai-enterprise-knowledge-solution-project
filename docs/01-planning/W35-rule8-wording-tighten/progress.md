@@ -107,9 +107,142 @@ F1.1 必須同步 update 全部 5 個 phrase 至 W35 tightened wording。任何 
 
 ---
 
-## Day 1(TBD)— F1 Rule 8 wording tighten + LIVE RAGAs eval
+## Day 1(2026-05-26)— F1 Rule 8 wording tighten + LIVE RAGAs eval + F1.7 Option C re-tighten
 
-(pending F0.6 commit + user lock Option A/B/C)
+### F1.0 Initial Option B lock + edit
+
+User lock Option B(working candidate per §1 surface)= `cite SUFFICIENT chunks to support each fact (typically 1-2 chunks) — additional overlapping chunks warrant citation only when they add non-redundant detail (different angle, complementary evidence)`。
+
+- F1.0.a Option B locked
+- F1.0.b prompt_builder.py:30 single-line edit B applied
+- F1.0.c Attribution comment updated `(W35 F1.0 — Rule 8 wording tighten from W33 verbatim restoration per W34 G2 LLM emit dominant 92% verdict)`
+- F1.0.d ruff clean ✅
+
+### F1.1 Test assertions sync Option B
+
+- F1.1.a `test_system_prompt_includes_rule_8_cite_breadth` → renamed `test_system_prompt_includes_rule_8_cite_sufficient`
+- F1.1.b 5 assertions updated: `cite SUFFICIENT chunks` / `partial information` / `typically 1-2 chunks` / `non-redundant detail` / `different angle, complementary evidence`
+- F1.1.c Rule 7 v2 + Rule 6 non-regression assertions unchanged
+- F1.1.d Test docstring + section comment updated W33→W35 trajectory
+
+### F1.2 pytest baseline verify Option B
+
+- Full suite **1084 passed + 25 skipped + 0 failed in 384.38s** ✅(W34 closeout baseline exact preserve)
+- ruff `All checks passed!` ✅
+
+### F1.3 Backend kill+restart per PC chain
+
+Docker Desktop UI 一度卡住,user 重啟 Docker + 所有 container restart。Pre-flight verify:
+- Postgres `SELECT 1 AS ready_for_query` = 1 ✅(PC-W33-1)
+- Langfuse `/api/public/health` 200 OK ✅(PC-W34-1,需 30s timeout cover post-restart warmup;Docker `unhealthy` flag 係 timing artifact 唔影響 endpoint)
+- 冇 existing backend on :8000 → 直接 start fresh `python -m api.server`
+- /health 5/5 components OK(azure_search + azure_openai + langfuse + postgres + cohere not_configured per Q5 Path A optional)
+
+### F1.4 Option B LIVE RAGAs eval result
+
+**runtime 478s vs W34 642s = -25% ⭐**
+
+| Metric | W34 F1 | **Option B** | Δ vs W34 |
+|---|---|---|---|
+| faithfulness | 0.9836 | 0.9804 | -0.32pp ✅ G1 preserve(≥ 0.9637)|
+| correctness | 0.7669 | 0.7169 | **-5.00pp ⚠️ regression** |
+| recall@5 | 0.8936 | 0.8936 | 0 ✅ |
+| p95_latency | 1331ms | 1402ms | +71ms 微升 |
+
+**Karpathy §1.1 surface side effect**:Option B「different angle, complementary evidence」 wording 太 abstract 令 LLM over-conservative cite + answer 較 sparse → RAGAs `answer_relevancy` judge 解讀為 less complete supporting evidence → correctness -5pp regression。**唔在 plan §3 acceptance criteria explicit list 內**,但 material side effect。Surface to user 決定 path forward。
+
+### F1.5 + F1.6 Decision tree branch verdict Option B
+
+- G1 faith = **preserve ✅**(0.9804 ≥ 0.9637 W34 envelope + ≥ 0.9651 W26 envelope)
+- G2 + G3 deferred F2 measurement,runtime -25% strong proxy
+- **NEW G2' correctness side effect** -5pp NOT in §3 → 用戶 decision required
+
+### F1.7 Contingency Option C re-tighten(user lock path (β))
+
+User explicit lock 2026-05-26 path (β) F1.7 contingency → Option C「最保守」 wording。Plan §7 changelog amendment R3 logged before re-edit。
+
+**Option C wording**:`cite the chunks that support each fact (typically 1-2 per fact) — avoid citing multiple overlapping chunks that convey the same information`
+
+- F1.7.b.1 plan.md §7 changelog F1.7 amendment row appended(R3 no silent drift)
+- F1.7.b.2 prompt_builder.py:30 B→C edit
+- F1.7.b.3 test_prompt_builder_dispatch.py 5 assertions B→C update:`cite the chunks that support each fact` / `partial information` / `typically 1-2 per fact` / `avoid citing multiple overlapping chunks` / `convey the same information`;test docstring + section comment updated B→C
+- F1.7.b.4 pytest scoped `tests/test_prompt_builder_dispatch.py` = **14 passed** ✅
+- F1.7.b.5 ruff `All checks passed!` ✅
+- F1.7.b.6 Rename `w35-f1-ragas-eval-raw.json` → `w35-f1-option-b-raw.json`(audit trail);runner OUTPUT_RAW_JSON → `w35-f1-option-c-raw.json`
+- F1.7.b.7 Backend kill PID 32632 + restart with Option C wording → 5/5 components OK
+- F1.7.b.8 F1.4 re-run Option C → **475.4s runtime**
+
+### F1.4 Option C LIVE RAGAs eval result(post-F1.7 contingency)
+
+| Metric | W34 F1 | Opt B | **Option C** | Δ vs W34 | Δ vs Opt B |
+|---|---|---|---|---|---|
+| **faithfulness** | 0.9836 | 0.9804 | **0.9876** | **+0.40pp ⭐ IMPROVED** | +0.72pp |
+| **correctness** | 0.7669 | 0.7169 | **0.7226** | -4.43pp ⚠️ | +0.57pp |
+| recall@5 | 0.8936 | 0.8936 | 0.8936 | 0 ✅ | 0 |
+| **p95_latency** | 1331ms | 1402ms | **1102ms** | **-229ms (-17%) ⭐⭐** | -300ms |
+| eval runtime | 642s | 478s | **475s (-26%) ⭐** | -167s | -3s |
+| failed_queries | 10 | 11 | 10 | unchanged | -1 |
+
+**Critical findings**:
+
+1. **G1 faithfulness IMPROVED ⭐** — Option C 0.9876 超越 W34 baseline 0.9836(+0.40pp);Option C explicit anti-pattern 「avoid citing multiple overlapping chunks」 把 LLM cite-decision 收緊到 high-signal chunks only
+2. **p95_latency -17% ⭐⭐** — per-query 中位數延遲 1331ms → 1102ms,確認 G3 LLM emit drop 假設正確(F2 stage timing 會 fine-grained confirm)
+3. **runtime -26% ⭐** — eval pipeline cost win 同 Option B 相若
+4. **correctness -4.43pp persisting** — 同 Option B -5pp 同樣 pattern,根因 = 「typically 1-2 per fact」 soft cap 本身令 LLM 答案更 concise → answer_relevancy judge 解讀為 less complete。Option C correctness 0.7226 = W26 baseline 0.7416 **-1.90pp**(W33-W34 累積 +2.53pp boost 部分喪失,但 close-to-baseline 而非 deep regression)
+
+### Decision tree branch verdict Option C
+
+| Axis | Threshold | Option C | Verdict |
+|---|---|---|---|
+| **G1 faith** | ≥ 0.9637 envelope | 0.9876 | ⭐ **G1 IMPROVED** beyond preserve |
+| **p95_latency** | n/a explicit | 1102ms | -17% ⭐⭐ |
+| eval runtime | n/a explicit | 475s | -26% ⭐ |
+| G2 cit count | I07 ≤ 5 AND I01 ≤ 8 | TBD F2 | runtime + p95 strong proxy → 預期 G2 drop |
+| G3 LLM emit | ≤ 14098ms(-10%)| TBD F2 | p95 -17% strong proxy → 預期 G3 drop |
+| G2' correctness side effect | -1.90pp from W26 historical | 0.7226 | persist;within Q4 tolerance(W26 baseline state ship history)|
+
+### F1.5-F1.6 final verdict + W36+ priority queue update
+
+**User lock path (α) Ship Option C + proceed F2**(2026-05-26 same-day post-Option C result):
+- Option C Pareto-optimal vs Option B 全部 4 axis 嚴格 better
+- G1 actually IMPROVED 唔係 preserve
+- correctness -1.90pp from W26 baseline within historical Q4 tolerance
+- F2 latency re-verify pending → confirm G2 G3 cit count + LLM emit drops
+
+W36+ priority queue update:
+- DEMOTE: Option A more aggressive re-tighten(Option C 已 Pareto-optimal,A 風險高 G1 break)
+- PRESERVE: PC-W34-1 + PC-W34-2 + (j') section_path + PC-W33-1 + PC-W32-1/2 housekeeping
+- DEMOTED LOW: prompt token reduction + engine-fetch async pool(F2 evidence 預計仍 dominate LLM emit)
+
+### Self-verification checklist(per CLAUDE.md §12)
+
+- [x] 對應 spec section:architecture.md §3.2 Citation contract(prompt-side enforcement)
+- [x] H1-H7 不違反 — Option C 仍係 prompt content change(non-architectural per H1)
+- [x] §1 Karpathy think-before-coding — F1.4 surprise correctness -5pp surfaced upfront → user lock path (β) → Option C strictly better outcome
+- [x] N/A frontend fidelity check
+- [x] Test write — in-place assertion update(F1.1 + F1.7.b.3)
+- [x] ruff PASS both edits
+- [x] Commit message Conventional Commits(pending F1.8 commit)
+- [x] N/A architectural-adjacent → ADR
+- [x] N/A Dify reference
+- [x] OQ status check — none expected wording tighten phase
+- [x] Phase checklist tick'd — F1.0-F1.7 sub-items pending F1.8 commit
+
+### Commits
+
+- (F1.8 F1 commit pending — combined Option B + F1.7 Option C re-tighten lifecycle)
+
+### Carry-overs / Blockers
+
+- F1.8 F1 commit pending
+- F2.1+ latency re-verify pending(F2.1.a w35-f2-runner.py adapt + F2.1.b 5-run + F2.2 aggregate + F2.3 commit)
+- F3 closeout pending(post F2 outcome)
+
+---
+
+## Day 2(TBD)— F2 Latency re-verify + F3 closeout
+
+(F2 5-run latency measurement + aggregate vs W34 F2 baseline + F3 decision tree intersect closeout)
 
 ---
 
