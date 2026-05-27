@@ -16,8 +16,8 @@ last_updated: 2026-05-27
 - [x] F0.3 起草 `plan.md` 7 段
 - [x] F0.4 起草 `checklist.md`(本文件)
 - [x] F0.5 起草 `progress.md` Day 0
-- [ ] F0.6 啟動 commit `docs(planning): kickoff W38-reranker-cross-section-deboost + R6 Day 0 6 catches surface reranker filter insertion point + W37 drift metric over-flag + nuanced design`
-- [ ] F0.7 session-start.md §10 W38 row append `🟡 active 2026-05-27` + W38+ → W39+ placeholder rename + W37 closed_partial 維持
+- [x] F0.6 啟動 commit `693d463` — `docs(planning): kickoff W38-reranker-cross-section-deboost + R6 Day 0 6 catches surface reranker filter insertion point + W37 drift metric over-flag + nuanced design`
+- [x] F0.7 session-start.md §10 W38 row append `🟡 active 2026-05-27` + W38+ → W39+ placeholder rename + W37 closed_partial 維持(commit pending)
 
 ## F1 — LOW housekeeping batch(~30min)
 
