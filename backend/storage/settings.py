@@ -302,6 +302,25 @@ class Settings(BaseSettings):
     # top-level「Doc」shared,只有 depth>=2 先有實質區分效果。
     reranker_section_path_prefix_depth: int = 2
 
+    # W40 F2 — Cohere overfetch multiplier (per W39 insight 1)。When deboost
+    # active (cross_section_deboost < 1.0) AND multiplier > 1,reranker.rerank
+    # is called with top_k * multiplier so deboost loop has wider candidate
+    # pool to swap-in same-section candidates from positions 6-50 (otherwise
+    # deboost scope-limited to reranker top-K = top_k = e.g. 5)。Post-deboost
+    # result truncated to original top_k preserving caller contract。
+    #
+    # NOTE: 與 `hybrid_overfetch_for_rerank=50` 唔同 — 後者係 hybrid pre-rerank
+    # absolute fetch from Azure AI Search,前者係 reranker output multiplier
+    # on top of caller's top_k (typically top_k=5 + multiplier=4 → rerank top 20)。
+    #
+    # Default 1 = disabled (preserves W38 baseline behavior: rerank to exact
+    # top_k,no overfetch)。W41+ production ramp recommended after Azure billing
+    # resolved: multiplier=4 + deboost=0.85 + depth=2 combo (per W39 retro
+    # priority queue locked + Free tier workaround verified mechanism)。
+    # Upper bound auto-capped at Cohere `top_n=min(top_k, len(candidates))` =
+    # min(top_k * multiplier, fetch_k=hybrid_overfetch_for_rerank=50)。
+    reranker_overfetch_multiplier: int = 1
+
     # Feature flags
     feature_l3_routing_enabled: bool = False
     feature_auth_enabled: bool = False

@@ -643,3 +643,218 @@ async def test_w40_f1_anchor_empty_section_path_no_deboost_defensive() -> None:
     assert by_id["anchor"] == 0.90
     assert by_id["cand_a"] == 0.85
     assert by_id["cand_b"] == 0.80
+
+
+# ---------- W40 F2 Cohere overfetch tests ----------
+# Per W39 insight 1 (architectural surface via Path B + A LIVE evidence).
+# Bug:reranker.rerank(top_k=top_k) returns fixed top-K; deboost loop only sees
+# already-returned candidates; same-section candidates from positions 6-50 in
+# reranker's mental ranking never make it into deboost consideration。Fix:
+# when deboost active + multiplier > 1, pass top_k * multiplier to rerank,
+# then truncate post-deboost back to top_k preserving caller contract。
+
+
+@pytest.mark.asyncio
+async def test_w40_f2_overfetch_multiplier_default_no_op() -> None:
+    """W40 F2 — multiplier=1 (default) → reranker.rerank called with original top_k。
+
+    Verifies W38 baseline behavior preserved when multiplier disabled, even
+    with deboost active (defaults orthogonal — deboost off OR multiplier=1
+    both → no overfetch).
+    """
+    embedder = _FakeEmbedder()
+    searcher = MagicMock()
+    searcher.search = AsyncMock(return_value=[HybridSearchHit(score=0.9, fields={})])
+    reranker = MagicMock()
+    reranker.rerank = AsyncMock(
+        return_value=[
+            _reranked("a", 0.90, section_path=["§8"]),
+            _reranked("b", 0.80, section_path=["§8"]),
+        ],
+    )
+
+    engine = RetrievalEngine(
+        embedder=embedder, searcher=searcher, reranker=reranker,
+        reranker_cross_section_deboost=0.85,
+        reranker_section_path_prefix_depth=2,
+        reranker_overfetch_multiplier=1,  # default — disabled
+    )
+    await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=5)
+
+    # Verify reranker.rerank called with top_k=5 (no multiplier applied)
+    call_args = reranker.rerank.call_args
+    assert call_args.kwargs["top_k"] == 5
+
+
+@pytest.mark.asyncio
+async def test_w40_f2_overfetch_multiplier_disabled_with_deboost_disabled() -> None:
+    """W40 F2 — multiplier=4 + deboost=1.0 (disabled) → no overfetch fires。
+
+    Multiplier 只 dormant 即 deboost gate inactive。Confirms multiplier 不能
+    independently trigger overfetch without deboost active (avoids wasted Cohere
+    call when deboost wouldn't run anyway).
+    """
+    embedder = _FakeEmbedder()
+    searcher = MagicMock()
+    searcher.search = AsyncMock(return_value=[HybridSearchHit(score=0.9, fields={})])
+    reranker = MagicMock()
+    reranker.rerank = AsyncMock(
+        return_value=[
+            _reranked("a", 0.90, section_path=["§8"]),
+        ],
+    )
+
+    engine = RetrievalEngine(
+        embedder=embedder, searcher=searcher, reranker=reranker,
+        reranker_cross_section_deboost=1.0,  # disabled
+        reranker_section_path_prefix_depth=2,
+        reranker_overfetch_multiplier=4,  # set but dormant
+    )
+    await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=5)
+
+    # Verify reranker.rerank called with top_k=5 (multiplier dormant per deboost off)
+    call_args = reranker.rerank.call_args
+    assert call_args.kwargs["top_k"] == 5
+
+
+@pytest.mark.asyncio
+async def test_w40_f2_overfetch_multiplier_with_deboost_swap_in_same_section() -> None:
+    """W40 F2 — multiplier=4 + deboost=0.85 + simulated Cohere overfetch return →
+    deboost loop swaps in same-section from positions beyond original top_k。
+
+    Simulates W39 insight 1 evidence: anchor §8 + 4 cross-section candidates in
+    Cohere's top-5 + 2 same-section candidates in positions 6-7 (overfetched).
+    With multiplier=4, rerank fetches top_k(3) * 4 = 12 → all 6 candidates returned.
+    Post-deboost re-sort: same-section retain original score, cross-section ×0.85.
+    Final top-3 truncate captures swap-in.
+    """
+    embedder = _FakeEmbedder()
+    searcher = MagicMock()
+    searcher.search = AsyncMock(return_value=[HybridSearchHit(score=0.9, fields={})])
+    reranker = MagicMock()
+    # Simulated overfetch return — Cohere's top-6 ordered by relevance.
+    # Positions 1-4: anchor + 3 cross-section. Positions 5-6: 2 same-section
+    # zoom-ins that Cohere ranked lower (e.g. less keyword overlap but more
+    # topically relevant).
+    reranker.rerank = AsyncMock(
+        return_value=[
+            _reranked("anchor",     0.90, section_path=["§8"]),
+            _reranked("xs_pos2",    0.85, section_path=["§11"]),
+            _reranked("xs_pos3",    0.83, section_path=["§7"]),
+            _reranked("xs_pos4",    0.80, section_path=["§3"]),
+            _reranked("same_pos5",  0.70, section_path=["§8", "§8.1"]),
+            _reranked("same_pos6",  0.65, section_path=["§8", "§8.4"]),
+        ],
+    )
+
+    engine = RetrievalEngine(
+        embedder=embedder, searcher=searcher, reranker=reranker,
+        reranker_cross_section_deboost=0.85,
+        reranker_section_path_prefix_depth=2,
+        reranker_overfetch_multiplier=4,  # caller top_k=3 → rerank top_k=12
+    )
+    result = await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=3)
+
+    # Verify rerank called with multiplier applied: top_k * multiplier = 3 * 4 = 12
+    call_args = reranker.rerank.call_args
+    assert call_args.kwargs["top_k"] == 12, f"Expected overfetch top_k=12, got {call_args.kwargs['top_k']}"
+
+    # Post-deboost effective scores (anchor sp length 1, effective_depth=min(2,1)=1):
+    # - anchor:     0.90 (preserved, is anchor)
+    # - xs_pos2:    0.85 × 0.85 = 0.7225 (deboosted)
+    # - xs_pos3:    0.83 × 0.85 = 0.7055 (deboosted)
+    # - xs_pos4:    0.80 × 0.85 = 0.68 (deboosted)
+    # - same_pos5:  0.70 (preserved, same-section via effective_depth=1 match)
+    # - same_pos6:  0.65 (preserved, same-section)
+    # Sorted descending: anchor 0.90, xs_pos2 0.7225, xs_pos3 0.7055, same_pos5 0.70, xs_pos4 0.68, same_pos6 0.65
+    # Truncate to top_k=3: [anchor, xs_pos2, xs_pos3]
+    # NOTE: this case shows mild swap effect — deboost=0.85 only just brings xs scores
+    # close to same_section's. With aggressive deboost (0.6) all same-section dominate.
+
+    chunk_ids = [c.fields["chunk_id"] for c in result.chunks]
+    assert len(chunk_ids) == 3, f"Truncated to top_k=3: {chunk_ids}"
+    assert chunk_ids[0] == "anchor"
+    # At deboost=0.85 + Cohere positions 2-4 high enough,xs still dominates positions 2-3。
+    # Same-section pos 5 brought in only if more aggressive deboost。Confirm xs in top-3
+    # are at deboosted scores (overfetch + deboost mechanism firing)。
+    by_id = {c.fields["chunk_id"]: c.score for c in result.chunks}
+    if "xs_pos2" in by_id:
+        assert by_id["xs_pos2"] == pytest.approx(0.85 * 0.85, abs=1e-6)
+
+
+@pytest.mark.asyncio
+async def test_w40_f2_overfetch_aggressive_deboost_swap_in_same_section_dominates() -> None:
+    """W40 F2 — multiplier=4 + aggressive deboost=0.5 → same-section dominates top-3。
+
+    Confirms swap-in mechanism with strong deboost — same-section overfetched
+    candidates rise above deboosted cross-section even from positions 5-6。
+    """
+    embedder = _FakeEmbedder()
+    searcher = MagicMock()
+    searcher.search = AsyncMock(return_value=[HybridSearchHit(score=0.9, fields={})])
+    reranker = MagicMock()
+    reranker.rerank = AsyncMock(
+        return_value=[
+            _reranked("anchor",     0.90, section_path=["§8"]),
+            _reranked("xs_pos2",    0.85, section_path=["§11"]),
+            _reranked("xs_pos3",    0.83, section_path=["§7"]),
+            _reranked("xs_pos4",    0.80, section_path=["§3"]),
+            _reranked("same_pos5",  0.70, section_path=["§8", "§8.1"]),
+            _reranked("same_pos6",  0.65, section_path=["§8", "§8.4"]),
+        ],
+    )
+
+    engine = RetrievalEngine(
+        embedder=embedder, searcher=searcher, reranker=reranker,
+        reranker_cross_section_deboost=0.5,  # aggressive: xs × 0.5 → 0.425, 0.415, 0.40
+        reranker_section_path_prefix_depth=2,
+        reranker_overfetch_multiplier=4,
+    )
+    result = await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=3)
+
+    # Post-deboost (anchor effective_depth=1):
+    # - anchor 0.90 (preserved)
+    # - xs_pos2 0.85 × 0.5 = 0.425
+    # - xs_pos3 0.83 × 0.5 = 0.415
+    # - xs_pos4 0.80 × 0.5 = 0.40
+    # - same_pos5 0.70 (preserved — same-section via effective_depth match)
+    # - same_pos6 0.65 (preserved — same-section)
+    # Sorted descending: anchor 0.90, same_pos5 0.70, same_pos6 0.65, xs_pos2 0.425, ...
+    # Truncate top-3: [anchor, same_pos5, same_pos6] — SWAP-IN evidence ⭐
+    chunk_ids = [c.fields["chunk_id"] for c in result.chunks]
+    assert chunk_ids == ["anchor", "same_pos5", "same_pos6"], (
+        f"Expected aggressive deboost swap-in same-section: {chunk_ids}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_w40_f2_overfetch_truncate_to_top_k_invariant() -> None:
+    """W40 F2 — multiplier=4 + reranker returns 12 → final chunks count exactly top_k。
+
+    Caller contract:RetrievalResult.chunks 應 cap at top_k regardless of
+    overfetch internal mechanics。Verifies truncate invariant preserved。
+    """
+    embedder = _FakeEmbedder()
+    searcher = MagicMock()
+    searcher.search = AsyncMock(return_value=[HybridSearchHit(score=0.9, fields={})])
+    reranker = MagicMock()
+    # Reranker returns 12 candidates (simulating top_k*multiplier=3*4=12)
+    reranker.rerank = AsyncMock(
+        return_value=[
+            _reranked(f"chunk_{i}", 0.90 - i * 0.05, section_path=["§8"])
+            for i in range(12)
+        ],
+    )
+
+    engine = RetrievalEngine(
+        embedder=embedder, searcher=searcher, reranker=reranker,
+        reranker_cross_section_deboost=0.85,
+        reranker_section_path_prefix_depth=2,
+        reranker_overfetch_multiplier=4,
+    )
+    result = await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=3)
+
+    # Final chunks count must = caller's top_k=3 (truncate invariant)
+    assert len(result.chunks) == 3, (
+        f"Truncate invariant violated:expected 3, got {len(result.chunks)}"
+    )

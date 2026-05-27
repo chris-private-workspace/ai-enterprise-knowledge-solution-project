@@ -77,6 +77,7 @@ class RetrievalEngine:
         hybrid_overfetch_for_rerank: int = 50,
         reranker_cross_section_deboost: float = 1.0,
         reranker_section_path_prefix_depth: int = 2,
+        reranker_overfetch_multiplier: int = 1,
     ) -> None:
         self._embedder = embedder
         self._searcher = searcher
@@ -87,6 +88,12 @@ class RetrievalEngine:
         # deboost=1.0 disabled (W38 baseline preserve W37); 0.85 = typical 15% penalty.
         self._reranker_cross_section_deboost = reranker_cross_section_deboost
         self._reranker_section_path_prefix_depth = reranker_section_path_prefix_depth
+        # W40 F2 — Cohere overfetch multiplier (per W39 insight 1). When deboost
+        # active AND multiplier > 1, rerank fetches top_k * multiplier candidates
+        # so deboost loop can swap-in same-section from positions 6-50; post-deboost
+        # truncates to original top_k preserving caller contract. multiplier=1
+        # (default) preserves W38 baseline behavior.
+        self._reranker_overfetch_multiplier = reranker_overfetch_multiplier
 
     @observe_async(
         name="retrieval.retrieve",
@@ -155,10 +162,20 @@ class RetrievalEngine:
 
         rerank_latency_ms = 0
         reranked = False
+        rerank_top_k = top_k  # W40 F2 — observability default; overridden when overfetch active
         if do_rerank and hits:
             rerank_start = time.perf_counter()
+            # W40 F2 — Cohere overfetch when deboost active (per W39 insight 1).
+            # Pass top_k * multiplier so deboost loop has wider candidate pool to
+            # swap-in same-section from positions 6-50. When multiplier=1 (default)
+            # OR deboost disabled, behavior preserves W38 baseline (rerank to exact top_k).
+            # Cohere v4.0-pro API self-caps via top_n=min(top_k, len(candidates))
+            # so safe up to fetch_k=hybrid_overfetch_for_rerank=50.
+            if (self._reranker_cross_section_deboost < 1.0
+                    and self._reranker_overfetch_multiplier > 1):
+                rerank_top_k = top_k * self._reranker_overfetch_multiplier
             reranked_chunks = await self._reranker.rerank(
-                query=query, candidates=hits, top_k=top_k,
+                query=query, candidates=hits, top_k=rerank_top_k,
             )
             # W38 — post-rerank cross-section deboost (H1 non-architectural;
             # symmetric pattern per ADR-0035 W25 F5 D2; preserves Cohere v4.0-pro
@@ -219,6 +236,10 @@ class RetrievalEngine:
                 RetrievedChunk(score=r.rerank_score, fields=r.fields)
                 for r in reranked_chunks
             ]
+            # W40 F2 — truncate to original top_k (overfetch only helps deboost see
+            # wider pool; final result must respect caller's top_k contract per
+            # RetrievalResult.chunks invariant). No-op when rerank_top_k == top_k.
+            chunks = chunks[:top_k]
             reranked = True
         else:
             chunks = [
@@ -234,6 +255,7 @@ class RetrievalEngine:
             query_chars=len(query),
             mode=mode,
             top_k=top_k,
+            rerank_top_k=rerank_top_k,
             fetch_k=fetch_k,
             chunks_returned=len(chunks),
             reranked=reranked,
