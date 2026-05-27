@@ -108,12 +108,12 @@ def main() -> int:
     print(f"  I07 avg total latency: {i07_avg_lat:.2f}s | avg citations: {i07_avg_cit:.1f}")
     print(f"  I01 avg total latency: {i01_avg_lat:.2f}s | avg citations: {i01_avg_cit:.1f}")
 
-    print(f"\n=== vs W34 F2 baseline ===")
-    print(f"  W34 I07 baseline: 62.2s / 6.0 cit | I01: 53.4s / 10.2 cit")
+    print("\n=== vs W34 F2 baseline ===")
+    print("  W34 I07 baseline: 62.2s / 6.0 cit | I01: 53.4s / 10.2 cit")
     print(f"  W35 I07: {i07_avg_lat:.2f}s ({(i07_avg_lat - 62.2) / 62.2 * 100:+.1f}%) / {i07_avg_cit:.1f} cit ({i07_avg_cit - 6.0:+.1f})")
     print(f"  W35 I01: {i01_avg_lat:.2f}s ({(i01_avg_lat - 53.4) / 53.4 * 100:+.1f}%) / {i01_avg_cit:.1f} cit ({i01_avg_cit - 10.2:+.1f})")
 
-    print(f"\n=== G2 + G3 decision tree per plan §3 ===")
+    print("\n=== G2 + G3 decision tree per plan §3 ===")
     g2_pass = i07_avg_cit <= 5 and i01_avg_cit <= 8
     print(f"  G2 cit count drop (I07 <= 5 AND I01 <= 8): {'PASS' if g2_pass else 'inconclusive/null'}")
 

@@ -93,8 +93,8 @@ def main() -> int:
     i01_lat = [r["total_latency_s"] for r in all_runs if r.get("query") == "i01" and "total_latency_s" in r]
     print(f"  I07 avg total latency: {sum(i07_lat) / max(len(i07_lat), 1):.2f}s")
     print(f"  I01 avg total latency: {sum(i01_lat) / max(len(i01_lat), 1):.2f}s")
-    print(f"\n  W33 baseline I07: 30.4s / I01: 22.4s")
-    print(f"  W32 baseline I07: 19.3s / I01: 11.7s")
+    print("\n  W33 baseline I07: 30.4s / I01: 22.4s")
+    print("  W32 baseline I07: 19.3s / I01: 11.7s")
 
     with open("w34-f2-aggregate.json", "w", encoding="utf-8") as f:
         json.dump({"runs": all_runs, "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")},

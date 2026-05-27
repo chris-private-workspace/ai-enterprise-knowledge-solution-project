@@ -348,6 +348,15 @@ app.include_router(kb_acl.router)
 # rejects ProactorEventLoop. So on Windows we bypass `Server.run()` and drive
 # `Server.serve()` through `asyncio.run` with an explicit SelectorEventLoop
 # factory. Off Windows, uvicorn's default (SelectorEventLoop) is already fine.
+#
+# PC-W32-1 (documented W38 F1.2 2026-05-27): NO `reload=True` preserved.
+# Rationale — adding `reload=True` to `uvicorn.Config(...)` risks breaking the
+# above SelectorEventLoop factory: WatchFiles reload mode is managed by an
+# internal uvicorn subprocess which may not honor the parent process's
+# `asyncio.run(..., loop_factory=...)` override, regressing BUG-008. Explicit
+# kill+restart discipline is preferred — covered by CLAUDE.md §10.3 step 5b
+# pre-flight protocol (W36 PC-W34-1 ship). Cost: dev iteration requires manual
+# restart per code change. Benefit: production parity with BUG-008 fix preserved.
 if __name__ == "__main__":
     import asyncio
     import sys

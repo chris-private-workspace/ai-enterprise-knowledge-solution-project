@@ -47,7 +47,7 @@ def main() -> int:
     )
 
     print(f"POST /eval/run eval_set_id={EVAL_SET_ID} — expected runtime ~8-15min")
-    print(f"  (W26 F2.20 reference 492s baseline; W33 may add overhead)")
+    print("  (W26 F2.20 reference 492s baseline; W33 may add overhead)")
     t0 = time.time()
     try:
         # Long timeout — RAGAs 4-metric on 13 queries via gpt-5.4-mini judge

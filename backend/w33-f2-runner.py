@@ -6,7 +6,6 @@ Generates per-run JSON files for plan §F2.2/F2.3 evidence + aggregates inline.
 from __future__ import annotations
 
 import json
-import os
 import sys
 import time
 import urllib.request
@@ -57,7 +56,7 @@ def summarize_i07(runs: list[dict]) -> dict:
     lat_sum = 0.0
     for i, r in enumerate(runs, 1):
         citations = r.get("citations", []) or []
-        cit_ids = [c.get("chunk_id", "") for c in citations]
+        [c.get("chunk_id", "") for c in citations]
         # Walkthrough = chunk_title matching §X.M pattern (bare X.M OR §X.M)
         import re
         walkthrough_titles = []

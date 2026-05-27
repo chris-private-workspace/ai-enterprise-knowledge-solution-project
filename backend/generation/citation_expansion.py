@@ -31,6 +31,20 @@ Algorithm:
 
 Per W31 PC-W31-2 lesson:NO `score_threshold` field — `engine.list_chunks` returns
 raw Azure Search chunks without rerank score(filter not applicable)。
+
+Integration pattern note (PC-W32-2, documented W38 F1.3 2026-05-27):
+`expand_citations` returns a 3-tuple `(expanded_text, expanded_citation_ids,
+neighbor_chunks)` instead of the original 2-tuple. The third element
+materializes neighbour `RetrievedChunk` objects from raw `engine.list_chunks`
+dicts so callers can EXTEND their retrieved_chunks list before downstream
+`build_citations`. Without this propagation, `build_citations` treats W32-added
+citation_ids as「hallucinated」per Rule 5 contract (they are not in the top-K
+reranked set). Lesson — any future module-level change that adds citations
+to the answer text MUST propagate the corresponding `RetrievedChunk` objects
+through `SynthesisResult` fields (see `SynthesisResult.expanded_neighbor_chunks`
+in `backend/generation/synthesizer.py` + `backend/api/routes/query.py:247`
+extension before `build_citations` call). Silent return-shape changes here
+risk dropping citations 2-5 per run (W32 F2 reload-v1 incident evidence).
 """
 
 from __future__ import annotations

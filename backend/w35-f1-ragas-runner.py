@@ -42,7 +42,7 @@ def main() -> int:
     )
 
     print(f"POST /eval/run eval_set_id={EVAL_SET_ID} - expected runtime ~10-12min")
-    print(f"  (W34 F1 reference 642s baseline)")
+    print("  (W34 F1 reference 642s baseline)")
     t0 = time.time()
     try:
         with urllib.request.urlopen(req, timeout=1800) as resp:
