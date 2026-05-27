@@ -1,6 +1,6 @@
 ---
 phase: W40-deboost-refinement-batch
-status: active   # 2026-05-27 kickoff — W39 closed_partial 2 個架構洞察 atomic batch ship
+status: closed   # F4 收尾 2026-05-27 — Phase Gate PASS outcome (a) per Chris pick:F1 anchor-prefix length-mismatch fix + F2 Cohere overfetch + truncate landed across 4 commits 5d491cd→ca025cc;7 NEW unit tests PASS;backend pytest 1095 → 1106 (+11 net through W39 mock fix +6 + W40 F1+F2 +7,-2 numerical reconcile);F3 LIVE skipped per W36 precedent (pure algorithmic refinement default disabled,0 production behavior change risk);.env clean preserved (F3 NOT triggered);F1+F2 production code preserved as W41+ enabler;W41+ HIGHEST hybrid mode billing-resolved re-verify candidate locked
 last_updated: 2026-05-27
 component_scope: C04 Retrieval Engine(retrieval_engine.py post-rerank deboost loop refinement + Cohere overfetch trigger)
 adr_refs:
@@ -188,3 +188,7 @@ H1-H7 verify:
 | Date | Change | Trigger |
 |---|---|---|
 | 2026-05-27 | Plan v1.0 ship — F0 kickoff via Chris W40+ candidates (1)+(2) atomic batch pick | W39 closed_partial 2026-05-27 + Chris explicit immediate-ship pick(per `/compact` resume final user msg) |
+| 2026-05-27 | F1 ship — anchor-prefix length-mismatch fix(effective_depth = min(depth, len(anchor_sp)))+ 2 NEW unit tests + W39 F2 pre-existing test mock gap fix(`mode` kwarg propagation in _MockEngine + _FailingEngine across 3 test files)| commit `bca7446` |
+| 2026-05-27 | F2 ship — Cohere overfetch + truncate(NEW Setting `reranker_overfetch_multiplier: int = 1` default disabled + retrieve() rerank top_k * multiplier when deboost active + chunks[:top_k] truncate invariant + observability log `rerank_top_k` field + server.py wire)+ 5 NEW unit tests | commit `ca025cc` |
+| 2026-05-27 | F3 LIVE SKIPPED per Chris pick(per W36 operational debt batch precedent — pure algorithmic refinement default disabled,unit test sufficient verification);F3 LIVE preserved 為 W41+ HIGHEST candidate alongside hybrid mode billing-resolved re-verify | Chris AskUserQuestion pick post-F2 |
+| 2026-05-27 | F4 closeout — Phase Gate **PASS** outcome (a)(G1+G2+G4+G5+G6 all PASS;G3 skipped per Chris pick);production preserve default disabled invariant per W37/W38/W39 precedent;F1+F2 infrastructure preserved as W41+ enabler | commit pending |

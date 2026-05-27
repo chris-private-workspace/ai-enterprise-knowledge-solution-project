@@ -1,7 +1,7 @@
 ---
 phase: W40-deboost-refinement-batch
 plan_ref: ./plan.md
-status: active
+status: closed   # F4 收尾 2026-05-27 — Phase Gate PASS outcome (a) per Chris pick
 last_updated: 2026-05-27
 ---
 
@@ -16,148 +16,119 @@ last_updated: 2026-05-27
 - [x] F0.3 起草 `plan.md` 7 段
 - [x] F0.4 起草 `checklist.md`(本文件)
 - [x] F0.5 起草 `progress.md` Day 0
-- [ ] F0.6 啟動 commit `docs(planning): kickoff W40-deboost-refinement-batch + R6 Day 0 6 catches surface F1 anchor-prefix length-mismatch fix (insight 2) + F2 Cohere overfetch fix (insight 1) atomic batch`
-- [ ] F0.7 session-start.md §10 W40 row append active 2026-05-27 + W40+ → W41+ placeholder rename(commit pending)
+- [x] F0.6 啟動 commit `5d491cd`
+- [x] F0.7 session-start.md §10 W40 row append active 2026-05-27 + W40+ → W41+ placeholder rename(commit `db1c305`)
 
-## F1 — Anchor-prefix length-mismatch fix(~30min)
+## F1 — Anchor-prefix length-mismatch fix(~30min)— ✅ 完成
 
-### F1.1 Code change `retrieval_engine.py`
+### F1.1 Code change `retrieval_engine.py` — ✅
 
-- [ ] F1.1.a 修改 line 176 `anchor_prefix = list(anchor_sp[:depth])` → 加 `effective_depth = min(depth, len(anchor_sp))` + `anchor_prefix = list(anchor_sp[:effective_depth])`
-- [ ] F1.1.b 修改 line 185 cand_prefix slice 用 effective_depth replace depth
-- [ ] F1.1.c 更新 observability log line 200-206 加 `effective_depth` field 對 anchor_prefix scope 顯式可追溯
+- [x] F1.1.a 修改 line 176 `anchor_prefix = list(anchor_sp[:depth])` → 加 `effective_depth = min(depth, len(anchor_sp))` + `anchor_prefix = list(anchor_sp[:effective_depth])`
+- [x] F1.1.b 修改 line 185 cand_prefix slice 用 effective_depth replace depth
+- [x] F1.1.c 更新 observability log line 200-206 加 `effective_depth` field 對 anchor_prefix scope 顯式可追溯
 
-### F1.2 NEW unit tests
+### F1.2 NEW unit tests — ✅
 
-- [ ] F1.2.a NEW test `test_w40_f1_anchor_shorter_than_depth_hierarchical_zoom_preserved`:anchor `['§8. Integration']` length 1 + cand_a `['§8. Integration','§8.1 Scenario A']` length 2 + cand_b `['§7. Other','§7.9 Docuware']` length 2 + depth=2 + deboost=0.85 → cand_a score preserved(zoom-in)+ cand_b deboosted(cross-section)
-- [ ] F1.2.b NEW test `test_w40_f1_anchor_empty_section_path_no_deboost_defensive`:anchor `[]` + cand any section_path + depth=2 + deboost=0.85 → all candidates preserve(effective_depth=0,prefix=[] = []match all)
+- [x] F1.2.a NEW test `test_w40_f1_anchor_shorter_than_depth_hierarchical_zoom_preserved`:anchor 用 corpus shape `['8. Integration scenarios...']` length 1 + cand_a `['8. Integration scenarios...', '8.1 Scenario A...']` + cand_b `['7. Integration patterns...', '7.9 Docuware']` + depth=2 + deboost=0.85 → cand_a score preserved(zoom-in)+ cand_b deboosted(cross-chapter)
+- [x] F1.2.b NEW test `test_w40_f1_anchor_empty_section_path_no_deboost_defensive`:anchor `[]` + cand any + depth=2 + deboost=0.85 → all candidates preserve(effective_depth=0,defensive no-op)
 
-### F1.3 Verify
+### F1.3 Verify — ✅
 
-- [ ] F1.3.a backend pytest 1096 → **1098** PASS(`pytest backend/tests/test_retrieval.py -v -k w40_f1`)
-- [ ] F1.3.b ruff PASS(W40 F1 specific edits — `retrieval_engine.py` + `test_retrieval.py`)
-- [ ] F1.3.c mypy strict W40 F1 specific edits self-clean
+- [x] F1.3.a backend pytest **1101 PASS** + 0 failed(W40 F1 2 NEW + W39 F2 mock fix 6 reclaimed)
+- [x] F1.3.b ruff PASS(W40 F1 specific edits — `retrieval_engine.py` + `test_retrieval.py` + 3 mock fix files)
+- [x] F1.3.c mypy strict W40 F1 specific edits self-clean(13 pre-existing scope-out per Karpathy §1.3,W38 F2 precedent)
 
-### F1.4 Commit
+### F1.4 Commit — ✅
 
-- [ ] F1.4.a commit:`fix(retrieval): W40 F1 anchor-prefix length-mismatch — effective_depth = min(depth, len(anchor_sp)) preserve hierarchical zoom-in when anchor shorter than depth + 2 NEW unit tests`
+- [x] F1.4.a commit `bca7446` — `fix(retrieval): W40 F1 anchor-prefix length-mismatch — effective_depth = min(depth, len(anchor_sp)) preserve hierarchical zoom-in when anchor shorter than depth + 2 NEW unit tests + W39 F2 pre-existing test mock gap fix (mode kwarg propagation)`
+- [x] F1.4.b BONUS — W39 F2 pre-existing test mock gap fix included (per W23 不希望累積債務 + Karpathy §1.3 surgical adjacent mess);6 previously failing tests reclaimed:test_observe_query_route.py 3 + test_e1_e5_e12_smoke.py 3
 
-## F2 — Cohere overfetch fix(~1h)
+## F2 — Cohere overfetch fix(~1h)— ✅ 完成
 
-### F2.1 Settings NEW knob
+### F2.1 Settings NEW knob — ✅
 
-- [ ] F2.1.a `storage/settings.py` 加 NEW field `reranker_overfetch_multiplier: int = 1` 位於 line 304 `reranker_section_path_prefix_depth` 之下(W38 block extension)
-- [ ] F2.1.b Comment block 解 distinction:multiplier on reranker output(W40 NEW)vs `hybrid_overfetch_for_rerank=50` absolute hybrid pre-rerank fetch(W3 baseline)+ default 1 disabled preserve W38 baseline + W41+ ramp guidance(multiplier=4 + deboost=0.85 combo recommended once Azure billing resolved)
+- [x] F2.1.a `storage/settings.py` 加 NEW field `reranker_overfetch_multiplier: int = 1` 位於 line 304 `reranker_section_path_prefix_depth` 之下(W38 block extension)
+- [x] F2.1.b Comment block 解 distinction:multiplier on reranker output(W40 NEW)vs `hybrid_overfetch_for_rerank=50` absolute hybrid pre-rerank fetch(W3 baseline)+ default 1 disabled preserve W38 baseline + W41+ ramp guidance(multiplier=4 + deboost=0.85 combo recommended once Azure billing resolved)
 
-### F2.2 RetrievalEngine init param
+### F2.2 RetrievalEngine init param — ✅
 
-- [ ] F2.2.a `retrieval_engine.py:__init__` add `reranker_overfetch_multiplier: int = 1` keyword param
-- [ ] F2.2.b store `self._reranker_overfetch_multiplier = reranker_overfetch_multiplier`
+- [x] F2.2.a `retrieval_engine.py:__init__` add `reranker_overfetch_multiplier: int = 1` keyword param
+- [x] F2.2.b store `self._reranker_overfetch_multiplier = reranker_overfetch_multiplier`
 
-### F2.3 Rerank call site refinement
+### F2.3 Rerank call site refinement — ✅
 
-- [ ] F2.3.a `retrieval_engine.py:160-162` modify `reranker.rerank(top_k=...)` — 加 `rerank_top_k = top_k * self._reranker_overfetch_multiplier if (self._reranker_cross_section_deboost < 1.0 and self._reranker_overfetch_multiplier > 1) else top_k` + pass `top_k=rerank_top_k`
-- [ ] F2.3.b 注意 Cohere v4.0-pro `top_n=min(top_k, len(candidates))` 已 self-cap to fetch_k=50,無 overflow risk
+- [x] F2.3.a `retrieval_engine.py:158-167` rerank_top_k = top_k default + 若 deboost active + multiplier > 1 overwrite to top_k * multiplier + pass `top_k=rerank_top_k`
+- [x] F2.3.b 注意 Cohere v4.0-pro `top_n=min(top_k, len(candidates))` 已 self-cap to fetch_k=50,無 overflow risk
 
-### F2.4 Post-deboost truncate
+### F2.4 Post-deboost truncate — ✅
 
-- [ ] F2.4.a `retrieval_engine.py:198-211` 加 truncate — 喺 `chunks = [RetrievedChunk(...) for r in reranked_chunks]` 之後 加 `chunks = chunks[:top_k]` 確保 final result top_k items invariant
-- [ ] F2.4.b 同時更新 `else` branch(no reranker case)line 214-217 維持 `hits[:top_k]` 不變
-- [ ] F2.4.c 更新 observability log line 200-206 加 `rerank_top_k` field(顯示 actual reranker top_k vs original top_k)
+- [x] F2.4.a `retrieval_engine.py:215-219` 加 truncate — 喺 `chunks = [RetrievedChunk(...) for r in reranked_chunks]` 之後 加 `chunks = chunks[:top_k]` 確保 final result top_k items invariant
+- [x] F2.4.b `else` branch(no reranker case)line 222-225 維持 `hits[:top_k]` 不變
+- [x] F2.4.c 更新 observability log line 232-238 加 `rerank_top_k` field
 
-### F2.5 Server.py wire
+### F2.5 Server.py wire — ✅
 
-- [ ] F2.5.a `api/server.py:156-163` 加一行 `reranker_overfetch_multiplier=settings.reranker_overfetch_multiplier,`
+- [x] F2.5.a `api/server.py:156-164` 加一行 `reranker_overfetch_multiplier=settings.reranker_overfetch_multiplier,`
 
-### F2.6 NEW unit tests
+### F2.6 NEW unit tests — ✅
 
-- [ ] F2.6.a NEW test `test_w40_f2_overfetch_multiplier_default_no_op`:multiplier=1 + deboost=0.85 → reranker.rerank called with original top_k(spy)
-- [ ] F2.6.b NEW test `test_w40_f2_overfetch_multiplier_disabled_with_deboost_disabled`:multiplier=4 + deboost=1.0(disabled)→ reranker.rerank called with original top_k(deboost gate inactive,multiplier dormant)
-- [ ] F2.6.c NEW test `test_w40_f2_overfetch_multiplier_with_deboost_swap_in_same_section`:multiplier=4 + deboost=0.85 + anchor `['§8']` + 3 cross-section `['§11']`/`['§7']` candidates positions 2-4 + 2 same-section `['§8','§8.1']`/`['§8','§8.4']` candidates positions 5-6(simulating Cohere overfetch return)+ top_k=3 → post-deboost top-3 chunks include ≥ 1 same-section(swap-in evidence)
-- [ ] F2.6.d NEW test `test_w40_f2_overfetch_truncate_to_top_k_invariant`:multiplier=4 + reranker returns 12 RerankedChunk + top_k=3 → final chunks count exactly 3(truncate invariant)
+- [x] F2.6.a NEW test `test_w40_f2_overfetch_multiplier_default_no_op`:multiplier=1 + deboost=0.85 → reranker.rerank call_args.kwargs["top_k"] == 5(spy)
+- [x] F2.6.b NEW test `test_w40_f2_overfetch_multiplier_disabled_with_deboost_disabled`:multiplier=4 + deboost=1.0(disabled)→ reranker.rerank top_k=5(deboost gate inactive,multiplier dormant)
+- [x] F2.6.c NEW test `test_w40_f2_overfetch_multiplier_with_deboost_swap_in_same_section`:multiplier=4 + deboost=0.85 + 6 candidates simulated overfetch return + top_k=3 → rerank call_args top_k=12 + xs scores deboosted
+- [x] F2.6.d BONUS NEW test `test_w40_f2_overfetch_aggressive_deboost_swap_in_same_section_dominates`:aggressive deboost=0.5 → same-section overfetched candidates 從 positions 5-6 swap-in top-3 → `[anchor, same_pos5, same_pos6]` evidence ⭐
+- [x] F2.6.e NEW test `test_w40_f2_overfetch_truncate_to_top_k_invariant`:multiplier=4 + reranker returns 12 RerankedChunk + top_k=3 → final chunks count exactly 3(truncate invariant)
 
-### F2.7 Verify
+### F2.7 Verify — ✅
 
-- [ ] F2.7.a backend pytest 1098 → **1102** PASS(4 NEW tests:F2.6.a-d)
-- [ ] F2.7.b ruff PASS(W40 F2 specific edits)
-- [ ] F2.7.c mypy strict W40 F2 specific edits self-clean
+- [x] F2.7.a backend pytest 1101 → **1106 PASS** + 0 failed(5 NEW tests:F2.6.a-e)
+- [x] F2.7.b ruff PASS(W40 F2 specific edits — settings.py + retrieval_engine.py + test_retrieval.py;api/server.py 30 E402 pre-existing truststore pattern NOT W40 F2 regression)
+- [x] F2.7.c mypy strict W40 F2 specific edits self-clean
 
-### F2.8 Commit
+### F2.8 Commit — ✅
 
-- [ ] F2.8.a commit:`feat(retrieval): W40 F2 Cohere overfetch + truncate — reranker_overfetch_multiplier Settings knob + rerank with top_k * multiplier when deboost active + post-deboost truncate to top_k invariant + 4 NEW unit tests`
+- [x] F2.8.a commit `ca025cc` — `feat(retrieval): W40 F2 Cohere overfetch + truncate — reranker_overfetch_multiplier Settings knob + rerank with top_k * multiplier when deboost active + post-deboost truncate to top_k invariant + 5 NEW unit tests`
 
-## F3 — LIVE verify(optional,~30-45min via Free tier workaround per W39 Path A pattern)
+## F3 — LIVE verify — 🚧 SKIPPED per Chris pick(per W36 operational debt batch precedent + Karpathy §1.4 unit test sufficient verification for pure algorithmic refinement default disabled)
 
-### F3.1 Pre-flight per CLAUDE.md §10.3 step 5b
-
-- [ ] F3.1.a Langfuse `/api/public/health` 200 OK
-- [ ] F3.1.b Postgres `SELECT 1` ready_for_query
-
-### F3.2 `.env` temporary override
-
-- [ ] F3.2.a `.env` 加 marker block W40 F3 TEMPORARY
-- [ ] F3.2.b `RERANKER_CROSS_SECTION_DEBOOST=0.85`
-- [ ] F3.2.c `RERANKER_SECTION_PATH_PREFIX_DEPTH=2`
-- [ ] F3.2.d `RERANKER_OVERFETCH_MULTIPLIER=4`
-
-### F3.3 Backend restart per W39 pattern
-
-- [ ] F3.3.a Kill api.server PID via WMI CommandLine filter
-- [ ] F3.3.b Restart `python -m api.server` via bash & background spawn pattern
-- [ ] F3.3.c `/health` 200 within ~25s warmup
-
-### F3.4 Sanity check
-
-- [ ] F3.4.a Direct curl `POST /query` with `{"mode":"vector"}` body → HTTP 200 valid citation answer
-- [ ] F3.4.b Backend log inspect `reranker_cross_section_deboost_applied` event 確認 firing + `rerank_top_k` field 顯示 multiplier 生效
-
-### F3.5 LIVE runner
-
-- [ ] F3.5.a `backend/w40-f3-runner.py` ship — POST /query with `{"mode":"vector"}` body field + 5 runs Q-W25-I07 + 5 runs Q-W25-I01 control
-- [ ] F3.5.b Aggregate citation metrics + drift count + log inspection
-
-### F3.6 Decision tree intersect
-
-- [ ] F3.6.a G3a(F1 effect)— I07 runs cross-section drift ≤ W39 F2 Path A 1.0 baseline?
-- [ ] F3.6.b G3b(F2 effect)— I07 runs cit count ≥ 4.5 marginal(W39 F2 Path A 3.6 baseline)or ≥ 4.8 full W35 baseline recovery?
-- [ ] F3.6.c G3 control — I01 non-regression refusals 0/5 + avg_cit ≥ 3.5(W35 baseline floor)
+- [x] 🚧 F3 SKIPPED — preserved 為 W41+ HIGHEST candidate alongside hybrid mode billing-resolved re-verify(Free tier mode=vector workaround 可隨時 trigger,no production code change required)
 
 ## F4 — 收尾 + 跨文件同步 + commit + push
 
-### A. 跨文件同步
+### A. 跨文件同步 — ✅ 完成
 
-- [ ] A.1 plan.md frontmatter status `active → closed / closed_partial / closed_strong` 視 G3 outcome
-- [ ] A.2 checklist.md cross-cutting tick(本文件)
-- [ ] A.3 progress.md retro 7 段
-- [ ] A.4 session-start.md §10 W40 row `🟡 active` → `✅ closed / closed_partial / closed_strong`
-- [ ] A.5 `.env` 移除 W40 F3 marker block(per W37/W38/W39 precedent — production preserve default disabled)
-- [ ] A.6 F1 + F2 production code preserved as W41+ enabler(對齊 W37 F1 + W38 F2 + W39 F2 production preserve pattern)
-- [ ] A.7 RISK_REGISTER R-W38-1 status update(Azure billing IT-side still environmental block;W41+ hybrid mode billing-resolved re-verify deferred)
-- [ ] A.8 ADR README — 無 NEW ADR(F1+F2 純 algorithmic refinement per H1 non-architectural)
+- [x] A.1 plan.md frontmatter status `active → closed` Phase Gate PASS outcome (a)
+- [x] A.2 checklist.md cross-cutting tick(本文件)
+- [x] A.3 progress.md retro 7 段(F4 closeout commit pending)
+- [x] A.4 session-start.md §10 W40 row `🟡 active` → `✅ closed`(F4 closeout commit pending)
+- [x] A.5 `.env` clean preserved(F3 NOT triggered,marker block 從未加 — per W36 operational batch precedent skip LIVE)
+- [x] A.6 F1 + F2 production code preserved as W41+ enabler(對齊 W37 F1 + W38 F2 + W39 F2 production preserve pattern)
+- [x] A.7 🚧 RISK_REGISTER R-W38-1 update DEFERRED W41+(Azure billing IT-side still environmental block;W40 F1+F2 production code preserved as enabler;W41+ HIGHEST hybrid mode billing-resolved re-verify candidate locked)
+- [x] A.8 ADR README — 無 NEW ADR(F1+F2 純 algorithmic refinement per H1 non-architectural,延續 W38 commit cea024f H1 verdict + ADR-0035 W25 D2 reference)
 
-### B. W41+ priority queue 評估
+### B. W41+ priority queue 評估 — ✅ 完成
 
-- [ ] B.1 W41+ HIGHEST preserved:Hybrid mode billing-resolved re-verify(isolate true W40 F1+F2 effect without mode=vector conflate — Azure billing IT-side gate)
-- [ ] B.2 W41+ MEDIUM preserved:`\b\d+\.\d+\b` regex relax for `_find_neighbour_chunks`
-- [ ] B.3 W41+ LOW preserved:Ghost-Python-3.12 restart investigate
-- [ ] B.4 Long-term carry-over 維持
-- [ ] B.5 永久 OUT path (a) judge LLM 升級 per memory
+- [x] B.1 W41+ HIGHEST preserved:**Hybrid mode billing-resolved re-verify**(isolate true W38 F2 + W40 F1+F2 deboost effect without mode=vector conflate — Azure billing IT-side action gate;唯一可分離 hybrid mode contribution vs vector mode conflate 嘅 path)
+- [x] B.2 W41+ HIGHEST NEW promoted:**F3 LIVE Free tier workaround**(W40 SKIPPED,can re-trigger anytime via mode=vector .env temporary enable;~30-45min effort;provide swap-in mechanism evidence + 2 architectural insights closure验证)
+- [x] B.3 W41+ MEDIUM preserved:`\b\d+\.\d+\b` regex relax for `_find_neighbour_chunks`
+- [x] B.4 W41+ LOW preserved:Ghost-Python-3.12 restart investigate(W37+W38+W39 重現 3 次)
+- [x] B.5 Long-term carry-over 維持:Q14 SME-validate reference_answer cascade + (c)/(e)/(f) BUG-026+027 cosmetic + W22 D8 setup.md §8.6 + W16 F1-F4 Track A IT cred 平行軌道
+- [x] B.6 永久 OUT path (a) judge LLM 升級 per memory `feedback_judge_llm_cost_policy.md`
 
 ### C. commit + push
 
-- [ ] C.1 F4 收尾 commit `docs(planning): W40 closeout — F1 anchor-prefix length-mismatch fix + F2 Cohere overfetch + truncate landed [outcome description]`
+- [ ] C.1 F4 收尾 commit `docs(planning): W40 closeout — F1 anchor-prefix length-mismatch fix (insight 2) + F2 Cohere overfetch + truncate (insight 1) landed F3 LIVE SKIPPED per W36 precedent Phase Gate PASS outcome (a)`
 - [ ] C.2 push origin/main confirmed
 
 ---
 
 ## Cross-Cutting
 
-- [ ] All deliverables committed to git(F4 closeout commit pending)
-- [ ] All OQ status changes 反映於 decision-form.md — 無 OQ 變動
-- [ ] All architectural-adjacent decisions documented as ADR — N/A(F1+F2 純 algorithmic refinement,non-architectural per H1)
-- [ ] progress.md retro section 寫好 7 段 per F4 closeout(pending)
-- [ ] progress.md frontmatter status flipped per outcome
-- [ ] Phase W41+ kickoff trigger 標記於 retro
+- [x] All deliverables committed to git(F4 closeout commit pending — A-F4.C.1)
+- [x] All OQ status changes 反映於 decision-form.md — 無 OQ 變動
+- [x] All architectural-adjacent decisions documented as ADR — N/A(F1+F2 純 algorithmic refinement,non-architectural per H1)
+- [x] progress.md retro section 寫好 7 段 per F4 closeout
+- [x] progress.md frontmatter status flipped per outcome(closed)
+- [x] Phase W41+ kickoff trigger 標記於 retro(W41+ HIGHEST 2 candidates promoted)
 
 ---
 
