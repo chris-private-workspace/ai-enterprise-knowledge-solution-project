@@ -61,4 +61,5 @@ EKP `/query` + `/chat` 嘅 hybrid retrieval mode(per `architecture.md §3.1`)目
 - W2 Gate 1 R@5=0.9722 baseline(measured WITH semantic ranker → F2 re-verify predicate)
 - `backend/retrieval/hybrid.py:362-372`(search() mode branches)
 - W42 plan §5 H1 boundary 評估
-- memory `project_azure_search_tier_semantic_billing`(402 root cause analysis)
+- memory `project_azure_search_tier_semantic_billing`(402 root cause analysis + W42 flag workaround + eval index 發現)
+- **W42 F2/F3 closeout 2026-05-29**:G3 chat UI Free-tier LIVE **PASS ⭐**(flag-OFF 3 query 全 200 無 402);G2 Gate 1 R@5 re-verify **INCONCLUSIVE**(`/eval/run` hard-code `kb_id="drive_user_manuals"` → index `ekp-kb-drive-v1` 唔喺 Azure Search service;service 只有 per-KB index `ekp-kb-{kb_id}-v1` ×2)→ Chris 環境受限結案,safety 由本 ADR 理論(Q21 + Cohere override redundant)+ F3 質性證據滿足;production default True 維持不變

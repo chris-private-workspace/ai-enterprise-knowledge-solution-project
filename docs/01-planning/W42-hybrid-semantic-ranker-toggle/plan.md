@@ -1,6 +1,6 @@
 ---
 phase: W42-hybrid-semantic-ranker-toggle
-status: active   # 2026-05-29 kickoff — Option ① drop semantic ranker config flag,enable Free-tier full-pipeline + chat UI test
+status: closed_partial   # 2026-05-29 closeout — G3 user-goal PASS ⭐ Free-tier chat UI 全 pipeline 200 無 402 + G2 environmental-INCONCLUSIVE(drive corpus index 唔喺 service)
 last_updated: 2026-05-29
 component_scope: C04 Retrieval Engine(hybrid.py search() semantic ranker toggle)+ C08 API Gateway(無 schema change,wire only)
 adr_refs:
@@ -199,3 +199,4 @@ related_carry_overs:
 | Date | Change | Trigger |
 |---|---|---|
 | 2026-05-29 | Plan v1.0 ship — F0 kickoff via Chris「起 W42 plan 做 Option ①」pick(post 三方 trade-off 深入分析)| W41 closed 2026-05-28 + smoke test Free-tier 402 incident + Chris AskUserQuestion Option ① pick |
+| 2026-05-29 | **Closeout closed_partial** — G3 user-goal PASS ⭐(chat UI hybrid flag-OFF 3 query 全 200 無 402,Free-tier 全 pipeline 解鎖)+ G1/G4/G5/G6 PASS(2 NEW tests / pytest 1108 / ruff / mypy / ADR-0039 Accepted / production default True preserve)+ **G2 INCONCLUSIVE**(R3 deviation:`/eval/run` hard-code `kb_id="drive_user_manuals"` → index `ekp-kb-drive-v1` 唔喺 Azure Search service;service 只有 per-KB index `ekp-kb-{kb_id}-v1` ×2;W2 0.9722 不可重現)→ Chris pick 環境受限結案,safety 由 ADR-0039 理論 + F3 LIVE 質性證據滿足。§6 詳細 tick 以 checklist.md 為準(single source per §10.1);完整敘述見 progress.md Day 2 + Retro | F2/F3 LIVE(post Docker distro 重建)+ Chris AskUserQuestion「環境受限結案」pick |
