@@ -125,6 +125,19 @@ class Settings(BaseSettings):
     azure_semantic_config_name: str = "ekp-semantic-config"
     azure_semantic_request_timeout_s: float = 10.0
 
+    # W42 (ADR-0039) — hybrid mode semantic ranker toggle. True (default) =
+    # preserve W2 baseline (hybrid uses `queryType="semantic"` + semantic config →
+    # Azure built-in semantic L2 rerank). False = hybrid drops semantic ranker →
+    # BM25 + vector + RRF (Azure auto-fusion when both `search` text + vectorQueries
+    # present) → Cohere rerank handles L2 (Q21: Cohere proven superior + reranks the
+    # same top-50 candidate set, so semantic ranker is a redundant intermediate layer).
+    # Primary use of False: Free tier Azure AI Search has a semantic ranker monthly
+    # quota (1000/mo hard cap) — hybrid mode (chat UI default) 撞 402 once exhausted;
+    # flag False bypasses it for $0 Free-tier full-pipeline + chat UI dev/test without
+    # vendor swap. Production default True preserved; flip to False is a W43+ separate
+    # decision gated on Gate 1 R@5 re-verify (W42 F2). Set via .env HYBRID_USE_SEMANTIC_RANKER.
+    hybrid_use_semantic_ranker: bool = True
+
     # Langfuse
     langfuse_host: str = "http://localhost:3000"
     langfuse_public_key: str = ""

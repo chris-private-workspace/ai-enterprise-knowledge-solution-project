@@ -132,6 +132,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             admin_key=settings.azure_search_admin_key,
             index_name=settings.azure_search_default_index,
             image_weight=settings.retrieval_image_low_value_weight,  # ADR-0035 W25 F5 D2
+            use_semantic_ranker=settings.hybrid_use_semantic_ranker,  # W42 ADR-0039
+            semantic_config_name=settings.azure_semantic_config_name,
         )
         populator = IndexPopulator(
             endpoint=settings.azure_search_endpoint,

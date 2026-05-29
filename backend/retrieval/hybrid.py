@@ -110,6 +110,8 @@ class HybridSearcher:
         index_name: str,
         api_version: str = _API_VERSION,
         image_weight: float = _DEFAULT_IMAGE_WEIGHT,
+        use_semantic_ranker: bool = True,
+        semantic_config_name: str = "ekp-semantic-config",
     ) -> None:
         self.endpoint = endpoint.rstrip("/")
         self.admin_key = admin_key
@@ -119,6 +121,12 @@ class HybridSearcher:
         # low_value chunks during post-filter. Production wired from
         # Settings.retrieval_image_low_value_weight in server.py lifespan.
         self.image_weight = image_weight
+        # W42 (ADR-0039) — hybrid mode semantic ranker toggle. True (default) =
+        # preserve W2 baseline (queryType="semantic"). False = hybrid drops semantic
+        # ranker → BM25 + vector + RRF → Cohere rerank (Free tier 402 bypass).
+        # Wired from Settings.hybrid_use_semantic_ranker in server.py lifespan.
+        self.use_semantic_ranker = use_semantic_ranker
+        self.semantic_config_name = semantic_config_name
         self._client: httpx.AsyncClient | None = None
 
     async def __aenter__(self) -> HybridSearcher:
@@ -365,11 +373,17 @@ class HybridSearcher:
         elif mode == "fulltext":
             payload["search"] = query_text
             payload["queryType"] = "simple"
-        else:  # hybrid — unchanged W2 baseline behavior
+        else:  # hybrid — BM25 + vector + RRF
             payload["search"] = query_text
             payload["vectorQueries"] = [vector_query]
-            payload["queryType"] = "semantic"
-            payload["semanticConfiguration"] = "ekp-semantic-config"
+            # W42 (ADR-0039) — semantic ranker is opt-out. With it (default), Azure
+            # applies its built-in semantic L2 rerank on top of RRF. Without it, the
+            # search="text" + vectorQueries combo still triggers Azure's automatic RRF
+            # hybrid fusion (queryType defaults to "simple"); Cohere handles L2 rerank
+            # downstream. Dropping it avoids the Free tier semantic ranker quota 402.
+            if self.use_semantic_ranker:
+                payload["queryType"] = "semantic"
+                payload["semanticConfiguration"] = self.semantic_config_name
 
         response = await self._client.post(url, content=json.dumps(payload))
 

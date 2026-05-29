@@ -1,8 +1,8 @@
 # ADR-0039: Hybrid Mode Semantic Ranker as Configurable Layer
 
 **Date**: 2026-05-29
-**Status**: Proposed
-**Approver**: Chris(技術 Lead)— pending confirm
+**Status**: Accepted
+**Approver**: Chris(技術 Lead)— confirmed 2026-05-29(W42 F0.9 H1 boundary AskUserQuestion「Approved — ADR-0039 Accept + 開始 F1」pick)
 
 ## Context
 

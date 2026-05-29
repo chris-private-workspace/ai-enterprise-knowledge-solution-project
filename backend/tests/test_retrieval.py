@@ -97,6 +97,62 @@ async def test_hybrid_search_mode_fulltext_payload_shape() -> None:
 
 
 @pytest.mark.asyncio
+async def test_w42_hybrid_semantic_disabled_drops_query_type() -> None:
+    """W42 (ADR-0039): use_semantic_ranker=False → hybrid drops queryType=semantic.
+
+    Hybrid mode without semantic ranker is still true hybrid: search="text" +
+    vectorQueries present (Azure auto-RRF fusion), but no queryType="semantic" /
+    semanticConfiguration → Free tier 402 bypass. Cohere handles L2 rerank downstream.
+    """
+    with patch("retrieval.hybrid.httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value
+        instance.post = AsyncMock(return_value=_mock_response(200, {"value": []}))
+        instance.aclose = AsyncMock()
+
+        async with HybridSearcher(
+            "https://x", "k", "ekp-kb-drive-v1", use_semantic_ranker=False,
+        ) as s:
+            await s.search(
+                "paper jam", [0.1] * 1024, kb_id="drive_user_manuals", top_k=50,
+            )
+
+    payload = json.loads(instance.post.await_args.kwargs["content"])
+    # Still true hybrid — BM25 text + vector both present (Azure auto-RRF fusion)
+    assert payload["search"] == "paper jam"
+    assert payload["vectorQueries"][0]["fields"] == "content_vector"
+    assert len(payload["vectorQueries"][0]["vector"]) == 1024
+    # Semantic ranker dropped — no 402 quota consumption on Free tier
+    assert "queryType" not in payload
+    assert "semanticConfiguration" not in payload
+
+
+@pytest.mark.asyncio
+async def test_w42_hybrid_semantic_enabled_default_preserves_semantic_config() -> None:
+    """W42 (ADR-0039): use_semantic_ranker=True (default) → W2 baseline preserved.
+
+    Explicit default-True construction + custom semantic_config_name flows through —
+    production behavior unchanged (queryType=semantic + config name present).
+    """
+    with patch("retrieval.hybrid.httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value
+        instance.post = AsyncMock(return_value=_mock_response(200, {"value": []}))
+        instance.aclose = AsyncMock()
+
+        async with HybridSearcher(
+            "https://x", "k", "ekp-kb-drive-v1",
+            use_semantic_ranker=True, semantic_config_name="ekp-custom-config",
+        ) as s:
+            await s.search(
+                "paper jam", [0.1] * 1024, kb_id="drive_user_manuals", top_k=50,
+            )
+
+    payload = json.loads(instance.post.await_args.kwargs["content"])
+    assert payload["queryType"] == "semantic"
+    # semantic_config_name now parametrized (W42 — was hard-coded literal pre-W42)
+    assert payload["semanticConfiguration"] == "ekp-custom-config"
+
+
+@pytest.mark.asyncio
 async def test_hybrid_search_maps_response_to_hits_with_score() -> None:
     body = {
         "value": [
