@@ -172,6 +172,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             api_key=settings.azure_openai_api_key,
             api_version=settings.azure_openai_api_version,
             deployment=settings.azure_openai_deployment_llm_primary,
+            timeout_s=settings.synthesizer_request_timeout_s,
         )
         await synthesizer.__aenter__()
         app.state.synthesizer = synthesizer

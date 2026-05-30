@@ -125,6 +125,14 @@ class Settings(BaseSettings):
     azure_semantic_config_name: str = "ekp-semantic-config"
     azure_semantic_request_timeout_s: float = 10.0
 
+    # Synthesizer (GPT-5.5) chat-completion client timeout. Default 30s mirrors the
+    # synthesizer.py constructor default (production preserve). GPT-5.5 generating a
+    # complete multi-scenario answer can take ~90-98s (deboost surfaces more content
+    # → longer generation), tipping over 30s → APITimeoutError ("Thinking…" hang on
+    # the streaming path). Raise via .env SYNTHESIZER_REQUEST_TIMEOUT_S for full-
+    # answer chat (dev/demo); leave at 30 in production.
+    synthesizer_request_timeout_s: float = 30.0
+
     # W42 (ADR-0039) — hybrid mode semantic ranker toggle. True (default) =
     # preserve W2 baseline (hybrid uses `queryType="semantic"` + semantic config →
     # Azure built-in semantic L2 rerank). False = hybrid drops semantic ranker →
