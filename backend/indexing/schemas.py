@@ -33,6 +33,12 @@ class ImageRef(BaseModel):
     checksum_sha256: str
     width: int = 0
     height: int = 0
+    # BUG-026 C-ii — the section the image visually belongs to (= its owning
+    # chunk's section_path, which is parser-correct post-BUG-017). Propagated so
+    # the chat label can show the image's OWN section even when a neighbour-attach
+    # surfaces it under a different (intro/meta) citation. Default [] for chunks
+    # indexed before C-ii — frontend falls back to the citing chunk's section.
+    source_section: list[str] = Field(default_factory=list)
 
 
 def make_chunk_id(kb_id: str, doc_id: str, chunk_index: int) -> str:

@@ -24,6 +24,11 @@ export interface ImageRef {
   checksum_sha256: string;
   width: number;
   height: number;
+  /** BUG-026 C-ii — the section the image visually belongs to (propagated from
+   *  its owning chunk at ingest). Drives the chat label so a neighbour-attached
+   *  image shows ITS section, not the citing chunk's. Optional: absent for
+   *  images indexed before C-ii + legacy stored conversations. */
+  source_section?: string[];
 }
 
 export interface Citation {

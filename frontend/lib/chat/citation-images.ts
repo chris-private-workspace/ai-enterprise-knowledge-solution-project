@@ -55,3 +55,29 @@ export function dedupeCitationImages(citations: Citation[]): DedupedCitationImag
   });
   return out;
 }
+
+/**
+ * The section an image should be attributed to (BUG-026 C-ii). Prefers the
+ * image's OWN section (`source_section`, propagated from its owning chunk at
+ * ingest) so a neighbour-attached image shows ITS section rather than the
+ * citing intro/meta chunk's. Falls back to the citing chunk's `section_path`
+ * for images indexed before C-ii (empty / absent `source_section`).
+ */
+export function imageSectionPath(image: ImageRef, citation: Citation): string[] {
+  return image.source_section && image.source_section.length > 0
+    ? image.source_section
+    : citation.section_path;
+}
+
+/**
+ * The best human label for an image (BUG-026). Prefers the real figure caption
+ * (`alt_text`), then the leaf of the image's own section (C-ii — so distinct
+ * images under one citation no longer collapse to the same chunk label), then
+ * the citing chunk's title.
+ */
+export function imageTitle(image: ImageRef, citation: Citation): string {
+  if (image.alt_text) return image.alt_text;
+  const section = imageSectionPath(image, citation);
+  const leaf = section.length > 0 ? section[section.length - 1] : '';
+  return leaf || citation.chunk_title || 'Screenshot';
+}

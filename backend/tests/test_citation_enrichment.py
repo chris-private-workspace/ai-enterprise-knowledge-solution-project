@@ -58,6 +58,75 @@ def test_parse_non_array_top_level_returns_empty() -> None:
     assert parse_embedded_images('{"a": 1}') == []
 
 
+# ----- BUG-026 C-ii — source_section propagation -----
+
+
+def test_parse_imageref_carries_source_section() -> None:
+    """BUG-026 C-ii — image's own section propagated through embedded_images_json."""
+    payload = json.dumps([
+        {
+            "blob_url": "https://x/blob/a.png",
+            "alt_text": "",
+            "checksum_sha256": "deadbeef",
+            "width": 800,
+            "height": 600,
+            "source_section": ["8. Integration scenarios", "8.4 Scenario D"],
+        }
+    ])
+    images = parse_embedded_images(payload)
+    assert images[0].source_section == ["8. Integration scenarios", "8.4 Scenario D"]
+
+
+def test_parse_imageref_source_section_defaults_empty_when_absent() -> None:
+    """Backward compat — chunks indexed before C-ii lack the field → []."""
+    payload = json.dumps([
+        {
+            "blob_url": "https://x/blob/a.png",
+            "alt_text": "d",
+            "checksum_sha256": "abc",
+            "width": 1,
+            "height": 1,
+        }
+    ])
+    images = parse_embedded_images(payload)
+    assert images[0].source_section == []
+
+
+def test_parse_imageref_source_section_non_list_coerced_empty() -> None:
+    """Defensive — a malformed non-list source_section degrades to []."""
+    payload = json.dumps([
+        {
+            "blob_url": "https://x/blob/a.png",
+            "alt_text": "d",
+            "checksum_sha256": "abc",
+            "width": 1,
+            "height": 1,
+            "source_section": "not-a-list",
+        }
+    ])
+    images = parse_embedded_images(payload)
+    assert images[0].source_section == []
+
+
+def test_source_section_round_trips_storage_to_query() -> None:
+    """BUG-026 C-ii — source_section survives the storage→index→query JSON contract.
+
+    StorageImageRef.model_dump() (as ChunkRecord.to_search_doc serializes it into
+    `embedded_images_json`) must carry source_section so the query-side
+    parse_embedded_images reconstructs it onto the API ImageRef.
+    """
+    from indexing.schemas import ImageRef as StorageImageRef
+
+    stored = StorageImageRef(
+        blob_url="https://b/img.png",
+        checksum_sha256="abc",
+        source_section=["8. Integration scenarios", "8.4 Scenario D"],
+    )
+    embedded_images_json = json.dumps([stored.model_dump(mode="json")])
+    images = parse_embedded_images(embedded_images_json)
+    assert images[0].source_section == ["8. Integration scenarios", "8.4 Scenario D"]
+
+
 # ----- build_citations -----
 
 

@@ -111,7 +111,12 @@ import { useQuery } from '@tanstack/react-query';
 import { conversationsApi, type Conversation } from '@/lib/api/conversations';
 import { kbApi, type KbStatus } from '@/lib/api/kb';
 import { streamQuery, type Citation, type ImageRef, type SseEvent } from '@/lib/api/query';
-import { dedupeCitationImages, type DedupedCitationImage } from '@/lib/chat/citation-images';
+import {
+  dedupeCitationImages,
+  imageSectionPath,
+  imageTitle,
+  type DedupedCitationImage,
+} from '@/lib/chat/citation-images';
 
 // ──────────────────────────────────────────────────────────────────────────
 // Local types + state
@@ -1580,8 +1585,10 @@ function InlineImageCard({
   figureIdx: number;
   onOpen: () => void;
 }) {
-  const title = image.alt_text || citation.chunk_title || 'Screenshot';
-  const caption = `Citation [${citationIdx}] · ${citation.section_path.join(' › ')}`;
+  const title = imageTitle(image, citation);
+  // BUG-026 C-ii — attribute to the image's OWN section (source_section) so a
+  // neighbour-attached image shows its true section, not the citing chunk's.
+  const caption = `Citation [${citationIdx}] · ${imageSectionPath(image, citation).join(' › ')}`;
   return (
     <figure
       style={{
@@ -1776,7 +1783,7 @@ function ImageGallery({
                   textOverflow: 'ellipsis',
                 }}
               >
-                {citation.chunk_title}
+                {imageTitle(image, citation)}
               </div>
               <div
                 className="muted mono text-xs"

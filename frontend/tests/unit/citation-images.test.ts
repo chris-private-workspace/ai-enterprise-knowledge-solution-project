@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Citation, ImageRef } from '@/lib/api/query';
-import { dedupeCitationImages } from '@/lib/chat/citation-images';
+import { dedupeCitationImages, imageSectionPath, imageTitle } from '@/lib/chat/citation-images';
 
 function imageRef(over: Partial<ImageRef> = {}): ImageRef {
   return {
@@ -95,5 +95,68 @@ describe('dedupeCitationImages (BUG-026 Finding A)', () => {
   it('returns an empty list when no citation carries images', () => {
     const result = dedupeCitationImages([citation(1, []), citation(2, [])]);
     expect(result).toEqual([]);
+  });
+});
+
+describe('imageSectionPath (BUG-026 C-ii)', () => {
+  it("prefers the image's own source_section over the citing chunk's section", () => {
+    // §8.4 figure neighbour-attached to the §8 intro citation: must show §8.4.
+    const intro = citation(1, []);
+    intro.section_path = ['8. Integration scenarios'];
+    const image = imageRef({
+      source_section: ['8. Integration scenarios', '8.4 Scenario D'],
+    });
+    expect(imageSectionPath(image, intro)).toEqual(['8. Integration scenarios', '8.4 Scenario D']);
+  });
+
+  it('falls back to the citing chunk section when source_section is absent', () => {
+    const cit = citation(1, []);
+    cit.section_path = ['3. Architectural principles', '3.7 Idempotency'];
+    const image = imageRef({ source_section: undefined });
+    expect(imageSectionPath(image, cit)).toEqual([
+      '3. Architectural principles',
+      '3.7 Idempotency',
+    ]);
+  });
+
+  it('falls back to the citing chunk section when source_section is empty', () => {
+    const cit = citation(1, []);
+    cit.section_path = ['X'];
+    expect(imageSectionPath(imageRef({ source_section: [] }), cit)).toEqual(['X']);
+  });
+});
+
+describe('imageTitle (BUG-026)', () => {
+  it('prefers the real figure caption (alt_text) when present', () => {
+    const image = imageRef({
+      alt_text: 'Figure 1: High-level integration architecture',
+      source_section: ['4. High-level architecture'],
+    });
+    expect(imageTitle(image, citation(1, []))).toBe(
+      'Figure 1: High-level integration architecture',
+    );
+  });
+
+  it("uses the image's own section leaf when alt_text is empty (C-ii)", () => {
+    // Two distinct images under one citation no longer collapse to one label.
+    const cit = citation(1, []);
+    cit.chunk_title = '8. Integration scenarios';
+    const a = imageRef({
+      alt_text: '',
+      source_section: ['8. Integration scenarios', '8.4 Scenario D'],
+    });
+    const b = imageRef({
+      alt_text: '',
+      source_section: ['8. Integration scenarios', '8.5 Scenario E'],
+    });
+    expect(imageTitle(a, cit)).toBe('8.4 Scenario D');
+    expect(imageTitle(b, cit)).toBe('8.5 Scenario E');
+  });
+
+  it('falls back to the citing chunk title when no caption and no section', () => {
+    const cit = citation(1, []);
+    cit.chunk_title = 'Section 7';
+    cit.section_path = [];
+    expect(imageTitle(imageRef({ alt_text: '', source_section: [] }), cit)).toBe('Section 7');
   });
 });

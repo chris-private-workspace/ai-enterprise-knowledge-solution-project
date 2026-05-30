@@ -40,7 +40,31 @@ last_updated: 2026-05-30
 ## Finding B / C(非主修)
 
 - [x] Finding B documented 為 mockup-faithful(gallery `chunk_title` 不動,改 = H7 violation)
-- [ ] 🚧 Finding C(per-image caption ingest 深度)待 user 決策 (a)/(b)/(c) per `report.md §6`
+- [x] Finding C 驗證(user pick (a))—— `diagnose_image_doc_order.py` 證 8/8 圖 `alt_text` **全空** + per-image section 8/8 正確(post-BUG-017);結果記 `report.md §6`
+- [x] Finding C fix 方向 = **C-ii Propagate 圖 section 落 ImageRef**(user pick 2026-05-30)
+
+## Fix(Finding C-ii —— propagate section)
+
+- [x] Storage `indexing/schemas.py::ImageRef` 加 `source_section: list[str]`(default_factory list;自動入 `embedded_images_json` via `to_search_doc` model_dump)
+- [x] `ingestion/orchestrator.py` ingest 填 `source_section=list(spec.section_path)`(owning chunk section = parser-correct post-BUG-017)
+- [x] API `api/schemas/query.py::ImageRef` 加 `source_section: list[str]`
+- [x] `generation/citation_enrichment.py::parse_embedded_images` parse `source_section`(defensive coerce 到 list[str])
+- [x] Frontend `lib/api/query.ts::ImageRef` 加 optional `source_section?: string[]`(容忍 legacy)
+- [x] Frontend `lib/chat/citation-images.ts` 加 `imageSectionPath` + `imageTitle` helpers(prefer 圖自己 section / alt_text > section leaf > chunk_title)
+- [x] `chat/page.tsx` InlineImageCard title+caption + ImageGallery title 改用 helpers
+- [x] H1 邊界:`embedded_images_json` 係現有 §3.6 index field,只係 JSON 內加 key,**非 index schema 改**;Pydantic additive field → 無 H1 trigger / 無 ADR
+
+## Regression Test(C-ii)
+
+- [x] Backend 4 NEW tests(`test_citation_enrichment.py`:parse source_section + default-empty + non-list-coerce + storage→query round-trip)—— pytest **48 passed**(含既有)
+- [x] Backend 0 new mypy error(15 pre-existing 全部唔 reference 新 code)
+- [x] Frontend 6 NEW tests(`citation-images.test.ts`:imageSectionPath ×3 + imageTitle ×3)—— Vitest **19 passed**(13 + 6)
+- [x] Frontend `tsc --noEmit` 0 + `npm run build` 0 + Prettier clean
+
+## Verification(C-ii)
+
+- [x] Storage→query round-trip unit test 證 `source_section` 過 `embedded_images_json` JSON contract
+- [ ] 🚧 **Live re-ingest + UI verify deferred** —— C-ii 對既有 index 嘅 chunk 係 latent(`source_section` 空 → frontend fallback citing section);要 **re-ingest** 一個 KB 先 populate + UI 睇到圖標自己 section;需 backend+azurite+Azure Search infra(user accepted re-ingest)
 
 ## Closeout
 

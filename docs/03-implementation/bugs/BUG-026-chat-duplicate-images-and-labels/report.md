@@ -97,6 +97,30 @@ InlineImageCard `title = image.alt_text || citation.chunk_title`(`page.tsx:1660`
 
 → **需 user 決策**:(a) 先驗證 alt_text 實際內容再決定是否需要 ingest 工作;(b) 接受 mockup-faithful 現狀(gallery chunk_title + inline alt_text-或-fallback),只修 dedup;(c) 排期 ingest per-image caption 為獨立較大 task。
 
+#### Finding C 驗證結果(2026-05-30,user pick (a))
+
+跑 `backend/scripts/diagnose_image_doc_order.py`(`PYTHONIOENCODING=utf-8`)against sample docx,8 張圖嘅 parser 輸出:
+
+| pic doc_order | alt_text(Docling caption) | parser section attribution(post-BUG-017) |
+|---|---|---|
+| 103 | **(空)** | 4. High-level architecture ✅ |
+| 202 | **(空)** | 6. Multi-tenant strategy ✅ |
+| 323 | **(空)** | 8.1 Scenario A ✅ |
+| 348 | **(空)** | 8.2 Scenario B ✅ |
+| 371 | **(空)** | 8.3 Scenario C ✅ |
+| 394 | **(空)** | 8.4 Scenario D ✅ |
+| 417 | **(空)** | 8.5 Scenario E ✅ |
+| 513 | **(空)** | 11. Execution plan ✅ |
+
+**兩個確認**:
+1. **`alt_text` 全部空** —— Docling `item.caption_text(doc)` 抽唔到呢份 doc 嘅「Figure N:」caption(caption 係 styled body text 唔係 Docling caption element)。所以 InlineImageCard title `alt_text || chunk_title` **永遠** fallback 落 citing chunk section,gallery 永遠 chunk_title → user 見到嘅 mislabel = 真嘢,**Finding C 確認需要做先有準確 label**。
+2. **Per-image section 喺 ingest 時已正確知道**(post-BUG-017 8/8 對)—— 圖 394 確實屬 §8.4。問題係呢個正確 section **冇 propagate 落 `ImageRef`**;neighbour-attach 時(`attach_neighbour_images`)gallery / inline card 用嘅係 **citing citation 嘅 chunk_title**,而非圖自己嘅 section。
+
+**Finding C 候選 fix 方向**(待 user 決策):
+- **(C-i) 增強 parser caption 抽取** —— detect「Figure N: …」caption 段落(image 鄰近 body text)填入 `alt_text`。Parser 工作 + re-ingest。畀到真 caption。
+- **(C-ii) Propagate 圖自己 section 落 `ImageRef`** —— 加 field(如 `section_path` / `source_section`)到 `ImageRef`(architecture.md §4.5)+ `embedded_images_json`(§3.6 index field)+ ingest 填;label fallback 用圖自己 section 而非 citing chunk。Schema + ingest + re-ingest 工作;`embedded_images_json` 屬 §3.6 index field → storage-layout-adjacent,需評估 H1 邊界 + re-ingest 全 KB。
+- **(C-iii) Defer** —— dedup(Finding A)已解主問題;per-image label 準確度排獨立較大 task / W43+。
+
 ## 7. Acceptance for Fix(checklist preview)
 
 **Finding A(dedup,本 bug 主修)**:
@@ -124,6 +148,9 @@ InlineImageCard `title = image.alt_text || citation.chunk_title`(`page.tsx:1660`
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-05-30 | Initial triage(Sev3)+ 3-finding root cause code-trace(A dedup 真 bug / B gallery label mockup-faithful / C per-image caption ingest 深度) | W42 post-closeout UI demo session user-report 圖重覆 + 標題不準 | AI self-triage,待 Chris chat-confirm |
+| 2026-05-30 | Finding A dedup 實作 + commit `cb5ed75`(commit 落 main per user) | dedup 主問題,contained frontend fix | Chris(chat AskUserQuestion)|
+| 2026-05-30 | Finding C 驗證(user pick (a))—— 8/8 圖 alt_text 全空 + section 8/8 正確;結論 Finding C 真需 ingest 工作 | 「先驗證 alt_text 實際內容」 | Chris(chat)|
+| 2026-05-30 | Finding C fix = **C-ii** propagate `source_section` 落 ImageRef;backend+frontend cross-layer 實作 + 10 NEW tests;H1 邊界評估無 trigger | user pick C-ii;label fallback 落圖自己 section 而非 citing chunk | Chris(chat AskUserQuestion)|
 
 ---
 

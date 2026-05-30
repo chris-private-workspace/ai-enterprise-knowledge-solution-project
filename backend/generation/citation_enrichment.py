@@ -41,6 +41,11 @@ def parse_embedded_images(json_str: str) -> list[ImageRef]:
     for item in data:
         if not isinstance(item, dict):
             continue
+        # BUG-026 C-ii — image's own section (list[str]); defensive coerce.
+        section_raw = item.get("source_section")
+        source_section = (
+            [str(s) for s in section_raw] if isinstance(section_raw, list) else []
+        )
         try:
             images.append(
                 ImageRef(
@@ -49,6 +54,7 @@ def parse_embedded_images(json_str: str) -> list[ImageRef]:
                     checksum_sha256=str(item.get("checksum_sha256", "") or ""),
                     width=int(item.get("width", 0) or 0),
                     height=int(item.get("height", 0) or 0),
+                    source_section=source_section,
                 )
             )
         except (TypeError, ValueError):

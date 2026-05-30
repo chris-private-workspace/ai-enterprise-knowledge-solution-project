@@ -189,6 +189,11 @@ class IngestionOrchestrator:
                         blob_url=sha_to_url[sha],
                         alt_text=sha_to_alt.get(sha, ""),
                         checksum_sha256=sha,
+                        # BUG-026 C-ii — stamp the image with its owning chunk's
+                        # section (parser-correct post-BUG-017) so a neighbour-
+                        # attach later surfaces the image's TRUE section, not the
+                        # citing intro/meta chunk's.
+                        source_section=list(spec.section_path),
                     ),
                 )
 

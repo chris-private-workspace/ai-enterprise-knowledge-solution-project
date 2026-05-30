@@ -11,6 +11,11 @@ class ImageRef(BaseModel):
     checksum_sha256: str
     width: int
     height: int
+    # BUG-026 C-ii — the section the image visually belongs to (propagated from
+    # the owning chunk at ingest). Lets the chat label show the image's OWN
+    # section even when a neighbour-attach surfaces it under an intro/meta
+    # citation. Default [] for images indexed before C-ii.
+    source_section: list[str] = Field(default_factory=list)
 
 
 class ChunkPreview(BaseModel):
