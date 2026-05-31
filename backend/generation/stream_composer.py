@@ -45,9 +45,17 @@ async def compose_query_stream(
             continue
 
         if event.get("type") == "result":
+            # BUG-028 ① — include the W32 engine-fetched expanded neighbour chunks
+            # in the build_citations pool (parallel to /query's W32 F1.8 fix at
+            # query.py:`final_chunks + expanded_neighbor_chunks`). Without them the
+            # post-hoc citation_expansion ids beyond the top-K reranked set are
+            # dropped by build_citations' Rule 5「hallucinated」filter, so the
+            # stream surfaced only the top-K-resident citation (e.g. 1 §8 intro)
+            # while non-stream /query returned the full §8.1-§8.6 set.
+            expanded_neighbours = event.get("expanded_neighbor_chunks") or []
             citations = build_citations(
                 event.get("citation_ids") or [],
-                retrieval_result.chunks,
+                list(retrieval_result.chunks) + list(expanded_neighbours),
             )
             if citation_post_process is not None:
                 citations = await citation_post_process(citations)
@@ -60,6 +68,13 @@ async def compose_query_stream(
             yield {
                 "type": "done",
                 "model": deployment,
+                # BUG-028 ② — carry the post-hoc-expanded answer. The text-delta
+                # frames already streamed the raw LLM answer (whose [chunk-N]
+                # markers stop at the model's original cites); this is the
+                # canonical final text with citation_expansion's added markers, so
+                # the client can replace the streamed content to match non-stream
+                # /query (answer markers ↔ Sources-panel parity).
+                "answer": event.get("answer", ""),
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
                 "cost": estimate_query_cost(deployment, input_tokens, output_tokens),

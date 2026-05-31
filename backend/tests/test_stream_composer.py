@@ -174,3 +174,55 @@ async def test_compose_done_cost_is_null_for_unmapped_deployment() -> None:
     done = out[-1]
     assert done["type"] == "done"
     assert done["cost"] is None  # no _PRICING_TABLE row → cost unavailable, not $0
+
+
+@pytest.mark.asyncio
+async def test_compose_resolves_expanded_neighbour_chunks_as_citations() -> None:
+    """BUG-028 ① — citation_ids beyond the top-K reranked set resolve against the
+    result event's `expanded_neighbor_chunks` (W32 F1.8 parity with /query), so
+    post-hoc citation_expansion section siblings are NOT dropped as hallucinated.
+    """
+    top_k = [_chunk("intro")]  # only the §8 intro is in the reranked top-K
+    expanded = [_chunk("s1"), _chunk("s2")]  # §8.1/§8.2 fetched by citation_expansion
+    synth = _async_iter([
+        {
+            "type": "result",
+            "answer": "[chunk-intro][chunk-s1][chunk-s2]",
+            "citation_ids": ["intro", "s1", "s2"],
+            "refused": False,
+            "input_tokens": 1, "output_tokens": 1, "latency_ms": 1,
+            "deployment": "gpt-5-5",
+            "expanded_neighbor_chunks": expanded,
+        },
+    ])
+
+    out = [e async for e in compose_query_stream(_result(top_k), synth)]
+
+    cit_ids = [e["citation"]["chunk_id"] for e in out if e["type"] == "citation"]
+    # All three resolve — without ① only "intro" (top-K-resident) would survive.
+    assert cit_ids == ["intro", "s1", "s2"]
+
+
+@pytest.mark.asyncio
+async def test_compose_done_carries_expanded_answer() -> None:
+    """BUG-028 ② — the done frame carries the post-hoc-expanded answer so the
+    client can replace the streamed raw text (answer ↔ Sources-panel parity).
+    """
+    chunks = [_chunk("c1")]
+    synth = _async_iter([
+        {"type": "text-delta", "content": "raw [chunk-c1]"},
+        {
+            "type": "result",
+            "answer": "raw [chunk-c1][chunk-c2]",  # citation_expansion added [chunk-c2]
+            "citation_ids": ["c1"],
+            "refused": False,
+            "input_tokens": 0, "output_tokens": 0, "latency_ms": 1,
+            "deployment": "gpt-5-5",
+        },
+    ])
+
+    out = [e async for e in compose_query_stream(_result(chunks), synth)]
+
+    done = out[-1]
+    assert done["type"] == "done"
+    assert done["answer"] == "raw [chunk-c1][chunk-c2]"

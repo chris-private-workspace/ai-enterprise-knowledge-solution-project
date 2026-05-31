@@ -400,8 +400,17 @@ export default function ChatPage() {
             citations: [...m.citations, evt.citation],
           }));
         } else if (evt.type === 'done') {
+          // BUG-028 ② — replace the streamed raw text with the post-hoc-expanded
+          // answer. citation_expansion adds the extra `[chunk-N]` markers AFTER
+          // the text-delta frames already streamed the LLM's original cites, so
+          // the streamed content under-cites vs the Sources panel; swapping to
+          // the expanded answer on done restores answer↔source parity (matches
+          // non-stream /query). Falls back to streamed content when the backend
+          // omits `answer` (pre-BUG-028).
+          if (evt.answer) finalContent = evt.answer;
           patchAssistant(assistantId, (m) => ({
             ...m,
+            content: evt.answer || m.content,
             isStreaming: false,
             refused: evt.refused,
             model: evt.model,

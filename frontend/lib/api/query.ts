@@ -82,6 +82,12 @@ export interface DoneEvent {
   latency_ms: number;
   refused: boolean;
   reranker_used: string;
+  /** BUG-028 ② — the post-hoc-expanded final answer. citation_expansion adds
+   *  `[chunk-N]` markers AFTER the text-delta frames already streamed the raw
+   *  LLM answer, so the client replaces the streamed content with this on done
+   *  to match non-stream /query (answer markers ↔ Sources-panel parity).
+   *  Optional: absent on a pre-BUG-028 backend → keep the streamed content. */
+  answer?: string;
 }
 
 export type SseEvent = TextDeltaEvent | CitationEvent | DoneEvent;
