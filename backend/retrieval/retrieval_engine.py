@@ -95,6 +95,19 @@ class RetrievalEngine:
         # (default) preserves W38 baseline behavior.
         self._reranker_overfetch_multiplier = reranker_overfetch_multiplier
 
+    @property
+    def reranker(self) -> Reranker | None:
+        """Read-only handle to the configured reranker (``None`` = hybrid-only).
+
+        The engine stores it privately as ``self._reranker``; this public
+        accessor exists so ``/health._check_cohere`` (and any caller) can probe
+        "is a reranker wired?" without reaching into a private attr. Without it,
+        ``getattr(engine, "reranker", None)`` silently fell through to ``None``
+        and a live Cohere reranker was misreported ``not_configured`` (BUG-029;
+        cosmetic, surfaced W26 D1 + W27 D2 before being fixed here).
+        """
+        return self._reranker
+
     @observe_async(
         name="retrieval.retrieve",
         capture_attrs=(

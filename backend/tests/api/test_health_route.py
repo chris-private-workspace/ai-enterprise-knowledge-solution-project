@@ -159,6 +159,43 @@ def test_health_cohere_not_configured(monkeypatch: pytest.MonkeyPatch) -> None:
     assert body["components"]["cohere"]["status"] == "not_configured"
 
 
+def test_health_cohere_ok_with_real_retrieval_engine(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """BUG-029 regression — a REAL ``RetrievalEngine`` (not a MagicMock) with a
+    wired reranker must report cohere ``ok``.
+
+    The other cohere tests set ``engine.reranker`` on a MagicMock, which masked
+    the production drift: the engine stores the reranker as the private
+    ``self._reranker``, so ``getattr(engine, "reranker")`` in ``_check_cohere``
+    fell through to ``None`` and a live Cohere reranker was misreported
+    ``not_configured``. Building the actual engine exercises the public
+    ``reranker`` property (the fix). embedder/searcher are MagicMocks because the
+    health probe never calls them."""
+    from retrieval.retrieval_engine import RetrievalEngine
+
+    sentinel_reranker = object()
+    engine = RetrievalEngine(
+        embedder=MagicMock(name="Embedder"),  # type: ignore[arg-type]
+        searcher=MagicMock(name="HybridSearcher"),  # type: ignore[arg-type]
+        reranker=sentinel_reranker,  # type: ignore[arg-type]
+    )
+    # The public property must expose the privately-stored reranker.
+    assert engine.reranker is sentinel_reranker
+
+    monkeypatch.setattr(
+        health_routes, "get_langfuse_client", lambda: MagicMock()
+    )
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test/test")
+
+    app = _build_app(retrieval_engine=engine, embedder=MagicMock())
+    client = TestClient(app)
+
+    body = client.get("/health").json()
+    assert body["status"] == "ok"
+    assert body["components"]["cohere"]["status"] == "ok"
+
+
 def test_health_postgres_not_configured(monkeypatch: pytest.MonkeyPatch) -> None:
     """No DATABASE_URL → in-memory fallback per ADR-0023 → postgres `not_configured` (not `degraded`)."""
     engine = MagicMock(name="RetrievalEngine")
