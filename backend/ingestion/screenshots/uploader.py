@@ -138,16 +138,35 @@ class ScreenshotUploader:
         # if a race created the blob in between, prefer the earlier write.
         from azure.storage.blob import ContentSettings  # sync import OK; data class only
 
-        await blob_client.upload_blob(
-            record.image_bytes,
-            overwrite=False,
-            content_settings=ContentSettings(content_type=record.content_type),
-            metadata={
-                "sha256": record.sha256,
-                "kb_id": record.kb_id,
-                "alt_text_present": "true" if record.alt_text else "false",
-            },
-        )
+        try:
+            await blob_client.upload_blob(
+                record.image_bytes,
+                overwrite=False,
+                content_settings=ContentSettings(content_type=record.content_type),
+                metadata={
+                    "sha256": record.sha256,
+                    "kb_id": record.kb_id,
+                    "alt_text_present": "true" if record.alt_text else "false",
+                },
+            )
+        except ResourceExistsError:
+            # BUG-030 — a concurrent upload of the SAME sha256 (a duplicate image
+            # within one doc, or a cross-doc dedup race) created the blob between the
+            # get_blob_properties HEAD-check above and this write. Per the dedup
+            # semantic ("prefer the earlier write"), treat it as a dedup hit instead
+            # of letting the error bubble up and abort the whole upload_many batch.
+            logger.debug(
+                "screenshot_upload_race_dedup",
+                sha256=record.sha256,
+                blob_path=record.blob_path,
+                kb_id=record.kb_id,
+            )
+            return UploadResult(
+                sha256=record.sha256,
+                blob_url=blob_client.url,
+                deduped=True,
+                bytes_uploaded=0,
+            )
         bytes_count = len(record.image_bytes)
         logger.info(
             "screenshot_uploaded",
@@ -163,11 +182,42 @@ class ScreenshotUploader:
             bytes_uploaded=bytes_count,
         )
 
-    async def upload_many(self, records: list[ScreenshotRecord]) -> list[UploadResult]:
-        """Upload a batch of records concurrently (preserves caller order in result)."""
+    async def upload_many(
+        self,
+        records: list[ScreenshotRecord],
+        *,
+        max_concurrency: int = 8,
+    ) -> list[UploadResult | None]:
+        """Upload a batch with bounded concurrency, preserving caller order.
+
+        BUG-030: an image-heavy doc (e.g. 250+ embedded figures, many of them
+        duplicate logos / UI frames sharing one sha256) must not (a) open hundreds
+        of simultaneous Azurite connections, nor (b) let a single record's failure
+        abort the whole batch. Concurrency is capped at `max_concurrency`; each
+        record is isolated — one that still raises after the upload-level retries
+        maps to `None` at its index (and is logged) rather than propagating. Image
+        upload is best-effort per the orchestrator contract, so partial success is
+        preferred over all-or-nothing. Result length + order always match `records`.
+        """
         import asyncio
 
-        return await asyncio.gather(*(self.upload(r) for r in records))
+        sem = asyncio.Semaphore(max_concurrency)
+
+        async def _bounded(rec: ScreenshotRecord) -> UploadResult | None:
+            async with sem:
+                try:
+                    return await self.upload(rec)
+                except Exception as exc:  # noqa: BLE001 — per-image best-effort isolation
+                    logger.warning(
+                        "screenshot_upload_failed",
+                        sha256=rec.sha256,
+                        blob_path=rec.blob_path,
+                        kb_id=rec.kb_id,
+                        error=f"{type(exc).__name__}: {exc}",
+                    )
+                    return None
+
+        return await asyncio.gather(*(_bounded(r) for r in records))
 
 
 async def download_screenshot(

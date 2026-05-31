@@ -130,10 +130,12 @@ class IngestionOrchestrator:
         images_deduped = 0
         if self._uploader is not None and screenshot_records:
             try:
-                upload_results: list[UploadResult] = await self._uploader.upload_many(
+                upload_results: list[UploadResult | None] = await self._uploader.upload_many(
                     screenshot_records,
                 )
                 for rec, ur in zip(screenshot_records, upload_results, strict=True):
+                    if ur is None:
+                        continue  # BUG-030 — per-image upload failed (logged in uploader); best-effort skip
                     sha_to_url[rec.sha256] = ur.blob_url
                     sha_to_alt[rec.sha256] = rec.alt_text
                     if ur.deduped:

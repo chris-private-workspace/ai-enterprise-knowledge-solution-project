@@ -200,9 +200,66 @@ async def test_uploader_upload_many_preserves_order() -> None:
             results = await up.upload_many(records)
 
     assert len(results) == 2
-    assert all(r.deduped is False for r in results)
-    assert results[0].sha256 == "a" * 64
-    assert results[1].sha256 == "b" * 64
+    assert all(r is not None and r.deduped is False for r in results)
+    assert results[0] is not None and results[0].sha256 == "a" * 64
+    assert results[1] is not None and results[1].sha256 == "b" * 64
+
+
+@pytest.mark.asyncio
+async def test_uploader_race_resource_exists_treated_as_dedup() -> None:
+    """BUG-030: a concurrent same-sha upload that loses the race (blob created between
+    the get_blob_properties HEAD-check and the write) raises ResourceExistsError on
+    upload_blob. It MUST be caught + treated as a dedup hit, not propagated — else it
+    would abort the whole upload_many gather batch (root cause of 253 imgs -> 0)."""
+    record = _make_record()
+
+    mock_blob_client = AsyncMock()
+    mock_blob_client.get_blob_properties.side_effect = ResourceNotFoundError("miss")  # HEAD-check miss
+    mock_blob_client.upload_blob.side_effect = ResourceExistsError("blob already exists")  # race on write
+    mock_blob_client.url = "http://127.0.0.1:10000/dev/screenshots/abc.png"
+
+    mock_service_client = AsyncMock()
+    mock_service_client.get_blob_client = MagicMock(return_value=mock_blob_client)
+    mock_service_client.create_container.side_effect = ResourceExistsError("exists")
+
+    with patch(
+        "ingestion.screenshots.uploader.BlobServiceClient.from_connection_string",
+        return_value=mock_service_client,
+    ):
+        async with ScreenshotUploader("conn-str", "container") as up:
+            result = await up.upload(record)  # must NOT raise
+
+    assert result.deduped is True  # race resolved as dedup, not an error
+    assert result.bytes_uploaded == 0
+
+
+@pytest.mark.asyncio
+async def test_upload_many_isolates_per_record_failure() -> None:
+    """BUG-030: upload_many isolates per-record failures — a record that still raises
+    after retries maps to None at its index; the batch is NOT aborted (best-effort)."""
+    records = [
+        _make_record_with_kb("kb1"),
+        _make_record_with_kb("kb2"),
+        _make_record_with_kb("kb3"),
+    ]
+    ok = UploadResult(sha256="s", blob_url="u", deduped=False, bytes_uploaded=10)
+
+    async def fake_upload(self: ScreenshotUploader, rec: ScreenshotRecord) -> UploadResult:
+        if rec.kb_id == "kb2":
+            raise RuntimeError("simulated azurite error")
+        return ok
+
+    with patch.object(ScreenshotUploader, "upload", new=fake_upload), patch(
+        "ingestion.screenshots.uploader.BlobServiceClient.from_connection_string",
+        return_value=AsyncMock(),
+    ):
+        async with ScreenshotUploader("conn-str", "container") as up:
+            results = await up.upload_many(records)
+
+    assert len(results) == 3
+    assert results[0] is ok
+    assert results[1] is None  # failed record isolated to None, batch not aborted
+    assert results[2] is ok
 
 
 def test_screenshotrecord_is_frozen_dataclass() -> None:
