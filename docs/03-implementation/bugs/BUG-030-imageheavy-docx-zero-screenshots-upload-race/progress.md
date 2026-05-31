@@ -32,7 +32,7 @@ status: fix-verified
   - cleared the KB's screenshot container (223 stale blobs) → reindex #2 clean → **`images_uploaded=223 deduped=30`** (0 fail).
   - **KB `total_screenshots` 0 → 223**.
   - chat `/query` "how to manage AR invoices" → 23 citations, **7 carry `embedded_images` (136 imgs total)**, each with `blob_url` + correct `source_section` (e.g. "2 AR01. Payment Collection > 2.1.3 …"). **Images fully extracted + chat-visible.**
-  - Note: `GET /kb/{id}/images` admin aggregation returns empty — separate pre-existing admin-view issue (per memory), does NOT affect chat.
+  - Note: `GET /kb/{id}/images` admin aggregation returned empty *at the moment of that check* — **CORRECTED post-closeout 2026-05-31**: this was NOT a separate admin-view bug, it was THIS bug's own downstream shadow (0 screenshots → `embedded_images_json` all `[]` → nothing to aggregate). After the fix + reindex (223 screenshots) the endpoint works: live `GET /kb/test-kb-20260531-v1/images` → `total=221`, proxy serves PNG (200, 5071 bytes), Playwright `?tab=images` renders 200 decoded `<img>`. No admin code change needed.
 
 ### Commits
 | Hash | Subject |
