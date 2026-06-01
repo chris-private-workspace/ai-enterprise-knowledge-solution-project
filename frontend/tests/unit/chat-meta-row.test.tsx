@@ -319,6 +319,85 @@ describe('Chat assistant meta row + ImageGallery (BUG-007)', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('BUG-031 (B) — groups consecutive citation markers into one spaced wrapper (no "123" run-together)', async () => {
+    streamQuery.mockImplementation(() =>
+      (async function* () {
+        // Three ADJACENT markers (no text between) — the citation_expansion shape
+        // that rendered as "123" run-together pre-fix.
+        yield {
+          type: 'text-delta',
+          content: 'See [chunk-chunk-1][chunk-chunk-2][chunk-chunk-3] here.',
+        };
+        yield { type: 'citation', citation: citation(1, false) };
+        yield { type: 'citation', citation: citation(2, false) };
+        yield { type: 'citation', citation: citation(3, false) };
+        yield {
+          type: 'done',
+          model: 'gpt-5.5',
+          input_tokens: 1,
+          output_tokens: 1,
+          cost: 0.001,
+          latency_ms: 1000,
+          refused: false,
+          reranker_used: 'cohere-v4.0-pro',
+        };
+      })(),
+    );
+
+    const { container } = renderChat();
+    await sendQuery();
+
+    await waitFor(() => expect(screen.getByText(/See/)).toBeInTheDocument());
+    // The fix wraps the consecutive pills in a single inline-flex group with
+    // gap:2 + marginLeft:3 (mockup ekp-page-chat.jsx:519). Pre-fix the pills were
+    // bare adjacent spans with no separator. Assert exactly one such group wrapper
+    // exists and holds the three pill numbers.
+    const groupWrappers = Array.from(container.querySelectorAll('span')).filter(
+      (s) => s.style.display === 'inline-flex' && s.style.gap === '2px',
+    );
+    expect(groupWrappers).toHaveLength(1);
+    expect(groupWrappers[0]!.style.marginLeft).toBe('3px');
+    expect(groupWrappers[0]!.textContent).toBe('123');
+  });
+
+  it('BUG-031 (A) — caps inline cards + gallery to 8 images; badge shows true total; View all links to images tab', async () => {
+    streamQuery.mockImplementation(() =>
+      (async function* () {
+        yield { type: 'text-delta', content: 'Answer with many images.' };
+        // 10 distinct image-bearing citations (unique checksum each → 10 unique).
+        for (let i = 1; i <= 10; i++) {
+          yield { type: 'citation', citation: citation(i, true) };
+        }
+        yield {
+          type: 'done',
+          model: 'gpt-5.5',
+          input_tokens: 1,
+          output_tokens: 1,
+          cost: 0.001,
+          latency_ms: 2000,
+          refused: false,
+          reranker_used: 'cohere-v4.0-pro',
+        };
+      })(),
+    );
+
+    renderChat();
+    await sendQuery();
+
+    await waitFor(() =>
+      expect(screen.getByText('Referenced screenshots')).toBeInTheDocument(),
+    );
+    // Cap = 8 → 8 inline cards + 8 gallery thumbnails = 16 imgs (NOT 20).
+    expect(screen.getAllByRole('img')).toHaveLength(16);
+    // Gallery badge keeps the TRUE total (10), not the capped 8.
+    const badge = document.querySelector('.badge.badge-muted');
+    expect(badge?.textContent).toBe('10');
+    // "View all in Image Library →" is wired to the KB images tab so the
+    // overflow (imgs 9-10) stays reachable.
+    const viewAll = screen.getByRole('link', { name: /view all in image library/i });
+    expect(viewAll).toHaveAttribute('href', '/kb/drive-user-manual-1?tab=images');
+  });
+
   it('renders the sources-panel toggle in the header', async () => {
     // ChatHeader shows the BookOpen sources-panel toggle in sidebar mode (the
     // mockup default). BUG-007 amendment — a stale `ekp-citation-mode`

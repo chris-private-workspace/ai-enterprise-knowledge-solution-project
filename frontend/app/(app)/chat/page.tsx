@@ -509,6 +509,7 @@ export default function ChatPage() {
         <ChatThread
           messages={messages}
           citationMode={citationMode}
+          kbId={kbId || activeKb?.kb_id || ''}
           onOpenScreenshot={(citation, image) => setModalImage({ citation, image })}
         />
 
@@ -983,10 +984,12 @@ function ChatHeader({
 function ChatThread({
   messages,
   citationMode,
+  kbId,
   onOpenScreenshot,
 }: {
   messages: Message[];
   citationMode: CitationMode;
+  kbId: string;
   onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
 }) {
   const threadRef = useRef<HTMLDivElement | null>(null);
@@ -1010,6 +1013,7 @@ function ChatThread({
               key={m.id}
               message={m}
               citationMode={citationMode}
+              kbId={kbId}
               onOpenScreenshot={onOpenScreenshot}
             />
           ))
@@ -1060,13 +1064,20 @@ function EmptyState() {
   );
 }
 
+// BUG-031 (A) — max images rendered inline (answer-body cards + gallery grid) per
+// assistant message. Overflow is reachable via "View all in Image Library →".
+// H7-deviation cap (mockup renders all) — user-approved 2026-06-01.
+const INLINE_IMAGE_CAP = 8;
+
 function MessageRow({
   message,
   citationMode,
+  kbId,
   onOpenScreenshot,
 }: {
   message: Message;
   citationMode: CitationMode;
+  kbId: string;
   onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
 }) {
   if (message.role === 'user') {
@@ -1098,6 +1109,14 @@ function MessageRow({
   // (a §X.1 figure that's both the §X.1 chunk's direct image AND the §X intro
   // chunk's neighbour-attached image) renders once, not once per citation.
   const dedupedImages = dedupeCitationImages(message.citations);
+  // BUG-031 (A) — H7-deviation display cap (user-approved 2026-06-01). Image-dense
+  // mega-chunks (one §x.y.z chunk can own 20-57 figures) × aggressive
+  // citation_expansion surface 20+ images for a NARROW query. The mockup
+  // (ekp-page-chat.jsx:621) renders all — its demo had ≤5 imgs and never flooded.
+  // Cap the inline answer-body cards + the gallery grid to the first N; the gallery
+  // badge keeps the TRUE total and the existing "View all in Image Library →"
+  // overflow button (wired to the KB images tab) carries images N+1.. .
+  const cappedImages = dedupedImages.slice(0, INLINE_IMAGE_CAP);
 
   return (
     <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
@@ -1218,7 +1237,7 @@ function MessageRow({
             attached image shared by 2+ citations renders once. ImageGallery
             below draws from the same deduped list as the collective fallback. */}
         {!message.isStreaming &&
-          dedupedImages.map(({ citation, image, citationIdx }, flatIdx) => (
+          cappedImages.map(({ citation, image, citationIdx }, flatIdx) => (
             <InlineImageCard
               key={`${citation.chunk_id}-${image.checksum_sha256 || image.blob_url}`}
               citation={citation}
@@ -1238,7 +1257,12 @@ function MessageRow({
             line 354-357 `>=2` gate intent (1-image = inline only) is the
             documented deviation per user UX expectation. */}
         {!message.isStreaming && dedupedImages.length >= 1 && (
-          <ImageGallery images={dedupedImages} onOpenScreenshot={onOpenScreenshot} />
+          <ImageGallery
+            images={cappedImages}
+            totalCount={dedupedImages.length}
+            kbId={kbId}
+            onOpenScreenshot={onOpenScreenshot}
+          />
         )}
 
         {/* Sources strip (default — non-sidebar modes show it inline) */}
@@ -1295,22 +1319,49 @@ function splitStringForPills(text: string, citations: Citation[], keyPrefix: str
   const parts: ReactNode[] = [];
   let lastIdx = 0;
   let match: RegExpExecArray | null;
+  // BUG-031 (B) — accumulate CONSECUTIVE pills (no text between them) into one
+  // group, flushed as a single inline-flex wrapper with `gap:2` + `marginLeft:3`
+  // (mockup ekp-page-chat.jsx:519 `CitationPill ids={[…]}`). Without this, the
+  // bare per-pill spans render back-to-back with no separator, so
+  // citation_expansion's run of markers reads as "1234567891011".
+  let group: ReactNode[] = [];
+  let groupStart = -1;
+  const flushGroup = () => {
+    if (group.length === 0) return;
+    parts.push(
+      <span
+        key={`${keyPrefix}-grp-${groupStart}`}
+        style={{ display: 'inline-flex', gap: 2, marginLeft: 3, position: 'relative' }}
+      >
+        {group}
+      </span>,
+    );
+    group = [];
+    groupStart = -1;
+  };
+
   CITATION_PLACEHOLDER_PATTERN.lastIndex = 0;
   while ((match = CITATION_PLACEHOLDER_PATTERN.exec(text)) !== null) {
     if (match.index > lastIdx) {
+      // literal text precedes this marker → the previous pill run ends here.
+      flushGroup();
       parts.push(text.slice(lastIdx, match.index));
     }
     const citIdx = parseInt(match[1]!, 10) - 1;
     const citation = citations[citIdx];
     if (citation) {
-      parts.push(
+      if (groupStart === -1) groupStart = match.index;
+      group.push(
         <CitationPill key={`${keyPrefix}-${match.index}`} citation={citation} idx={citIdx + 1} />,
       );
     } else {
+      // hallucinated id → keep the raw token as literal text (defensive).
+      flushGroup();
       parts.push(match[0]);
     }
     lastIdx = match.index + match[0].length;
   }
+  flushGroup();
   if (lastIdx < text.length) {
     parts.push(text.slice(lastIdx));
   }
@@ -1686,6 +1737,8 @@ function InlineImageCard({
 
 function ImageGallery({
   images,
+  totalCount,
+  kbId,
   onOpenScreenshot,
 }: {
   // BUG-026 Finding A — render the deduped unique-image list (one thumbnail per
@@ -1694,7 +1747,12 @@ function ImageGallery({
   // full-citations position (per BUG-024) — `dedupeCitationImages` computes
   // `citationIdx` as `idx+1` over `message.citations`, matching CitationPill /
   // SourcesStrip / ScreenshotModal numbering.
+  // BUG-031 (A) — `images` is the CAPPED list (≤ INLINE_IMAGE_CAP); `totalCount`
+  // is the true deduped total so the badge stays honest and "View all" surfaces
+  // when capped.
   images: DedupedCitationImage[];
+  totalCount: number;
+  kbId: string;
   onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
 }) {
   return (
@@ -1717,11 +1775,22 @@ function ImageGallery({
         >
           Referenced screenshots
         </span>
-        <span className="badge badge-muted">{images.length}</span>
+        {/* BUG-031 (A) — badge shows TRUE total (e.g. 24) even when the grid is
+            capped to INLINE_IMAGE_CAP, so the count stays honest. */}
+        <span className="badge badge-muted">{totalCount}</span>
         <div className="spacer" style={{ flex: 1 }} />
-        <button type="button" className="btn btn-ghost btn-xs">
-          View all in Image Library →
-        </button>
+        {/* BUG-031 (A) — wire the mockup's overflow affordance: when capped, link to
+            the KB images tab (the "Image Library") so images N+1.. stay reachable.
+            kbId may be '' before the KB list loads → fall back to a static button. */}
+        {kbId ? (
+          <Link href={`/kb/${kbId}?tab=images`} className="btn btn-ghost btn-xs">
+            View all in Image Library →
+          </Link>
+        ) : (
+          <button type="button" className="btn btn-ghost btn-xs">
+            View all in Image Library →
+          </button>
+        )}
       </div>
       <div
         style={{
