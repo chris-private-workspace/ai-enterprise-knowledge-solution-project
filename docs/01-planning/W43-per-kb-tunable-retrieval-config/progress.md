@@ -2,7 +2,7 @@
 phase: W43-per-kb-tunable-retrieval-config
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: draft       # draft | active | closed — flips active 只在 0.5 gate PASS 後
+status: active      # draft | active | closed — flipped active 2026-06-01 (0.5 gate PASS)
 ---
 
 # Phase W43 — Progress
@@ -46,8 +46,43 @@ status: draft       # draft | active | closed — flips active 只在 0.5 gate P
 
 ---
 
-_(Day 1+ 留待 0.5 gate PASS 後填 — 未過 gate 不開 F1 code。)_
+---
+
+## Day 1 — 2026-06-01: 0.5 gate PASS + F1 配置模型 + 解析(全 8 item 完成）
+
+**Gate**:Chris「三項都 confirm,開 F1」→ 0.5 F1 GATE **PASS**:
+- ✅ H1 boundary confirm(config 解析由全域降到 per-KB 優先序鏈,default-preserve)
+- ✅ ADR-0040 `Proposed → Accepted`(+ `docs/adr/README.md` row + scope = MVP runtime-only)
+- ✅ stakeholder scope 簽(Chris,architecture 擴張)
+- plan / checklist / progress frontmatter status `draft → active`
+
+### Done(F1 — 全 8 item)
+- **F1.1** `KbConfig`(`api/schemas/kb.py`)加 12 個 Optional runtime 旋鈕(`None` = inherit 全域;parent_doc ×4 + citation_expansion ×4 + neighbour ×3 + `max_images_per_answer`)
+- **F1.2** NEW `generation/effective_config.py` — `EffectiveConfig`(frozen dataclass)+ `PerQueryOverrides`(per-query seam)+ `resolve_effective_config(settings, kb_config, per_query)`(優先序 per-query > per-KB 非 None > 全域;global-only pass-through:`parent_doc_max_chunks_per_parent` / `parent_doc_fallback_to_doc_on_shallow` / `citation_neighbour_window`)
+- **F1.3** `query.py` `/query`:NEW `KbServiceDep` + `_resolve_effective_config`(graceful `KBNotFoundError` → 全域 default)+ parent_doc(L188)/ neighbour(L258)/ CRAG `refine` 全部改用 `effective.*`
+- **F1.4** `query.py` `/query/stream`(= chat UI 行嘅 path):同樣 entry 砌 `effective` + parent_doc / neighbour callback / `synthesize_stream` 全用 `effective`(移除 `stream_settings = get_settings()`)
+- **F1.5** `synthesizer.py` `synthesize` + `synthesize_stream` 加 `effective_config` kwarg → 餵 `expand_citations`(`None` fallback 全域);`citation_expansion.py` `settings` 參數由 `Settings` 改 structural Protocol `ExpansionConfig`(read-only `@property` → frozen `EffectiveConfig` + mutable `Settings` 都 satisfy)
+- **F1.6** `citation_enrichment.py` NEW `cap_images_per_answer`(鈍刀;`None` = 不限,production-preserve;cumulative cap across citations)+ `/query` + `/query/stream` 兩路 apply;對齊 BUG-031 前端 `INLINE_IMAGE_CAP=8`
+- **F1.7** 持久化 — 確認 Postgres backend 用 JSONB(`config.model_dump()` / `KbConfig(**row)`)→ 新欄位**自動序列化**、舊 row 缺 key **自動 fill None**(migration-default 自動,零 schema change);in-memory 整個 KbStatus 存 → 自動帶
+- **F1.8** tests:NEW `tests/test_effective_config.py`(resolver 優先序 / back-compat bit-identical / legacy dict migration / cap 4 case)+ `tests/test_query_per_kb_config.py`(route 整合 — per-KB True/False 雙向覆蓋全域,monkeypatch 控全域)
+
+### Decisions / OQ
+- **R3 implementation refinement(非 scope change)**:F1.3 除 plan §2 列明 wire point 外,**thread `effective_config` 落 `CragLoop.refine`**(CRAG re-synth 屬 `/query` happy path,留全域配置會反噬 AR 保守 G2)→ 記 plan §7 v1.2 changelog。預設 `None` byte-identical,現有 CRAG test(`AsyncMock`)不受影響。
+- OQ:本 phase **無 OQ 變更**。
+
+### 測試 / 檢查
+- targeted pytest:`test_effective_config` / `test_query_per_kb_config` / `test_observe_query_route` / `test_e1_e5_e12_smoke` / `test_crag` / `test_citation_expansion` / `test_synthesizer` / `test_citation_enrichment` → **92 passed**;query/kb/eval/api route 第二輪 → **111 passed, 10 skipped**
+- ⚠️ **1 個 pre-existing env-coupled 失敗**:`test_synthesizer::test_synthesize_invokes_engine_fetch_expansion_*` 期望 `0046`,得 `0044`。根因 = 真實 `.env` 有 `CITATION_EXPANSION_SECTION_PATH_PREFIX_DEPTH=1`(demo 調校值,code 預設 0)→ prefix filter reject 測試 neighbour(log 證 `section_path_prefix_depth=1`)。`git stash` 喺 pristine main 重現 = **非 F1 引入**;我對 synthesizer 嘅改動喺 `effective_config=None` 時 byte-identical 等同舊 `get_settings()`。屬測試 env-coupling 設計問題(W43 正正係解呢類全域耦合),非本 phase 修復範圍(Karpathy §1.3)
+- ruff:touched files **all passed**
+- mypy --strict:我嘅新模組(`effective_config.py` / `cap_images_per_answer` / `ExpansionConfig`)**0 error**;修正 1 個自引入 error(`EffectiveConfig` 不 satisfy plain-attr Protocol → 改 read-only `@property`)。codebase 本身有 **61 pre-existing --strict errors**(openai SDK overload / `getattr` Any / bare-`dict` annotation / `event_serializer` untyped-def)散落 21 file — 全部喺我**未改嘅行**,屬 baseline,Karpathy §1.3 不掃
+
+### Mini-checkpoint(F1 完成,F2 待開)
+- F2 平台試跑 harness 為下一步;**F3 仍 GATED on F2.6**(harness 信號可信 mini-gate)
+
+### Commits
+- `6c0ec73` — `feat(api): W43 F1 per-KB tunable retrieval/citation config (ADR-0040)`(code + 3 新 test file + 2 mock 更新)
+- `<docs commit>` — `docs(planning): W43 0.5 gate PASS + F1 closeout (ADR-0040 Accepted)`(本文件 + plan + checklist + ADR-0040 Accept + README）
 
 ---
 
-**End of W43 progress(Day 0 — F0 draft,GATED)**
+**End of W43 progress(Day 1 — F1 done,F2 next)**

@@ -1,10 +1,8 @@
 # ADR-0040: Per-KB Tunable Retrieval / Citation Config — Config-Scope Resolution Model
 
 **Date**: 2026-06-01
-**Status**: Proposed(pending Chris confirm + Accept + stakeholder scope sign-off — W43 F0 0.2/0.5 gate)
-**Approver**: _(Chris 技術 Lead — confirm 時填)_
-
-> **骨架 note**:本 ADR 為 W43 F0 起草(Proposed)。Decision / Alternatives 已落實質內容供 review;Accept 前任何欄位可調。F1 code GATED on 本 ADR Accept。
+**Status**: Accepted(W43 F0 0.5 gate PASS 2026-06-01 — Chris confirm H1 boundary + Accept + stakeholder scope「三項都 confirm,開 F1」)
+**Approver**: Chris(技術 Lead)
 
 ## Context
 

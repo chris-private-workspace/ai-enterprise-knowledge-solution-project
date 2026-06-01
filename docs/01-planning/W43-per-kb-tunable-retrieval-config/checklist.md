@@ -1,34 +1,34 @@
 ---
 phase: W43-per-kb-tunable-retrieval-config
 plan_ref: ./plan.md
-status: draft       # draft | active | closed — F1+ GATED on F0 0.5 STOP+ask (H1 confirm + ADR-0040 Accept + stakeholder scope)
-last_updated: 2026-06-01
+status: active      # draft | active | closed — F1+ UNLOCKED (0.5 gate PASS 2026-06-01)
+last_updated: 2026-06-02
 ---
 
 # Phase W43 — Checklist
 
 > Atomic checkbox(每 item ≤ 1–2 hour effort),鏡像 `plan.md` §6 + §2 F-phase。
 > AI tick 完成嘅 item;唔可以 tick 嘅 item 喺 `progress.md` Day-N entry 寫原因。
-> **F1+ 全部 GATED** — 喺 0.5 STOP+ask(H1 confirm + ADR-0040 Accept + stakeholder scope)之前,**唔可以 tick 任何 F1+ code item**。
+> **0.5 gate PASS 2026-06-01**(Chris confirm H1 + ADR-0040 Accept + scope「三項都 confirm,開 F1」)→ F1 解鎖。F3 仍 GATED on F2.6。
 
 ## F0 — 規劃 + ADR-0040 起草 + stakeholder scope gate
 
 - [x] 0.1 `plan.md`(v1.1 — initial draft + 2026-06-01 review amendments)
 - [x] 0.3 `docs/adr/0040-per-kb-tunable-retrieval-config-scope.md` DRAFT(Proposed)
 - [x] 0.4 `checklist.md`(本文件)+ `progress.md` Day 0
-- [ ] 0.2 **stakeholder scope 確認**(architecture 擴張,非 bugfix → owner 簽 scope)
-- [ ] **0.5 STOP+ask user confirm H1 boundary + ADR-0040 Accept + scope(F1 GATE)** ⛔
+- [x] 0.2 **stakeholder scope 確認**(architecture 擴張,非 bugfix → Chris 簽 scope = MVP runtime-only)
+- [x] **0.5 STOP+ask user confirm H1 boundary + ADR-0040 Accept + scope(F1 GATE)** ✅ PASS 2026-06-01
 
-## F1 — 配置模型 + 解析(GATED on 0.5)
+## F1 — 配置模型 + 解析 ✅(0.5 gate PASS)
 
-- [ ] F1.1 `KbConfig` 加 ~12 runtime 旋鈕 `Optional` 欄位(`None` = inherit 全域)
-- [ ] F1.2 `EffectiveConfig` resolver(per-query > per-KB > 全域 default）
-- [ ] F1.3 `/query` 路徑改用 resolved config(parent_doc + neighbour-images wire)
-- [ ] F1.4 `/chat` SSE stream 路徑改用 resolved config
-- [ ] F1.5 `synthesizer.py` `expand_citations`(sync + stream)收 resolved config(per §4 catch 2 — 唔係 query.py）
-- [ ] F1.6 `max_images_per_answer` cap apply(+ 同 BUG-031 `508f979` 前端 `INLINE_IMAGE_CAP=8` 對齊:後端 per-KB 為主、前端 fallback；pill-grouping 正交不動）
-- [ ] F1.7 storage 持久化(Postgres + in-memory)+ 既有 KB migration-default(ADR-0028 先例,`None` = 沿用全域,零 breaking）
-- [ ] F1.8 tests(resolver 優先序 / 三 wire point honor / back-compat bit-identical)+ ruff + mypy
+- [x] F1.1 `KbConfig` 加 12 runtime 旋鈕 `Optional` 欄位(`None` = inherit 全域)
+- [x] F1.2 `EffectiveConfig` resolver(per-query > per-KB > 全域 default;`generation/effective_config.py`)
+- [x] F1.3 `/query` 路徑改用 resolved config(parent_doc + neighbour-images wire + CRAG re-synth 一致)
+- [x] F1.4 `/chat` SSE stream(`/query/stream`)路徑改用 resolved config
+- [x] F1.5 `synthesizer.py` `expand_citations`(sync + stream)收 resolved config(per §4 catch 2 — Protocol `ExpansionConfig`)
+- [x] F1.6 `max_images_per_answer` cap apply(`cap_images_per_answer`;+ 同 BUG-031 `508f979` 前端 `INLINE_IMAGE_CAP=8` 對齊:後端 per-KB 為主、前端 fallback;pill-grouping 正交不動)
+- [x] F1.7 storage 持久化(Postgres JSONB + in-memory 自動帶新欄位)+ 既有 KB migration-default(ADR-0028 先例,`None` = 沿用全域,零 breaking)
+- [x] F1.8 tests(resolver 優先序 / 三 wire point honor / back-compat bit-identical)+ ruff + mypy
 
 ## F2 — 平台 full-pipeline 試跑 harness
 

@@ -4,7 +4,7 @@ name: "Per-KB Tunable Retrieval / Citation Config + On-Platform Test Loop (MVP �
 sprint_week: W43
 start_date: 2026-06-01
 end_date: 2026-06-12          # planned MVP window, may slip with §7 changelog
-status: draft                # draft | active | closed — F1 GATED on ADR-0040 Accept + stakeholder scope
+status: active               # draft | active | closed — 0.5 gate PASS 2026-06-01 (ADR-0040 Accepted + scope signed); F3 GATED on F2.6
 component_scope: KbConfig (C02 KB Manager schema + storage) + C04 Retrieval Engine (parent_doc wire) + C06/C07 Generation (citation_expansion + neighbour-image wire) + C08 API Gateway (query route refactor + NEW config-test endpoint) + frontend KB Settings tab
 adr_refs:
   - ADR-0040 (NEW DRAFT Proposed) — Per-KB config-scope resolution model (global default → per-KB override → per-query override); F0 起草,F1 之前需 user confirm H1 boundary + Accept + stakeholder scope (0.2)
@@ -160,18 +160,18 @@ related_carry_overs:
 - [x] 0.1 `docs/01-planning/W43-per-kb-tunable-retrieval-config/plan.md`(本文件)
 - [x] 0.3 `docs/adr/0040-per-kb-tunable-retrieval-config-scope.md` DRAFT(Proposed)
 - [x] 0.4 `checklist.md` + `progress.md` Day 0
-- [ ] 0.2 **stakeholder scope 確認**(architecture 擴張)
-- [ ] **0.5 STOP+ask user confirm H1 boundary + ADR-0040 Accept + scope(F1 GATE)**
+- [x] 0.2 **stakeholder scope 確認**(architecture 擴張 → Chris 簽 = MVP runtime-only)
+- [x] **0.5 STOP+ask user confirm H1 boundary + ADR-0040 Accept + scope(F1 GATE)** ✅ PASS 2026-06-01
 
-### F1 配置模型 + 解析(GATED)
-- [ ] F1.1 `KbConfig` 加 ~12 runtime 旋鈕 Optional 欄位
-- [ ] F1.2 `EffectiveConfig` resolver(per-query > per-KB > 全域)
-- [ ] F1.3 `/query` 路徑改用 resolved config
-- [ ] F1.4 `/chat` stream 路徑改用 resolved config
-- [ ] F1.5 `synthesizer.py` `expand_citations` 收 resolved config
-- [ ] F1.6 `max_images_per_answer` cap apply(+ 同 BUG-031 `508f979` 前端 `INLINE_IMAGE_CAP=8` 對齊:後端 per-KB 為主、前端 fallback)
-- [ ] F1.7 storage 持久化 + 既有 KB migration-default
-- [ ] F1.8 tests(resolver / 三 wire point honor / back-compat)+ ruff + mypy
+### F1 配置模型 + 解析 ✅(0.5 gate PASS)
+- [x] F1.1 `KbConfig` 加 12 runtime 旋鈕 Optional 欄位
+- [x] F1.2 `EffectiveConfig` resolver(per-query > per-KB > 全域;`generation/effective_config.py`)
+- [x] F1.3 `/query` 路徑改用 resolved config(+ CRAG re-synth 一致 — 見 §7 v1.2)
+- [x] F1.4 `/chat`(`/query/stream`)路徑改用 resolved config
+- [x] F1.5 `synthesizer.py` `expand_citations` 收 resolved config(Protocol `ExpansionConfig`)
+- [x] F1.6 `max_images_per_answer` cap apply(`cap_images_per_answer`;+ 同 BUG-031 `508f979` 前端 `INLINE_IMAGE_CAP=8` 對齊:後端 per-KB 為主、前端 fallback)
+- [x] F1.7 storage 持久化 + 既有 KB migration-default(Postgres JSONB + in-memory 自動帶新欄位)
+- [x] F1.8 tests(resolver / 三 wire point honor / back-compat)+ ruff + mypy
 
 ### F2 平台試跑 harness
 - [ ] F2.1 full-pipeline config-test 端點(draft config override)
@@ -204,6 +204,8 @@ related_carry_overs:
 |---|---|---|---|
 | 2026-06-01 | Plan v1.0 draft ship — F0 kickoff;MVP runtime-only scope(chunker / Fork B / per-doc / version history defer W44+);ADR-0040 起草 Proposed | 2026-06-01 AR 文件 smoke 揭全域配置 content-coupling + 證偽實驗(Fork A 確認 / 圖洪水 ingestion-bound)+ 用戶 foundational vision「per-KB user-tunable config + on-platform test-loop」 | _(pending Chris scope sign-off — 0.2)_ |
 | 2026-06-01 | Plan v1.1 — pre-Accept review amendments(3 點,draft 階段非 deviation):**(1)** §4 加 catch (7) eval-blindness keystone(RAGAs 對 presentation 失敗係盲嘅;可信信號 = RAGAs 文字軸 + presentation counters 軸)+ G5/F4.2 改雙軸 + eval set 須含 how-to query;**(2)** G2/F4.3 補答案質素判準令 AR 側與 DCE 側對稱(唔淨數 citation);**(3)** F1.6 + checklist + frontmatter 加 BUG-031(`508f979`)對齊(`max_images_per_answer` = 其後端 per-KB 版);**(4)** §2 加 **F2.6 harness 信號可信 mini-gate**(F3 GATED on it — counters 分得開 / RAGAs 印證盲點 / variance 唔蓋過差異)+ G3 + checklist 同步;**(5)** 4 處 KB id drift `test-kb-20260531-1` → `test-kb-20260531-v1` fix | 2026-06-01 chat review(本 session 用「RAGAs PASS 咗 flooding config」實證 + BUG-031 已 ship 揭重疊 + 「先驗證量度後 build UI」原則 + R6 KB-id precision)| _(F0 gate input,未改 status)_ |
+| 2026-06-01 | **0.5 gate PASS — status draft → active**;ADR-0040 Proposed → Accepted + README row + scope = MVP runtime-only(Chris「三項都 confirm,開 F1」)。F1 全做完(8 item)| Chris 三項 confirm(H1 boundary + ADR Accept + stakeholder scope)| Chris |
+| 2026-06-02 | **F1 implementation — 1 處 scope refinement(非 scope change,implementation-detail deviation per R3)**:F1.3 wire 除咗 plan §2 列明嘅 `query.py /query`(parent_doc L188 / neighbour L258)+ `/query/stream` + `synthesizer.expand_citations` 之外,**同時 thread `effective_config` 落 `CragLoop.refine`**(`generation/crag.py` parent_doc 段 + re-synth)。理由:CRAG re-synth 屬 `/query` happy path 一部分,若留全域配置而其餘行 per-KB,AR 保守 G2 會被 CRAG re-synth 用全域激進配置反噬 → 必須一致。預設 `effective_config=None` 時 byte-identical 舊行為(legacy caller / 全部現有 CRAG test 用 `AsyncMock` 不受影響)。同步:`expand_citations` `settings` 參數由具體 `Settings` 改 structural Protocol `ExpansionConfig`(令 `Settings` + `EffectiveConfig` 都 satisfy,mypy-clean)| F1 implementation Karpathy §1.3 surgical-consistency 考量 | Chris(post-hoc,implementation detail)|
 
 ---
 
