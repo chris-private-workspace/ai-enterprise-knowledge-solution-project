@@ -51,14 +51,35 @@ from __future__ import annotations
 
 import asyncio
 import re
-from typing import Any
+from typing import Any, Protocol
 
 import structlog
 
 from retrieval.retrieval_engine import RetrievalEngine, RetrievedChunk
-from storage.settings import Settings
 
 logger = structlog.get_logger(__name__)
+
+
+class ExpansionConfig(Protocol):
+    """Structural config read by `expand_citations`.
+
+    W43 (ADR-0040): typed as a Protocol rather than the concrete global `Settings`
+    so both `Settings` (global default, mutable attributes) and the per-request
+    `EffectiveConfig` (per-KB resolved, a frozen dataclass) satisfy it. Members are
+    declared as read-only `@property` so the frozen `EffectiveConfig` matches — a
+    plain `x: int` Protocol member would require a writable attribute and reject the
+    frozen dataclass. Resolution happens upstream at request entry; this module just
+    reads the four resolved knobs off whatever config it is handed.
+    """
+
+    @property
+    def enable_citation_post_hoc_expansion(self) -> bool: ...
+    @property
+    def citation_expansion_window(self) -> int: ...
+    @property
+    def citation_expansion_max_aux(self) -> int: ...
+    @property
+    def citation_expansion_section_path_prefix_depth(self) -> int: ...
 
 _CITATION_PATTERN = re.compile(r"\[chunk-([^\]\s]+)\]")
 _SECTION_NUMBER_PATTERN = re.compile(r"\b\d+\.\d+\b")
@@ -150,7 +171,7 @@ async def expand_citations(
     *,
     engine: RetrievalEngine,
     kb_id: str,
-    settings: Settings,
+    settings: ExpansionConfig,
 ) -> tuple[str, list[str], list[RetrievedChunk]]:
     """Auto-add neighbor chunk citations to answer_text via engine.list_chunks full-doc fetch。
 

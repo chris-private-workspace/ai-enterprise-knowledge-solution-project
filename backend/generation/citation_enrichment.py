@@ -107,3 +107,40 @@ def build_citations(
     if hallucinated_ids:
         logger.warning("citation_hallucinated_ids", ids=hallucinated_ids)
     return citations
+
+
+def cap_images_per_answer(
+    citations: list[Citation],
+    max_images: int | None,
+) -> list[Citation]:
+    """W43 F1.6 (ADR-0040 + BUG-031) — blunt per-answer image ceiling.
+
+    The BACKEND per-KB counterpart of the BUG-031 frontend `INLINE_IMAGE_CAP=8`.
+    `max_images=None` (default for KBs with no explicit per-KB config) → return
+    citations unchanged, leaving the frontend display cap as the only limiter.
+    When set, walk citations in order and trim each citation's `embedded_images`
+    so the cumulative total across the answer is at most `max_images` (closer-to-top
+    citations keep their images first; later citations are trimmed / emptied once the
+    budget is spent). Citations themselves are never dropped — only their image lists.
+
+    This is a payload-level ceiling, NOT a fix for the ingestion-bound image flood
+    (chunks that carry 25+ images); the root-cause chunker work is deferred to W44+
+    ADR-0041 per ADR-0040 Non-goals. Deliberately blunt per the ADR — no cross-citation
+    dedup here (the frontend dedups for display; this just bounds the response size).
+    """
+    if max_images is None or max_images < 0:
+        return citations  # None = no backend cap (production-preserve)
+
+    budget = max_images
+    capped: list[Citation] = []
+    for citation in citations:
+        if budget <= 0:
+            capped.append(citation.model_copy(update={"embedded_images": []}))
+            continue
+        kept = citation.embedded_images[:budget]
+        budget -= len(kept)
+        if len(kept) == len(citation.embedded_images):
+            capped.append(citation)  # untrimmed — preserve the original object
+        else:
+            capped.append(citation.model_copy(update={"embedded_images": kept}))
+    return capped

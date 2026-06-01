@@ -28,7 +28,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from generation.citation_expansion import expand_citations
+from generation.citation_expansion import ExpansionConfig, expand_citations
 from generation.prompt_builder import REFUSAL_PHRASE, build_prompt
 from observability.observe import observe_llm_async
 from retrieval.retrieval_engine import RetrievalEngine, RetrievedChunk
@@ -131,11 +131,16 @@ class Synthesizer:
         *,
         engine: RetrievalEngine | None = None,
         kb_id: str | None = None,
+        effective_config: ExpansionConfig | None = None,
     ) -> SynthesisResult:
         """W32 F1.1.a — `engine + kb_id` keyword-only optional params enable post-hoc
         citation expansion via async `engine.list_chunks` full-doc fetch (mirror W25 F5 D1
         attach_neighbour_images pattern); when either is None, expansion skipped (backward
         compat for legacy callers / tests per plan §2 F1.1.d).
+
+        W43 F1.5 (ADR-0040) — `effective_config` carries the per-KB-resolved citation
+        expansion knobs. When None (legacy callers / tests) the synthesizer falls back to
+        the global `get_settings()` so behaviour is unchanged.
         """
         assert self._client is not None, "use 'async with' to manage Synthesizer lifecycle"
 
@@ -180,7 +185,8 @@ class Synthesizer:
         if not refused and engine is not None and kb_id is not None:
             answer_text, citation_ids, expanded_neighbor_chunks = await expand_citations(
                 answer_text, citation_ids, chunks,
-                engine=engine, kb_id=kb_id, settings=get_settings(),
+                engine=engine, kb_id=kb_id,
+                settings=effective_config if effective_config is not None else get_settings(),
             )
         expand_citations_latency_ms = int((time.perf_counter() - expand_citations_start) * 1000)
 
@@ -224,6 +230,7 @@ class Synthesizer:
         *,
         engine: RetrievalEngine | None = None,
         kb_id: str | None = None,
+        effective_config: ExpansionConfig | None = None,
     ) -> AsyncIterator[dict]:
         """Stream chat.completions tokens; yield SSE events for stream_composer.
 
@@ -295,7 +302,8 @@ class Synthesizer:
         if not refused and engine is not None and kb_id is not None:
             accumulated, citation_ids, expanded_neighbor_chunks = await expand_citations(
                 accumulated, citation_ids, chunks,
-                engine=engine, kb_id=kb_id, settings=get_settings(),
+                engine=engine, kb_id=kb_id,
+                settings=effective_config if effective_config is not None else get_settings(),
             )
 
         logger.info(

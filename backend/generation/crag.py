@@ -40,6 +40,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from generation.effective_config import EffectiveConfig
 from generation.synthesizer import SynthesisResult, Synthesizer
 from observability.observe import observe_async, observe_llm_async
 from retrieval.retrieval_engine import RetrievalEngine, RetrievalResult, RetrievedChunk
@@ -298,11 +299,17 @@ class CragLoop:
         initial_result: RetrievalResult,
         initial_synth: SynthesisResult,
         kb_id: str,
+        effective_config: EffectiveConfig | None = None,
     ) -> CragOutcome:
         """Apply L2 correction if initial chunks insufficient; else return initial.
 
         kb_id required per ADR-0018 multi-KB invariant — re-retrieve via
         RetrievalEngine.retrieve() needs kb_id to scope per-KB index + filter.
+
+        W43 F1.3 (ADR-0040) — `effective_config` keeps the CRAG re-synthesis path
+        on the SAME per-KB-resolved config as the primary /query path (parent-doc +
+        citation-expansion knobs). When None (legacy callers / tests) the global
+        `get_settings()` is used, so behaviour is unchanged.
         """
         crag_start = time.perf_counter()
 
@@ -389,18 +396,19 @@ class CragLoop:
         # (parallel pattern to /query route happy path; flag-gated default OFF
         # per Q4). Graceful fallback keeps expanded_new_chunks intact on
         # exception so re-synthesis still runs with ADR-0020 expansion.
-        crag_settings = get_settings()
-        if crag_settings.enable_parent_doc_retrieval:
+        # W43 F1.3 — use the per-KB resolved config when provided, else global default.
+        parent_cfg = effective_config if effective_config is not None else get_settings()
+        if parent_cfg.enable_parent_doc_retrieval:
             try:
                 expanded_new_chunks, _new_parent_stats = (
                     await self._engine.aggregate_parent_sections_for_chunks(
                         expanded_new_chunks,
                         kb_id=kb_id,
-                        section_depth_offset=crag_settings.parent_doc_section_depth_offset,
-                        parent_doc_top_k=crag_settings.parent_doc_top_k,
-                        max_tokens_per_parent=crag_settings.parent_doc_max_tokens_per_parent,
-                        max_chunks_per_parent=crag_settings.parent_doc_max_chunks_per_parent,
-                        fallback_to_doc_on_shallow=crag_settings.parent_doc_fallback_to_doc_on_shallow,
+                        section_depth_offset=parent_cfg.parent_doc_section_depth_offset,
+                        parent_doc_top_k=parent_cfg.parent_doc_top_k,
+                        max_tokens_per_parent=parent_cfg.parent_doc_max_tokens_per_parent,
+                        max_chunks_per_parent=parent_cfg.parent_doc_max_chunks_per_parent,
+                        fallback_to_doc_on_shallow=parent_cfg.parent_doc_fallback_to_doc_on_shallow,
                     )
                 )
             except Exception as exc:  # noqa: BLE001 — graceful per ADR-0037
@@ -415,7 +423,7 @@ class CragLoop:
             # citation expansion per (h'). Backward compat: defaults None → expansion no-op.
             new_synth = await self._synthesizer.synthesize(
                 rewrite.rewritten_query, expanded_new_chunks,
-                engine=self._engine, kb_id=kb_id,
+                engine=self._engine, kb_id=kb_id, effective_config=effective_config,
             )
         except Exception as exc:  # noqa: BLE001
             errors.append(f"re-synthesize: {exc}")

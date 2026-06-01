@@ -43,6 +43,35 @@ class KbConfig(BaseModel):
     dedup_strategy: Literal["sha256", "none"] = "sha256"
     return_images_in_chat: bool = False
 
+    # W43 F1.1 — per-KB tunable retrieval / citation runtime knobs (per ADR-0040).
+    # These mirror the global `Settings` defaults that currently drive parent-doc
+    # retrieval (§3.1), post-hoc citation expansion (§3.7), and neighbour-image
+    # attach (ADR-0034). Every field is `Optional` with a `None` default meaning
+    # "inherit the global Settings value" — so an existing KB persisted before W43
+    # (whose JSONB config lacks these keys) reconstructs with all `None` and behaves
+    # bit-identical to today (zero breaking change, ADR-0028 migration-default
+    # precedent). `EffectiveConfig` (generation/effective_config.py) resolves the
+    # live value at request entry as per-query override > per-KB (this) > global.
+    #
+    # Image flood mitigation note (per ADR-0040 + BUG-031): `max_images_per_answer`
+    # is the BACKEND per-KB version of the BUG-031 frontend `INLINE_IMAGE_CAP=8`.
+    # `None` = no backend cap (frontend display cap handles flood); set a value to
+    # cap the total images returned across an answer's citations at the payload
+    # level. The two live in different layers — backend per-KB cap takes precedence,
+    # frontend cap is the fallback when this is `None`.
+    enable_parent_doc_retrieval: bool | None = None
+    parent_doc_section_depth_offset: int | None = None
+    parent_doc_top_k: int | None = None
+    parent_doc_max_tokens_per_parent: int | None = None
+    enable_citation_post_hoc_expansion: bool | None = None
+    citation_expansion_max_aux: int | None = None
+    citation_expansion_window: int | None = None
+    citation_expansion_section_path_prefix_depth: int | None = None
+    enable_citation_neighbour_images: bool | None = None
+    citation_neighbour_max_aux_images: int | None = None
+    citation_neighbour_section_path_prefix_depth: int | None = None
+    max_images_per_answer: int | None = None
+
 
 class KbCreate(BaseModel):
     """POST /kb input (per architecture.md §4.4 #5).

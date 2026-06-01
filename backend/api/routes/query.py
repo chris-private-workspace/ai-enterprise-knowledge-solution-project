@@ -13,27 +13,52 @@ for tests / local dev). SSE /query/stream remains 501 — F4 W3 D3 scope.
 
 import asyncio
 import json
+from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
 from api.routes.documents import screenshot_proxy_url
 from api.schemas.query import ChunkPreview, Citation, QueryRequest, QueryResponse
-from generation.citation_enrichment import build_citations
+from generation.citation_enrichment import build_citations, cap_images_per_answer
 from generation.citation_image_neighbors import attach_neighbour_images
 from generation.crag import CragLoop
+from generation.effective_config import EffectiveConfig, resolve_effective_config
 from generation.query_reformulator import QueryReformulator
 from generation.stream_composer import compose_query_stream
 from generation.synthesizer import Synthesizer
+from kb_management.service import KBService, get_kb_service
+from kb_management.storage import KBNotFoundError
 from observability.observe import observe_async, observe_streaming
 from retrieval.result_fusion import fused_retrieve
 from retrieval.retrieval_engine import RetrievalEngine, RetrievalResult
-from storage.settings import get_settings
+from storage.settings import Settings, get_settings
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter()
+
+KbServiceDep = Annotated[KBService, Depends(get_kb_service)]
+
+
+async def _resolve_effective_config(
+    service: KBService, settings: Settings, kb_id: str,
+) -> EffectiveConfig:
+    """W43 F1.3 (ADR-0040) — resolve the per-request retrieval / citation config.
+
+    Fetches the per-KB `KbConfig` and resolves it against the global `Settings`
+    (per-query > per-KB > global). A missing KB record (`KBNotFoundError` — e.g. a
+    query against an index that has no KB metadata row) falls back to the global
+    defaults, so the request behaves exactly as pre-W43 (G7 back-compat).
+    """
+    kb_config = None
+    try:
+        kb_status = await service.get(kb_id)
+        kb_config = kb_status.config
+    except KBNotFoundError:
+        kb_config = None  # global-default config for an unregistered KB
+    return resolve_effective_config(settings, kb_config)
 
 _W2_PLACEHOLDER_ANSWER = (
     "[W2 baseline: retrieval-only response; synthesis answer wired W3 per "
@@ -87,16 +112,23 @@ def _engine_or_503(request: Request) -> RetrievalEngine:
         "crag_iterations",
     ),
 )
-async def query(payload: QueryRequest, request: Request) -> QueryResponse:
+async def query(
+    payload: QueryRequest, request: Request, service: KbServiceDep,
+) -> QueryResponse:
     """Main RAG query — hybrid → (rerank) → synthesis → citations.
 
     W9 D4 F5.2 cont — top-level @observe_async wraps the orchestration;
     nested observe_llm_async on synthesizer/crag stages produce a single
     hierarchical Langfuse trace per request when client wired (W11+).
+
+    W43 F1.3 (ADR-0040) — per-KB tunable config is resolved at entry
+    (`effective`) and threaded through the parent-doc / citation-expansion /
+    neighbour-image / image-cap wire points so different KBs run different configs.
     """
     engine = _engine_or_503(request)
     synthesizer: Synthesizer | None = getattr(request.app.state, "synthesizer", None)
     settings = get_settings()
+    effective = await _resolve_effective_config(service, settings, payload.kb_id)
     reformulator: QueryReformulator | None = getattr(
         request.app.state, "query_reformulator", None,
     )
@@ -185,16 +217,16 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
     # (parent_section_text > expanded_text > chunk_text); top-2..top-K non-anchor chunks
     # pass through with expanded_text preserved. Graceful fallback on exception keeps
     # expanded_chunks intact (no degradation vs ADR-0020 baseline).
-    if settings.enable_parent_doc_retrieval:
+    if effective.enable_parent_doc_retrieval:
         try:
             expanded_chunks, _parent_stats = await engine.aggregate_parent_sections_for_chunks(
                 expanded_chunks,
                 kb_id=payload.kb_id,
-                section_depth_offset=settings.parent_doc_section_depth_offset,
-                parent_doc_top_k=settings.parent_doc_top_k,
-                max_tokens_per_parent=settings.parent_doc_max_tokens_per_parent,
-                max_chunks_per_parent=settings.parent_doc_max_chunks_per_parent,
-                fallback_to_doc_on_shallow=settings.parent_doc_fallback_to_doc_on_shallow,
+                section_depth_offset=effective.parent_doc_section_depth_offset,
+                parent_doc_top_k=effective.parent_doc_top_k,
+                max_tokens_per_parent=effective.parent_doc_max_tokens_per_parent,
+                max_chunks_per_parent=effective.parent_doc_max_chunks_per_parent,
+                fallback_to_doc_on_shallow=effective.parent_doc_fallback_to_doc_on_shallow,
             )
         except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0037
             logger.warning(
@@ -207,8 +239,10 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
         # W32 F1.4.a — pass engine + kb_id to enable engine-fetch citation expansion
         # per (h') single-axis ship. Backward compat: synthesize() defaults engine=None,
         # kb_id=None → expansion no-op.
+        # W43 F1.5 — effective_config carries the per-KB-resolved expansion knobs.
         synth = await synthesizer.synthesize(
-            payload.query, expanded_chunks, engine=engine, kb_id=payload.kb_id,
+            payload.query, expanded_chunks,
+            engine=engine, kb_id=payload.kb_id, effective_config=effective,
         )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
@@ -225,7 +259,9 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
     final_synth = synth
     final_chunks = result.chunks
     if crag_loop is not None and payload.enable_crag:
-        outcome = await crag_loop.refine(payload.query, result, synth, kb_id=payload.kb_id)
+        outcome = await crag_loop.refine(
+            payload.query, result, synth, kb_id=payload.kb_id, effective_config=effective,
+        )
         crag_triggered = outcome.triggered
         crag_iterations = outcome.iterations
         final_synth = outcome.synthesis
@@ -255,16 +291,16 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
     # chunks (§8.1-8.5) do, this surfaces those neighbour images on the
     # cited citation so the chat UI renders them. Default-on per Settings;
     # graceful fallback to original citations on exception.
-    if settings.enable_citation_neighbour_images:
+    if effective.enable_citation_neighbour_images:
         try:
             citations = await attach_neighbour_images(
                 citations,
                 kb_id=payload.kb_id,
                 engine=engine,
-                max_aux_per_citation=settings.citation_neighbour_max_aux_images,
-                neighbour_window=settings.citation_neighbour_window,
+                max_aux_per_citation=effective.citation_neighbour_max_aux_images,
+                neighbour_window=effective.citation_neighbour_window,
                 section_path_prefix_depth=(
-                    settings.citation_neighbour_section_path_prefix_depth
+                    effective.citation_neighbour_section_path_prefix_depth
                 ),
             )
         except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0034 §Consequences
@@ -273,6 +309,8 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
                 error=f"{type(exc).__name__}: {exc}",
             )
 
+    # W43 F1.6 — per-KB blunt image cap (None = no backend cap, frontend caps display).
+    citations = cap_images_per_answer(citations, effective.max_images_per_answer)
     citations = _proxy_citation_images(citations, request, payload.kb_id)
 
     return QueryResponse(
@@ -290,13 +328,18 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
 
 
 @router.post("/query/stream")
-async def query_stream(payload: QueryRequest, request: Request) -> StreamingResponse:
+async def query_stream(
+    payload: QueryRequest, request: Request, service: KbServiceDep,
+) -> StreamingResponse:
     """SSE streaming variant of /query (W3 D3 F4).
 
     Vercel AI SDK SSE protocol — `data: {json}\\n\\n` event frames:
         {"type":"text-delta","content":str}  during streaming
         {"type":"citation","citation":{...}}  one per cited chunk
         {"type":"done","model","cost","latency_ms","refused","reranker_used"}  final
+
+    W43 F1.4 (ADR-0040) — per-KB tunable config resolved at entry (`effective`)
+    and threaded through the same wire points as `/query`.
     """
     engine = _engine_or_503(request)
     synthesizer: Synthesizer | None = getattr(request.app.state, "synthesizer", None)
@@ -308,6 +351,8 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
                 "(Q4 dependency)."
             ),
         )
+
+    effective = await _resolve_effective_config(service, get_settings(), payload.kb_id)
 
     try:
         result = await engine.retrieve(
@@ -334,24 +379,20 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
         )
         expanded_chunks = result.chunks
 
-    # W25 F5 D1 / W26 F2 — settings used both by parent-doc gate below + by the
-    # neighbour-image augmentation callback further down (moved earlier here so
-    # the parent-doc block can read the flag without double-calling get_settings()).
-    stream_settings = get_settings()
-
     # ADR-0037 W26 F2: parent-document retrieval parallel to /query happy path
     # (flag-gated default OFF per Q4; graceful fallback on exception keeps
     # expanded_chunks intact — no degradation vs ADR-0020 baseline).
-    if stream_settings.enable_parent_doc_retrieval:
+    # W43 F1.4 — reads the per-request `effective` config (resolved at entry).
+    if effective.enable_parent_doc_retrieval:
         try:
             expanded_chunks, _parent_stats = await engine.aggregate_parent_sections_for_chunks(
                 expanded_chunks,
                 kb_id=payload.kb_id,
-                section_depth_offset=stream_settings.parent_doc_section_depth_offset,
-                parent_doc_top_k=stream_settings.parent_doc_top_k,
-                max_tokens_per_parent=stream_settings.parent_doc_max_tokens_per_parent,
-                max_chunks_per_parent=stream_settings.parent_doc_max_chunks_per_parent,
-                fallback_to_doc_on_shallow=stream_settings.parent_doc_fallback_to_doc_on_shallow,
+                section_depth_offset=effective.parent_doc_section_depth_offset,
+                parent_doc_top_k=effective.parent_doc_top_k,
+                max_tokens_per_parent=effective.parent_doc_max_tokens_per_parent,
+                max_chunks_per_parent=effective.parent_doc_max_chunks_per_parent,
+                fallback_to_doc_on_shallow=effective.parent_doc_fallback_to_doc_on_shallow,
             )
         except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0037
             logger.warning(
@@ -364,25 +405,27 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
     # Graceful fallback to original citations on exception per ADR-0034.
 
     async def _augment_stream_citations(citations: list[Citation]) -> list[Citation]:
-        if not stream_settings.enable_citation_neighbour_images:
-            return citations
-        try:
-            return await attach_neighbour_images(
-                citations,
-                kb_id=payload.kb_id,
-                engine=engine,
-                max_aux_per_citation=stream_settings.citation_neighbour_max_aux_images,
-                neighbour_window=stream_settings.citation_neighbour_window,
-                section_path_prefix_depth=(
-                    stream_settings.citation_neighbour_section_path_prefix_depth
-                ),
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "stream_neighbour_images_attach_failed_using_original",
-                error=f"{type(exc).__name__}: {exc}",
-            )
-            return citations
+        augmented = citations
+        if effective.enable_citation_neighbour_images:
+            try:
+                augmented = await attach_neighbour_images(
+                    citations,
+                    kb_id=payload.kb_id,
+                    engine=engine,
+                    max_aux_per_citation=effective.citation_neighbour_max_aux_images,
+                    neighbour_window=effective.citation_neighbour_window,
+                    section_path_prefix_depth=(
+                        effective.citation_neighbour_section_path_prefix_depth
+                    ),
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "stream_neighbour_images_attach_failed_using_original",
+                    error=f"{type(exc).__name__}: {exc}",
+                )
+                augmented = citations
+        # W43 F1.6 — per-KB blunt image cap (parallel to /query path).
+        return cap_images_per_answer(augmented, effective.max_images_per_answer)
 
     async def event_serializer():
         # W10 D1 F4.1 — observe_streaming wraps compose_query_stream so the
@@ -394,7 +437,8 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
             # W32 F1.4.b — pass engine + kb_id to enable engine-fetch citation expansion
             # in stream path (final `result` event carries expanded values).
             synth_stream = synthesizer.synthesize_stream(
-                payload.query, expanded_chunks, engine=engine, kb_id=payload.kb_id,
+                payload.query, expanded_chunks,
+                engine=engine, kb_id=payload.kb_id, effective_config=effective,
             )
             observed = observe_streaming(
                 compose_query_stream(

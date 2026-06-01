@@ -78,6 +78,7 @@ class _MockSynth:
         *,
         engine: object = None,  # W32 F1.1.a mock signature accept new kwargs (unused)
         kb_id: str | None = None,
+        effective_config: object = None,  # W43 F1.5 — per-KB resolved config (unused in mock)
     ) -> _SynthOutcome:
         return _SynthOutcome(
             answer=self._answer,
@@ -226,8 +227,10 @@ def test_query_route_signature_preserved_for_fastapi_depends() -> None:
 
     sig = inspect.signature(query_route.query)
     params = list(sig.parameters)
-    # Original signature: (payload: QueryRequest, request: Request)
-    assert params == ["payload", "request"], f"signature drift: {sig}"
+    # W43 F1.3 — signature gained `service: KbServiceDep` so the route can resolve
+    # the per-KB EffectiveConfig (ADR-0040). FastAPI introspection must still see
+    # all three params through the @observe_async __wrapped__ chain.
+    assert params == ["payload", "request", "service"], f"signature drift: {sig}"
 
 
 def test_query_route_traceback_not_leaked_on_engine_failure() -> None:
