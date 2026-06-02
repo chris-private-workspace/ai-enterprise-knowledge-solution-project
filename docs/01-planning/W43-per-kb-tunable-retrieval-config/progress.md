@@ -184,4 +184,31 @@ F3 兩個前端 surface 喺 `references/design-mockups/` **都冇對應 spec**:
 
 ---
 
-**End of W43 progress(Day 2 — F2 + F2.6 gate PASS + F3.1 mockup approved,F3.2/F3.3 frontend next)**
+## Day 2 — addendum 2026-06-02: F3.2/F3.3/F3.4/F3.5 frontend(100% 重現 mockup)
+
+### Done(frontend,受 H7)
+- **F3.2 配置面**:`frontend/app/(app)/kb/[id]/page.tsx` `SettingsTab` 喺 Retrieval config 與 footer 之間插 **Advanced retrieval tuning** card。`TUNE_GROUPS`(3 組 檢索/引用/圖片)+ `KbTuneGroup`(toggle + icon + 繼承/覆寫 badge + 還原全域 + 進階收合)+ `KbTuneKnob`(number input,null=inherit placeholder「繼承全域」,覆寫顯示值 + ↺ 還原全域)。
+- **F3.3 試跑面板**:`ConfigTestPanel`(問題 + 1-5 重跑 seg + A/B switch + 試跑;`ConfigResultCard`×2 草稿/已存 六格 metrics + variance band ±;`per_citation` breakdown 表)。NEW `frontend/lib/api/config-test.ts`(type 100% mirror `backend/api/schemas/config_test.py` + `configTestApi.run`)。
+- **F3.4 persist**:`buildConfigBody()` spread `kb.config` + top_k/rerank_k + 12 旋鈕 → 送**完整** KbConfig(後端 `update_kb_settings` 全量替換,omitted 重置;send 全量避免 wipe + 順帶修正既有 partial-save 潛在 wipe)。`configMutation` 改 `invalidateQueries`(settings 端點回 bare KbConfig 非 KbStatus,refetch 較安全)。兩 save 入口(Advanced footer submit + test-panel「把草稿配置儲存到此 KB」button)。Cancel + 還原全部至全域 同步。
+- **F3.5 tests**:NEW `tests/unit/kb-settings-tuning.test.tsx` 3 case(tuning card + 3 組 + 已覆寫態 render / 全量 PATCH body 含 base+top_k+12 旋鈕 / 試跑 call configTestApi.run + A/B 雙卡 + breakdown render)。修 `tests/unit/kb-detail.test.tsx` 加 `@/lib/api/config-test` mock(否則 settings tab render → `new ApiClient()` 撞 ApiError-only api-client mock)。
+
+### type 層
+- `frontend/lib/api/kb.ts` `KbConfig` +12 Optional 旋鈕(`?: T | null`,null=inherit);`kb.config[k]` 直接 typed indexed access(TuneKnobKey ⊆ keyof KbConfig,無需 cast)。
+
+### 測試 / 檢查
+- `pnpm type-check`(tsc --noEmit)✅ / `pnpm lint` ✅(只剩 chat/page.tsx 1 個 pre-existing img warning)/ `pnpm build` ✅ `Compiled successfully` + types + 15/15 static pages / `vitest` 6 pass(F3.5 3 + kb-detail 2 + kb-detail-tabs 1,零 regression)。
+- **Live dev render ⚠️**:我喺驗證時 run `pnpm build` 撞用戶 running `next dev`(共用 `.next`)→ dev server serve stale prod chunks + route chunk 404 → 卡 Loading KB(hydration #418/#423)。**非 F3 code bug**(static + unit 全過 + mockup render-verified)。修復 = 用戶重啟 `pnpm dev`。H7 §12 live pixel check 待 dev restart 後補。
+
+### H7 §12 fidelity 自檢
+- mockup(canonical spec)已 Playwright render-verified(F3.1);frontend 用 **identical** CSS class + 結構(`.card`/`.field`/`.switch`/`.seg`/`.badge`/`.table` + OptionRow §4.3 語言)+ unit test 斷言 DOM(Advanced tuning heading / 3 組 / 繼承-覆寫 badge / 全量 PATCH / 試跑 A/B + breakdown)→ 結構保真已驗;live pixel 對齊待 dev restart。
+- **F3.2 一處 data-availability 取捨**(analogous BUG-011 placeholder):mockup 靜態示範「全域預設 N」具體數字,但 frontend 無 settings 端點可靠攞 env-driven 全域值 → inherit 旋鈕顯示「繼承全域」placeholder 而非杜撰數字(功能 null=inherit 正確不受影響)。需要顯示真實全域值可 W44+ 補 settings-defaults fetch。
+
+### Commits
+- `<frontend commit>` — `feat(frontend): W43 F3.2-F3.5 per-KB tuning UI + config-test panel (ADR-0040)`
+
+### Mini-checkpoint
+- F3 全 5 item done(F3.1 mockup approved + F3.2-F3.5 frontend)。**F4 驗證收尾** next(pre-flight + 雙軸 cross-doc eval no-regression + G2 decisive proof + governance + closeout)。Live UI check 待用戶重啟 dev server。
+
+---
+
+**End of W43 progress(Day 2 — F1+F2+F2.6 gate + F3 全 done,F4 驗證收尾 next)**

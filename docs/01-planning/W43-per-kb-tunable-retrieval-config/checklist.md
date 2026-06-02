@@ -42,10 +42,10 @@ last_updated: 2026-06-02
 ## F3 — UI(前端;受 H7 約束;**F2.6 PASS → UNLOCKED**)
 
 - [x] F3.1 **mockup 確認** / STOP+ask if design-mockups 缺對應 spec(§5.7 H7）— 兩 surface 皆缺 → STOP+ask → 用戶揀「改 mockup」→ `ekp-page-kb.jsx` `TabKbSettings` 加 2 卡(12 旋鈕 + 試跑面板)+ Playwright render 驗證 + 用戶批准
-- [ ] F3.2 KB Settings 配置面（分組旋鈕 檢索/引用/圖片 + 進階收合 + ingestion 欄位「需重新索引」badge）
-- [ ] F3.3 試跑面板（query + multi-run + metrics + variance band）
-- [ ] F3.4「儲存到此 KB」persist
-- [ ] F3.5 frontend tests
+- [x] F3.2 KB Settings 配置面（`page.tsx` SettingsTab + Advanced retrieval tuning card：12 旋鈕分 3 組 `KbTuneGroup`/`KbTuneKnob` + 進階收合 + 繼承/覆寫態；既有 embedding/chunk「需重新索引」locked 欄保留）
+- [x] F3.3 試跑面板（`ConfigTestPanel` + `lib/api/config-test.ts`：query + 1-5 runs + A/B vs saved + variance band + per-citation breakdown）
+- [x] F3.4「儲存到此 KB」persist（`buildConfigBody` 送**完整** KbConfig — full-replacement 安全;configMutation 改 invalidate refetch;Advanced footer + test-panel footer 兩入口）
+- [x] F3.5 frontend tests（`tests/unit/kb-settings-tuning.test.tsx` 3 case：tuning render + full-body PATCH + 試跑 A/B；修 `kb-detail.test.tsx` 加 config-test mock;6 test pass + typecheck + lint + build-compile 全過）
 
 ## F4 — 驗證 + 收尾
 

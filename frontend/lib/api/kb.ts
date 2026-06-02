@@ -21,6 +21,22 @@ export interface KbConfig {
   slide_screenshots: boolean;
   dedup_strategy: 'sha256' | 'none';
   return_images_in_chat: boolean;
+  // W43 F1 — 12 per-KB tunable retrieval/citation/image knobs (per ADR-0040).
+  // All Optional: `null`/absent = inherit the global Settings default. Surfaced by
+  // the KB Detail Settings tab "Advanced retrieval tuning" card (F3.2). Resolved
+  // per-query > per-KB (these) > global by the backend EffectiveConfig resolver.
+  enable_parent_doc_retrieval?: boolean | null;
+  parent_doc_section_depth_offset?: number | null;
+  parent_doc_top_k?: number | null;
+  parent_doc_max_tokens_per_parent?: number | null;
+  enable_citation_post_hoc_expansion?: boolean | null;
+  citation_expansion_max_aux?: number | null;
+  citation_expansion_window?: number | null;
+  citation_expansion_section_path_prefix_depth?: number | null;
+  enable_citation_neighbour_images?: boolean | null;
+  citation_neighbour_max_aux_images?: number | null;
+  citation_neighbour_section_path_prefix_depth?: number | null;
+  max_images_per_answer?: number | null;
 }
 
 export const DEFAULT_KB_CONFIG: KbConfig = {

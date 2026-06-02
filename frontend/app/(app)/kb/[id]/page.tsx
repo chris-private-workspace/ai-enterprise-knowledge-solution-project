@@ -38,9 +38,11 @@ import {
   Database,
   Download,
   Edit,
+  Eye,
   FileText,
   Image as ImageIcon,
   Layers,
+  Link2,
   MoreHorizontal,
   RefreshCw,
   Search,
@@ -53,10 +55,16 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
 import { TabKbAccess } from '@/components/kb/tab-kb-access';
+import {
+  configTestApi,
+  type ConfigRunSummary,
+  type ConfigTestResult,
+  type DraftRetrievalConfig,
+} from '@/lib/api/config-test';
 import {
   documentsApi,
   type ChunkSummary,
@@ -1770,6 +1778,539 @@ function ChunkResultRow({
   );
 }
 
+// ── W43 F3.2/F3.3 — per-KB advanced retrieval tuning + config-test (ADR-0040) ──
+type TuneKnobKey =
+  | 'enable_parent_doc_retrieval'
+  | 'parent_doc_section_depth_offset'
+  | 'parent_doc_top_k'
+  | 'parent_doc_max_tokens_per_parent'
+  | 'enable_citation_post_hoc_expansion'
+  | 'citation_expansion_max_aux'
+  | 'citation_expansion_window'
+  | 'citation_expansion_section_path_prefix_depth'
+  | 'enable_citation_neighbour_images'
+  | 'citation_neighbour_max_aux_images'
+  | 'citation_neighbour_section_path_prefix_depth'
+  | 'max_images_per_answer';
+
+type KnobState = Record<TuneKnobKey, number | boolean | null>;
+
+const TUNE_GROUPS: {
+  icon: LucideIcon;
+  title: string;
+  desc: string;
+  enableKey: TuneKnobKey;
+  knobs: { key: TuneKnobKey; label: string }[];
+}[] = [
+  {
+    icon: Layers,
+    title: 'Parent-document retrieval',
+    desc: '把命中嘅子 chunk 擴展到所屬父段落,畀 LLM 更完整上下文。',
+    enableKey: 'enable_parent_doc_retrieval',
+    knobs: [
+      { key: 'parent_doc_section_depth_offset', label: 'Section depth offset' },
+      { key: 'parent_doc_top_k', label: 'Parent top_k' },
+      { key: 'parent_doc_max_tokens_per_parent', label: 'Max tokens / parent' },
+    ],
+  },
+  {
+    icon: Link2,
+    title: 'Citation post-hoc expansion',
+    desc: '答案生成後,為每個引用補充鄰近輔助 chunk,提升完整性。',
+    enableKey: 'enable_citation_post_hoc_expansion',
+    knobs: [
+      { key: 'citation_expansion_max_aux', label: 'Max aux / citation' },
+      { key: 'citation_expansion_window', label: 'Expansion window' },
+      { key: 'citation_expansion_section_path_prefix_depth', label: 'Section path prefix depth' },
+    ],
+  },
+  {
+    icon: Eye,
+    title: 'Citation neighbour images + 圖片上限',
+    desc: '控制引用鄰近圖片帶入,同每個答案最多顯示幾多張圖(圖洪水收斂)。',
+    enableKey: 'enable_citation_neighbour_images',
+    knobs: [
+      { key: 'citation_neighbour_max_aux_images', label: 'Neighbour max aux images' },
+      { key: 'citation_neighbour_section_path_prefix_depth', label: 'Neighbour prefix depth' },
+      { key: 'max_images_per_answer', label: 'Max images / answer' },
+    ],
+  },
+];
+
+const TUNE_KNOB_KEYS: TuneKnobKey[] = TUNE_GROUPS.flatMap((g) => [
+  g.enableKey,
+  ...g.knobs.map((k) => k.key),
+]);
+
+// One number knob. null = inherit (empty input + 繼承全域 placeholder); a value =
+// per-KB override (badge + ↺ 還原全域). The env-driven global default value isn't
+// surfaced here (would need a settings fetch), so inherit shows "繼承全域" rather
+// than a fabricated number — F3.2 progress note (analogous to BUG-011 placeholder).
+function KbTuneKnob({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (v: number | null) => void;
+}) {
+  const overridden = value !== null;
+  return (
+    <div className="field" style={{ marginBottom: 0 }}>
+      <label className="label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {label}
+        {overridden ? (
+          <span className="badge badge-success" style={{ fontSize: 9 }}>
+            <Edit size={9} /> 已覆寫
+          </span>
+        ) : (
+          <span className="badge badge-muted" style={{ fontSize: 9 }}>
+            繼承全域
+          </span>
+        )}
+      </label>
+      <input
+        type="number"
+        className="input mono"
+        value={value ?? ''}
+        placeholder="繼承全域"
+        onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+      />
+      <div className="hint" style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+        <span>{overridden ? '此 KB 覆寫值' : '未覆寫 · 沿用全域'}</span>
+        {overridden && (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            style={{
+              display: 'inline-flex',
+              gap: 3,
+              alignItems: 'center',
+              color: 'oklch(var(--muted-foreground))',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              font: 'inherit',
+            }}
+          >
+            <RefreshCw size={10} /> 還原全域
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// A toggle-led group: enable_* switch + title/desc + 繼承/覆寫 badge + collapsible
+// 進階 numeric grid. Mirrors the OptionRow visual language (DESIGN_SYSTEM §4.3).
+function KbTuneGroup({
+  icon: Ic,
+  title,
+  desc,
+  enabled,
+  onToggle,
+  onReset,
+  children,
+}: {
+  icon: LucideIcon;
+  title: string;
+  desc: string;
+  enabled: boolean | null;
+  onToggle: (v: boolean) => void;
+  onReset: () => void;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const overridden = enabled !== null;
+  return (
+    <div
+      style={{
+        border: '1px solid oklch(var(--border))',
+        borderRadius: 'var(--radius-sm)',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          padding: '12px 14px',
+          alignItems: 'flex-start',
+          background: enabled === true ? 'oklch(var(--muted) / 0.4)' : 'transparent',
+        }}
+      >
+        <span
+          className="switch"
+          data-on={enabled === true}
+          role="switch"
+          aria-checked={enabled === true}
+          tabIndex={0}
+          onClick={() => onToggle(!(enabled === true))}
+          style={{ flexShrink: 0, marginTop: 2 }}
+        />
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Ic size={13} style={{ color: 'oklch(var(--muted-foreground))' }} />
+            <span style={{ fontSize: 13, fontWeight: 500 }}>{title}</span>
+            {overridden ? (
+              <span className="badge badge-success" style={{ fontSize: 9 }}>
+                已覆寫
+              </span>
+            ) : (
+              <span className="badge badge-muted" style={{ fontSize: 9 }}>
+                繼承全域
+              </span>
+            )}
+            {overridden && (
+              <button
+                type="button"
+                onClick={onReset}
+                style={{
+                  display: 'inline-flex',
+                  gap: 3,
+                  alignItems: 'center',
+                  fontSize: 11,
+                  color: 'oklch(var(--muted-foreground))',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
+              >
+                <RefreshCw size={10} /> 還原全域
+              </button>
+            )}
+          </div>
+          <div className="text-xs muted" style={{ marginTop: 3, lineHeight: 1.5 }}>
+            {desc}
+          </div>
+        </div>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          style={{ flexShrink: 0 }}
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+        >
+          進階{' '}
+          <ChevronRight size={11} style={{ transform: open ? 'rotate(90deg)' : 'none' }} />
+        </button>
+      </div>
+      {open && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            gap: 14,
+            padding: 14,
+            borderTop: '1px solid oklch(var(--border))',
+          }}
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// W43 F3.3 — config-test 試跑 panel. Runs the full pipeline N times with the
+// current (unsaved) draft knobs, optionally A/B vs the saved config. POST-only —
+// persists nothing (that's the separate "儲存到此 KB" save).
+function ConfigTestPanel({
+  kbId,
+  draftConfig,
+  onSaveDraft,
+  saving,
+  dirty,
+}: {
+  kbId: string;
+  draftConfig: DraftRetrievalConfig;
+  onSaveDraft: () => void;
+  saving: boolean;
+  dirty: boolean;
+}) {
+  const [testQuery, setTestQuery] = useState('How do I configure the address book sync?');
+  const [runs, setRuns] = useState(3);
+  const [compare, setCompare] = useState(true);
+
+  const mutation = useMutation<ConfigTestResult>({
+    mutationFn: () =>
+      configTestApi.run(kbId, {
+        query: testQuery,
+        runs,
+        draft_config: draftConfig,
+        compare_to_saved: compare,
+      }),
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'config-test failed'),
+  });
+  const result = mutation.data;
+
+  return (
+    <div className="card" style={{ gridColumn: '1 / -1' }}>
+      <div className="card-header">
+        <div>
+          <h3 className="card-title">
+            <Zap
+              size={14}
+              style={{ verticalAlign: '-2px', marginRight: 6, color: 'oklch(var(--accent))' }}
+            />
+            試跑(config-test)
+          </h3>
+          <div className="card-desc">
+            唔改全域、唔改已存配置,試吓上面草稿配置喺真 pipeline 嘅效果。{' '}
+            <span className="mono">POST /kb/{kbId}/config-test</span>
+          </div>
+        </div>
+      </div>
+      <div className="card-body">
+        <div
+          style={{
+            display: 'flex',
+            gap: 12,
+            alignItems: 'flex-end',
+            flexWrap: 'wrap',
+            marginBottom: 16,
+          }}
+        >
+          <div className="field" style={{ flex: 1, minWidth: 240, marginBottom: 0 }}>
+            <label className="label">測試問題</label>
+            <input
+              className="input"
+              value={testQuery}
+              onChange={(e) => setTestQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (testQuery.trim() && !mutation.isPending) mutation.mutate();
+                }
+              }}
+            />
+          </div>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label className="label">重跑次數</label>
+            <div className="seg">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  type="button"
+                  key={n}
+                  className="seg-btn"
+                  data-active={n === runs}
+                  style={{ minWidth: 34 }}
+                  onClick={() => setRuns(n)}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+          <label
+            className="row"
+            style={{
+              gap: 6,
+              fontSize: 12.5,
+              alignItems: 'center',
+              cursor: 'pointer',
+              paddingBottom: 8,
+            }}
+          >
+            <span
+              className="switch"
+              data-on={compare}
+              role="switch"
+              aria-checked={compare}
+              tabIndex={0}
+              onClick={() => setCompare(!compare)}
+            />
+            同已存配置對照(A/B)
+          </label>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={mutation.isPending || !testQuery.trim()}
+            onClick={() => mutation.mutate()}
+          >
+            {mutation.isPending ? (
+              <>
+                <span className="spinner" /> 試跑中…
+              </>
+            ) : (
+              <>
+                <Zap size={14} /> 試跑
+              </>
+            )}
+          </button>
+        </div>
+
+        {!result && !mutation.isPending && (
+          <div className="empty">
+            <div className="empty-icon">
+              <Zap size={20} />
+            </div>
+            <div className="empty-title">未有試跑結果</div>
+            <div>調整上面旋鈕 → 揀重跑次數 → 撳「試跑」。</div>
+          </div>
+        )}
+
+        {result && (
+          <>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: result.saved ? '1fr 1fr' : '1fr',
+                gap: 14,
+              }}
+            >
+              <ConfigResultCard label="草稿配置(DRAFT)" accent summary={result.draft} />
+              {result.saved && <ConfigResultCard label="已存配置(SAVED)" summary={result.saved} />}
+            </div>
+
+            {result.draft.per_citation.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <div className="text-xs muted" style={{ marginBottom: 6 }}>
+                  草稿配置 · 每引用 section + 圖數(最後一 run)
+                </div>
+                <div className="table-wrap">
+                  <table className="table" style={{ fontSize: 12 }}>
+                    <thead>
+                      <tr>
+                        <th>引用 chunk</th>
+                        <th>Section</th>
+                        <th className="col-num">圖數</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.draft.per_citation.map((c) => (
+                        <tr key={c.chunk_id}>
+                          <td className="mono">{c.chunk_id}</td>
+                          <td>
+                            <span className="section-path">
+                              {c.section_path.map((s, j) => (
+                                <span key={j}>{s}</span>
+                              ))}
+                            </span>
+                          </td>
+                          <td className="col-num mono">{c.image_count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      <div className="card-footer">
+        <div className="text-xs muted">
+          N 次重跑取平均 · band = max − min(越細越穩定)· 對 RAGAs 盲 → presentation
+          counters 為第二軸
+        </div>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={onSaveDraft}
+          disabled={!dirty || saving}
+        >
+          <Download size={13} /> 把草稿配置儲存到此 KB
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ConfigResultCard({
+  label,
+  accent,
+  summary,
+}: {
+  label: string;
+  accent?: boolean;
+  summary: ConfigRunSummary;
+}) {
+  const last = summary.runs[summary.runs.length - 1];
+  const fmt = (b: { mean: number }) =>
+    Number.isInteger(b.mean) ? String(b.mean) : b.mean.toFixed(1);
+  return (
+    <div
+      style={{
+        border: accent
+          ? '1px solid oklch(var(--accent) / 0.4)'
+          : '1px solid oklch(var(--border))',
+        borderRadius: 'var(--radius-sm)',
+        background: accent ? 'oklch(var(--accent) / 0.04)' : 'transparent',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          padding: '10px 14px',
+          borderBottom: '1px solid oklch(var(--border))',
+          fontSize: 12,
+          fontWeight: 600,
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 1,
+          background: 'oklch(var(--border))',
+        }}
+      >
+        <ConfigMetric k="引用數" v={fmt(summary.citation_count)} band={summary.citation_count.band} />
+        <ConfigMetric
+          k="圖片(dedup)"
+          v={fmt(summary.figure_count_dedup)}
+          sub={`raw ${fmt(summary.figure_count_raw)}`}
+          band={summary.figure_count_dedup.band}
+        />
+        <ConfigMetric k="延遲 p50" v={`${(summary.latency_ms.mean / 1000).toFixed(1)}s`} />
+        <ConfigMetric k="答案字數" v={String(last?.answer_chars ?? 0)} />
+        <ConfigMetric k="是否拒答" v={last?.refused ? '是' : '否'} />
+        <ConfigMetric
+          k="穩定度"
+          v={`band ${summary.citation_count.band}/${summary.figure_count_dedup.band}`}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ConfigMetric({
+  k,
+  v,
+  sub,
+  band,
+}: {
+  k: string;
+  v: string;
+  sub?: string;
+  band?: number;
+}) {
+  return (
+    <div style={{ background: 'oklch(var(--card))', padding: '10px 14px' }}>
+      <div className="text-xs muted">{k}</div>
+      <div className="mono" style={{ fontSize: 16, fontWeight: 600, marginTop: 2 }}>
+        {v}
+        {band != null && (
+          <span className="text-xs muted" style={{ fontWeight: 400, marginLeft: 4 }}>
+            ±{band}
+          </span>
+        )}
+      </div>
+      {sub && (
+        <div className="text-xs muted mono" style={{ marginTop: 1 }}>
+          {sub}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Tab: Settings ───────────────────────────────────────────────────────────
 function SettingsTab({ kb }: { kb: KbStatus }) {
   const queryClient = useQueryClient();
@@ -1777,15 +2318,50 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
   const [description, setDescription] = useState(kb.description);
   const [topK, setTopK] = useState(kb.config.default_top_k);
   const [rerankK, setRerankK] = useState(kb.config.default_rerank_k);
+  // W43 F3.2 — the 12 per-KB tuning knobs (null = inherit global). Seeded from the
+  // saved config; the UI only writes a boolean to enable_* keys and a number to the
+  // rest, so the loose Record value type is correct per-key at runtime.
+  const [knobs, setKnobs] = useState<KnobState>(() => {
+    const init = {} as KnobState;
+    for (const k of TUNE_KNOB_KEYS) init[k] = kb.config[k] ?? null;
+    return init;
+  });
+
+  const setKnob = (key: TuneKnobKey, value: number | boolean | null) =>
+    setKnobs((prev) => ({ ...prev, [key]: value }));
+  const resetAllKnobs = () => {
+    const cleared = {} as KnobState;
+    for (const k of TUNE_KNOB_KEYS) cleared[k] = null;
+    setKnobs(cleared);
+  };
+
+  const knobsDirty = useMemo(
+    () => TUNE_KNOB_KEYS.some((k) => (knobs[k] ?? null) !== (kb.config[k] ?? null)),
+    [knobs, kb],
+  );
 
   const dirty = useMemo(
     () =>
       name !== kb.name ||
       description !== kb.description ||
       topK !== kb.config.default_top_k ||
-      rerankK !== kb.config.default_rerank_k,
-    [name, description, topK, rerankK, kb],
+      rerankK !== kb.config.default_rerank_k ||
+      knobsDirty,
+    [name, description, topK, rerankK, knobsDirty, kb],
   );
+
+  // PATCH /kb/{id}/settings replaces the whole KbConfig (omitted fields reset to
+  // defaults — see backend update_kb_settings), so we send the COMPLETE config:
+  // saved values + the editable top_k/rerank_k + the 12 knobs (null = inherit). The
+  // cast is safe because the UI writes the correct primitive per knob key.
+  function buildConfigBody(): KbConfig {
+    return {
+      ...kb.config,
+      default_top_k: topK,
+      default_rerank_k: rerankK,
+      ...(knobs as Partial<KbConfig>),
+    };
+  }
 
   const metaMutation = useMutation({
     mutationFn: () =>
@@ -1801,13 +2377,11 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
   });
 
   const configMutation = useMutation({
-    mutationFn: () =>
-      kbApi.patchSettings(kb.kb_id, {
-        default_top_k: topK,
-        default_rerank_k: rerankK,
-      }),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(['kb', kb.kb_id], updated);
+    mutationFn: () => kbApi.patchSettings(kb.kb_id, buildConfigBody()),
+    // The settings endpoint returns a bare KbConfig (not KbStatus), so invalidate +
+    // refetch the full KB rather than writing the response into the cache.
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['kb', kb.kb_id] });
       toast.success('Config saved');
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : 'save failed'),
@@ -1820,7 +2394,8 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
     }
     if (
       topK !== kb.config.default_top_k ||
-      rerankK !== kb.config.default_rerank_k
+      rerankK !== kb.config.default_rerank_k ||
+      knobsDirty
     ) {
       configMutation.mutate();
     }
@@ -1993,6 +2568,74 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
         </div>
       </div>
 
+      {/* W43 F3.2 — Advanced retrieval tuning (12 per-KB runtime knobs, ADR-0040) */}
+      <div className="card" style={{ gridColumn: '1 / -1' }}>
+        <div className="card-header">
+          <div>
+            <h3 className="card-title">Advanced retrieval tuning</h3>
+            <div className="card-desc">
+              Per-KB 覆寫檢索 / 引用 / 圖片行為。未覆寫嘅旋鈕沿用全域預設。全部 runtime —{' '}
+              <b>唔需要重新索引</b>(對比上面鎖定嘅 embedding / chunk strategy)。
+            </div>
+          </div>
+          <span className="badge badge-info" style={{ fontSize: 9.5 }}>
+            <Edit size={10} /> Runtime · no re-index
+          </span>
+        </div>
+        <div className="card-body" style={{ display: 'grid', gap: 12 }}>
+          {TUNE_GROUPS.map((g) => (
+            <KbTuneGroup
+              key={g.enableKey}
+              icon={g.icon}
+              title={g.title}
+              desc={g.desc}
+              enabled={knobs[g.enableKey] as boolean | null}
+              onToggle={(v) => setKnob(g.enableKey, v)}
+              onReset={() => setKnob(g.enableKey, null)}
+            >
+              {g.knobs.map((kn) => (
+                <KbTuneKnob
+                  key={kn.key}
+                  label={kn.label}
+                  value={knobs[kn.key] as number | null}
+                  onChange={(v) => setKnob(kn.key, v)}
+                />
+              ))}
+            </KbTuneGroup>
+          ))}
+        </div>
+        <div className="card-footer">
+          <div className="text-xs muted">
+            配置 scope:per-query &gt; <b>per-KB(此頁)</b> &gt; 全域 · ADR-0040
+          </div>
+          <div className="row">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={resetAllKnobs}
+              disabled={!TUNE_KNOB_KEYS.some((k) => knobs[k] !== null)}
+            >
+              <RefreshCw size={13} /> 還原全部至全域
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary btn-sm"
+              disabled={!dirty || metaMutation.isPending || configMutation.isPending}
+            >
+              {configMutation.isPending ? '儲存中…' : '儲存到此 KB'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <ConfigTestPanel
+        kbId={kb.kb_id}
+        draftConfig={knobs as DraftRetrievalConfig}
+        onSaveDraft={() => configMutation.mutate()}
+        saving={configMutation.isPending}
+        dirty={dirty}
+      />
+
       <div className="card" style={{ gridColumn: '1 / -1' }}>
         <div className="card-footer">
           <div className="text-xs muted">
@@ -2007,6 +2650,9 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
                 setDescription(kb.description);
                 setTopK(kb.config.default_top_k);
                 setRerankK(kb.config.default_rerank_k);
+                const reset = {} as KnobState;
+                for (const k of TUNE_KNOB_KEYS) reset[k] = kb.config[k] ?? null;
+                setKnobs(reset);
               }}
               disabled={!dirty}
             >

@@ -37,6 +37,10 @@ vi.mock('sonner', () => ({
 vi.mock('@/lib/api-client', () => ({ ApiError: class ApiError extends Error {} }));
 vi.mock('@/lib/api/query', () => ({ streamQuery: vi.fn() }));
 vi.mock('@/lib/api/retrieval-test', () => ({ retrievalTestApi: {} }));
+// W43 F3.3 — SettingsTab now renders <ConfigTestPanel> (imports configTestApi via
+// the real api-client). Stub the module so the api-client mock above (ApiError-only)
+// doesn't break `new ApiClient()` at config-test.ts module load.
+vi.mock('@/lib/api/config-test', () => ({ configTestApi: { run: vi.fn() } }));
 // W24c F10 — the Access tab (`<TabKbAccess>`) is not under test here; stub it
 // so its `usersApi` / `adminApi` import chain doesn't hit the api-client mock.
 vi.mock('@/components/kb/tab-kb-access', () => ({ TabKbAccess: () => null }));
