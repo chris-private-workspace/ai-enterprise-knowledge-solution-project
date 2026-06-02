@@ -206,9 +206,16 @@ F3 兩個前端 surface 喺 `references/design-mockups/` **都冇對應 spec**:
 ### Commits
 - `<frontend commit>` — `feat(frontend): W43 F3.2-F3.5 per-KB tuning UI + config-test panel (ADR-0040)`
 
+### H7 §12 live fidelity check — DONE 2026-06-02
+- 用戶授權我修復(我整壞嘅 dev server):kill 3001 next dev → 清 `.next`(無 lock,clean)→ 背景重起 `pnpm dev`(`b11p7e38v`)→ self-heal,Settings tab 乾淨 render(KB loaded,3 組 + 試跑面板齊)。
+- **Playwright live render-verified**(dark mode,design tokens 自動適配):進階旋鈕卡(3 組 toggle + 繼承全域 badge + 進階展開 3 旋鈕 + placeholder「繼承全域」+ scope footer)+ 試跑面板(問題 + 1-5 seg + A/B switch + 試跑 + 空狀態 + footer)**逐項對齊 mockup**。
+- console 12 errors 全部 **pre-existing app-shell**(`ThemeToggle` next-themes icon hydration mismatch + `/api/backend/notifications` 404 Wave B+ planned)—— **非 F3 引入**,F3 Settings tab render clean。
+- 此 KB(test-kb-20260531-v1)現存 config 無 per-KB override → 全旋鈕顯示繼承全域(正確反映已存狀態)。
+- dev server 留 running 畀用戶用(b11p7e38v)。
+
 ### Mini-checkpoint
-- F3 全 5 item done(F3.1 mockup approved + F3.2-F3.5 frontend)。**F4 驗證收尾** next(pre-flight + 雙軸 cross-doc eval no-regression + G2 decisive proof + governance + closeout)。Live UI check 待用戶重啟 dev server。
+- F3 全 5 item done + H7 §12 live check PASS。**F4 驗證收尾** next(pre-flight + 雙軸 cross-doc eval no-regression + G2 decisive proof + governance + closeout)。
 
 ---
 
-**End of W43 progress(Day 2 — F1+F2+F2.6 gate + F3 全 done,F4 驗證收尾 next)**
+**End of W43 progress(Day 2 — F1+F2+F2.6 gate + F3 全 done + §12 live PASS,F4 驗證收尾 next)**
