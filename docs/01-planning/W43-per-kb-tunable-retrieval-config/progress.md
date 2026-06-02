@@ -156,4 +156,32 @@ dogfood `test-kb-20260531-v1`,config-test `runs=3 compare_to_saved`(draft=保守
 
 ---
 
-**End of W43 progress(Day 2 — F2 done + F2.6 gate PASS,F3 next)**
+## Day 2 — addendum 2026-06-02: F3.1 mockup 確認 + STOP+ask + 改 mockup(design-first)
+
+### F3.1 調查結論(per §5.7 H7 trigger)
+F3 兩個前端 surface 喺 `references/design-mockups/` **都冇對應 spec**:
+- **12 旋鈕配置面**:`ekp-page-kb.jsx:TabKbSettings`「Retrieval config」card 只有 4 個 W20 欄(embedding 鎖 / chunk 鎖 / top_k / rerank_k),**冇** parent_doc / citation_expansion / citation_neighbour / max_images 任何一個。
+- **試跑面板**:grep `config-test|試跑|variance|multi-run|MetricBand` 全 design-mockups **零命中** → 從未設計。
+
+→ 觸發 §5.7 H7「mockup 缺對應 → STOP+ask,絕對唔可以 approximate」。
+
+### STOP+ask → 用戶決定
+向用戶提供 3 條路(改 mockup / 沿用 primitives extend / F3 deferred),**用戶揀「先改 mockup(design-first)」**。
+
+### 執行(改 mockup)
+- 改 `references/design-mockups/ekp-page-kb.jsx` `TabKbSettings`,喺 Retrieval config 與 Re-indexing 之間插入 **2 張全寬卡**:
+  - **① Advanced retrieval tuning**:12 旋鈕分 3 組(檢索 `IcLayers` / 引用 `IcLink` / 圖片 `IcEye`),每組 toggle + 進階收合 3 旋鈕;每旋鈕 **繼承全域(灰 `badge-muted`,placeholder 顯示全域值)vs 已覆寫(綠 `badge-success` + ↺ 還原全域)**;footer scope 鏈 `per-query > per-KB > 全域 · ADR-0040`。示範 `max_images_per_answer=8` 已覆寫(對齊 Finding #8 AR-KB standing)。
+  - **② 試跑(config-test)**:問題 + 1-5 重跑 seg + A/B switch + 試跑;**草稿 DRAFT vs 已存 SAVED** 六格 metrics(引用 / 圖片 dedup+raw / 延遲 / 字數 / 拒答 / variance band)+ per-citation breakdown 表。數字 = F2.6 dogfood 實測(1cit/6img vs 11cit/28.7dedup-36raw,band 0)。
+- 加 4 個 file-local helper(`KbTuneKnob` / `KbTuneGroup` / `KbTestResultCard` / `KbTestMetric`)。全用 canonical primitives(OptionRow §4.3 語言 / `.switch` / `.seg` / `.badge` / `.table` / `.card`),無自創 class、無 hardcode 色(全 `oklch(var(--token))`)。
+- **render 驗證**(Playwright headless + 本地 static server):無 Babel / React 錯,逐卡截圖確認視覺。
+
+### Decisions
+- 呢個係 **KB Detail Settings tab 嘅 design-stage expansion**(H1/H7 範圍)。ADR-0040(Accepted)已 cover config-scope 架構;UI surface 係其自然呈現,**唔開新 ADR**,記 plan §7 changelog + PAGE_INVENTORY entry #5 即可。
+- 用戶 review 後 **批准設計** → 進 F3.2/F3.3 frontend 100% 重現。
+
+### Commits
+- `<mockup commit>` — `feat(frontend): W43 F3.1 KB Settings mockup expansion (12 knobs + config-test panel)`(`ekp-page-kb.jsx` + PAGE_INVENTORY + plan §7 + 本文件 + checklist F3.1 tick)
+
+---
+
+**End of W43 progress(Day 2 — F2 + F2.6 gate PASS + F3.1 mockup approved,F3.2/F3.3 frontend next)**

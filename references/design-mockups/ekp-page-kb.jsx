@@ -814,6 +814,125 @@ function TabKbSettings({ kb }) {
         </div>
       </div>
 
+      {/* W43 — Per-KB advanced retrieval tuning (ADR-0040). 12 runtime knobs.
+          null = inherit global; set = per-KB override. All runtime → no re-index.
+          Grouped 檢索 / 引用 / 圖片. See backend KbConfig + EffectiveConfig resolver. */}
+      <div className="card" style={{ gridColumn: "1 / -1" }}>
+        <div className="card-header">
+          <div>
+            <h3 className="card-title">Advanced retrieval tuning</h3>
+            <div className="card-desc">
+              Per-KB 覆寫檢索 / 引用 / 圖片行為。未覆寫嘅旋鈕沿用全域預設(Settings)。
+              全部 runtime — <b>唔需要重新索引</b>(對比上面鎖定嘅 embedding / chunk strategy)。
+            </div>
+          </div>
+          <span className="badge badge-info" style={{ fontSize: 9.5 }}><IcEdit size={10} /> Runtime · no re-index</span>
+        </div>
+        <div className="card-body" style={{ display: "grid", gap: 12 }}>
+          <KbTuneGroup icon={IcLayers} title="Parent-document retrieval" enabled enabledInherit
+            desc="把命中嘅子 chunk 擴展到所屬父段落,畀 LLM 更完整上下文。">
+            <KbTuneKnob label="Section depth offset" inherit globalValue="1" />
+            <KbTuneKnob label="Parent top_k" inherit globalValue="3" />
+            <KbTuneKnob label="Max tokens / parent" inherit globalValue="1500" />
+          </KbTuneGroup>
+
+          <KbTuneGroup icon={IcLink} title="Citation post-hoc expansion" enabled enabledInherit
+            desc="答案生成後,為每個引用補充鄰近輔助 chunk,提升完整性(Finding #1 5/5 解法)。">
+            <KbTuneKnob label="Max aux / citation" inherit globalValue="10" />
+            <KbTuneKnob label="Expansion window" inherit globalValue="1" />
+            <KbTuneKnob label="Section path prefix depth" inherit globalValue="1" />
+          </KbTuneGroup>
+
+          <KbTuneGroup icon={IcEye} title="Citation neighbour images + 圖片上限" enabled enabledInherit
+            desc="控制引用鄰近圖片帶入,同每個答案最多顯示幾多張圖(圖洪水收斂)。">
+            <KbTuneKnob label="Neighbour max aux images" inherit globalValue="4" />
+            <KbTuneKnob label="Neighbour prefix depth" inherit globalValue="1" />
+            {/* 已覆寫示範:此 AR KB set max_images_per_answer = 8(per Finding #8 standing config) */}
+            <KbTuneKnob label="Max images / answer" globalValue="—(無上限)" value="8" />
+          </KbTuneGroup>
+        </div>
+        <div className="card-footer">
+          <div className="text-xs muted">配置 scope:per-query &gt; <b>per-KB(此頁)</b> &gt; 全域 · ADR-0040</div>
+          <div className="row">
+            <button className="btn btn-secondary btn-sm"><IcRefresh size={13} /> 還原全部至全域</button>
+            <button className="btn btn-primary btn-sm">儲存到此 KB</button>
+          </div>
+        </div>
+      </div>
+
+      {/* W43 — Config test-run panel (config-test harness, ADR-0040 §Decision 3).
+          唔改全域 / 已存配置,經 PerQueryOverrides 把上面草稿注入同一條 pipeline 試跑。 */}
+      <div className="card" style={{ gridColumn: "1 / -1" }}>
+        <div className="card-header">
+          <div>
+            <h3 className="card-title">
+              <IcZap size={14} style={{ verticalAlign: "-2px", marginRight: 6, color: "oklch(var(--accent))" }} />
+              試跑(config-test)
+            </h3>
+            <div className="card-desc">
+              唔改全域、唔改已存配置,試吓上面草稿配置喺真 pipeline 嘅效果。
+              <span className="mono"> POST /kb/{kb.kb_id}/config-test</span>
+            </div>
+          </div>
+        </div>
+        <div className="card-body">
+          {/* control row */}
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap", marginBottom: 16 }}>
+            <div className="field" style={{ flex: 1, minWidth: 240, marginBottom: 0 }}>
+              <label className="label">測試問題</label>
+              <input className="input" defaultValue="How do I configure the address book sync?" />
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label className="label">重跑次數</label>
+              <div className="seg">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button key={n} className="seg-btn" data-active={n === 3} style={{ minWidth: 34 }}>{n}</button>
+                ))}
+              </div>
+            </div>
+            <label className="row" style={{ gap: 6, fontSize: 12.5, alignItems: "center", cursor: "pointer", paddingBottom: 8 }}>
+              <span className="switch" data-on /> 同已存配置對照(A/B)
+            </label>
+            <button className="btn btn-primary"><IcZap size={14} /> 試跑</button>
+          </div>
+
+          {/* results A/B — DRAFT (保守草稿) vs SAVED (已存激進) ; 數字 = F2.6 dogfood */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <KbTestResultCard label="草稿配置(DRAFT)" accent
+              cit="1" citBand="0" imgRaw="6" imgDedup="6" imgBand="0" lat="4.1s" chars="612" refused="否" />
+            <KbTestResultCard label="已存配置(SAVED)"
+              cit="11" citBand="0" imgRaw="36" imgDedup="28.7" imgBand="0" lat="5.8s" chars="1840" refused="否" />
+          </div>
+
+          {/* per-citation breakdown (草稿 · 最後一 run) */}
+          <div style={{ marginTop: 16 }}>
+            <div className="text-xs muted" style={{ marginBottom: 6 }}>草稿配置 · 每引用 section + 圖數(最後一 run)</div>
+            <table className="table" style={{ fontSize: 12 }}>
+              <thead>
+                <tr>
+                  <th>引用 chunk</th>
+                  <th>Section</th>
+                  <th style={{ textAlign: "right" }}>圖數</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="mono">chunk-42</td>
+                  <td>Address Book › Sync</td>
+                  <td className="mono" style={{ textAlign: "right" }}>6</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="card-footer">
+          <div className="text-xs muted">
+            N 次重跑取平均 · band = max − min(越細越穩定)· 對 RAGAs 盲 → presentation counters 為第二軸
+          </div>
+          <button className="btn btn-secondary btn-sm"><IcDownload size={13} /> 把草稿配置儲存到此 KB</button>
+        </div>
+      </div>
+
       {/* Re-index card — explainer */}
       <div className="card" style={{ gridColumn: "1 / -1" }}>
         <div className="card-header">
@@ -873,6 +992,104 @@ function TabKbSettings({ kb }) {
           <button className="btn btn-destructive"><IcTrash size={14} /> Delete KB</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── W43 per-KB tuning helpers (ADR-0040) ─────────────────────────────────────
+// File-local; visible to TabKbSettings via hoisting. null/inherit = 沿用全域。
+
+// A single numeric/text knob. inherit → placeholder shows global default + no value;
+// overridden → shows per-KB value + 「還原全域」affordance.
+function KbTuneKnob({ label, inherit, globalValue, value, suffix }) {
+  return (
+    <div className="field" style={{ marginBottom: 0 }}>
+      <label className="label" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        {label}
+        {inherit
+          ? <span className="badge badge-muted" style={{ fontSize: 9, fontWeight: 500 }}>繼承全域</span>
+          : <span className="badge badge-success" style={{ fontSize: 9 }}><IcEdit size={9} /> 已覆寫</span>}
+      </label>
+      <input
+        className="input mono"
+        defaultValue={inherit ? "" : value}
+        placeholder={inherit ? `${globalValue}${suffix || ""}` : undefined}
+      />
+      <div className="hint" style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+        <span>全域預設 <span className="mono">{globalValue}{suffix || ""}</span></span>
+        {!inherit && (
+          <span style={{ display: "inline-flex", gap: 3, alignItems: "center", cursor: "pointer", color: "oklch(var(--muted-foreground))" }}>
+            <IcRefresh size={10} /> 還原全域
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// A toggle-led group (enable_* switch + title/desc + 繼承/覆寫 badge) with a
+// collapsible 進階 numeric grid. Mirrors the OptionRow visual language (§4.3).
+function KbTuneGroup({ icon, title, desc, enabled, enabledInherit, children }) {
+  const [open, setOpen] = useState(false);
+  const Ic = icon;
+  return (
+    <div style={{ border: "1px solid oklch(var(--border))", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
+      <div style={{ display: "flex", gap: 12, padding: "12px 14px", alignItems: "flex-start", background: enabled ? "oklch(var(--muted) / 0.4)" : "transparent" }}>
+        <span className="switch" data-on={enabled} style={{ flexShrink: 0, marginTop: 2 }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <Ic size={13} style={{ color: "oklch(var(--muted-foreground))" }} />
+            <span style={{ fontSize: 13, fontWeight: 500 }}>{title}</span>
+            {enabledInherit
+              ? <span className="badge badge-muted" style={{ fontSize: 9 }}>繼承全域</span>
+              : <span className="badge badge-success" style={{ fontSize: 9 }}>已覆寫</span>}
+          </div>
+          <div className="text-xs muted" style={{ marginTop: 3, lineHeight: 1.5 }}>{desc}</div>
+        </div>
+        <button className="btn btn-ghost btn-sm" style={{ flexShrink: 0 }} onClick={() => setOpen(!open)}>
+          進階 <IcChevRight size={11} style={{ transform: open ? "rotate(90deg)" : "none" }} />
+        </button>
+      </div>
+      {open && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, padding: 14, borderTop: "1px solid oklch(var(--border))" }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// One A/B result column for the test-run panel. accent = DRAFT (草稿).
+function KbTestResultCard({ label, accent, cit, citBand, imgRaw, imgDedup, imgBand, lat, chars, refused }) {
+  return (
+    <div style={{
+      border: accent ? "1px solid oklch(var(--accent) / 0.4)" : "1px solid oklch(var(--border))",
+      borderRadius: "var(--radius-sm)",
+      background: accent ? "oklch(var(--accent) / 0.04)" : "transparent",
+      overflow: "hidden",
+    }}>
+      <div style={{ padding: "10px 14px", borderBottom: "1px solid oklch(var(--border))", fontSize: 12, fontWeight: 600 }}>{label}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "oklch(var(--border))" }}>
+        <KbTestMetric k="引用數" v={cit} band={citBand} />
+        <KbTestMetric k="圖片(dedup)" v={imgDedup} sub={`raw ${imgRaw}`} band={imgBand} />
+        <KbTestMetric k="延遲 p50" v={lat} />
+        <KbTestMetric k="答案字數" v={chars} />
+        <KbTestMetric k="是否拒答" v={refused} />
+        <KbTestMetric k="穩定度" v={`band ${citBand}/${imgBand}`} />
+      </div>
+    </div>
+  );
+}
+
+function KbTestMetric({ k, v, sub, band }) {
+  return (
+    <div style={{ background: "oklch(var(--card))", padding: "10px 14px" }}>
+      <div className="text-xs muted">{k}</div>
+      <div className="mono" style={{ fontSize: 16, fontWeight: 600, marginTop: 2 }}>
+        {v}
+        {band != null && <span className="text-xs muted" style={{ fontWeight: 400, marginLeft: 4 }}>±{band}</span>}
+      </div>
+      {sub && <div className="text-xs muted mono" style={{ marginTop: 1 }}>{sub}</div>}
     </div>
   );
 }
