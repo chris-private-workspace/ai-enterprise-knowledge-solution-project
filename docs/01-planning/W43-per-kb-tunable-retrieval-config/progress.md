@@ -2,7 +2,7 @@
 phase: W43-per-kb-tunable-retrieval-config
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active      # draft | active | closed — flipped active 2026-06-01 (0.5 gate PASS)
+status: closed      # draft | active | closed — flipped closed 2026-06-02 (Phase Gate STRONG PASS 7/7)
 ---
 
 # Phase W43 — Progress
@@ -218,4 +218,72 @@ F3 兩個前端 surface 喺 `references/design-mockups/` **都冇對應 spec**:
 
 ---
 
-**End of W43 progress(Day 2 — F1+F2+F2.6 gate + F3 全 done + §12 live PASS,F4 驗證收尾 next)**
+## Day 2 — addendum 2026-06-02: F4 驗證收尾
+
+> R6 pre-active-flip 盤點先行,surface 3 catch:(c1)F4.4 governance = audit reuse 已存在,無新 code;(c2)現成 eval set target DCE,AR 側 how-to query 手寫;(c3)eval set 全 `validated:false` keyword-mode,真 RAGAs 要 judge LLM。
+
+### F4.1 Pre-flight ✅(§10.3 5b)
+- Langfuse `/api/public/health` **200** · Postgres `SELECT 1` **1 row** · Backend `:8000/health` **200**(venv F2 backend 持續 running)。
+
+### F4.3 G2 decisive proof ✅ PASS(keystone)
+用 config-test harness + `/query` 實跑,**AR 保守 override vs DCE inherit 全域激進、全域零改**:
+
+| | AR KB `test-kb-20260531-v1`(per-KB 保守)| DCE KB `test-kb-20260530-1`(inherit 全域激進)|
+|---|---|---|
+| query | 窄 how-to「How do I write off a receivable?」| 列舉「Show me all the Integration scenarios.」|
+| 引用數 | **3**(全集中 AR03 Write-Off 4.1.3 步驟)| 7(覆蓋 §8.1–§8.6)|
+| 圖片 raw/dedup | **8 / 8**(`max_images_per_answer=8` cap)| — |
+| 答案完整性 | ✅ 完整 4 步寫銷程序(Aged balances→Write off→journal→workflow→Post)| ✅ **5/5** Scenario A–E 全列 |
+| 延遲 | 11.2s | — |
+| 對照(同 KB 激進)| 已存全域 = 7 cit / **47→38 圖** / **132s**(洪水 + 慢 12 倍)| — |
+| 全域 | **不動** | **不動** |
+
+- **AR 側雙軸達標**:presentation(3 cit / 8 img,洪水 47→8 馴服)**且** 質素(答案 4 步程序完整正確,grounded in AR03 4.1.3)。
+- **DCE 側完整性**:inherit 全域激進 → I07 答案列齊 Scenario A–E(5/5),citation 覆蓋 §8.1–8.5。
+- 證偽實驗 Fork A live 證實:兩種內容格式各用度身配置、同時服侍、互不干擾、全域零改。
+- `resolved_config` 確認 per-KB 解析鏈正確(`max_aux=2` / `prefix_depth=3` / `max_images=8` honoured)。
+- AR KB **保留保守 standing config**(per Finding #8 + 用戶 vision)— 持久化 per-KB 配置 loop 實證,非測試污染;用戶可經 F3 UI 再改。
+
+### F4.4 governance ✅(reuse ADR-0027,無新 code)
+- `PATCH /kb/{id}/settings` 自動寫 `kb.config.changed` audit row(`kb.py:242-248`),payload 經 `model_dump` **自動含 12 個 W43 欄位**。
+- `GET /admin/audit-log` 確認:`kb.config.changed` · `resource=kb/test-kb-20260531-v1` · 最新 10:56:15(本次保守 PATCH)+ 02:43–45(F1 live A/B)。
+- auth-gated(mock dev-token);`actor=None` = documented Wave C2+ 限制(middleware actor extraction),非 W43 gap。
+
+### F4.2 cross-doc eval no-regression — 雙軸 ✅ PASS(用戶選「兩者都做」)
+- **輕量 code-level 軸** ✅:F1.8 byte-identical resolver tests(`None`→`get_settings()` 物件一致)+ `execute_query_pipeline` refactor tests(16 pass)→ 無 override path code-level 不變;G2 嘅「已存/inherit」run(AR 7cit/47img + DCE 7cit/5-5)= 現行為 live 確認不變。
+- **完整 RAGAs 軸** ✅:`/eval/run eval-set-v1-draft ×30` on `drive_user_manuals`(W43 code,no-override path),18.5 分鐘完成:
+
+| 指標 | W43 重跑 | 2026-05-30 baseline | 判讀 |
+|---|---|---|---|
+| recall@5 | **1.0** | 1.0 | flat(檢索零回歸)|
+| faithfulness | **0.9956** | 0.9893 | +0.6pp |
+| correctness | 0.8374 | 0.8489 | −1.15pp(RAGAs judge 隨機;遠在 ±5pp 容差內;baseline 自身 0.8407→0.8489 同類擺動)|
+| attention-flagged | **0** | 0 | 零回歸 |
+| 失敗 query | **0** | — | — |
+
+- **索引重建插曲(R3 deviation,記 plan §7)**:drive eval 索引 `ekp-kb-drive-v1`(legacy alias `drive_user_manuals`→`kb_id_to_index_name`)2026-05-30 後被刪 → 首跑 30 條全 index-level 404(非 W43)。用戶選重建:DELETE+POST /kb 重 provision 索引 → curl multipart 上傳 6 docx(AR68/AP63/FA59/CB23/GL60/BM14 = **287 chunks**,精確對齊 baseline,text-only)→ 重跑。
+- **Backend restart 插曲**:首次 30-query eval client `-TimeoutSec 1500`(25min)短過實際 ~18.5min... 實為更早一 run orphaned 卡住 event loop(`/health` 15s timeout)→ kill 2× `api.server` PID + 重啟 venv backend(68s up,Postgres-backed KB 完好)→ `-TimeoutSec 3300` 重跑成功。教訓:full RAGAs(30q × synth + 4-metric judge)係長 run,client timeout 要足 + eval 期間唔 poll /health。
+
+---
+
+## Day 2 — Phase Gate verdict + retro
+
+### Phase Gate(§3 acceptance criteria)— **STRONG PASS**(decision matrix (a))
+| Gate | 判決 | 證據 |
+|---|---|---|
+| G1 resolver 優先序 unit-tested | ✅ PASS | F1.8(`test_effective_config` + `test_query_per_kb_config`)|
+| **G2 per-KB 生效且互不干擾** ⭐ | ✅ PASS | F4.3 live 2-KB:AR 保守 3cit/8img + 答案完整 / DCE inherit 5/5 / 全域零改 |
+| G3 harness + multi-run + F2.6 信號可信 | ✅ PASS | F2 + F2.6 dogfood |
+| G4 UI 100% mockup-faithful(H7)| ✅ PASS | F3.1 改 mockup design-first + F3.2-3.5 + §12 live render |
+| G5 cross-doc no-regression(雙軸)| ✅ PASS | F4.2 code-level + RAGAs recall 1.0 / faith 0.9956 / 0 attention |
+| G6 pytest/ruff/mypy clean | ✅ PASS | 250 + 16 + 6(vitest)pass;ruff/mypy 新模組 clean |
+| G7 production-preserve(byte-identical)| ✅ PASS | `None`=inherit;recall flat;F1.8 back-compat |
+
+### Retro
+- **What worked**:R6 pre-active-flip 盤點(F4 3 catch:governance reuse / eval set target DCE / keyword-mode)避免咗跟 plan-text 假設亂跑;F2.6 雙軸 harness 設計令 G2 用 config-test 一跑即見洪水馴服;eval-blindness keystone(§4 catch 7)被 F4.2 證實 —— RAGAs recall 1.0/faith 0.99 完全睇唔到 AR 47-vs-8 圖洪差異,presentation counters 係必須第二軸。
+- **What surprised**:drive eval 索引被刪(infra decay)+ AR KB 223 圖令 full pipeline 慢 12 倍(47 圖 = 132s)—— per-KB 配置順帶解決延遲,非只 presentation。
+- **W44+ candidate(已記 plan)**:chunker 圖洪水深層修 **ADR-0041**(ingestion-bound;F1 live Test C 證 1 citation 仍 35 圖 = 單 mega-chunk 自帶,runtime 解唔到根)。其餘 defer 項:Fork B query-intent gate / per-document scope / config version history。
+
+---
+
+**End of W43 progress(Day 2 — F0→F4 全 done,Phase Gate STRONG PASS,7/7 gate;W44+ = chunker ADR-0041)**

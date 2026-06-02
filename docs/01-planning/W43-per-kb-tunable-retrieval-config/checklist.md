@@ -1,7 +1,7 @@
 ---
 phase: W43-per-kb-tunable-retrieval-config
 plan_ref: ./plan.md
-status: active      # draft | active | closed — F1+ UNLOCKED (0.5 gate PASS 2026-06-01)
+status: closed      # draft | active | closed — Phase Gate STRONG PASS 7/7 (2026-06-02)
 last_updated: 2026-06-02
 ---
 
@@ -49,23 +49,23 @@ last_updated: 2026-06-02
 
 ## F4 — 驗證 + 收尾
 
-- [ ] F4.1 Pre-flight（§10.3 5b — Langfuse /health 200 + Postgres SELECT 1）
-- [ ] F4.2 cross-doc eval no-regression（**雙軸 per §4 catch 7** — RAGAs faithfulness/recall AND presentation counters；eval set **必須含窄 how-to query**）
-- [ ] F4.3 **G2 decisive proof**（AR 保守 ≤3 cit **且答案仍正確完整** + DCE 完整性 同時成立、冇改全域）
-- [ ] F4.4 governance（who-can-edit admin/KB-owner + audit reuse ADR-0027 audit_log）
-- [ ] F4.5 cross-doc sync（plan/checklist/progress + session-start §10 W43 row）+ ADR-0040 final status + W44+ candidate（chunker ADR-0041）
-- [ ] F4.6 commit + push
+- [x] F4.1 Pre-flight ✅（Langfuse /health 200 + Postgres SELECT 1 + Backend :8000 200）
+- [x] F4.2 cross-doc eval no-regression（雙軸）✅ — code-level byte-identical + 完整 RAGAs `eval-set-v1-draft ×30` on `drive_user_manuals`：recall 1.0 / faith 0.9956 / corr 0.8374 / **0 attention** / 0 fail（vs baseline recall 1.0 / faith 0.9893 / 0 attention；含索引重建 287 chunks）
+- [x] F4.3 **G2 decisive proof** ✅ — AR `test-kb-20260531-v1` 保守 3 cit / 8 img **且答案完整 4-step** + DCE `test-kb-20260530-1` inherit 全域 **5/5 Scenario A-E** 同時成立、全域零改
+- [x] F4.4 governance ✅ — PATCH /kb/{id}/settings 自動寫 `kb.config.changed` audit（含 W43 欄位）reuse ADR-0027；GET /admin/audit-log 驗證；auth-gated（actor=None = Wave C2+ documented）；無新 code
+- [x] F4.5 cross-doc sync ✅ — plan §7 changelog + checklist + progress retro + session-start §10 W43 row + ADR-0040 final + W44+ chunker ADR-0041 candidate
+- [x] F4.6 commit + push ✅
 
 ---
 
 ## Cross-Cutting
 
-- [ ] 所有 deliverable committed to git
-- [ ] OQ status 變更反映入 `docs/decision-form.md`（預期 N/A — 本 phase 無 OQ 變更；若有則同步）
-- [ ] architectural-adjacent 決定 documented as ADR（ADR-0040 covers config-scope；chunker 圖洪水深層修 → W44+ ADR-0041）
-- [ ] `progress.md` retro section written（phase 結束填）
-- [ ] `progress.md` frontmatter status flipped to `closed`
-- [ ] Phase W44+ kickoff trigger noted in retro（chunker ADR-0041 / per-doc scope / Fork B）
+- [x] 所有 deliverable committed to git ✅
+- [x] OQ status 變更反映入 `docs/decision-form.md`（N/A — 本 phase 無 OQ 變更）✅
+- [x] architectural-adjacent 決定 documented as ADR（ADR-0040 Accepted covers config-scope；chunker 圖洪水深層修 → W44+ ADR-0041 candidate）✅
+- [x] `progress.md` retro section written ✅
+- [x] `progress.md` frontmatter status flipped to `closed` ✅
+- [x] Phase W44+ kickoff trigger noted in retro（chunker ADR-0041 / per-doc scope / Fork B）✅
 
 ---
 

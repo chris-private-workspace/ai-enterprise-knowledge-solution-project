@@ -1,7 +1,7 @@
 # ADR-0040: Per-KB Tunable Retrieval / Citation Config — Config-Scope Resolution Model
 
 **Date**: 2026-06-01
-**Status**: Accepted(W43 F0 0.5 gate PASS 2026-06-01 — Chris confirm H1 boundary + Accept + stakeholder scope「三項都 confirm,開 F1」)
+**Status**: Accepted(W43 F0 0.5 gate PASS 2026-06-01 — Chris confirm H1 boundary + Accept + stakeholder scope「三項都 confirm,開 F1」)。**Validated W43 closeout 2026-06-02 — Phase Gate STRONG PASS 7/7**:G2 live 2-KB(AR 保守 3cit/8img 完整 + DCE inherit 5/5,全域零改)+ F4.2 雙軸 no-regression(RAGAs recall 1.0 / faith 0.9956 / 0 attention)。eval-blindness 雙軸假設經 F4.2 證實(RAGAs 全綠卻睇唔到 AR 47-vs-8 圖洪差異)。圖洪水深層修 → W44+ ADR-0041。
 **Approver**: Chris(技術 Lead)
 
 ## Context
