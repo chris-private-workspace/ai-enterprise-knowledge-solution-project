@@ -8,19 +8,19 @@
 - [x] F0.3 ADR-0041 Status Proposed → Accepted(切法 D + cap 8)
 - [x] F0.4 plan §3 G1 回填 cap **8** + §7 changelog 記 F0 結果
 
-## F1 — Chunker 切法 D(混合)
-- [ ] F1.1 `layout_aware.py` text flush 同步 reset `image_positions`(修 `:207`/`:213-218` pile-on)
-- [ ] F1.2 `max_images_per_chunk` soft cap **8** force-split(延續 `section_path`,prev/next 連續)
-- [ ] F1.2b `_should_merge` 加 image-count guard(merge 後超 cap 唔 merge — 切法 D 第二支柱,防圖密短 sub-section 合併)
-- [ ] F1.3 新 `Settings.chunker_max_images_per_chunk=8` knob(`None`/0 = 今日 bit-identical)
-- [ ] F1.4 `LayoutAwareChunker.__init__` wire knob;orchestrator 傳遞(若需)
-- [ ] F1.5 ruff + mypy --strict clean
+## F1 — Chunker 切法 D(混合) ✅ 2026-06-03
+- [x] F1.1 `layout_aware.py` text flush 同步 reset `image_positions`(修 `:207`/`:213-218` pile-on) — `_reset_images_on_flush` gated on cap
+- [x] F1.2 `max_images_per_chunk` soft cap **8** force-split(延續 `section_path`,prev/next 連續) — `_force_flush_images` + image-event trigger
+- [x] F1.2b `_should_merge` 加 image-count guard(merge 後超 cap 唔 merge)
+- [x] F1.3 新 `Settings.chunker_max_images_per_chunk=8` knob(`None`/0 = bit-identical;+ `_flush_text_section` residual-image guard 防 force-split 後殘圖丟失)
+- [x] F1.4 `LayoutAwareChunker.__init__` wire knob;`server.py:99` 傳 `settings.chunker_max_images_per_chunk`(orchestrator 用 injected chunker)
+- [x] F1.5 ruff(我新增 code clean;layout_aware reformatted。server.py E402 + test pytest F401 = pre-existing 非本次引入)+ mypy(我新增 code clean;17 pre-existing errors = parsers docling stub + 既有 object→ParagraphItem assign)
 
-## F2 — Chunker unit test(H6 mandatory)
-- [ ] F2.1 新 image-flush 分配 test(圖隨 doc_order 落正確 sub-chunk)
-- [ ] F2.2 `max_images_per_chunk` cap force-split test
-- [ ] F2.3 default(`None`/0)= 今日行為 bit-identical regression test
-- [ ] F2.4 既有 ADR-0033 merge + BUG-017 sibling-guard 無 regression(全 test_chunker pass)
+## F2 — Chunker unit test(H6 mandatory) ✅ 2026-06-03 — pytest 30 passed
+- [x] F2.1 新 image-flush 分配 test(圖隨 doc_order 落正確 sub-chunk) — `test_w44_image_cap_no_image_loss`
+- [x] F2.2 `max_images_per_chunk` cap force-split test — `test_w44_image_cap_force_splits_dense_section`
+- [x] F2.3 default(`None`/0)= 今日行為 bit-identical regression test — `test_w44_cap_none_preserves_whole_section_pile_on` + `test_w44_under_cap_doc_identical_to_no_cap`
+- [x] F2.4 既有 ADR-0033 merge + BUG-017 sibling-guard 無 regression(24 既有全綠)+ `test_w44_merge_image_guard_*` + `test_w44_residual_images_flushed_*`
 
 ## F3 — Re-index + presentation 驗證
 - [ ] F3.1 pre-flight(Langfuse 200 / Postgres / backend venv restart 載新 code)

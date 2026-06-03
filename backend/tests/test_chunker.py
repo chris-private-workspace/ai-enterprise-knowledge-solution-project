@@ -494,3 +494,119 @@ def test_chunkspec_has_all_required_fields_for_orchestrator() -> None:
     assert c.chunk_index >= 0
     assert isinstance(c.low_value_flag, bool)
     assert isinstance(c.embedded_image_positions, list)
+
+
+# ─── W44 / ADR-0041 切法 D — image-density deep fix ─────────────────
+
+
+def _dense_images(count: int, start_doc_order: int = 2) -> list[EmbeddedImage]:
+    """N synthetic embedded images at consecutive doc_orders (image-dense section)."""
+    return [
+        EmbeddedImage(
+            image_bytes=b"\x89PNG",
+            alt_text=f"fig{i}",
+            doc_order=start_doc_order + i,
+            ext="png",
+            sha256=f"{i:064x}",
+        )
+        for i in range(count)
+    ]
+
+
+def test_w44_image_cap_force_splits_dense_section() -> None:
+    """ADR-0041 切法 D — an image-dense section (20 imgs, default cap 8) force-splits
+    into sub-chunks so no single chunk exceeds the cap (root fix for 圖洪 ci=15=57)."""
+    paragraphs = [_heading(2, "Dense Steps", 0), _para("Short step body.", 1)]
+    chunks = LayoutAwareChunker().chunk(
+        _build_result(paragraphs, images=_dense_images(20)),
+    )
+    text_chunks = [c for c in chunks if c.chunk_kind == "text"]
+    assert text_chunks
+    assert all(len(c.embedded_image_positions) <= 8 for c in text_chunks), (
+        f"a chunk exceeded the image cap: "
+        f"{[len(c.embedded_image_positions) for c in text_chunks]}"
+    )
+    # 20 imgs / cap 8 → at least 3 sub-chunks; all carry the same section_path
+    assert len(text_chunks) >= 3
+    assert all(c.section_path == ["Dense Steps"] for c in text_chunks)
+
+
+def test_w44_image_cap_no_image_loss() -> None:
+    """ADR-0041 — force-split distributes ALL images; none dropped (total preserved)."""
+    chunks = LayoutAwareChunker().chunk(
+        _build_result([_heading(2, "Dense", 0), _para("body", 1)], images=_dense_images(20)),
+    )
+    all_positions = [p for c in chunks for p in c.embedded_image_positions]
+    assert len(all_positions) == 20
+    assert sorted(all_positions) == sorted(f"img@{2 + i}" for i in range(20))
+
+
+def test_w44_cap_none_preserves_whole_section_pile_on() -> None:
+    """ADR-0041 — cap=None → pre-W44 whole-section pile-on (bit-identical): all
+    images land on a single section chunk, no force-split."""
+    chunks = LayoutAwareChunker(max_images_per_chunk=None).chunk(
+        _build_result([_heading(2, "Dense", 0), _para("body", 1)], images=_dense_images(20)),
+    )
+    text_chunks = [c for c in chunks if c.chunk_kind == "text"]
+    assert max(len(c.embedded_image_positions) for c in text_chunks) == 20
+
+
+def test_w44_merge_image_guard_blocks_over_cap_consolidation() -> None:
+    """ADR-0041 — two short sibling sub-sections whose combined images exceed the
+    cap must NOT be merged by ADR-0033 adjacent-short-merge (image-guard)."""
+    paragraphs = [
+        _heading(2, "Parent", 0),
+        _heading(3, "Sub A", 1),
+        _para("alpha", 2),
+        _heading(3, "Sub B", 8),
+        _para("beta", 9),
+    ]
+    images = [
+        EmbeddedImage(image_bytes=b"\x89PNG", alt_text=f"a{i}", doc_order=3 + i,
+                      ext="png", sha256=f"a{i:063x}")
+        for i in range(5)  # Sub A: 5 imgs (doc_order 3-7)
+    ] + [
+        EmbeddedImage(image_bytes=b"\x89PNG", alt_text=f"b{i}", doc_order=10 + i,
+                      ext="png", sha256=f"b{i:063x}")
+        for i in range(5)  # Sub B: 5 imgs (doc_order 10-14)
+    ]
+    text_chunks = [
+        c for c in LayoutAwareChunker().chunk(_build_result(paragraphs, images=images))
+        if c.chunk_kind == "text"
+    ]
+    # 5 + 5 = 10 > cap 8 → guard blocks merge → 2 separate chunks, each ≤ cap
+    assert len(text_chunks) == 2, (
+        f"image-guard must block over-cap merge, got {len(text_chunks)} chunks"
+    )
+    assert all(len(c.embedded_image_positions) <= 8 for c in text_chunks)
+
+
+def test_w44_residual_images_flushed_on_section_tail() -> None:
+    """ADR-0041 — a section-tail image batch left after a force-split (images but
+    no new text) is still flushed, never dropped."""
+    chunks = LayoutAwareChunker().chunk(
+        _build_result([_heading(2, "Dense", 0), _para("body", 1)], images=_dense_images(10)),
+    )
+    all_positions = [p for c in chunks for p in c.embedded_image_positions]
+    assert len(all_positions) == 10  # 8 + 2 residual, none lost
+    img_counts = sorted(
+        len(c.embedded_image_positions) for c in chunks if c.chunk_kind == "text"
+    )
+    assert img_counts == [2, 8]
+
+
+def test_w44_under_cap_doc_identical_to_no_cap() -> None:
+    """ADR-0041 — a normal section carrying < cap images produces the SAME chunks
+    with cap=8 (default) and cap=None (no-op for under-cap, no-flush docs)."""
+    paragraphs = [_heading(2, "Section", 0), _para("Body text " * 30, 1)]
+    images = _dense_images(3)  # 3 < cap 8
+    capped = LayoutAwareChunker(max_images_per_chunk=8).chunk(
+        _build_result(paragraphs, images=images),
+    )
+    uncapped = LayoutAwareChunker(max_images_per_chunk=None).chunk(
+        _build_result(paragraphs, images=images),
+    )
+    assert len(capped) == len(uncapped)
+    assert [c.embedded_image_positions for c in capped] == [
+        c.embedded_image_positions for c in uncapped
+    ]

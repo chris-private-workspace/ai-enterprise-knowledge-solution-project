@@ -255,6 +255,13 @@ class Settings(BaseSettings):
     # 10)。2000 sweet spot ~7-8 sibling chunks per ADR-0037 §2.3 truncation
     # mechanism + ADR-0037 amendment 2026-05-26 W28 F4。
     parent_doc_max_tokens_per_parent: int = 2000
+
+    # W44 ADR-0041 — chunker per-chunk image cap (切法 D). default 8 caps
+    # image-dense mega-chunks (實測 ci=15=57 圖) by distributing images per
+    # doc_order text-flush + force-splitting into sub-chunks. None/0 → no cap =
+    # pre-W44 whole-section pile-on (bit-identical). Wired into the ingestion
+    # chunker at server.py startup; re-index required for changes to take effect.
+    chunker_max_images_per_chunk: int | None = 8
     # Safety cap on siblings fetched per parent (pathological-doc protection
     # — a section with 1000+ chunks would explode latency + cost). 50 ≈
     # 12-15K tokens raw before truncation, sufficient envelope.

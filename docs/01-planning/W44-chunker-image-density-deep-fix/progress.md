@@ -27,4 +27,25 @@ Chris(AskUserQuestion)揀 **切法 D(混合:sub-heading 細分 + image cap 兜�
 
 ### Commits
 - `e5d8830` docs(planning): W44 kickoff — ADR-0041 draft + phase artifacts(F0.1)
-- (F0 closeout docs commit 見下批 — ADR Accept + plan/checklist/README update)
+- `c219dfa` docs(adr): W44 F0 gate PASS — ADR-0041 Accepted(切法 D + cap 8)
+
+---
+
+## Day 1 — 2026-06-03(F1 + F2 — chunker 切法 D code + test)
+
+### 做咗乜
+- **F1 chunker 切法 D**(`layout_aware.py`):① `_reset_images_on_flush`(text flush 按 doc_order 分配圖,修 `:207` pile-on 根因)② `_force_flush_images`(image cap 8 force-split,延續 section_path)③ `_should_merge` image-count guard(防 ADR-0033 merge re-pile)④ `_flush_text_section` residual-image guard(force-split 後殘圖唔丟)。全部 gated on `max_images_per_chunk is not None` → cap=None 完全 bit-identical(pre-W44 pile-on)。
+- **Settings**:`chunker_max_images_per_chunk: int | None = 8`;`server.py:99` startup 傳落 injected chunker(override seam)。
+- **F2 test**(`test_chunker.py` +6):force-split / no-image-loss / cap=None pile-on / merge image-guard / residual flush / under-cap no-op。
+
+### 驗證
+- **pytest 30 passed**(6 新切法 D + 24 既有 regression 全綠 — ADR-0033 merge + BUG-017 image isolation 零 regression)。
+- **ruff**:我新增 code clean(`layout_aware` reformatted)。`server.py` E402 ×30(truststore import pattern)+ `test_chunker` `import pytest` F401 = **pre-existing 非本次引入**(git diff 證 server 只改 line 99;test 純 append + 0 `pytest.` 用法),按 Karpathy §1.3 不刪。
+- **mypy --strict**:我新增 method/field clean;17 pre-existing errors(parsers docling stub + `layout_aware` 既有 `object→ParagraphItem/Table` assign)非本次引入。
+
+### Blockers / 下一步
+- **F3 re-index + F4 eval 待做** — 需 backend venv restart 載新 chunker code(`python -m api.server` 無 reload)+ doc-level reindex 圖密文件 + eval no-regression(G3/G4)。涉及 stateful + eval ~18min。
+- ⚠️ 重切 risk(R6):chunker 改變所有 chunk 邊界 → G3/G4 必過先算 PASS。
+
+### Commits
+- (F1+F2 commit 見下 — feat(ingestion) 切法 D code + test + checklist/progress)

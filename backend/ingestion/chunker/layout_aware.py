@@ -8,8 +8,11 @@ Algorithm:
    paragraph boundaries; never split mid-paragraph for W2 baseline (per spec).
 3. Tables: emit each table as 1 chunk (architecture.md §3.3 "table 獨立 chunk"),
    inheriting section_path from the most recent heading at the table's doc_order.
-4. Embedded image positions: associate by doc_order — each image attached to the
-   chunk whose section spans its doc_order.
+4. Embedded image positions: associate by doc_order. W44 ADR-0041 (切法 D):
+   images distribute per text-flush + an image cap (max_images_per_chunk, default
+   8) force-splits image-dense sections into sub-chunks under the same section_path
+   (was: pile on the whole section → image-flood mega-chunk, 實測 57 圖). cap=None
+   preserves the pre-W44 whole-section pile-on (bit-identical).
 5. low_value_flag heuristic (per architecture.md §3.3 + checklist F2):
    - chunk_token_count < 60 (soft floor lowered W25 D3 per ADR-0033;
      was 100, see ADR §Decision (a) for the 60% low_value ratio empirical
@@ -42,6 +45,7 @@ _TOKEN_TARGET = 500
 _TOKEN_HARD_CAP = 1500
 _TOKEN_LOW_VALUE_FLOOR = 60  # lowered 100→60 W25 D3 per ADR-0033 (amends §3.3)
 _MIN_CHUNK_MERGE_FLOOR = 160  # adjacent-short-merge threshold per ADR-0033 (b)
+_MAX_IMAGES_PER_CHUNK = 8  # W44 ADR-0041 (切法 D) per-chunk image cap; None → no cap (pre-W44)
 
 _TOC_PATTERNS = (
     re.compile(r"^\s*table of contents\s*$", re.IGNORECASE),
@@ -77,11 +81,17 @@ class LayoutAwareChunker:
         hard_cap_tokens: int = _TOKEN_HARD_CAP,
         low_value_floor: int = _TOKEN_LOW_VALUE_FLOOR,
         min_chunk_merge_floor: int = _MIN_CHUNK_MERGE_FLOOR,
+        max_images_per_chunk: int | None = _MAX_IMAGES_PER_CHUNK,
     ) -> None:
         self.target_tokens = target_tokens
         self.hard_cap_tokens = hard_cap_tokens
         self.low_value_floor = low_value_floor
         self.min_chunk_merge_floor = min_chunk_merge_floor
+        # W44 ADR-0041 (切法 D) — per-chunk image cap. None → no cap (pre-W44
+        # whole-section pile-on, bit-identical). All cap-gated behaviour below
+        # (per-flush image reset / force-split / merge image-guard / residual
+        # image flush) is OFF when None.
+        self.max_images_per_chunk = max_images_per_chunk
         self._enc = tiktoken.get_encoding("cl100k_base")
 
     def chunk(self, parser_result: ParserResult) -> list[ChunkSpec]:
@@ -144,6 +154,16 @@ class LayoutAwareChunker:
                 img_pos = ev  # doc_order int
                 if accumulator is not None:
                     accumulator.image_positions.append(f"img@{img_pos}")
+                    # 切法 D / ADR-0041 — image cap force-split: when the open
+                    # section's accumulated images hit the cap, flush the current
+                    # chunk (text-so-far + this image batch) and continue the SAME
+                    # section in a fresh sub-chunk so per-chunk images stay ≤ cap.
+                    if (
+                        self.max_images_per_chunk is not None
+                        and len(accumulator.image_positions) >= self.max_images_per_chunk
+                    ):
+                        chunks.extend(self._force_flush_images(accumulator, len(chunks)))
+                        chunk_index_counter = len(chunks)
                 # else: image before any text/heading — orphan, dropped for W2 baseline
 
             elif ev_kind == "table":
@@ -199,33 +219,66 @@ class LayoutAwareChunker:
         prospective = acc.token_count + para_tokens
         if prospective > self.hard_cap_tokens and acc.paragraphs:
             # Flush before adding (hard cap)
-            chunks.append(self._build_text_chunk(
-                acc, acc.paragraphs, acc.token_count, len(chunks)),
+            chunks.append(
+                self._build_text_chunk(acc, acc.paragraphs, acc.token_count, len(chunks)),
             )
             acc.paragraphs = []
             acc.token_count = 0
-            # Keep image_positions on the open section — they belong to whole section
+            self._reset_images_on_flush(acc)
 
         acc.paragraphs.append(text)
         acc.token_count += para_tokens
 
         # Soft target: flush early if past target on a clean paragraph boundary
         if acc.token_count >= self.target_tokens:
-            chunks.append(self._build_text_chunk(
-                acc, acc.paragraphs, acc.token_count, len(chunks)),
+            chunks.append(
+                self._build_text_chunk(acc, acc.paragraphs, acc.token_count, len(chunks)),
             )
             acc.paragraphs = []
             acc.token_count = 0
+            self._reset_images_on_flush(acc)
 
     def _flush_text_section(
         self,
         acc: _SectionAccumulator,
         base_index: int,
     ) -> list[ChunkSpec]:
-        """Emit any remaining buffered paragraphs as a final chunk for the section."""
-        if not acc.paragraphs:
+        """Emit any remaining buffered paragraphs as a final chunk for the section.
+
+        切法 D / ADR-0041 — also flush a residual image batch (a section tail that
+        force-split left with images but no new text) so capped images are never
+        dropped. cap=None keeps the pre-W44 paragraphs-only condition (bit-identical).
+        """
+        has_residual_images = self.max_images_per_chunk is not None and bool(acc.image_positions)
+        if not acc.paragraphs and not has_residual_images:
             return []
         return [self._build_text_chunk(acc, acc.paragraphs, acc.token_count, base_index)]
+
+    def _reset_images_on_flush(self, acc: _SectionAccumulator) -> None:
+        """切法 D / ADR-0041 — distribute images per text-flush instead of piling
+        them on the whole section (the image-flood root). Only when a cap is set;
+        cap=None preserves the pre-W44 whole-section pile-on (bit-identical)."""
+        if self.max_images_per_chunk is not None:
+            acc.image_positions = []
+
+    def _force_flush_images(
+        self,
+        acc: _SectionAccumulator,
+        base_index: int,
+    ) -> list[ChunkSpec]:
+        """切法 D / ADR-0041 — flush the open section as a sub-chunk when its image
+        count hits the cap, then reset paragraphs/tokens/images so the SAME section
+        continues in a fresh sub-chunk (section_path / title / heading_anchor kept).
+        The flushed chunk carries the text-so-far plus the capped image batch; an
+        image-only batch (no interleaved text) yields a title-only carrier chunk —
+        acceptable, citation neighbours (prev/next + section-aware attach) still
+        reach surrounding context. Only called when max_images_per_chunk is set.
+        """
+        chunk = self._build_text_chunk(acc, acc.paragraphs, acc.token_count, base_index)
+        acc.paragraphs = []
+        acc.token_count = 0
+        acc.image_positions = []
+        return [chunk]
 
     def _build_text_chunk(
         self,
@@ -331,7 +384,9 @@ class LayoutAwareChunker:
                 chunk_kind="text",
                 chunk_index=prev.chunk_index,  # re-indexed below
                 low_value_flag=self._is_low_value(
-                    prev.chunk_title, combined_text, combined_token_count,
+                    prev.chunk_title,
+                    combined_text,
+                    combined_token_count,
                 ),
                 embedded_image_positions=combined_images,
                 heading_anchor=prev.heading_anchor,
@@ -361,6 +416,14 @@ class LayoutAwareChunker:
         Top-level chapters never merge (always distinct chapters).
         """
         if prev.chunk_kind != "text" or curr.chunk_kind != "text":
+            return False
+        # 切法 D / ADR-0041 — never merge if combined images would exceed the cap
+        # (defends the per-chunk cap against ADR-0033 adjacent-short-merge re-piling
+        # images from two image-dense short sub-sections). cap=None → no guard.
+        if self.max_images_per_chunk is not None and (
+            len(prev.embedded_image_positions) + len(curr.embedded_image_positions)
+            > self.max_images_per_chunk
+        ):
             return False
         if prev.chunk_token_count >= self.min_chunk_merge_floor:
             return False

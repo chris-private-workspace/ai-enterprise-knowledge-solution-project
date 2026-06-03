@@ -96,7 +96,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # re-instantiating Azure clients per request; chunker is stateless).
     app.state.embedder = None
     app.state.index_populator = None
-    app.state.ingestion_chunker = LayoutAwareChunker()
+    app.state.ingestion_chunker = LayoutAwareChunker(
+        max_images_per_chunk=settings.chunker_max_images_per_chunk,
+    )
 
     # W24-wave-c1 F1 + F2 — Key Vault provider + admin provider config backend.
     # Both factories pick lazy-imported production impls only when their env
