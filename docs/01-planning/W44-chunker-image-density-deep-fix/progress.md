@@ -149,4 +149,31 @@ gold RAGAs no-regression 需:(1) SME-validated GT(Q14,Chris pick) + (2) before-b
 - **F4.6b = 🚧 Chris 複核**(對 proposal ✅剔/✏️改/❌剔,🔴 嗰 9 條決定 keyword vs `expected_refusal`)→ 我 apply 入 eval-set + flip validated → 接 F4.7。
 
 ### Commits
-- (F4.6a commit 見下)
+- `ec57056` docs(planning): W44 F4.6a AI-drafted content-based GT proposal
+- `0e2bb1c` docs(planning): capture LLM document-profiler brainstorm as roadmap addendum(brainstorm 衍生,F4.6 block 期間)
+
+---
+
+## Day 2 — 2026-06-04 — F4.6b Chris 複核 + apply GT(Q14 RESOLVED)
+
+### 做咗乜
+- **chat 互動逐模組複核**(user pick「互動逐模組帶你過」)AR→AP→FA→CB→GL→BM 過晒 50 條。verdict:
+  - **46 條收緊 keyword + `validated:true`**(🟢 全收 / 🟡 方向確認 / 部分 🔴 保留 keyword 當難題)。
+  - **4 條 reclassified OOS**(Q048/Q049/Q050/Q054):corpus 答唔到(cross-module data source / 跨模組互動 / 未列舉 dimension types / variance reporting 未文件化)→ `expected_refusal:true` + `query_type:oos` + `difficulty:n_a_oos` + keywords 清空。
+- **apply**(throwaway `_w44_apply_gt.py` safe_load→改→safe_dump,保留欄位順序,已刪):`docs/eval-set-v1-draft.yaml` metadata bump `1.0-w44-f4.6-sme-validated` + header 重生記錄 SME validation provenance。`acceptable_chunk_ids` 留空(chunker-agnostic per R3,runner 行 keyword-mode)。5 條原 OOS(Q031-Q035)不動。
+- **`validate_eval_set.py` 修 W2-stale**(同 F4.5 discover_chunk_ids 同款 staleness):① non-OOS 接受 **keyword-mode GT**(≥1 `primary_chunk_id` **OR** ≥1 `expected_answer_keyword`,原本只認 strict chunk-id)② 加 `expected_refusal⇒query_type oos` 不變量檢查。
+
+### 驗證
+- `validate_eval_set.py docs/eval-set-v1-draft.yaml` → **OK passed all validation checks**。
+- ruff:`validate_eval_set.py` clean。spot-check Q001(keyword + validated)、Q048(oos + refusal)、metadata 全對。
+- 計數:46 keyword + 4 OOS = 50 validated;55 total(含 5 原 OOS)。
+
+### 決定 / OQ
+- **Q14 designated SME validation 首次執行**(Q14 *owner* 決定早於 W1 已 Resolved = Chris self-assigned labeler;但 eval-set-v1-draft 嘅實際 SME validation 工作自 W2 一直 pending)→ 本次 F4.6b 首次落實:eval-set 由 AI-draft 升為 **SME-validated**(content-based GT)。**非** OQ status change(Q14 已 Resolved),係執行 Q14 指派嘅 work item;decision-form Q14 Notes 加 traceability 註。
+- eval-set 檔名保持 `eval-set-v1-draft.yaml`(registry id 不變,F4.7/F4.8 直接用);正式 rename → `eval-set-v1.yaml` 留 F5 closeout 可選。
+
+### Blockers / 下一步
+- **F4.7**:cap=None reindex drive(舊 chunker before baseline)+ `/eval/run`(eval-set-v1-draft,content GT keyword-mode + RAGAs)→ 然後 F4.8 cap=8 + F4.9 隔離對比。
+
+### Commits
+- (F4.6b commit 見下)

@@ -260,7 +260,7 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 22 條
 | **Decided By** | Chris(acting as Stakeholder per 2026-04-30 session;specific labeler self-assigned 2026-05-01) |
 | **Date** | 2026-04-30(initial)/ 2026-05-01(labeler) |
 | **Status** | `Resolved` (full) |
-| **Notes** | **W11 D2 corpus scope clarification(2026-06-10)**:Drive Project corpus actual content = **D365 F&O ERP user manuals**(NOT MFP product manuals as eval-set-v0 placeholder assumed)。Labeler unchanged(Chris);domain alignment + Q14 status `Resolved` preserved per memo `docs/03-implementation/drive-corpus-scope-clarification-W11-d2.md` §4.1。Eval-set-v1 refresh 屬 W11+ cohort traffic-fed iteration(non-blocking)。 |
+| **Notes** | **W11 D2 corpus scope clarification(2026-06-10)**:Drive Project corpus actual content = **D365 F&O ERP user manuals**(NOT MFP product manuals as eval-set-v0 placeholder assumed)。Labeler unchanged(Chris);domain alignment + Q14 status `Resolved` preserved per memo `docs/03-implementation/drive-corpus-scope-clarification-W11-d2.md` §4.1。Eval-set-v1 refresh 屬 W11+ cohort traffic-fed iteration(non-blocking)。<br>**W44 F4.6 SME validation 首次執行(2026-06-04)**:Q14 owner 決定一直 Resolved,但 `eval-set-v1-draft.yaml` 嘅實際 SME validation 自 W2 pending。W44 F4.6 由 Chris(via AI-draft→人複核互動)完成:46 條 content-based keyword GT + 4 條 reclassified OOS + `validated:true`,metadata `1.0-w44-f4.6-sme-validated`。eval-set 正式由 AI-draft 升 SME-validated。Status 維持 `Resolved`(本次係 work-item 執行,非 status change)。 |
 
 ---
 

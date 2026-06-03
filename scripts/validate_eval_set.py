@@ -127,9 +127,23 @@ def validate(yaml_path: Path) -> list[str]:
 
         if q.query_type == "oos" and not q.ground_truth.expected_refusal:
             issues.append(f"{q.query_id}: oos query must have expected_refusal=true")
-        if q.query_type != "oos" and not q.ground_truth.primary_chunk_ids:
+        # W44 F4.6 — accept content-based GT (keyword-mode). The W2 validator
+        # required primary_chunk_ids (strict mode); per the W44 R3 deviation the
+        # eval-set uses chunker-agnostic keyword GT (chunk_ids intentionally empty
+        # so the same GT scores both the cap=None and cap=8 re-chunks), so a
+        # non-OOS query is valid with EITHER real chunk_ids OR ≥1 keyword.
+        if q.query_type != "oos" and not (
+            q.ground_truth.primary_chunk_ids or q.ground_truth.expected_answer_keywords
+        ):
             issues.append(
-                f"{q.query_id}: non-oos query must have ≥1 primary_chunk_id",
+                f"{q.query_id}: non-oos query must have ≥1 primary_chunk_id "
+                f"OR ≥1 expected_answer_keyword (content-based GT)",
+            )
+        # W44 F4.6 — invariant: expected_refusal=true implies query_type 'oos', so
+        # the runner's expected_refusal-based OOS split matches the declared type.
+        if q.ground_truth.expected_refusal and q.query_type != "oos":
+            issues.append(
+                f"{q.query_id}: expected_refusal=true requires query_type 'oos'",
             )
 
     return issues
