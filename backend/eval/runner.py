@@ -21,6 +21,7 @@ from typing import Literal
 import structlog
 import yaml
 
+from eval.throttle import retrieve_with_throttle
 from retrieval.retrieval_engine import RetrievalEngine
 
 logger = structlog.get_logger(__name__)
@@ -129,8 +130,10 @@ class EvalRunner:
         # ADR-0018 multi-KB invariant: per-query kb_id override OR runner default.
         kb_id = str(q.get("kb_id") or self._kb_id)
         try:
-            retrieval = await self._engine.retrieve(
-                query=query_text, kb_id=kb_id, top_k=self._top_k,
+            # W44 F4.4 — eval-only throttle + rate-limit backoff (see eval/throttle.py);
+            # prevents the ~50-query burst from tripping the Cohere 401 rate-limit.
+            retrieval = await retrieve_with_throttle(
+                self._engine, query=query_text, kb_id=kb_id, top_k=self._top_k,
             )
         except Exception as exc:  # noqa: BLE001 — surface error per query
             return QueryEvalResult(

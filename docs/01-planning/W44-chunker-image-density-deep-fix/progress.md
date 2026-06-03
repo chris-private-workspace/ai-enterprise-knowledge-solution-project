@@ -83,4 +83,24 @@ gold RAGAs no-regression 需:(1) SME-validated GT(Q14,Chris pick) + (2) before-b
 
 ### Commits
 - `ada4100` docs(planning): F3 G1/G2 PASS(之前)
-- (F4 finding + rigor track docs commit 見下)
+- `d2485ae` docs(planning): F4 eval-harness decay finding + rigor track pivot
+
+---
+
+## Day 1 cont — F4.4 Cohere rate-limit throttle/retry(eval infra)
+
+### 做咗乜
+- **根因 ground**:eval 兩個 query loop(`runner.py:_evaluate_query` recall + `orchestrator.py:build_ragas_samples` RAGAs)都 call `engine.retrieve` → reranker。`cohere.py:78` 已有 3-retry/~7s tenacity backoff,但 eval 連打 47 query 觸發嘅 Azure rate-limit window 超過 7s + **query 間零 spacing** → retry 耗盡仍拋 401(misleading rate-limit signal,單 query healthy)。
+- **修法(eval-only,唔掂 production reranker per F4.4 plan scope)**:新 `backend/eval/throttle.py` `retrieve_with_throttle()` = ① per-query throttle spacing(env `EVAL_RETRIEVE_THROTTLE_S` default 1.0s,call-time 讀,主修避 burst)② 外層 `AsyncRetrying` longer-backoff(`wait_exponential(2, min=2, max=30)` × default 5 attempts,**只** retry 401/429/`TransportError`,真 4xx/generic error 即 reraise 唔燒 attempt)。`runner.py` + `orchestrator.py` 兩 loop 改用 helper;`conftest.py` 設 throttle=0(test 唔 sleep)。
+- **`tenacity` 既有重用 dep**(H2 ✅ 無新增);Karpathy §1.2 唔改 production `cohere.py`(scope 守)。
+
+### 驗證
+- **pytest 41 passed**(test_eval_throttle +7 新 + test_eval_runner/ragas/endpoints 34 既有 0 regression)。
+- ruff:新增 5 file all clean。mypy --strict:`throttle.py` 本身 0 error(13 error 全 transitive import pre-existing — `retrieval_engine.py`/`observe.py`/`reranker/base.py`,非本次引入,同 W44 F1 既有一致)。
+
+### Blockers / 下一步
+- **F4.5**:跑 `scripts/discover_chunk_ids.py` 生成 30 main candidate chunk_ids(我做)→ 交 **F4.6 SME block**(Chris pick `acceptable_chunk_ids` + `validated:true`,AI 做唔到 gold GT)。
+- F4.4 default 1.0s throttle × 47 query × 2 loop ≈ +94s eval wall(RAGAs judge ~30min 主導,可接受)。F4.7/F4.8 重建 eval 時 backend env 可調 `EVAL_RETRIEVE_THROTTLE_S` override。
+
+### Commits
+- (F4.4 commit 見下)

@@ -34,7 +34,7 @@
 - [~] F4.2 重切後 eval — 🚧 superseded:改 cap=8 after(F4.8)+ 隔離對比(F4.9)
 - [ ] F4.3 Gate verdict → Chris 拍板(待 rigor track 完成;切法 D core no-regression 已三源證實:G1/G2 硬證 + pytest text bit-identical + sanity query healthy)
 ### Rigor sub-track(gold no-regression,跨 session)
-- [ ] F4.4 Cohere 401 rate-limit throttle/retry(eval code)— 我做,所有後續 eval 依賴
+- [x] F4.4 Cohere 401 rate-limit throttle/retry(eval code)— ✅ 2026-06-03 `backend/eval/throttle.py`:per-query throttle spacing(env `EVAL_RETRIEVE_THROTTLE_S` default 1.0s,主修避 burst)+ 外層 longer-backoff retry(`AsyncRetrying` 401/429/TransportError-only,default 5 attempts;**eval-only 唔掂 production `cohere.py` reranker**)。runner.py + orchestrator.py 兩 loop wire;conftest throttle=0。pytest +7(41 passed,runner/ragas/endpoints 0 regression)/ ruff clean / mypy 新 code clean
 - [ ] F4.5 跑 `scripts/discover_chunk_ids.py` 生成 30 main candidate chunk_ids — 我做
 - [ ] F4.6 SME GT cascade:Chris pick `acceptable_chunk_ids` + `validated:true`(Q14)— 🚧 BLOCK,需 Chris 人手(AI 做唔到 gold GT)
 - [ ] F4.7 cap=None reindex drive(舊 chunker before baseline)+ eval(SME GT)

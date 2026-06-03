@@ -19,3 +19,9 @@ import os
 # Must run before the first `Settings()` construction — conftest.py is imported
 # by pytest ahead of every test module under `tests/`.
 os.environ["DATABASE_URL"] = ""
+
+# W44 F4.4 — disable the eval-only per-query retrieve throttle (eval/throttle.py)
+# during tests so the runner/orchestrator unit tests don't sleep 1s per mocked
+# query. The throttle's own unit tests pass an explicit `throttle_s` to exercise
+# the delay; everything else reads this env knob at call time.
+os.environ["EVAL_RETRIEVE_THROTTLE_S"] = "0"

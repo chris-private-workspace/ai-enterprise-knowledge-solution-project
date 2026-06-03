@@ -39,6 +39,7 @@ import structlog
 from api.schemas.eval import EvalReport, FailedQueryDetail
 from eval.ragas_runner import RagasQuerySample, RagasRunner
 from eval.runner import EvalRunner
+from eval.throttle import retrieve_with_throttle
 from retrieval.retrieval_engine import RetrievalEngine
 
 logger = structlog.get_logger(__name__)
@@ -111,7 +112,8 @@ async def build_ragas_samples(
         question = str(q.get("query_text", ""))
         q_kb_id = str(q.get("kb_id") or kb_id)  # ADR-0018 per-query override
         try:
-            retrieval = await engine.retrieve(query=question, kb_id=q_kb_id, top_k=5)
+            # W44 F4.4 — eval-only throttle + rate-limit backoff (see eval/throttle.py).
+            retrieval = await retrieve_with_throttle(engine, query=question, kb_id=q_kb_id, top_k=5)
             contexts = [str(c.fields.get("chunk_text", "")) for c in retrieval.chunks]
             # W34 F1.0.a — propagate `engine + kb_id` per W32 F1.1.a synthesizer
             # signature for production-parity RAGAs eval. Without these kwargs the
