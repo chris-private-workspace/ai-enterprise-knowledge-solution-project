@@ -2,16 +2,17 @@
 
 > Atomic items per deliverable(plan §2)。F1+ GATED on F0 PASS。
 
-## F0 — H1 STOP+ask gate
-- [ ] F0.1 Present ADR-0041 H1 boundary + 決策 2 切法選項(A/B/C/D)+ 風險(重切影響 recall)
-- [ ] F0.2 Chris confirm H1 + 揀切法 + 定 `max_images_per_chunk` cap default + tolerance
-- [ ] F0.3 ADR-0041 Status Proposed → Accepted(回填切法 + cap 決定)
-- [ ] F0.4 plan §3 G1 回填 cap 具體值 + §7 changelog 記 F0 結果
+## F0 — H1 STOP+ask gate ✅ PASS 2026-06-03
+- [x] F0.1 Present ADR-0041 H1 boundary + 決策 2 切法選項(A/B/C/D)+ 風險(重切影響 recall)
+- [x] F0.2 Chris confirm H1 + 揀**切法 D 混合** + cap default **8**(tolerance 沿 ±2pp)
+- [x] F0.3 ADR-0041 Status Proposed → Accepted(切法 D + cap 8)
+- [x] F0.4 plan §3 G1 回填 cap **8** + §7 changelog 記 F0 結果
 
-## F1 — Chunker image-aware flush
+## F1 — Chunker 切法 D(混合)
 - [ ] F1.1 `layout_aware.py` text flush 同步 reset `image_positions`(修 `:207`/`:213-218` pile-on)
-- [ ] F1.2 `max_images_per_chunk` soft cap force-split(延續 `section_path`,prev/next 連續)
-- [ ] F1.3 新 `Settings.chunker_max_images_per_chunk` knob(default = preserve;`None`/0 = 今日 bit-identical)
+- [ ] F1.2 `max_images_per_chunk` soft cap **8** force-split(延續 `section_path`,prev/next 連續)
+- [ ] F1.2b `_should_merge` 加 image-count guard(merge 後超 cap 唔 merge — 切法 D 第二支柱,防圖密短 sub-section 合併)
+- [ ] F1.3 新 `Settings.chunker_max_images_per_chunk=8` knob(`None`/0 = 今日 bit-identical)
 - [ ] F1.4 `LayoutAwareChunker.__init__` wire knob;orchestrator 傳遞(若需)
 - [ ] F1.5 ruff + mypy --strict clean
 

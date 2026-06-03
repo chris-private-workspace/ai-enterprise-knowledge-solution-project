@@ -4,7 +4,7 @@
 > **錨點**:ADR-0041(**Proposed** — F0 gate 待 Chris confirm H1 + 決策 2 切法 + Accept)+ ROADMAP-per-kb-tunable-config.md §3 W44 + [AUDIT-A/B/E]。
 > **Kickoff**:2026-06-03(W43 closeout 後,深度優先 per roadmap §6)。
 > **Owner**:Chris(技術 Lead)。
-> **狀態**:`draft`(F1+ code GATED on F0 gate PASS per §5 H1)。
+> **狀態**:`active`(F0 gate PASS 2026-06-03 — 切法 D + cap 8;F1 code gate open)。
 
 ---
 
@@ -21,7 +21,7 @@
 | ID | Deliverable | 說明 |
 |---|---|---|
 | **F0** | H1 STOP+ask gate | Present ADR-0041 H1 boundary + 決策 2 切法選項 + 風險(重切影響 recall)→ Chris confirm + Accept → ADR Proposed→Accepted。**F1+ GATED on F0 PASS**。 |
-| **F1** | Chunker image-aware flush(切法待 F0 定) | `layout_aware.py` 改 image 分配:text flush 同步 reset `image_positions`(修 `:207`/`:213-218` pile-on)+ `max_images_per_chunk` soft cap force-split(延續 `section_path`,prev/next 連續)+ 新 `Settings.chunker_max_images_per_chunk` knob(default 待 F0 定,`None`/0 = preserve)。 |
+| **F1** | Chunker 切法 D(混合) | `layout_aware.py`:**(A 核心)** text flush 同步 reset `image_positions`(修 `:207`/`:213-218` pile-on)+ `max_images_per_chunk` soft cap **8** force-split(延續 `section_path`,prev/next 連續);**(D 第二支柱)** `_should_merge` 加 image-count guard(merge 後超 cap 唔 merge)防圖密短 sub-section 合併;新 `Settings.chunker_max_images_per_chunk=8` knob(`None`/0 = preserve)。**唔重寫 heading 邏輯(已存在),守 simplicity**。 |
 | **F2** | Chunker unit test(H6 mandatory) | 新 image-flush + cap-split 邏輯 test + 既有 ADR-0033 merge / BUG-017 sibling-guard **無 regression** test。 |
 | **F3** | Re-index + presentation 驗證 | 用現成 doc-level reindex(`documents.py:786-884`,[AUDIT-B])對圖密文件重切;確認最大 single-chunk 圖數 ≤ cap + 圖分佈改善。 |
 | **F4** | Eval no-regression gate(top risk) | R@5 + RAGAs(faithfulness/correctness)前後對比,確認重切**唔降** retrieval 質素(R6 適用)。 |
@@ -33,7 +33,7 @@
 
 | Gate | Criterion | 量度 |
 |---|---|---|
-| **G1** | 圖密文件重切後最大 single-chunk 圖數 ≤ cap(cap 待 F0 決策 2) | 直接讀重切後 index `embedded_images_json` count |
+| **G1** | 圖密文件重切後最大 single-chunk 圖數 ≤ **8**(cap default per F0) | 直接讀重切後 index `embedded_images_json` count |
 | **G2** | 圖分佈改善(per-chunk 圖數 p95 顯著下降 vs 重切前) | 重切前後 chunk 圖數分佈對比 |
 | **G3** | **無 retrieval regression**:R@5 唔跌(±tolerance) | `/eval/run` recall_at_5 前後對比 |
 | **G4** | **無答案質素 regression**:RAGAs faithfulness/correctness 唔跌(±tolerance) | `/eval/run` 4-metric 前後對比 |
@@ -82,3 +82,4 @@
 ## §7 Changelog
 
 - **2026-06-03 kickoff**:plan + ADR-0041 draft(Proposed)建立;F0 gate pending Chris confirm H1 + 決策 2 切法 + Accept。
+- **2026-06-03 F0 gate PASS**:Chris 揀**切法 D(混合:sub-heading 細分 + image cap 兜底)** + `max_images_per_chunk` default **8**(對齊前端 `INLINE_IMAGE_CAP=8`)+ approve H1 + ADR-0041 Accept。G1 cap 回填 8;F1 deliverable 對齊切法 D(加 `_should_merge` image-guard);狀態 draft→active。
