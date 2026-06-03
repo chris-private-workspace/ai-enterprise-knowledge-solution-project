@@ -103,4 +103,27 @@ gold RAGAs no-regression 需:(1) SME-validated GT(Q14,Chris pick) + (2) before-b
 - F4.4 default 1.0s throttle × 47 query × 2 loop ≈ +94s eval wall(RAGAs judge ~30min 主導,可接受)。F4.7/F4.8 重建 eval 時 backend env 可調 `EVAL_RETRIEVE_THROTTLE_S` override。
 
 ### Commits
-- (F4.4 commit 見下)
+- `4b23494` feat(eval): W44 F4.4 eval-only retrieve throttle + rate-limit backoff
+
+---
+
+## Day 1 cont — F4.5 GT discovery rework + run → R3 deviation(GT 類型)
+
+### 做咗乜
+- **F4.5 ground 揭兩問題**(Karpathy §1.1 + R6 recursive plan-text 自檢):
+  1. `discover_chunk_ids.py` **W2-stale** — `engine.retrieve(query, top_k)` 缺 ADR-0018 mandatory `kb_id`(`retrieval_engine.py:124` 無 default)→ 跑會 `TypeError`;硬編 eval-set-v0 + default index。
+  2. **更核心(plan 內在矛盾)**:chunk_id GT 係 **chunker-specific** — cap=None(F4.7)同 cap=8(F4.8)re-chunk 出唔同 chunk 邊界(AR doc +22 sub-chunk,編號全 shift),cap=8 force-split sub-chunk 喺 cap=None index 根本唔存在 → 單一 `acceptable_chunk_ids` set 無法 valid score 兩個 index。F4.9「同 GT 唯一變 cap」對 chunk_id GT 做唔到。
+- **STOP+ask → user pick 內容導向 GT(keyword + optional reference_answer)**:chunker-agnostic → 兩 re-chunk 用同一套 GT(keyword-mode recall + RAGAs context_recall)valid 比較;順帶永久修 eval-set-v1-draft empty-GT(Q14 自 W2 pending)。
+- **R3 deviation**:checklist F4.5-F4.9 語義 + plan §7 changelog 更新(chunk_id strict → content-based)。
+- **discover script rework**:修 `kb_id`(ADR-0018,per-query override + `kb_id_to_index_name` 解析 per-KB index)+ argparse(--eval-set/--kb-id/--out/--top-k)+ 輸出改 surface top-k chunk_text preview(300 char)+ section_path + chunk_title 輔助 SME 寫 keyword。`RetrievalEngine(embedder, searcher)` 無 wire reranker → hybrid-only → **無 Cohere 401 burst 風險**。
+- **跑** → `reports/eval-set-v1-draft_gt_candidates.yaml`:**50 main query**(非估算 30)× top-8,**0 error / 0 empty top_k**,index `ekp-kb-drive-v1`,~50s wall。
+
+### 驗證
+- ruff:`discover_chunk_ids.py` clean。報告結構:每 query 有 `current_expected_keywords` + `discovered_top_k`(chunk_id/doc_id/section_path/chunk_title/score/300-char preview)— 對 SME 寫 keyword/reference 充分。
+
+### Blockers / 下一步
+- **F4.6 = 🚧 Chris SME block**(hand off):為 50 main query 寫 `expected_answer_keywords`(+ optional `reference_answer`)+ `annotation.validated:true`,基於 `reports/eval-set-v1-draft_gt_candidates.yaml` 嘅 top-8 preview。AI 做唔到 gold GT。
+- F4.6 完成後我做 F4.7(cap=None reindex + eval)/ F4.8(cap=8 + eval)/ F4.9(隔離對比 + gate verdict)。
+
+### Commits
+- (F4.5 commit 見下)

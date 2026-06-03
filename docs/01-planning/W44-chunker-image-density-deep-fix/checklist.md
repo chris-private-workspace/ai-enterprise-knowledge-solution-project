@@ -35,11 +35,12 @@
 - [ ] F4.3 Gate verdict → Chris 拍板(待 rigor track 完成;切法 D core no-regression 已三源證實:G1/G2 硬證 + pytest text bit-identical + sanity query healthy)
 ### Rigor sub-track(gold no-regression,跨 session)
 - [x] F4.4 Cohere 401 rate-limit throttle/retry(eval code)— ✅ 2026-06-03 `backend/eval/throttle.py`:per-query throttle spacing(env `EVAL_RETRIEVE_THROTTLE_S` default 1.0s,主修避 burst)+ 外層 longer-backoff retry(`AsyncRetrying` 401/429/TransportError-only,default 5 attempts;**eval-only 唔掂 production `cohere.py` reranker**)。runner.py + orchestrator.py 兩 loop wire;conftest throttle=0。pytest +7(41 passed,runner/ragas/endpoints 0 regression)/ ruff clean / mypy 新 code clean
-- [ ] F4.5 跑 `scripts/discover_chunk_ids.py` 生成 30 main candidate chunk_ids — 我做
-- [ ] F4.6 SME GT cascade:Chris pick `acceptable_chunk_ids` + `validated:true`(Q14)— 🚧 BLOCK,需 Chris 人手(AI 做唔到 gold GT)
-- [ ] F4.7 cap=None reindex drive(舊 chunker before baseline)+ eval(SME GT)
-- [ ] F4.8 cap=8 reindex drive(after)+ eval(SME GT)
-- [ ] F4.9 隔離對比 G3/G4(同 GT 同條件,唯一變 cap)→ `scripts/validate_eval_set.py` + Chris gate verdict
+> **R3 deviation 2026-06-03**:GT 類型由 chunk_id strict → **內容導向(keyword + optional reference_answer)**(user pick)。理由:chunk_id GT 係 chunker-specific,cap=None(F4.7)同 cap=8(F4.8)re-chunk 出唔同 chunk 邊界 → 單一 `acceptable_chunk_ids` set 無法 valid score 兩個 index,F4.9「同 GT 唯一變 cap」做唔到。內容導向 GT chunker-agnostic → 兩 re-chunk 用同一 GT(keyword-mode recall + RAGAs context_recall)valid 比較,順帶永久修 eval-set-v1-draft empty-GT(Q14)。
+- [x] F4.5 rework + 跑 `scripts/discover_chunk_ids.py` ✅ 2026-06-03(修 ADR-0018 `kb_id` stale + argparse + 輸出改 surface top-k chunk_text preview 輔助 SME 寫 keyword,**唔再揀 chunk_id**)→ `reports/eval-set-v1-draft_gt_candidates.yaml`。實際 **50 main query**(非估算 30;eval-set-v1-draft = 50 main + 5 OOS)× top-8,**0 error / 0 empty**,index `ekp-kb-drive-v1`(drive legacy alias),hybrid-only(無 rerank → 無 Cohere 401 風險)。ruff clean
+- [ ] F4.6 SME 內容導向 GT:Chris 為每 main query 寫 `expected_answer_keywords`(+ optional `reference_answer`)+ `annotation.validated:true`(Q14)— 🚧 BLOCK,需 Chris 人手(AI 做唔到 gold GT)。**唔揀 `acceptable_chunk_ids`(chunker-specific,已 drop per R3 deviation)**
+- [ ] F4.7 cap=None reindex drive(舊 chunker before baseline)+ eval(content GT:keyword-mode recall + RAGAs)
+- [ ] F4.8 cap=8 reindex drive(after)+ eval(content GT 同上)
+- [ ] F4.9 隔離對比 G3/G4(**同一套 content GT** 同條件,唯一變 cap — chunker-agnostic 所以 valid)→ `scripts/validate_eval_set.py` + Chris gate verdict
 
 ## F5 — Closeout
 - [ ] F5.1 architecture.md §3.3 amend(inline-tag image-distribution + cap,沿 §3.4/§3.7 precedent)
