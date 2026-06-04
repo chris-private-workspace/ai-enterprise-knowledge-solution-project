@@ -3,8 +3,8 @@ phase: W45-per-kb-image-cap
 name: "Per-KB Ingest-Time Chunker Image Cap"
 sprint_week: W45
 start_date: 2026-06-04
-end_date: 2026-06-05          # planned, may slip with changelog log
-status: active
+end_date: 2026-06-04          # closed same-day (AI compression; F0-F5 single calendar day)
+status: closed
 spec_refs:
   - architecture.md §3.3 (layout-aware chunker — per-chunk image cap)
   - architecture.md §4.5 (KbConfig schema)
@@ -121,6 +121,7 @@ Carry-over from `W44-chunker-image-density-deep-fix/progress.md` retro:
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-04 | Initial plan | W45 kickoff post-W44 closeout;Chris 批准 H1 + ADR-0042 | Chris |
+| 2026-06-04 | Phase closed — Gate PASS(G1-G5 全通過)| F0-F5 同日完成(AI compression);R4 live reindex verify 🚧 deferred(nice-to-have)| Chris |
 
 ---
 

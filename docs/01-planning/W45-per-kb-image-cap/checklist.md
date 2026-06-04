@@ -25,12 +25,12 @@
 - [x] F3.5 ruff clean(check + format)
 
 ## F4 — Doc-sync
-- [ ] F4.1 `architecture.md §3.3` inline ADR-0042 amendment(per-KB cap resolution)
-- [ ] F4.2 `architecture.md §4.5` inline ADR-0042 amendment(KbConfig 新欄)
-- [ ] F4.3 `ROADMAP-per-kb-tunable-config.md` §3 W44 carry-over「per-KB 圖數 cap」標 done + W45 row update
+- [x] F4.1 `architecture.md §3.3` inline ADR-0042 amendment(per-KB cap resolution + factory + re-index note)
+- [x] F4.2 `architecture.md §4.5` inline ADR-0042 amendment(KbConfig per-KB tunable 欄註,code = source of truth)
+- [x] F4.3 `ROADMAP-per-kb-tunable-config.md` §3 加 ✅ W45 per-KB cap row(收 W44 carry-over)+ 原 UI「W45」row relabel「後續候選」+ 逐期重點 section 同步
 
 ## F5 — Closeout
-- [ ] F5.1 Phase Gate G1-G5 評估 + verdict
-- [ ] F5.2 progress.md retro + carry-overs
-- [ ] F5.3 session-start.md §10 W45 row + W46+ rolling JIT
-- [ ] F5.4 checklist 全 tick / 🚧 標記
+- [x] F5.1 Phase Gate G1-G5 評估 + verdict（**G1-G5 全 PASS** — 乾淨 PASS）
+- [x] F5.2 progress.md retro + carry-overs（R4 live reindex verify 🚧 deferred — nice-to-have，需 Azure + backend）
+- [x] F5.3 session-start.md §10 W45 closed row + W46+ rolling JIT
+- [x] F5.4 checklist 全 tick / 🚧 標記

@@ -288,6 +288,13 @@ End User UI
   > recall/faithfulness flat(±2pp 內)、correctness −2.28pp(answer_relevancy noise)
   > → Gate **PARTIAL→PASS**,no-regression confirmed。See `backend/ingestion/chunker/
   > layout_aware.py` + ADR-0041。
+  > **W45 amendment per ADR-0042**(2026-06-04,doc-version held):`chunker_max_images_per_chunk`
+  > 由單一全域值升為 **per-KB 可調** —— 延伸 ADR-0040 per-KB config-scope 由 query-time 到
+  > **ingest-time**。`KbConfig.chunker_max_images_per_chunk`(`None`=inherit 全域 default 8 /
+  > 正整數=該 KB cap;per-KB 不能設無 cap,只全域 level 設得到)。Ingest 時 `documents.py`
+  > `_select_chunker(deps, kb_config)` 解析:`None` → reuse 全域 singleton(零 construct,
+  > bit-identical);設值 → `app.state.make_ingestion_chunker` factory 砌 per-ingest chunker。
+  > Re-index required(cap 喺切 chunk 時消耗)。See ADR-0042 + §4.5 KbConfig。
 
 **Layout-aware 嘅 secret sauce**:
 - Word:用 docx OOXML 嘅 heading style(`Heading 1`、`Heading 2`)推斷 section boundary,而非靠 `\n\n` delimiter
@@ -724,6 +731,10 @@ class KbConfig(BaseModel):
     chunk_strategy: Literal["heading_aware", "layout_aware", "slide_based", "auto"] = "auto"
     default_top_k: int = 50
     default_rerank_k: int = 5
+    # + per-KB tunable fields (None = inherit global; code is source of truth):
+    #   W20 ADR-0028 multimodal (extract_embedded_images / slide_screenshots / ...)
+    #   W43 ADR-0040 retrieval/citation knobs (enable_parent_doc_retrieval / ...)
+    #   W45 ADR-0042 ingest-time chunker cap (chunker_max_images_per_chunk: int | None = None)
 
 class KbStatus(BaseModel):
     kb_id: str
