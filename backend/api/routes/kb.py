@@ -14,7 +14,6 @@ Azure AI Search index (closes ADR-0018 Phase 3 upload-side):
 """
 
 import logging
-import uuid
 from typing import Annotated
 
 import httpx
@@ -119,7 +118,7 @@ async def create_kb(payload: KbCreate, service: KbServiceDep, request: Request) 
             "kb_create_no_index_provision",
             kb_id=payload.kb_id,
             reason="IndexPopulator not initialized (AZURE_OPENAI / AZURE_SEARCH .env missing) — "
-                   "subsequent POST /kb/{kb_id}/documents will 503 until cred is wired.",
+            "subsequent POST /kb/{kb_id}/documents will 503 until cred is wired.",
         )
         return kb
 
@@ -236,9 +235,7 @@ async def update_kb_settings(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
-    audit: AuditLogBackend | None = getattr(
-        request.app.state, "audit_log_backend", None
-    )
+    audit: AuditLogBackend | None = getattr(request.app.state, "audit_log_backend", None)
     if audit is not None:
         await audit.append(
             actor=None,
@@ -250,39 +247,47 @@ async def update_kb_settings(
 
 
 @router.post("/kb/{kb_id}/reindex", status_code=status.HTTP_202_ACCEPTED)
-async def reindex_kb(kb_id: str, service: KbServiceDep) -> dict:
-    """W16 F5.3.1 — trigger reindex of all documents in KB (per-KB level).
+async def reindex_kb(kb_id: str, request: Request, service: KbServiceDep) -> dict[str, object]:
+    """W46 / ADR-0043 — real KB-level reindex of every document in the KB.
 
-    Distinct from `POST /kb/{kb_id}/documents/{doc_id}/reindex` which is per-doc.
+    Distinct from `POST /kb/{kb_id}/documents/{doc_id}/reindex` (per-doc). Was a
+    Beta-baseline stub (mock task_id) until W46; now re-ingests each doc from its
+    stored original source under the KB's CURRENT config — so a UI `chunk_strategy`
+    / per-KB image-cap change actually takes effect. Synchronous (Tier 1 — no task
+    queue). Docs with no stored source (ingested before W46, or whose best-effort
+    source-persist failed) are skipped + reported under `skipped_no_source`
+    (re-upload them via doc-level reindex to make them reindexable).
 
-    Current Tier 1 baseline: returns mock `task_id` for tracking; KBService
-    side-effect = no-op stub (Beta minimal per Decision B.1 + W16 plan §3
-    PARTIAL PASS). Real reindex trigger (Azure AI Search index rebuild + per-KB
-    Blob container re-ingest cascade) deferred Track A IT cred trigger →
-    W17+ housekeeping per architecture.md §3.4 multi-KB rebuild semantics.
+    Production zero-downtime (v1→v2 atomic index switch) stays deferred to Track A;
+    W46 does in-place per-doc delete+reingest (brief inconsistency window, ADR-0043).
 
-    Returns 202 ACCEPTED + {"task_id", "status": "queued", "kb_id"}.
+    Returns 202 + {status, kb_id, documents_total, documents_reindexed, reindexed,
+    skipped_no_source, failed, chunks_total}.
     """
     try:
-        await service.get(kb_id)  # 404 guard before queueing
+        kb = await service.get(kb_id)  # 404 guard
     except KBNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+    if kb.archived:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"KB '{kb_id}' is archived — re-create the KB to resume ingest",
+        )
 
-    task_id = f"reindex-{uuid.uuid4().hex[:12]}"
-    return {
-        "task_id": task_id,
-        "status": "queued",
-        "kb_id": kb_id,
-        "note": "Beta baseline mock — real reindex trigger pending Track A IT cred (W17+)",
-    }
+    # Local import avoids a documents↔kb route-module import cycle (reindex-only path).
+    from api.routes.documents import run_kb_reindex
+
+    return await run_kb_reindex(kb_id=kb_id, request=request, service=service)
 
 
 @router.patch("/kb/{kb_id}", response_model=KbStatus)
 async def update_kb_metadata(
-    kb_id: str, patch: KbMetadataPatch, service: KbServiceDep,
+    kb_id: str,
+    patch: KbMetadataPatch,
+    service: KbServiceDep,
 ) -> KbStatus:
     """W16 F5.2 CO_F3b — partial PATCH of KB name + description fields.
 
@@ -293,7 +298,9 @@ async def update_kb_metadata(
     """
     try:
         return await service.update_metadata(
-            kb_id, name=patch.name, description=patch.description,
+            kb_id,
+            name=patch.name,
+            description=patch.description,
         )
     except KBNotFoundError as exc:
         raise HTTPException(

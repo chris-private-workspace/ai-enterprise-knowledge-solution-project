@@ -24,13 +24,26 @@ Explore agent + 親自核實揭出:roadmap [AUDIT-C]「dev 層 iterate docs → 
 - F0.2 ADR README index 加 0043 row + next → 0044
 - R1 phase 三件套建立(plan/checklist/progress)
 
+### F0.3 H7 design 確認(同日)
+Chris AskUserQuestion 批准 unlock scope:**unlock `chunk_strategy` + per-KB 圖數 cap + Reindex KB UX(button + warning modal + summary);`embedding_model` 維 locked**(re-embed 較重另起)。F3 解鎖。
+
+### F1/F2/F4 backend implementation(同日)
+- **F1 source 儲存**:`storage/kb_naming.py` 加 `kb_id_to_source_container`(`ekp-kb-{kb_id}-sources`)+ NEW `backend/ingestion/source_store.py`(`upload_source_document` best-effort / `download_source_document`;blob name = `doc_id`,metadata 存 `original_filename` 令 reindex 重建 tempfile + 揀 parser)+ `_run_ingest_pipeline` ingest 成功後 persist 原檔(best-effort,失敗唔 fail ingest)
+- **F2 真 KB-reindex**:NEW `run_kb_reindex`(documents.py)iterate `list_documents` → download source → 每 doc mirror doc-level reindex(delete_doc + counter −1,re-ingest +1)→ 同步 summary。**機制選擇**:用 `_bytes_to_upload_file`(BytesIO-UploadFile adapter)復用現成 `_run_ingest_pipeline`,**唔抽 130 行 core**(Karpathy §1.3 surgical,零 working-path regression 風險;ADR-0043 §Decision #4「refactor」以 adapter 達成)。kb.py `reindex_kb` route:加 `request` + archived guard + local import `run_kb_reindex`(避 circular)+ 移除 stub orphan `uuid` import
+- **F4 tests**:`test_source_store.py` +6;`test_kb_reindex.py` 更新舊 stub test(202 mock → 503 without deps)+ 3 個 `run_kb_reindex` unit(skip-no-source / reingest+chunks_total / failed-doc report)
+
+### 驗證(三軸)
+- pytest:106 passed(test_source_store 6 + test_kb_reindex 7 + test_documents_route + test_documents_detail + test_orchestrator + test_screenshots + test_kb_management)= **0 regression**(source-persist best-effort swallow 唔影響既有 upload 路徑)
+- ruff check + format:6 改動 file clean
+- mypy --strict(全 import 解析):2 個 my-code error 修正(`int(object)` → isinstance guard / `reindex_kb -> dict` → `dict[str, object]`)後零 error
+
 ### Commits
-- _(pending — F0 ADR + plan kickoff commit)_
+- `84f5ef0` F0 — ADR-0043 + phase kickoff(plan/checklist/progress)
+- _(pending — F1/F2/F4 backend code + checklist/progress tick)_
 
 ### Next
-- **F0.3 H7 mockup design proposal**(surface 畀 Chris 確認 → 解鎖 F3)
-- F1 source-document blob 儲存(backend,H1-approved,可即動)→ F2 pipeline refactor + 真 KB-reindex
+- **F3 frontend**(H7 解鎖已批准):mockup `ekp-page-kb.jsx` Settings tab unlock chunk_strategy + 圖數 cap + Reindex UX → frontend `kb/[id]/page.tsx` 100% match → wire `POST /kb/{id}/reindex` + summary 顯示 → F4.4 Vitest
+- F5 doc-sync → F6 closeout
 
 ### Blockers / carry-over
-- **F3 frontend GATED on F0.3 H7 design 確認**(§5.7)。F1/F2 backend H1-approved 可即動。
-- R4 live reindex verify 需 Azure + backend(pytest 覆蓋邏輯;live 可後評)。
+- 無 blocker(H7 gate 已過,backend 綠燈)。R4 live reindex verify 需 Azure + backend(pytest 覆蓋 resolution 邏輯;live 可後評,可能 🚧 deferred)。

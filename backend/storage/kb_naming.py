@@ -42,6 +42,24 @@ def kb_id_to_screenshot_container(
     return f"ekp-kb-{kb_id}-screenshots"
 
 
+def kb_id_to_source_container(
+    kb_id: str,
+    legacy_default_container: str = "ekp-kb-drive-sources",
+) -> str:
+    """Map kb_id → Azure Blob source-document container name (per ADR-0043).
+
+    W46 / ADR-0043 — the original uploaded file (`.docx/.pdf/.pptx`) is persisted
+    so a UI-triggered KB-level reindex can re-parse it (a re-chunk needs the
+    original, not the stored chunks). Parallels the screenshot container naming.
+
+    Tier 1 legacy: kb_id="drive_user_manuals" → legacy_default_container.
+    Future KBs: ekp-kb-{kb_id}-sources per ADR-0005 convention.
+    """
+    if kb_id == _LEGACY_KB_ID:
+        return legacy_default_container
+    return f"ekp-kb-{kb_id}-sources"
+
+
 def kb_id_filter_clause(kb_id: str) -> str:
     """OData filter clause to scope Azure AI Search query to a single KB.
 

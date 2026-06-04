@@ -19,6 +19,7 @@ CH-001 (2026-05-12) — closes CO_F3a fully:
     document.duplicate / reindex.{doc_id_mismatch,partial_failure}).
 """
 
+import io
 import json
 import logging
 import re
@@ -49,6 +50,7 @@ from ingestion.embedding.base import Embedder
 from ingestion.orchestrator import IngestionOrchestrator
 from ingestion.parsers import select_parser
 from ingestion.screenshots.uploader import ScreenshotUploader, download_screenshot
+from ingestion.source_store import download_source_document, upload_source_document
 from kb_management import KBNotFoundError, KBService, get_kb_service
 from retrieval.retrieval_engine import RetrievalEngine
 from storage.kb_naming import kb_id_to_screenshot_container
@@ -708,6 +710,17 @@ async def _run_ingest_pipeline(
             images_uploaded=result.images_uploaded,
             images_deduped=result.images_deduped,
         )
+        # W46 / ADR-0043 — best-effort persist the original upload so a later
+        # UI-triggered KB-level reindex can re-parse it (the stored chunks can't be
+        # re-chunked). A failure never fails the ingest — the doc just won't be
+        # KB-reindexable until re-uploaded (reindex reports it as skipped_no_source).
+        await upload_source_document(
+            settings.azure_blob_connection_string,
+            kb_id,
+            doc_id,
+            data=tmp_path.read_bytes(),
+            filename=safe_name,
+        )
         return {
             "doc_id": doc_id,
             "chunks_emitted": upload_result.succeeded,
@@ -717,6 +730,116 @@ async def _run_ingest_pipeline(
     finally:
         if tmp_dir is not None:
             shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def _bytes_to_upload_file(data: bytes, filename: str) -> UploadFile:
+    """Wrap stored source bytes as a Starlette `UploadFile` so the KB-level reindex
+    path reuses `_run_ingest_pipeline` unchanged (W46 / ADR-0043) — no signature
+    refactor, no risk to the live upload path. `.file` reads from an in-memory
+    `BytesIO`; `.filename` carries the original ext for `select_parser`."""
+    return UploadFile(file=io.BytesIO(data), filename=filename)
+
+
+async def run_kb_reindex(
+    *,
+    kb_id: str,
+    request: Request,
+    service: KBService,
+) -> dict[str, object]:
+    """W46 / ADR-0043 — real KB-level reindex: re-ingest every doc from its stored
+    original source under the KB's current config (so a UI `chunk_strategy` / image-cap
+    change takes effect). Synchronous (Tier 1 — no task queue).
+
+    Per doc, mirrors the doc-level reindex (delete chunks + counter -1, then re-ingest
+    +1 via `_run_ingest_pipeline`) so KB counters stay balanced. A doc with no stored
+    source (pre-W46 ingest, or a best-effort persist that failed) is skipped + reported
+    under `skipped_no_source` (re-upload it via doc-level reindex to make it reindexable).
+    In-place per-doc delete+reingest accepts a brief inconsistency window — production
+    zero-downtime v1→v2 atomic switch stays deferred to Track A (ADR-0043).
+    """
+    deps = _ingestion_deps_or_503(request)
+    engine = _engine_or_503(request)
+    settings = get_settings()
+
+    try:
+        rows = await engine.list_documents(kb_id)
+    except Exception as exc:  # noqa: BLE001 — surface Azure errors as 502
+        _stdlib_logger.exception("kb_reindex_list_failed kb_id=%s", kb_id)
+        raise _api_error(
+            "reindex.list_failed",
+            f"failed to list documents for kb_id={kb_id!r}: {type(exc).__name__}: {exc}",
+            "Check Azure AI Search is reachable + the per-KB index exists.",
+            status.HTTP_502_BAD_GATEWAY,
+        ) from exc
+
+    doc_ids = [str(r["doc_id"]) for r in rows if r.get("doc_id")]
+    reindexed: list[str] = []
+    skipped_no_source: list[str] = []
+    failed: list[dict[str, str]] = []
+    chunks_total = 0
+
+    for doc_id in doc_ids:
+        source = await download_source_document(
+            settings.azure_blob_connection_string,
+            kb_id,
+            doc_id,
+        )
+        if source is None:
+            skipped_no_source.append(doc_id)
+            continue
+        data, filename = source
+
+        # Delete existing chunks + counter -1 (the re-ingest below adds +1 back) so
+        # KB counters stay balanced — mirrors the doc-level reindex contract.
+        now = datetime.now(UTC)
+        try:
+            deleted_count = await deps.populator.delete_doc(kb_id, doc_id)
+            await service.record_doc_event(
+                kb_id,
+                documents_delta=-1,
+                chunks_delta=-deleted_count,
+                last_indexed_at=now,
+            )
+        except Exception as exc:  # noqa: BLE001 — one doc's failure must not abort the batch
+            _stdlib_logger.exception(
+                "kb_reindex_predelete_failed kb_id=%s doc_id=%s", kb_id, doc_id
+            )
+            failed.append({"doc_id": doc_id, "error": f"pre-delete: {type(exc).__name__}: {exc}"})
+            continue
+
+        try:
+            body = await _run_ingest_pipeline(
+                upload_file=_bytes_to_upload_file(data, filename),
+                kb_id=kb_id,
+                doc_id=doc_id,
+                deps=deps,
+                service=service,
+            )
+            reindexed.append(doc_id)
+            emitted = body.get("chunks_emitted", 0)
+            chunks_total += emitted if isinstance(emitted, int) else 0
+        except HTTPException as exc:
+            detail = exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
+            failed.append({"doc_id": doc_id, "error": str(detail.get("message", exc.detail))})
+
+    logger.info(
+        "kb_reindexed",
+        kb_id=kb_id,
+        reindexed=len(reindexed),
+        skipped_no_source=len(skipped_no_source),
+        failed=len(failed),
+        chunks_total=chunks_total,
+    )
+    return {
+        "status": "reindexed",
+        "kb_id": kb_id,
+        "documents_total": len(doc_ids),
+        "documents_reindexed": len(reindexed),
+        "reindexed": reindexed,
+        "skipped_no_source": skipped_no_source,
+        "failed": failed,
+        "chunks_total": chunks_total,
+    }
 
 
 @router.post("/kb/{kb_id}/documents", status_code=status.HTTP_202_ACCEPTED)
