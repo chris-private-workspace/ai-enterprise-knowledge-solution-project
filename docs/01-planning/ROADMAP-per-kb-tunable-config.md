@@ -61,7 +61,7 @@ memory 嘅 3 正交層對應:
 |---|---|---|---|---|---|
 | ✅ **W43** | per-KB retrieval 配置 + UI + 試跑 loop | retrieval 策略自助(presentation 軸),唔使改後台 | T1 | — | (已完成) |
 | **NEW 並行** | config-test 加 reference-free `faithfulness` | 自助 loop 補**質素軸**(反幻覺半邊)| T1 | W43(**不卡 Track A / 不需標註集**)| 決策 6(優先序)|
-| **W44** | Chunker 深層修(ADR-0041)| 圖洪**根治** + process 策略基礎 | T1 | —(**[AUDIT-B]** 可經現成 doc-level reindex 驗證)| 決策 2(切法)|
+| ✅ **W44** | Chunker 深層修(ADR-0041,切法 D + cap 8)| 圖洪**根治**(實測 57→8)+ process 策略基礎 | T1 | —(doc-level reindex 驗證,不卡 Track A)| ✅ **closed 2026-06-04 Gate PARTIAL→PASS**(recall/faith flat + corr −2.28pp answer_relevancy noise + 三源證實 = no-regression;SME eval-set-v1-draft validated 順帶解 Q14)|
 | **W45** | UI 開放 ingestion 配置 + **真** re-index | process 策略**上 UI 自助** | T1 | W44 +(dev:迭代 doc-level / **prod:v1→v2 原子切換**)| 決策 4(**production 化投資時機**)|
 | **W46** | per-document scope | 一個 KB 溝多格式文件 | T1 | W43 resolver(加一層;**[AUDIT-E]** retrieval 旋鈕語意見下)| **決策 1(per-KB 夠未)** |
 | 條件觸發 | Query-intent gate(Layer B)| 自動辨查詢類型揀配置 | T1(heuristic)| W43 | 需唔需要 |

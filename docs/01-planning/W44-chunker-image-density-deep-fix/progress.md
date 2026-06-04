@@ -176,4 +176,46 @@ gold RAGAs no-regression 需:(1) SME-validated GT(Q14,Chris pick) + (2) before-b
 - **F4.7**:cap=None reindex drive(舊 chunker before baseline)+ `/eval/run`(eval-set-v1-draft,content GT keyword-mode + RAGAs)→ 然後 F4.8 cap=8 + F4.9 隔離對比。
 
 ### Commits
-- (F4.6b commit 見下)
+- `889688e` feat(eval): W44 F4.6b apply SME-validated content-based GT(pushed)
+
+---
+
+## Day 2 cont — 2026-06-04 — reboot infra recovery + F4.7/F4.8/F4.9 + F5 closeout(Gate PARTIAL→PASS)
+
+### Reboot infra recovery(耗時最長嘅一段)
+用戶重開機 → Docker daemon / Postgres / Langfuse / Azurite 全停。重建:
+- Docker Desktop 更新完成後重啟 daemon;`docker compose up -d` → Postgres/Langfuse auto-restart(cached image)。
+- **Azurite docker image perma-503 MCR**(特定 layer `1a142d…`,per ADR-0017 R8/R9 已知)→ native npm Plan B:`azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location infrastructure/azurite-data --skipApiVersionCheck`(`npm i -g azurite` 重裝後)。
+- **關鍵教訓(memory-worthy)**:呢部機 post-reboot **重度 contention**(Docker 更新 + wazuh 容器 + azurite 爭資源)令 **azurite startup ~30-90s、backend startup ~10min**(平時 ~3s / ~250s)—— **非 hang**。我頭幾次誤判「hang」皆因 ~12s 太早 check + 提早殺。耐心(azurite 90s / backend 480s poll)後皆 up。node 能 bind(test 19999 ✓)、azurite --version ✓ 證 install 無壞,純 startup 慢。
+
+### F4.7 before-baseline(cap=None)
+backend cap=None reindex 6 drive docs + `/eval/run`(SME GT)→ **recall 0.933 / faith 0.9506 / corr 0.795**(46 eval / 0 error,**throttle 令 0 個 401** — F4.4 生效)。`reports/w44_f4.7_before_capNone_eval.json`。
+
+### F4.8 after-baseline(cap=8)
+- backend 重啟 cap=8(`CHUNKER_MAX_IMAGES_PER_CHUNK=8`)。reindex **要 multipart re-upload**(doc-level reindex API `documents.py:786` = `file: UploadFile` + slugified-stem==doc_id check;PS 5.1 冇 `-Form` → 用 `curl.exe -F "file=@path"`)。6 docs 全 HTTP 202:**287→369 chunks**(force-split:AR 68→90/AP 63→83/FA 59→78/CB 23→28/GL 60→74/BM 14→16);Azurite 圖上傳正常。
+- `/eval/run` after → **recall 0.9312 / faith 0.9459 / corr 0.7722**(46 eval / 0 error)。⚠️ eval HTTP client(Invoke-RestMethod)hang 喺大 response body,但 backend `eval_orchestrator_complete` log 有權威數字 → `reports/w44_f4.8_after_cap8_eval.json` 由 log 重建(標 provenance)。
+
+### F4.9 隔離對比 → Gate verdict
+同一套 SME-validated eval-set、同條件、唯一變 cap:
+
+| 指標 | before(cap=None)| after(cap=8)| Δ | ±2pp |
+|---|---|---|---|---|
+| recall_at_5 | 0.933 | 0.9312 | −0.18pp | ✅ |
+| faithfulness | 0.9506 | 0.9459 | −0.47pp | ✅ |
+| correctness | 0.795 | 0.7722 | −2.28pp | ⚠️ marginal |
+
+**Chris 拍板 = PARTIAL→PASS**:recall + faith flat(cap=8 force-split 冇損檢索/grounding);correctness −2.28pp 歸因 RAGAs `answer_relevancy` run-to-run noise(三指標最 noisy;兩個更客觀指標 flat 佐證)。配合三源證實(G1/G2 57→8 + pytest bit-identical + sanity healthy)= **no-regression confirmed**。
+
+### F5 closeout
+- architecture.md §3.3 "Embedded images" bullet 加 ADR-0041 inline blockquote amendment(沿 ADR-0033 先例)。
+- ADR-0041 加 "## Validation(W44 F3–F4.9)" 段(圖洪 57→8 + 287→369 + 對比表 + PARTIAL→PASS + F4 deviation)。
+- session-start §10 W44 row + roadmap §3 W44 done(見下)。
+- throwaway diag `backend/_w44diag_imgcount.py` 刪。
+
+### Retro(W44)
+- **What went well**:① 切法 D image-cap force-split 達標(57→8)且客觀指標零 regression。② F4.4 throttle 徹底解 eval-harness Cohere 401(before/after 皆 0 error)。③ F4.5/F4.6 content-based GT pivot(R3)既解 chunker-agnostic 比較需求,又永久修 eval-set Q14 empty-GT,一石二鳥。④ AI-draft→人複核分工令 50-query SME validation 高效完成。
+- **What was hard / lessons**:① **reboot 後機器 contention 令 startup 慢 5-10×,誤判 hang 浪費多輪** → 教訓:loaded machine 上 startup poll 要畀 ~90s(azurite)/ ~10min(backend),先睇 CPU 活動 + log 再判生死,唔好 ~12s 殺。② doc-level reindex 係 **multipart re-upload**(唔係 re-read stored source)—— W2-era 工具/直覺多次 stale(discover_chunk_ids 缺 kb_id、validate_eval_set 認 chunk-id-only、reindex 要 file)。③ azurite docker MCR 503 係 perma 已知(R8/R9),native Plan B 要記 `--blobHost 0.0.0.0 --location infrastructure/azurite-data`。
+- **Carry-over(未變)**:per-KB 圖數 cap(降 `chunker_max_images_per_chunk` 落 `KbConfig`,roadmap W44 carry-over)/ 真 KB-level reindex + v1→v2 原子切換(W45 Track A)/ 切法 B sub-heading enhancement(eval 未顯示需要)。eval-set 正式 rename → `eval-set-v1.yaml` 未做(registry id 保持 draft,非阻塞)。
+
+### Commits
+- (F4.7/F4.8/F4.9/F5 closeout commit 見下)

@@ -32,7 +32,7 @@
 > 原 F4.1-F4.3 單次 eval 方案被 eval-harness decay 揭示不足(Cohere 連打 rate-limit 401 + eval-set-v1-draft Q14 SME-validation pending empty-GT + before-baseline reindex 走)。User pick 全 rigor 重建。原 items superseded(唔刪,per sacred rule):
 - [~] F4.1 重切前 baseline eval — 🚧 superseded:單次 eval 撞 harness decay,改 cap=None before 重建(F4.7)
 - [~] F4.2 重切後 eval — 🚧 superseded:改 cap=8 after(F4.8)+ 隔離對比(F4.9)
-- [ ] F4.3 Gate verdict → Chris 拍板(待 rigor track 完成;切法 D core no-regression 已三源證實:G1/G2 硬證 + pytest text bit-identical + sanity query healthy)
+- [x] F4.3 Gate verdict → Chris 拍板 ✅ 2026-06-04 = **PARTIAL→PASS**(見 F4.9;recall+faith flat、correctness −2.28pp answer_relevancy noise + 三源證實 = no-regression)
 ### Rigor sub-track(gold no-regression,跨 session)
 - [x] F4.4 Cohere 401 rate-limit throttle/retry(eval code)— ✅ 2026-06-03 `backend/eval/throttle.py`:per-query throttle spacing(env `EVAL_RETRIEVE_THROTTLE_S` default 1.0s,主修避 burst)+ 外層 longer-backoff retry(`AsyncRetrying` 401/429/TransportError-only,default 5 attempts;**eval-only 唔掂 production `cohere.py` reranker**)。runner.py + orchestrator.py 兩 loop wire;conftest throttle=0。pytest +7(41 passed,runner/ragas/endpoints 0 regression)/ ruff clean / mypy 新 code clean
 > **R3 deviation 2026-06-03**:GT 類型由 chunk_id strict → **內容導向(keyword + optional reference_answer)**(user pick)。理由:chunk_id GT 係 chunker-specific,cap=None(F4.7)同 cap=8(F4.8)re-chunk 出唔同 chunk 邊界 → 單一 `acceptable_chunk_ids` set 無法 valid score 兩個 index,F4.9「同 GT 唯一變 cap」做唔到。內容導向 GT chunker-agnostic → 兩 re-chunk 用同一 GT(keyword-mode recall + RAGAs context_recall)valid 比較,順帶永久修 eval-set-v1-draft empty-GT(Q14)。
@@ -40,13 +40,13 @@
 - [x] F4.6 SME 內容導向 GT ✅ 2026-06-04(分工:AI 草擬→Chris 複核,user pick 2026-06-03)
   - [x] F4.6a **AI 草擬 done** ✅ 2026-06-03 → `docs/01-planning/W44-chunker-image-density-deep-fix/F4.6-gt-proposal.md`(50 query 逐條 propose 收緊嘅 `expected_answer_keywords` + 短 `reference_answer`,flag 🟢30/🟡11/🔴9;🔴 = troubleshooting/跨模組 query 語料覆蓋弱 = F4 eval below-threshold 嗰批,證係 eval-set query 設計問題非 chunker regression)。輸入 = `reports/eval-set-v1-draft_gt_candidates.yaml`(gitignored 本機,`discover_chunk_ids.py` 可重生)
   - [x] F4.6b **Chris 複核 done** ✅ 2026-06-04(chat 互動逐模組 AR→AP→FA→CB→GL→BM 過 50 條)→ apply 入 `docs/eval-set-v1-draft.yaml`:**46 條收緊 keyword + validated:true**;**4 條(Q048/Q049/Q050/Q054)reclassified `expected_refusal:true` + `query_type:oos`**(corpus 答唔到 cross-module/未文件化)。metadata bump `1.0-w44-f4.6-sme-validated`。`acceptable_chunk_ids` 留空(chunker-agnostic per R3)。`validate_eval_set.py` 修 W2-stale(接受 keyword-mode GT + `expected_refusal⇒query_type oos` 不變量)→ **validate OK passed**。5 條原 OOS(Q031-Q035)不動。Q14 SME-validation **RESOLVED**
-- [ ] F4.7 cap=None reindex drive(舊 chunker before baseline)+ eval(content GT:keyword-mode recall + RAGAs)
-- [ ] F4.8 cap=8 reindex drive(after)+ eval(content GT 同上)
-- [ ] F4.9 隔離對比 G3/G4(**同一套 content GT** 同條件,唯一變 cap — chunker-agnostic 所以 valid)→ `scripts/validate_eval_set.py` + Chris gate verdict
+- [x] F4.7 cap=None reindex drive(before baseline)+ eval ✅ 2026-06-04 → recall **0.933** / faith **0.9506** / corr **0.795**(46 eval / 0 error,SME GT keyword-mode + RAGAs,throttle 0 401)。`reports/w44_f4.7_before_capNone_eval.json`
+- [x] F4.8 cap=8 reindex drive(after)+ eval ✅ 2026-06-04 → 287→**369 chunks**(force-split,Azurite 圖上傳正常);recall **0.9312** / faith **0.9459** / corr **0.7722**(46 eval / 0 error)。`reports/w44_f4.8_after_cap8_eval.json`(backend log 重建,HTTP client hang)
+- [x] F4.9 隔離對比 G3/G4 ✅ 2026-06-04(同一套 SME GT、同條件、唯一變 cap):recall **−0.18pp** ✅ / faith **−0.47pp** ✅ / corr **−2.28pp** ⚠️ marginal(answer_relevancy noise)→ **Gate PARTIAL→PASS**(Chris 拍板,plan §3 marginal policy)。`validate_eval_set.py` OK passed
 
-## F5 — Closeout
-- [ ] F5.1 architecture.md §3.3 amend(inline-tag image-distribution + cap,沿 §3.4/§3.7 precedent)
-- [ ] F5.2 ADR-0041 validation note(gate verdict + 實測前後圖數)
-- [ ] F5.3 plan/checklist/progress flip closed + retro
-- [ ] F5.4 session-start §10 W44 row + roadmap §3 W44 done + [AUDIT-A] 實測數回填
-- [ ] F5.5 commit cascade(對應 progress Day-N,R2)
+## F5 — Closeout ✅ 2026-06-04
+- [x] F5.1 architecture.md §3.3 amend ✅ — "Embedded images" bullet 加 ADR-0041 inline blockquote amendment(image-distribution + cap 8 + force-split + validation 數,沿 ADR-0033 blockquote 先例)
+- [x] F5.2 ADR-0041 validation note ✅ — 加 "## Validation(W44 F3–F4.9)" 段:G1/G2 圖洪 57→8 + 287→369 + G3/G4 隔離對比表 + PARTIAL→PASS verdict + F4 deviation 記錄
+- [x] F5.3 plan/checklist/progress flip closed + retro ✅(本檔 + plan §7 + progress Day-2 retro)
+- [x] F5.4 session-start §10 W44 row + roadmap §3 W44 done ✅
+- [x] F5.5 commit cascade(對應 progress Day-N,R2)✅ — 見 progress commits

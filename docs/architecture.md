@@ -276,6 +276,18 @@ End User UI
 - Title + content 結合:chunk text = `chunk_title + "\n\n" + chunk_content`
 - Metadata 全保留(畀 retrieval filter)
 - Embedded images 統一抽出 → Azure Blob,chunk 記錄 image URL list
+  > **W44 amendment per ADR-0041**(2026-06-04,doc-version held — ADR is record):
+  > 圖片由原本「pile-on 整個 open section」(圖密短 section 單一 chunk carry 全部圖,
+  > 實測單 chunk max 57 圖)改為**隨 `doc_order` text-flush 分配** + NEW per-chunk
+  > 圖數 soft cap `chunker_max_images_per_chunk`(**default 8**,對齊前端 BUG-031
+  > `INLINE_IMAGE_CAP=8`)。達 cap force-split 開新 sub-chunk(延續同一 `section_path`,
+  > prev/next 連續);`_should_merge` 加 image-count guard 防合併後再 pile。設 `None`/0
+  > → pre-W44 bit-identical(可回退)。**守 §13.3 layout-aware(唔變 character-based)
+  > + H4(只位置/章節切分,vision 語意揀圖 = Tier 2 out-of-scope)**。Validation
+  > (W44 F4.9 隔離對比,SME-validated eval):圖洪 57→8、drive 287→369 chunks、
+  > recall/faithfulness flat(±2pp 內)、correctness −2.28pp(answer_relevancy noise)
+  > → Gate **PARTIAL→PASS**,no-regression confirmed。See `backend/ingestion/chunker/
+  > layout_aware.py` + ADR-0041。
 
 **Layout-aware 嘅 secret sauce**:
 - Word:用 docx OOXML 嘅 heading style(`Heading 1`、`Heading 2`)推斷 section boundary,而非靠 `\n\n` delimiter

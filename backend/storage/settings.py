@@ -28,6 +28,12 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
+        # Allow Optional fields to be set to None via env: a var whose value is the
+        # literal "null" parses to None (e.g. CHUNKER_MAX_IMAGES_PER_CHUNK=null →
+        # the pre-W44 no-cap chunker for the W44 F4.7 before-baseline re-index).
+        # Opt-in: no existing env var uses the literal "null", so this is a no-op
+        # for current config and only enables the mapping.
+        env_parse_none_str="null",
     )
 
     # Azure AI Search
