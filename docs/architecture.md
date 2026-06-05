@@ -1021,6 +1021,8 @@ KB-level config:embedding model lock、chunk strategy default、retrieval defaul
 > - NEW **Re-indexing 卡**:explainer(摺疊)+「Trigger re-index now」→ confirm modal(`.modal-overlay` per DESIGN_SYSTEM §4.5,提示「先存配置」)→ `POST /kb/{id}/reindex`(§4.4 #19)→ per-doc summary banner(reindexed / skipped_no_source / failed;failed→`banner-warning`)。Page header「Re-index」按鈕由 disabled 轉 enabled → 導去 Settings tab。
 > - W43 Advanced retrieval tuning(12 runtime knobs)+ config-test 試跑 panel(per ADR-0040)不變。
 
+> **W48 amendment per ADR-0040(dual-axis fulfilled)**(F1-F3):config-test 試跑 panel 加 **reference-free RAGAs faithfulness 質素軸**(反幻覺;補 ADR-0040 一早定義但未交付嘅 quality 軸 — 原本只有 presentation counters)。`ConfigTestRequest.eval_faithfulness`(default true)+ `ConfigRunSummary.faithfulness: float|None`(**每 config 算一次**,用 last-run answer + retrieved contexts,非 N-run band — judge cost);A/B 兩卡各顯示「忠實度」headline。NEW **additive** `make_faithfulness_evaluator(settings)`(`backend/eval/ragas_evaluator.py`,faithfulness-only,judge 維 `gpt-5.4-mini`;現有 `make_ragas_evaluator` 4-metric 不動)。Graceful:無 judge / error → `None`(panel 顯示「—未評」,config-test 唔 fail)。**config-test 仍 query-pipeline-only**:ingestion config(`chunk_strategy`/圖數cap)質素需 reindex→eval,屬未來期(out-of-scope)。
+
 ### 5.6 View 5:Eval Console(`/eval`)— rendered inside `<AppShell>` per ADR-0024(own `app/eval/layout.tsx` folded into `app/(app)/layout.tsx`;route unchanged);W21 Wave B 6-section refactor consuming W17 F3 RAGAs(NO new backend)
 
 > **Amendment per W21 Wave B**(2026-05-17 kickoff):W15 baseline → **6-section overview** consuming existing W17 F3 RAGAs 4-metric endpoints(`POST /eval/run` + `POST /eval/shootout`)—NO new backend(per W19 F2 backend gap map line 115-118 all ✅ supported)。Sections:

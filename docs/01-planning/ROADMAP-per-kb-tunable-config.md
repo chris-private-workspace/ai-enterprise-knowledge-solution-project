@@ -60,7 +60,7 @@ memory 嘅 3 正交層對應:
 | 期 | 區塊 | 解決乜 | Tier | 依賴 | 關鍵決策 |
 |---|---|---|---|---|---|
 | ✅ **W43** | per-KB retrieval 配置 + UI + 試跑 loop | retrieval 策略自助(presentation 軸),唔使改後台 | T1 | — | (已完成) |
-| **NEW 並行** | config-test 加 reference-free `faithfulness` | 自助 loop 補**質素軸**(反幻覺半邊)| T1 | W43(**不卡 Track A / 不需標註集**)| 決策 6(優先序)|
+| ✅ **W48**(本期)| config-test 加 reference-free `faithfulness` | 自助 loop 補**質素軸**(反幻覺半邊)| T1 | W43(**不卡 Track A / 不需標註集**)| ✅ **shipped 2026-06-05**(收 AUDIT-D / ADR-0040 雙軸:`ConfigRunSummary.faithfulness` + `make_faithfulness_evaluator` additive helper + 試跑 panel 忠實度 headline;每 config 算一次 cost-conscious;graceful None;judge 維 gpt-5.4-mini。**runtime config-test only** — ingestion config 質素需 reindex→eval 屬未來)|
 | ✅ **W44** | Chunker 深層修(ADR-0041,切法 D + cap 8)| 圖洪**根治**(實測 57→8)+ process 策略基礎 | T1 | —(doc-level reindex 驗證,不卡 Track A)| ✅ **closed 2026-06-04 Gate PARTIAL→PASS**(recall/faith flat + corr −2.28pp answer_relevancy noise + 三源證實 = no-regression;SME eval-set-v1-draft validated 順帶解 Q14)|
 | ✅ **W45**(本期)| per-KB 圖數 cap → KbConfig(ADR-0042)| W44 全域 cap 8 → **per-KB 可調**(延 ADR-0040 config-scope 由 query-time 到 **ingest-time**)| T1 | W44 + reuse W20 F4.2 `kb_config` ingest 路徑(不卡 Track A)| ✅ **shipped 2026-06-04**(`KbConfig.chunker_max_images_per_chunk` None=inherit/正整數=cap;`_select_chunker` + factory wiring;+5 test 0 regression;**UI 暴露 out-of-scope** → 下方「UI ingestion 配置」候選)— 收 W44 carry-over「per-KB 圖數 cap 降 KbConfig」|
 | ✅ **W46**(本期)| UI 開放 ingestion 配置 + **真** KB-level re-index(ADR-0043)| process 策略**上 UI 自助**(per-KB cap + chunk_strategy 解鎖)+ 真 KB-level reindex(dev/demo 層)| T1 | W45 per-KB cap + 原始檔 blob 儲存(ADR-0043)| ✅ **shipped 2026-06-05**(原始檔 `-sources` container + `run_kb_reindex` in-place + Settings unlock chunk_strategy/圖數cap + Reindex modal/summary;**prod v1→v2 原子切換仍 Track A** per 決策 4)|
@@ -99,12 +99,12 @@ memory 嘅 3 正交層對應:
     - **語意未定義**:**KB-wide 初始檢索**旋鈕(`default_top_k` / hybrid 搜索本身)係整個 index 一齊搵,**搵完先知道結果屬邊份文件** → 一個答案跨多份 config 唔同文件時用邊個值,「加一層」回答唔到。W46 真難點喺此,要另想 resolve 語意(或限 per-doc scope 只作用於 ingestion + post-retrieval 旋鈕)。
   - 觸發條件 = 決策 1(KB 會唔會溝多格式)。
 
-- **NEW — config-test 補質素軸(並行,不卡任何外部依賴)[AUDIT-D]**
+- **✅ W48(本期,shipped 2026-06-05)— config-test 補質素軸 [AUDIT-D / ADR-0040 雙軸]**
   - 自助 loop 目前單軸(presentation),用戶見唔到 faithfulness 退步(見 §2 局限)。
   - **分兩步**(避開「per-KB 標註集 vs 非技術自助」嘅內在張力):
-    - **(i) 現在就做**:config-test 加 **reference-free `faithfulness`**(只量「答案宣稱是否被檢索 context 支撐」,**不需 ground truth**)→ 每 run 一個 `gpt-5.4-mini` judge call(per cost policy);可做 opt-in toggle 控成本/延遲。解自助 loop 反幻覺半邊盲點。
-    - **(ii) 後期**:`correctness` / `context_recall` 需 per-KB 標註集 → 留工程閘或 synthetic-QA auto-gen;唔強塞自助面。
-  - **ROI 最高 next 候選**:不卡 Track A、不卡 chunker,直接補 ADR-0040 自己定義咗卻未交付嘅雙軸前提。
+    - **✅ (i) 已交付(W48)**:config-test 加 **reference-free `faithfulness`**(只量「答案宣稱是否被檢索 context 支撐」,**不需 ground truth**)。實作:`ConfigRunSummary.faithfulness` + additive `make_faithfulness_evaluator`(judge `gpt-5.4-mini`)+ 試跑 panel 忠實度 headline。**成本決策修正**:由 plan 原「每 run + opt-in toggle」改為 **每 config 只算一次**(last-run,無 toggle keep H7 surface 細),judge 內部多次調用故單次更穩。graceful None(無 judge / error)。
+    - **(ii) 後期**:`correctness` / `context_recall` 需 per-KB 標註集 → 留工程閘或 synthetic-QA auto-gen;唔強塞自助面。**ingestion config 質素**(chunk_strategy / 圖數cap)config-test 試唔到(query-pipeline-only)→ reindex→eval 屬另一機制,留未來期。
+  - **ROI 最高 next 候選 — 已實現**:不卡 Track A、不卡 chunker,補 ADR-0040 自己定義咗卻未交付嘅雙軸前提。
 
 - **Layer B — query-intent gate(條件觸發,非排定)**
   - 證偽實驗已證 AR **唔需要**(避免 over-engineer per Karpathy §1.2);留 seam,遇「缺 summary chunk」文件先觸發。
@@ -142,7 +142,7 @@ W43(done)
 | **3** | **Tier 2 閘** | 「按**視覺內容**相關性揀圖」開 Tier 2 multi-modal?(章節相關性 Tier 1 已可達,見 Layer C)| 預設守 Tier 1(H4)|
 | **4** | **production 安全 reindex 投資時機**(**[AUDIT-C]** 重定義)| **非**「等 Track A 先能動」—— dev/demo 唔卡;呢個係「幾時投 v1→v2 原子切換 + Track A 做 production 零 downtime」 | 先 W44 + W45-dev 證價值,production 化後置 |
 | **5** | **深度 vs 廣度優先** | 先 W44(根治圖洪)定先 W46(覆蓋更多文件)? | 建議深度優先(W44)|
-| **6** | **質素軸 next?**(**[AUDIT-D]** NEW)| config-test 加 reference-free faithfulness(解自助 loop 盲點,不卡外部依賴)排幾前? | 建議高優先(ROI 最高、零阻塞)|
+| **6** | **質素軸 next?**(**[AUDIT-D]** NEW)| config-test 加 reference-free faithfulness(解自助 loop 盲點,不卡外部依賴)排幾前? | ✅ **RESOLVED — W48 shipped 2026-06-05**(高優先 ROI 最高拍板先行) |
 
 ---
 

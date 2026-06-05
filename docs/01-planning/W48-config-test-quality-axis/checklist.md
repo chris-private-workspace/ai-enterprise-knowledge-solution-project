@@ -27,7 +27,7 @@
 - [x] F3.4 frontend vitest:kb-settings-tuning 試跑 test 加 faithfulness assert(忠實度 ≥2 + 0.97 + 0.94)+ FAKE_RESULT 補 faithfulness;kb-settings 6 passed 0 regression
 
 ## F4 — Doc-sync + closeout
-- [ ] F4.1 architecture.md §5.5.5 config-test note 加 faithfulness 質素軸(ADR-0040 雙軸 fulfilled)
-- [ ] F4.2 roadmap §3「NEW 並行」+ 決策 6 + AUDIT-D → ✅ done
-- [ ] F4.3 session-start §10 W48 row(local-only)
-- [ ] F4.4 Phase Gate G1-G5 + retro + checklist tick / 🚧 + W49+ rolling JIT
+- [x] F4.1 architecture.md §5.5.5 加 W48 amendment(config-test faithfulness 質素軸,ADR-0040 dual-axis fulfilled + runtime-only/ingestion-future note)
+- [x] F4.2 roadmap「NEW 並行」row → ✅ W48 shipped + 逐期重點 (i) ✅ 交付 + 決策 6 ✅ RESOLVED
+- [x] F4.3 session-start §10 W48 closed row + W49+ rolling JIT(local-only,gitignored)+ plan.md status→closed + changelog
+- [x] F4.4 Phase Gate G1-G5 = **PASS** + retro + carry-overs(見 progress)+ checklist 全 tick(無 🚧)+ W49+ candidates
