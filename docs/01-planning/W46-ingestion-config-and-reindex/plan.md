@@ -3,8 +3,8 @@ phase: W46-ingestion-config-and-reindex
 name: "UI Ingestion Config + Real KB-Level Reindex (Original-File Storage)"
 sprint_week: W46
 start_date: 2026-06-04
-end_date: 2026-06-06          # planned, may slip with changelog log
-status: active
+end_date: 2026-06-05          # actual close (D2; F2+F3 both landed early)
+status: closed
 spec_refs:
   - architecture.md §3.3 (chunker) + §3.5 (ingestion pipeline) + §4.4 (KB reindex endpoint) + §4.6 (blob storage)
   - architecture.md §5.5 (KB Detail Settings tab)
@@ -37,7 +37,7 @@ prior_phase: W45-per-kb-image-cap
 - **Spec ref**:ADR-0043 + §5.7 H7
 - **Acceptance criteria**:
   - ✅ ADR-0043 Accepted(H1 backend 方向)+ README index(next → 0044)
-  - [ ] H7 mockup design proposal surface 畀 Chris 確認(unlock 範圍 + Reindex UX + warning modal)→ 確認後先動 frontend(F3)
+  - ✅ H7 mockup design proposal Chris 確認(F0.3:unlock `chunk_strategy` + 圖數 cap + Reindex UX/modal;`embedding_model` 維 locked)→ F3 解鎖
 - **Owner**:AI / Chris
 
 ### F1 — Source-document blob 儲存(backend)
@@ -130,6 +130,9 @@ Carry-over from `W45-per-kb-image-cap/progress.md` retro(roadmap W46+ candidates
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-04 | Initial plan | W46 kickoff;Chris 揀 Option 4 全 scope + 批准 H1 → ADR-0043;H7 frontend sub-gate | Chris |
+| 2026-06-05 | F2.1 deviation:plan 原寫「抽 `_run_ingest_pipeline` core」實際用 BytesIO-UploadFile adapter 復用現成 pipeline(更 surgical,零 working-path regression)| Karpathy §1.3 | AI |
+| 2026-06-05 | F5.1 落點 §3.4 而非 plan 標 §3.5(chunk record schema 不變,storage layout 在 §3.4)| accuracy | AI |
+| 2026-06-05 | status active → closed;end_date 06-06→06-05(D2 早收,F2+F3 同日 landed)| Phase Gate G1-G6 PASS(R4 live-verify 🚧 deferred) | AI |
 
 ---
 

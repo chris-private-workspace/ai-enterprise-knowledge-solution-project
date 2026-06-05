@@ -63,8 +63,8 @@ memory 嘅 3 正交層對應:
 | **NEW 並行** | config-test 加 reference-free `faithfulness` | 自助 loop 補**質素軸**(反幻覺半邊)| T1 | W43(**不卡 Track A / 不需標註集**)| 決策 6(優先序)|
 | ✅ **W44** | Chunker 深層修(ADR-0041,切法 D + cap 8)| 圖洪**根治**(實測 57→8)+ process 策略基礎 | T1 | —(doc-level reindex 驗證,不卡 Track A)| ✅ **closed 2026-06-04 Gate PARTIAL→PASS**(recall/faith flat + corr −2.28pp answer_relevancy noise + 三源證實 = no-regression;SME eval-set-v1-draft validated 順帶解 Q14)|
 | ✅ **W45**(本期)| per-KB 圖數 cap → KbConfig(ADR-0042)| W44 全域 cap 8 → **per-KB 可調**(延 ADR-0040 config-scope 由 query-time 到 **ingest-time**)| T1 | W44 + reuse W20 F4.2 `kb_config` ingest 路徑(不卡 Track A)| ✅ **shipped 2026-06-04**(`KbConfig.chunker_max_images_per_chunk` None=inherit/正整數=cap;`_select_chunker` + factory wiring;+5 test 0 regression;**UI 暴露 out-of-scope** → 下方「UI ingestion 配置」候選)— 收 W44 carry-over「per-KB 圖數 cap 降 KbConfig」|
-| **後續候選**(原 W45)| UI 開放 ingestion 配置 + **真** re-index | process 策略**上 UI 自助**(本期 per-KB cap 已開後端 foundation,尚欠 UI surface + 真 KB-level reindex)| T1 | W45 per-KB cap +(dev:迭代 doc-level / **prod:v1→v2 原子切換**)| 決策 4(**production 化投資時機**)|
-| **W46** | per-document scope | 一個 KB 溝多格式文件 | T1 | W43 resolver(加一層;**[AUDIT-E]** retrieval 旋鈕語意見下)| **決策 1(per-KB 夠未)** |
+| ✅ **W46**(本期)| UI 開放 ingestion 配置 + **真** KB-level re-index(ADR-0043)| process 策略**上 UI 自助**(per-KB cap + chunk_strategy 解鎖)+ 真 KB-level reindex(dev/demo 層)| T1 | W45 per-KB cap + 原始檔 blob 儲存(ADR-0043)| ✅ **shipped 2026-06-05**(原始檔 `-sources` container + `run_kb_reindex` in-place + Settings unlock chunk_strategy/圖數cap + Reindex modal/summary;**prod v1→v2 原子切換仍 Track A** per 決策 4)|
+| **後續候選 — per-document**(原標 W46;名讓予本期 ingestion-config phase)| per-document scope | 一個 KB 溝多格式文件 | T1 | W43 resolver(加一層;**[AUDIT-E]** retrieval 旋鈕語意見下)| **決策 1(per-KB 夠未)** |
 | 條件觸發 | Query-intent gate(Layer B)| 自動辨查詢類型揀配置 | T1(heuristic)| W43 | 需唔需要 |
 | ⚠️ Tier 2 | Image relevance ranking(Layer C 深層)| 按**視覺內容**相關性揀圖(**章節**相關性 = T1,見下)| **T2** | W44 metadata | 決策 3(Tier 2 閘)|
 | 操作期(**presets 宜提前**)| config 版本史 / presets / who-can-edit 審計 | 配置生命週期成熟度;**presets 係自助可用性 enabler,唔應排最後** | T1 | W43 | 決策 5(優先序)|
@@ -82,14 +82,17 @@ memory 嘅 3 正交層對應:
   - 延伸 ADR-0040 per-KB config-scope 由 **query-time** 到 **ingest-time** —— ingest 時 `documents.py:_select_chunker(deps, kb_config)` 解析:`None` reuse 全域 singleton(零 construct,bit-identical),設值經 `app.state.make_ingestion_chunker` factory 砌 per-ingest chunker。
   - reuse W20 F4.2 已 thread 嘅 `kb_config` ingest 路徑;窄 scope = backend 欄 + wiring + test,**經既有 `PATCH /kb/{id}/settings` 可設,唔加 endpoint**;UI 暴露留下方候選。re-index 先生效(同 W44)。
 
-- **後續候選(原 W45)— UI 開放 ingestion 配置 + 真 re-index**
+- **✅ W46(本期,shipped 2026-06-05)— UI 開放 ingestion 配置 + 真 KB-level re-index(ADR-0043)**
+  - **已交付(dev/demo 層)**:(1) 原始檔 blob 儲存 `ekp-kb-{kb_id}-sources`(`source_store.py`,ingest best-effort persist)— 解開「真 reindex 要 re-parse 原檔但原檔冇存」root blocker;(2) `POST /kb/{id}/reindex` stub→真(`run_kb_reindex` iterate docs → 由 `-sources` download → 每 doc in-place delete+reingest via BytesIO-UploadFile adapter 復用 `_run_ingest_pipeline`);(3) Settings UI 解鎖 `chunk_strategy` + NEW per-KB 圖數 cap 欄(embedding 維 locked)+ Reindex 卡 confirm modal + per-doc summary(H7 design-first per ADR-0024)。pre-W46 無原檔 doc → `skipped_no_source` report。
+  - **production 層仍 Track A**(下方兩層拆解不變):in-place 接受短暫不一致窗口;v1→v2 原子切換 + R@5 gate + Standard S1 屬決策 4 後置。
+  - _(以下為原候選 design rationale,仍適用作 dev-vs-prod 兩層 context)_
   - 今日 `chunk_strategy` / embedding 喺 UI **locked**;**KB-level** `POST /kb/{id}/reindex` 係 **stub**(假 task_id,no-op,`kb.py:252-280`)。但 **doc-level** `documents/{doc_id}/reindex` 已係 **real**(見 W44),KB-level 只係未串。本期 per-KB cap 已開後端 config foundation,呢個候選 = UI surface + 真 KB-level reindex。
   - **[AUDIT-C] 兩層,唔好一刀切**:
     - **dev / demo 層(不卡 Track A)**:KB-level reindex 可由「iterate docs → 逐個 reuse 現成 doc-level reindex」砌出 + 喺現有 dev Free-tier Azure Search 測試。**整個 process-軸自助 loop 可以 demo,唔等 Track A。**
     - **production 層(雙閘)**:對 live KB 改切法 = 重切所有文件,in-place 有「舊 chunk 已刪、新 chunk 未上完」**不一致窗口** → 要 **v1→v2 索引原子切換**(net-new infra,`kb_naming.py` 目前固定 `-v1`、無 alias、in-place)**+ R@5 gate**,再加 **Track A(Standard S1 + IT cred)**。
   - ⚠️ 所以卡 Track A 嘅係「**production 零 downtime 安全 reindex**」,**唔係**「能否建造 / 能否 demo」。決策 4 因此可後置(先 W44 + W45-dev 證價值,production 化投資再排)。
 
-- **W46 — per-document scope**
+- **後續候選 — per-document scope(原標 W46;名讓予本期 ingestion-config phase)**
   - resolver 加一層:**per-query > per-document > per-KB > 全域**(additive,延伸 W43)。
   - **[AUDIT-E] 兩類旋鈕 per-doc 解析語意唔同(「加一層」唔係全部都成立)**:
     - **可乾淨 resolve**:ingestion 旋鈕(切法)每份文件獨立 → 零歧義;post-retrieval **per-citation** 旋鈕(`citation_expansion` / `neighbour_images`)→ 「此 citation 屬 doc X → 用 doc X 值」可行。
@@ -119,10 +122,10 @@ memory 嘅 3 正交層對應:
 ```
 W43(done)
   ├─→ W44 chunker(ADR-0041)─[驗證:現成 doc-level reindex,不卡 Track-A]
-  │     ├─→ W45 UI ingestion ─ dev/demo:迭代 doc-level(不卡 Track-A)
-  │     │                    └─ production:v1→v2 原子切換 + ⚠️Track-A
+  │     ├─→ W46 UI ingestion ─ ✅ dev/demo shipped 2026-06-05(原始檔 storage + 真 KB reindex + Settings unlock,ADR-0043)
+  │     │                    └─ production:v1→v2 原子切換 + ⚠️Track-A(仍未做)
   │     └─→ Layer C:章節語意(Tier 1,已部分 ship)| 視覺內容(⚠️ Tier 2 閘)
-  ├─→ W46 per-document(resolver 加層;retrieval 旋鈕語意待解;視乎決策 1)
+  ├─→ 後續候選 per-document(原標 W46;resolver 加層;retrieval 旋鈕語意待解;視乎決策 1)
   ├─→ Layer B query-intent(條件觸發)
   ├─→ NEW 質素軸:config-test + reference-free faithfulness(並行,零阻塞)
   └─→ 操作期(版本史 / presets〔宜提前〕/ 審計)

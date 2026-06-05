@@ -330,6 +330,9 @@ EKP Platform
 
 **KB metadata 持久化**(W17 F1 amendment — per ADR-0023):KB Manager(`kb_management`)嘅 `KbStatus` records + 自助註冊用戶 / session(`users_repo`)透過 `KBStorageBackend` / `UsersStore` Protocol 抽象,預設後端 = Postgres(docker-compose `postgres` service 上一個 dedicated `ekp` database;`DATABASE_URL` 未設時 fallback 去 process-local in-memory,本機 dev / CI 不變)。chunk / 文件 / screenshot 仍存於各 KB 自己嘅 Azure AI Search index + Blob container(上文不變);呢個只係 KB **後設資料表** 嘅持久化選擇。
 
+> **W46 amendment per ADR-0043**(2026-06-04,doc-version held;落 §3.4 而非 §3.5 因 chunk record schema 不變):每 KB 多一個 **原始檔 Blob container `ekp-kb-{kb_id}-sources`**(原本只有 `-screenshots`)。Ingest 成功後 best-effort 把原始上載檔(blob name = `doc_id`,metadata `original_filename`)持久化落 `-sources`(失敗 log warning 唔 fail ingest)。**理由**:真 KB-level re-index 要由原檔 re-parse + re-chunk,但 pre-W46 ingest stream 落 tempfile 後即刪 → 冇原檔做唔到。
+> **`POST /kb/{kb_id}/reindex` 由 Beta-baseline stub(假 task_id)轉真**:iterate `GET /kb/{kb_id}/documents` → 由 `-sources` download 原檔 → 每 doc 鏡像 doc-level reindex(`delete_doc` + counter −1 → re-ingest +1)→ 同步式 in-place(Tier 1 無 task queue)。Pre-W46 無原檔嘅 doc **skip + report**(`skipped_no_source`,re-upload 即可)。**Zero-downtime v1→v2 原子切換 + eval gate 仍屬 Track A**(in-place 接受短暫不一致窗口)。See ADR-0043 + §4.4 #19 + §4.6 Re-sync logic + §5.5.5。
+
 ### 3.5 Step Record / Chunk Record Schema(統一格式)
 
 ```json
@@ -658,7 +661,7 @@ services:
 > **Note**:Azure AI Search 同 Azure OpenAI **冇 local emulator**,必須連 real cloud
 > resource(POC stage 用 dev resource group)。Blob 用 Azurite emulator,Langfuse self-host。
 
-### 4.4 FastAPI Endpoint Contract(18 個)
+### 4.4 FastAPI Endpoint Contract(19 個)
 
 | # | Endpoint | Method | 功能 | Used By |
 |---|---|---|---|---|
@@ -686,6 +689,10 @@ services:
 | 17 | `/debug/trace/{trace_id}` | GET | Full trace detail | Debug View |
 | **Screenshots** |
 | 18 | `/screenshots/{kb_id}/{doc_id}/{img_id}` | GET | Redirect to SAS URL | All UI |
+| **KB Management(W46)** |
+| 19 | `/kb/{kb_id}/reindex` | POST | Re-index entire KB(re-parse all docs from stored source under current config) | Admin |
+
+> **W46 amendment per ADR-0043**:#19 `/kb/{kb_id}/reindex` 由 Beta-baseline stub 轉真(group 標 KB Management,append 末尾避免 renumber #9–#18)。Distinct from #12 doc-level reindex:#19 iterate KB 全部 doc、由 `-sources` container 原檔 in-place delete+reingest、返 `{status, kb_id, documents_total, documents_reindexed, reindexed[], skipped_no_source[], failed[{doc_id,error}], chunks_total}`(202)。Archived KB → 403。同步式(Tier 1)。詳見 §3.4 W46 amendment。
 
 ### 4.5 Pydantic Schemas(關鍵)
 
@@ -792,6 +799,8 @@ Document Upload
 - Re-index 時 SHA256 比對
 - Tango / source 端改變 → re-download + re-upload + 舊 blob retain history version
 - New URL 寫入新 chunk version,Azure Search index alias 切換
+
+> **W46 amendment per ADR-0043**:Tier 1 真 KB-level re-index 走 **in-place** 路徑 —— 由 NEW `ekp-kb-{kb_id}-sources` container(ingest 時 best-effort 持久化原檔)download 原檔 → 每 doc `delete_doc` + re-ingest(re-parse + re-chunk + re-embed + upsert 落同一 `-v1` index)。**上面「Azure Search index alias 切換」(v1→v2 zero-downtime)仍屬 Track A**;W46 接受短暫不一致窗口。Screenshot SHA256 dedup pipeline(本節)在 re-ingest 路徑照常行(原檔 re-parse 重抽 image → 同 hash 命中現有 blob)。
 
 ---
 
@@ -1005,6 +1014,12 @@ export const ekpTokens = {
 #### 5.5.5 Settings Tab
 
 KB-level config:embedding model lock、chunk strategy default、retrieval default、KB description。
+
+> **W46 amendment per ADR-0042 + ADR-0043**(F3,H7 design-first per ADR-0024 — mockup `ekp-page-kb.jsx` TabKbSettings 先改再令 `frontend/app/(app)/kb/[id]/page.tsx` 100% match):Retrieval config 卡由「全鎖」改為 **mix of locked + editable** ——
+> - **`chunk_strategy` 解鎖**(seg interactive)+ NEW **`Max images / chunk`** 欄位(per-KB `chunker_max_images_per_chunk`,留空 = 繼承全域 8)。兩者都係 **ingest-time** param → label 用 `RefreshCw`(warning「需重新索引」)而非 `Shield`(locked);改後須 re-index 先生效。
+> - **`embedding_model` 維持 locked**(disabled select;re-embed 較重,unlock 屬未來)。
+> - NEW **Re-indexing 卡**:explainer(摺疊)+「Trigger re-index now」→ confirm modal(`.modal-overlay` per DESIGN_SYSTEM §4.5,提示「先存配置」)→ `POST /kb/{id}/reindex`(§4.4 #19)→ per-doc summary banner(reindexed / skipped_no_source / failed;failed→`banner-warning`)。Page header「Re-index」按鈕由 disabled 轉 enabled → 導去 Settings tab。
+> - W43 Advanced retrieval tuning(12 runtime knobs)+ config-test 試跑 panel(per ADR-0040)不變。
 
 ### 5.6 View 5:Eval Console(`/eval`)— rendered inside `<AppShell>` per ADR-0024(own `app/eval/layout.tsx` folded into `app/(app)/layout.tsx`;route unchanged);W21 Wave B 6-section refactor consuming W17 F3 RAGAs(NO new backend)
 

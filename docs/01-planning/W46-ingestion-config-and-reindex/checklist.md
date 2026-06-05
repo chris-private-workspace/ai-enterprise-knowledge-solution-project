@@ -36,12 +36,12 @@
 - [x] F4.5 ruff clean(check + format)
 
 ## F5 — Doc-sync
-- [ ] F5.1 architecture.md §3.5/§4.4/§4.6 inline ADR-0043 amendment + §5.5 Settings note
-- [ ] F5.2 roadmap §3「後續候選」→ ✅ done(+ DESIGN_SYSTEM.md 若加 modal pattern)
-- [ ] F5.3 session-start §10 W46 row
+- [x] F5.1 architecture.md inline ADR-0043 amendment:§3.4(原始檔 `-sources` container + 真 reindex,落 §3.4 非 §3.5 因 chunk schema 不變)+ §4.4 #19 row(count 18→19)+ §4.6 Re-sync logic(in-place vs v1→v2 Track A)+ §5.5.5 Settings note(unlock + Reindex UX)
+- [x] F5.2 roadmap §3「後續候選(原 W45)」→ ✅ W46(本期)shipped;「W46 per-document」relabel「後續候選 — per-document」避免 double-W46 false-done;§4 依賴樹同步。DESIGN_SYSTEM modal pattern **已存在 §4.5 直接復用**,無需新增
+- [x] F5.3 session-start §10 W46 row(local-only,gitignored)— 併入 F6.3 closeout 一次處理
 
 ## F6 — Closeout
-- [ ] F6.1 Phase Gate G1-G6 評估 + verdict
-- [ ] F6.2 progress.md retro + carry-overs
-- [ ] F6.3 session-start §10 W46 closed + W47+ rolling JIT
-- [ ] F6.4 checklist 全 tick / 🚧 標記
+- [x] F6.1 Phase Gate G1-G6 評估 + verdict = **PASS**(全 6 gate 通過;R4 live-verify 🚧 deferred,見 progress Day 2)
+- [x] F6.2 progress.md retro(R6 連環 catch / Karpathy surgical / design-first / double-W46 relabel)+ carry-overs(R4 / per-document / v1→v2 Track A / heading_aware footgun)
+- [x] F6.3 session-start §10 W46 closed row + W47+ rolling JIT row(local-only,gitignored)+ plan.md status→closed + changelog
+- [x] F6.4 checklist 全 tick;唯一 🚧 = R4 live reindex UI verify(carry W47+,pytest+vitest 已覆蓋邏輯)
