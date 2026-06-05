@@ -71,3 +71,7 @@ W47 closed + pushed(`ecd9156`)。用戶揀 W48 = **config-test 加 ingestion 質
 
 ### Blockers / carry-over
 - 無 blocker。
+
+### Post-closeout 修正(2026-06-05,W47 F5 live-verify session 順帶發現)
+- **config-test footer copy staleness**:面板 footer「對 RAGAs 盲 → presentation counters 為第二軸」喺 W48 加咗 faithfulness RAGAs 質素軸後變自相矛盾(面板已唔再 RAGAs-盲)。**非 H7 drift**(`page.tsx:2211` 同 mockup `ekp-page-kb.jsx:942` 文字本來一致)— 屬 F2 漏更新嘅 copy。
+- **修正(design-first)**:mockup 先改 → page.tsx match,新文字「N 次重跑取平均 · band = max − min(越細越穩定)· **faithfulness 質素軸每 config 算一次 · presentation counters 為穩定度軸**」(準確反映:band 只適用於 run-to-run 變化嘅 presentation counters;faithfulness 每 config 算一次無 band)。tsc clean + 無 test 引用該文字 + live UI hot-reload 確認三者一致。

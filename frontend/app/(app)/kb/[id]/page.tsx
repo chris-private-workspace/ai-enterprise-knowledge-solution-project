@@ -2208,8 +2208,8 @@ function ConfigTestPanel({
       </div>
       <div className="card-footer">
         <div className="text-xs muted">
-          N 次重跑取平均 · band = max − min(越細越穩定)· 對 RAGAs 盲 → presentation
-          counters 為第二軸
+          N 次重跑取平均 · band = max − min(越細越穩定)· faithfulness 質素軸每
+          config 算一次 · presentation counters 為穩定度軸
         </div>
         <button
           type="button"
