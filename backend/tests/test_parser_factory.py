@@ -6,7 +6,7 @@ Coverage:
 - select_parser raises ValueError for unsupported extension
 - select_chunker(doc_format='pptx', strategy='auto') returns LayoutAwareChunker
   (slide_based delegates per W4 D1 F9 simplification)
-- select_chunker still NotImplementedError for heading_aware standalone
+- select_chunker(strategy='heading_aware') returns HeadingAwareChunker (W53 / ADR-0044)
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pytest
 
+from ingestion.chunker.heading_aware import HeadingAwareChunker
 from ingestion.chunker.layout_aware import LayoutAwareChunker
 from ingestion.chunker.strategies import select_chunker
 from ingestion.parsers import select_parser
@@ -61,6 +62,10 @@ def test_select_chunker_pptx_explicit_slide_based_returns_layout_aware() -> None
     assert isinstance(chunker, LayoutAwareChunker)
 
 
-def test_select_chunker_heading_aware_still_not_implemented() -> None:
-    with pytest.raises(NotImplementedError, match=r"heading_aware"):
-        select_chunker(doc_format="docx", strategy="heading_aware")
+def test_select_chunker_heading_aware_returns_heading_aware_chunker() -> None:
+    # W53 / ADR-0044 — heading_aware is now a real section-bounded strategy.
+    chunker = select_chunker(doc_format="docx", strategy="heading_aware")
+    assert isinstance(chunker, HeadingAwareChunker)
+    # section-bounded policy: no sub-hard-cap target split + no adjacent merge.
+    assert chunker.target_tokens == chunker.hard_cap_tokens
+    assert chunker.min_chunk_merge_floor == 0

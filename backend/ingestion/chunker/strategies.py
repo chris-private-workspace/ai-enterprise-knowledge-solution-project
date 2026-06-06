@@ -8,9 +8,10 @@ Strategy mapping:
   paragraphs + tables + pictures). LayoutAwareChunker walks heading levels
   generically so a dedicated SlideBasedChunker class would be redundant —
   per Karpathy §1.2 simplicity-first.
-- heading_aware — W3+ standalone strategy deferred (layout_aware already
-  provides heading-bounded sections; standalone variant only needed if a
-  dedicated heading-merge / cross-heading strategy emerges)
+- heading_aware — W53 / ADR-0044 section-bounded coarse chunker
+  (HeadingAwareChunker): one chunk per heading section, split only at hard_cap,
+  NO target-balancing + NO adjacent-short merge → coarser/fewer chunks than
+  layout_aware. The comparison counterpart for W53 chunk-strategy recall eval.
 
 `auto` routing per doc_format (per architecture.md §3.3 Multi-Format Strategy):
 - docx → layout_aware
@@ -24,6 +25,7 @@ from __future__ import annotations
 from typing import Literal
 
 from ingestion.chunker.base import Chunker
+from ingestion.chunker.heading_aware import HeadingAwareChunker
 from ingestion.chunker.layout_aware import LayoutAwareChunker
 from ingestion.parsers.base import DocFormat
 
@@ -38,10 +40,9 @@ def select_chunker(doc_format: DocFormat, strategy: ChunkStrategy = "auto") -> C
         # Both delegate to LayoutAwareChunker — see module docstring.
         return LayoutAwareChunker()
     if resolved == "heading_aware":
-        raise NotImplementedError(
-            "heading_aware as a standalone strategy is W3+ scope; "
-            "layout_aware already provides heading-bounded sections for W2 baseline",
-        )
+        # W53 / ADR-0044 — section-bounded coarse chunker (one chunk per heading
+        # section, split only at hard_cap, no target-balancing, no merge).
+        return HeadingAwareChunker()
     raise ValueError(f"unknown chunk strategy: {strategy!r} (resolved={resolved!r})")
 
 

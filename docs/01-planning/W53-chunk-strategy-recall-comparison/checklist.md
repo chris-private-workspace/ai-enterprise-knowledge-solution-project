@@ -11,10 +11,10 @@
 - [x] F1.2 ADR README index 加 0044 row + next NNNN → 0045
 
 ## F2 — heading_aware chunker + chunk_strategy wiring(C01)
-- [ ] F2.1 `HeadingAwareChunker`(section-bounded:只 hard_cap split / 無 target-split / 無 min-merge;reuse layout_aware section-walk/token/image-cap;接 max_images_per_chunk)
-- [ ] F2.2 `strategies.py select_chunker`:heading_aware → HeadingAwareChunker(移除 NotImplementedError)
-- [ ] F2.3 `documents.py _select_chunker`:按 kb_config.chunk_strategy dispatch(heading_aware → HeadingAware(cap);else → LayoutAware path,bit-identical fall-through)→ reindex 真 honor strategy
-- [ ] F2.4 mypy --strict(改檔零新 error)+ ruff check+format clean
+- [x] F2.1 `HeadingAwareChunker(LayoutAwareChunker)` thin subclass(`backend/ingestion/chunker/heading_aware.py`)— super().__init__ 後 flip `target_tokens=hard_cap_tokens` + `min_chunk_merge_floor=0`;其餘(hard_cap split / image-cap / table / low_value / section-walk)全 inherit;接 max_images_per_chunk
+- [x] F2.2 `strategies.py select_chunker`:heading_aware → HeadingAwareChunker()(移除 NotImplementedError;module docstring bullet 同步更新)
+- [x] F2.3 `documents.py _select_chunker`:按 kb_config.chunk_strategy dispatch(heading_aware → HeadingAware(cap inherit/override);else → LayoutAware path bit-identical fall-through)→ reindex 真 honor strategy(close W46 over-promise gap)
+- [x] F2.4 ruff check+format clean;mypy --strict 我兩改檔(heading_aware.py/strategies.py)零 error(exit 1 純 layout_aware:114/170 + parser 檔 pre-existing 跨模組);test_parser_factory regression-fix(NotImplementedError 斷言 → HeadingAwareChunker + policy params);chunker/parser/reindex/detail/effective_config 65 passed 0 regression
 
 ## F3 — Strategy-recall 比較 harness + CLI(C06)
 - [ ] F3.1 NEW `run_strategy_recall_comparison(...)`:per strategy set chunk_strategy → reindex → run_synthetic_recall → `StrategyRecallComparison`(recall + chunk 數 + sample 數 per strategy);依賴可注入

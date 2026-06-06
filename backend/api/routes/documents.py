@@ -46,6 +46,7 @@ from api.schemas.listing import (
 from api.schemas.query import ImageRef
 from indexing.populate import IndexPopulator
 from ingestion.chunker.base import Chunker
+from ingestion.chunker.heading_aware import HeadingAwareChunker
 from ingestion.embedding.base import Embedder
 from ingestion.orchestrator import IngestionOrchestrator
 from ingestion.parsers import select_parser
@@ -135,16 +136,29 @@ def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
 
 
 def _select_chunker(deps: _IngestionDeps, kb_config: KbConfig | None) -> Chunker:
-    """Pick the chunker for this ingest run (W45 / ADR-0042).
+    """Pick the chunker for this ingest run (W45 / ADR-0042; W53 / ADR-0044).
 
-    `kb_config.chunker_max_images_per_chunk`:
-      * None (or no kb_config / no factory) → the global-cap singleton
-        (`deps.chunker`) — zero construct cost + bit-identical to pre-W45.
-      * positive int → a per-ingest chunker with that per-KB cap, built via the
-        `deps.make_chunker` factory (keeps this route decoupled from the concrete
-        chunker class). Re-index is what makes a cap change take effect.
+    Dispatch on `kb_config.chunk_strategy` first (W53 / ADR-0044):
+      * `heading_aware` → `HeadingAwareChunker` (section-bounded coarse; combines
+        the per-KB image cap when set). Re-index is what makes a strategy change
+        take effect — this closes the W46 reindex over-promise gap where
+        `chunk_strategy` was read into DocumentDetail but never reached ingest.
+      * `layout_aware` / `slide_based` / `auto` → existing LayoutAwareChunker path
+        (bit-identical fall-through), driven by `chunker_max_images_per_chunk`:
+        - None (or no kb_config / no factory) → the global-cap singleton
+          (`deps.chunker`) — zero construct cost + bit-identical to pre-W45.
+        - positive int → a per-ingest chunker with that per-KB cap, built via the
+          `deps.make_chunker` factory (keeps this route decoupled from the concrete
+          chunker class).
     """
     cap_override = kb_config.chunker_max_images_per_chunk if kb_config else None
+    strategy = kb_config.chunk_strategy if kb_config else "auto"
+    if strategy == "heading_aware":
+        # cap None → inherit the global default cap (parity with the layout_aware
+        # singleton); positive int → per-KB cap on the section-bounded chunker.
+        if cap_override is None:
+            return HeadingAwareChunker()
+        return HeadingAwareChunker(max_images_per_chunk=cap_override)
     if cap_override is None or deps.make_chunker is None:
         return deps.chunker
     return deps.make_chunker(cap_override)
