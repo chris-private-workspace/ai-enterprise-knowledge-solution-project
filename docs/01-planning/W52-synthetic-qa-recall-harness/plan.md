@@ -130,6 +130,8 @@ combined_vision: "兩者合一(synthetic-QA 做 ingestion eval 指標)— W52 = 
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-06 | Initial plan | W52 kickoff;Chris AskUserQuestion 揀「兩者合一」→ split W52 synthetic-QA recall 基建 / W53 reindex 比較;synthetic 自監督 recall offline 工程閘;reuse EvalRunner + judge client + chunk 枚舉;無新 ADR/vendor/dep | Chris |
+| 2026-06-06 | **R3 deviation ①**:plan §1「zero C03 modification」修正 —— `_collect_chunks` 需 chunk_text(`list_chunks` 故意唔返),engine 未 expose `fetch_by_chunk_ids`(只喺 `_searcher`)→ 加 3 行 encapsulation-preserving passthrough `RetrievalEngine.fetch_by_chunk_ids`(mirror 現有 `list_chunks`/`list_documents` delegate)。**非 architectural**(§5.1「加 internal helper」+ additive delegate,無 interface/vendor/storage 改)| F1 think-before-coding(§1.1)+ R6 grep 揭 engine passthrough 缺;最乾淨 = 補 delegate(避免 C06 reach into C03 private `_searcher`)| AI |
+| 2026-06-06 | **R3 deviation ②**:CLI 由 plan §3 F2「`python -m eval.synthetic_qa`」改放 `scripts/run_synthetic_recall.py` | live bootstrap 需 `truststore.inject_into_ssl()` + engine 構建(mirror run_gate1_eval.py);模組保持 bootstrap-free → core 全 stub-testable(Karpathy:scripts/ = live driver,eval/ = importable logic,對齊既有 run_gate1_eval / eval_set_augmentor 分工)| AI |
 
 ---
 

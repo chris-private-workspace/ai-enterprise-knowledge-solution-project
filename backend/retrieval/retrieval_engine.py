@@ -358,3 +358,13 @@ class RetrievalEngine:
         chunk_index. See HybridSearcher.list_chunks for shape.
         """
         return await self._searcher.list_chunks(kb_id, doc_id, top=top)
+
+    async def fetch_by_chunk_ids(self, chunk_ids: list[str], kb_id: str) -> dict[str, dict]:
+        """W52 — delegate to searcher.fetch_by_chunk_ids (encapsulation preserved).
+
+        Batch-fetch chunks by id (no ranking) returning FULL fields incl.
+        chunk_text — used by the synthetic-QA recall harness to read sampled
+        chunks' text (list_chunks omits chunk_text by design for the Beta client).
+        See HybridSearcher.fetch_by_chunk_ids for shape + ADR-0020/ADR-0018 notes.
+        """
+        return await self._searcher.fetch_by_chunk_ids(chunk_ids, kb_id)
