@@ -911,17 +911,18 @@ function TabKbSettings({ kb }) {
           {/* results A/B — DRAFT (保守草稿) vs SAVED (已存激進) ; 數字 = F2.6 dogfood */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <KbTestResultCard label="草稿配置(DRAFT)" accent faith="0.78" faithBand="0.16" runs={3}
-              cit="1" citBand="0" imgRaw="6" imgDedup="6" imgBand="0" lat="4.1s" chars="612" refused="否" />
+              cit="1" citBand="0" sec="1" secBand="0" imgRaw="6" imgDedup="6" imgBand="0" lat="4.1s" chars="612" refused="否" />
             <KbTestResultCard label="已存配置(SAVED)" faith="0.92" faithBand="0.05" runs={3}
-              cit="11" citBand="0" imgRaw="36" imgDedup="28.7" imgBand="0" lat="5.8s" chars="1840" refused="否" />
+              cit="11" citBand="0" sec="5" secBand="1" imgRaw="36" imgDedup="28.7" imgBand="0" lat="5.8s" chars="1840" refused="否" />
           </div>
 
           {/* W50 (決策 7 option d) — length-bias caveat: RAGAs faithfulness penalises
               long/comprehensive answers, so a low score paired with high completeness
-              signals is likely the bias, not a worse config. */}
+              signals is likely the bias, not a worse config.
+              W51 — caveat now points at the quantified 涵蓋章節數 completeness proxy. */}
           <div className="hint" style={{ marginTop: 10, display: "flex", gap: 6, alignItems: "flex-start" }}>
             <IcAlert size={13} style={{ color: "oklch(var(--warning))", marginTop: 1, flexShrink: 0 }} />
-            <span>忠實度對長 / 全面答案有 <b style={{ color: "oklch(var(--warning))" }}>length bias</b> —— 低分若配合高引用數 / 長答案,多為 bias 而非 config 差,宜對照引用數 / 字數(+ 將來 recall)一齊判讀,勿與完整性混為一談。</span>
+            <span>忠實度對長 / 全面答案有 <b style={{ color: "oklch(var(--warning))" }}>length bias</b> —— 低分若配合高 <b>涵蓋章節數</b> / 引用數 / 長答案,多為 bias 而非 config 差,宜對照涵蓋章節數 / 引用數 / 字數一齊判讀,勿與完整性混為一談。</span>
           </div>
 
           {/* per-citation breakdown (草稿 · 最後一 run) */}
@@ -1124,7 +1125,7 @@ function KbTuneGroup({ icon, title, desc, enabled, enabledInherit, children }) {
 }
 
 // One A/B result column for the test-run panel. accent = DRAFT (草稿).
-function KbTestResultCard({ label, accent, faith, faithBand, runs, cit, citBand, imgRaw, imgDedup, imgBand, lat, chars, refused }) {
+function KbTestResultCard({ label, accent, faith, faithBand, runs, cit, citBand, sec, secBand, imgRaw, imgDedup, imgBand, lat, chars, refused }) {
   return (
     <div style={{
       border: accent ? "1px solid oklch(var(--accent) / 0.4)" : "1px solid oklch(var(--border))",
@@ -1150,6 +1151,8 @@ function KbTestResultCard({ label, accent, faith, faithBand, runs, cit, citBand,
           )}
         </div>
         <KbTestMetric k="引用數" v={cit} band={citBand} />
+        {/* W51 (決策 7 option d) — completeness/coverage proxy (breadth, NOT recall) */}
+        <KbTestMetric k="涵蓋章節數" v={sec} band={secBand} sub="completeness proxy · 非 recall" />
         <KbTestMetric k="圖片(dedup)" v={imgDedup} sub={`raw ${imgRaw}`} band={imgBand} />
         <KbTestMetric k="延遲 p50" v={lat} />
         <KbTestMetric k="答案字數" v={chars} />

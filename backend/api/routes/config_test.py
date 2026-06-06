@@ -117,10 +117,14 @@ async def _run_n(
     for i in range(1, runs + 1):
         resp = await execute_query_pipeline(qreq, request, effective, settings)
         raw, dedup = _figure_counts(resp.citations)
+        # W51 (決策 7 option d) — distinct cited sections = completeness/coverage proxy
+        # (breadth: how many different document sections the answer drew from).
+        distinct_sections = len({tuple(c.section_path) for c in resp.citations})
         metrics.append(
             RunMetrics(
                 run=i,
                 citation_count=len(resp.citations),
+                distinct_sections=distinct_sections,
                 figure_count_raw=raw,
                 figure_count_dedup=dedup,
                 latency_ms=resp.latency_ms,
@@ -143,6 +147,7 @@ async def _run_n(
     return ConfigRunSummary(
         runs=metrics,
         citation_count=_band([float(m.citation_count) for m in metrics]),
+        distinct_sections=_band([float(m.distinct_sections) for m in metrics]),
         figure_count_raw=_band([float(m.figure_count_raw) for m in metrics]),
         figure_count_dedup=_band([float(m.figure_count_dedup) for m in metrics]),
         latency_ms=_band([float(m.latency_ms) for m in metrics]),

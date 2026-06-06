@@ -61,6 +61,9 @@ export interface CitationBreakdown {
 export interface RunMetrics {
   run: number;
   citation_count: number;
+  /** W51 (決策 7 option d) — distinct cited sections = completeness/coverage proxy
+   * (breadth, NOT ground-truth recall). */
+  distinct_sections: number;
   figure_count_raw: number;
   figure_count_dedup: number;
   latency_ms: number;
@@ -80,6 +83,10 @@ export interface MetricBand {
 export interface ConfigRunSummary {
   runs: RunMetrics[];
   citation_count: MetricBand;
+  /** W51 (決策 7 option d) — completeness/coverage proxy band (distinct cited sections).
+   * Read ALONGSIDE faithfulness (RAGAs faithfulness penalises long/comprehensive
+   * answers). NOT ground-truth recall — a breadth proxy. */
+  distinct_sections: MetricBand;
   figure_count_raw: MetricBand;
   figure_count_dedup: MetricBand;
   latency_ms: MetricBand;

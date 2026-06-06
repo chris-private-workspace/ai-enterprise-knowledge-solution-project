@@ -148,6 +148,10 @@ def test_config_test_multi_run_counts_and_band() -> None:
     # deterministic mock → zero variance band
     assert body["draft"]["figure_count_raw"]["band"] == 0
     assert body["draft"]["citation_count"]["mean"] == 2
+    # W51 — distinct cited sections (coverage proxy): chunk-a [Doc,A] + chunk-b [Doc,B] = 2
+    assert r0["distinct_sections"] == 2
+    assert body["draft"]["distinct_sections"]["mean"] == 2
+    assert body["draft"]["distinct_sections"]["band"] == 0
     # per-citation breakdown from the last run
     assert {c["chunk_id"] for c in body["draft"]["per_citation"]} == {"chunk-a", "chunk-b"}
 

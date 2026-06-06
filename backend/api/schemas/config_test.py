@@ -64,6 +64,10 @@ class RunMetrics(BaseModel):
 
     run: int
     citation_count: int
+    # W51 (決策 7 option d) — distinct cited sections (unique section_path) = a
+    # completeness/coverage PROXY (breadth, not ground-truth recall): how many
+    # different document sections the answer drew from.
+    distinct_sections: int
     figure_count_raw: int  # total embedded_images across citations (cross-citation dups kept)
     figure_count_dedup: int  # unique by checksum_sha256 (matches the frontend display dedup)
     latency_ms: int
@@ -87,6 +91,11 @@ class ConfigRunSummary(BaseModel):
 
     runs: list[RunMetrics]
     citation_count: MetricBand
+    # W51 (決策 7 option d) — completeness/coverage PROXY band: distinct cited sections
+    # over the runs. Read ALONGSIDE faithfulness — RAGAs faithfulness penalises long/
+    # comprehensive answers (a high-coverage config can score LOW faithfulness without
+    # being worse). NOT ground-truth recall (no labelled set); a breadth proxy only.
+    distinct_sections: MetricBand
     figure_count_raw: MetricBand
     figure_count_dedup: MetricBand
     latency_ms: MetricBand

@@ -2183,8 +2183,9 @@ function ConfigTestPanel({
               />
               <span>
                 忠實度對長 / 全面答案有{' '}
-                <b style={{ color: 'oklch(var(--warning))' }}>length bias</b> —— 低分若配合高引用數 /
-                長答案,多為 bias 而非 config 差,宜對照引用數 / 字數(+ 將來 recall)一齊判讀,勿與完整性混為一談。
+                <b style={{ color: 'oklch(var(--warning))' }}>length bias</b> —— 低分若配合高{' '}
+                <b>涵蓋章節數</b> / 引用數 / 長答案,多為 bias 而非 config
+                差,宜對照涵蓋章節數 / 引用數 / 字數一齊判讀,勿與完整性混為一談。
               </span>
             </div>
 
@@ -2329,6 +2330,13 @@ function ConfigResultCard({
           )}
         </div>
         <ConfigMetric k="引用數" v={fmt(summary.citation_count)} band={summary.citation_count.band} />
+        {/* W51 (決策 7 option d) — completeness/coverage proxy (breadth, NOT recall) */}
+        <ConfigMetric
+          k="涵蓋章節數"
+          v={fmt(summary.distinct_sections)}
+          sub="completeness proxy · 非 recall"
+          band={summary.distinct_sections.band}
+        />
         <ConfigMetric
           k="圖片(dedup)"
           v={fmt(summary.figure_count_dedup)}
