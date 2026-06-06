@@ -1,8 +1,8 @@
 ---
 change_id: CH-006
 spec_ref: ./spec.md
-status: in-progress     # in-progress | done
-last_updated: 2026-06-06
+status: done            # in-progress | done
+last_updated: 2026-06-07
 ---
 
 # CH-006 — Checklist
@@ -32,17 +32,17 @@ last_updated: 2026-06-06
 
 ## Verification
 
-- [ ] V1 Run spec.md §3 acceptance:`backend/.venv/Scripts/python.exe -m pytest backend/tests/test_prompt_builder.py backend/tests/test_synthesizer*.py backend/tests/test_kb*.py -q`(+ 相關)全綠 0 regression
-- [ ] V2 ruff + ruff format + mypy(改檔零新 error)+ frontend tsc + lint + vitest
-- [ ] V3 Live 驗:`w56-drive-ab-1` 設 detailed → chat 問 GL03 → 逐 sub-step;設返 concise → 6 步摘要(對照);non-regression 確認預設 concise 不變
+- [x] V1 backend pytest(test_answer_detail_ch006 + prompt_builder_dispatch + prompt_content_ch005 + synthesizer + effective_config + crag)= **80 passed, 1 failed**;唯一 fail = `test_synthesize_invokes_engine_fetch_expansion`(**git-stash 驗證 clean checkout 一樣 fail = pre-existing,非 CH-006**)
+- [x] V2 ruff check clean;我加嘅行 format-clean(effective_config pre-existing debt 不郁);mypy 我改 3 檔零 error(6 個 pre-existing 喺其他模組);frontend tsc exit 0 + eslint clean + vitest 6/6(+相關 4 檔 7 test 0 regression)
+- [x] V3 **Live 驗(真 chat pipeline,restart backend 載入新 code)**:`w56-drive-ab-1` detailed → 3531 字完整 nested 逐 sub-step(GL03 Excel 14 步 + 直接 + Approve + Post);concise → 722 字 5 步摘要(W2 baseline 不變,non-regression ✓);11 citations 兩者一致(parent_doc 不受影響)
 
 ## Cross-Cutting
 
-- [ ] X1 Each commit references progress Day-N(R2)+ component tag(C05/C02)
-- [ ] X2 非 architectural → 無 ADR(R5 recheck;確認無 §3/§4 component 增刪/vendor swap)
-- [ ] X3 components/C05-*.md + C02-*.md design note bump(若存在;per CC-5)
-- [ ] X4 progress closeout summary + frontmatter status → closed
-- [ ] X5 doc-sync:ROADMAP 修訂史 + session-start §10(local-only)
+- [x] X1 commits 對應 progress Day 1(F0 `c460cd9` / backend `6172173` / frontend `038a6a1` / closeout)+ component tag(generation/frontend)
+- [x] X2 非 architectural → **無 ADR**(R5 recheck:無 §3/§4 component 增刪、無 vendor swap、無 storage layout 改;synthesis prompt 行為調整 + KbConfig additive 欄位)
+- [x] X3 C05-generation.md + C02-kb-manager.md design note bump(CH-006 amendment + last_updated 2026-06-07)
+- [x] X4 progress closeout summary + frontmatter status → closed
+- [x] X5 doc-sync:ROADMAP 修訂史 CH-006 entry + session-start §10(local-only)
 
 ---
 

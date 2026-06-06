@@ -2,7 +2,7 @@
 change_id: CH-006
 spec_ref: ./spec.md
 checklist_ref: ./checklist.md
-status: in-progress     # in-progress | closed
+status: closed          # in-progress | closed
 ---
 
 # CH-006 — Progress
@@ -48,9 +48,40 @@ W56 後續 live 診斷(KB `w56-drive-ab-1`):procedural 問題(GL03 post journal)
 
 ---
 
-## Closeout（填於 status=closed）
+## Closeout — 2026-06-07
 
-_(待實作完成填)_
+### Acceptance verification(spec.md §3)
+- ✅ `KbConfig.answer_detail` round-trip(POST/GET/PATCH;預設 None)
+- ✅ `None`/`concise` → 現行 150-字 prompt(byte-identical rename;現有 substring test 全過)
+- ✅ `detailed` → 放寬 prompt;**live GL03 3531 字逐 sub-step**(含 Excel 上載分支)
+- ✅ EffectiveConfig resolve 次序 per-query > per-KB > global
+- ✅ `/query` + `/query/stream` 兩路 + CRAG re-synth 採用 effective `answer_detail`
+- ✅ SettingsTab `.seg` 控件 → PATCH 持久化;沿用 chunk_strategy 視覺(H7 一致延伸)
+- ✅ pytest 80 passed(14 CH-006 + 相關)；frontend vitest 6/6 + tsc + lint
+- ✅ live 對照:detailed 3531 字 vs concise 722 字(non-regression)
+
+### Effort
+- Planned ~0.5–1 day;Actual ~半日(single session)。
+
+### Lessons
+- **做得好**:診斷分層清晰(retrieval recall vs synthesis verbosity 兩個獨立根因,逐一 live 證);prompt 重構用 rename + `.replace()` 派生 → concise 保證 byte-identical、零 drift(Karpathy §1.3 最 surgical);CRAG re-synth 一併 thread 確保一致;走足正式 Change 流程(spec approve → impl → test → live verify → closeout)。
+- **意外/摩擦**:(1) backend 無 `--reload` → live 驗證需 restart(killed dual-process tree 26792+44216);(2) restart 首次從 repo root launch 撞 `ModuleNotFoundError: ingestion` → 須 cwd=backend;(3) bash `/tmp` vs Windows-python `/tmp` 路徑不一致 → 改用單一 urllib script;(4) 撞到 pre-existing `test_synthesize_invokes_engine_fetch_expansion` 失敗,git-stash 證實非本 CH。
+- **carry-over**:`default_rerank_k` → chat wiring gap(chat 寫死唔送 top_k,KB 設定無效)—— 獨立 CH/Bug 待開。
+
+### Component design note status updates
+- C05 Generation:v1-active(amendment + last_updated 2026-06-07;synthesis answer-detail prompt 變體)
+- C02 KB Manager:v2-stable(amendment + last_updated 2026-06-07;`answer_detail` config 欄位)
+
+### Commits
+| Hash | Subject |
+|---|---|
+| `c460cd9` | CH-006 kickoff(spec approved + checklist + progress) |
+| `6172173` | backend — per-KB answer detail(C05+C02)|
+| `038a6a1` | frontend — answer detail seg control(C02)|
+| _(closeout)_ | closeout(progress/checklist/spec done + C05/C02 notes + ROADMAP)|
+
+### Final KB state
+- `w56-drive-ab-1` 留喺 **detailed**(用戶對程序手冊嘅 intent;chat 即時可見完整逐步)。可隨時喺 Settings tab `.seg` 切回 concise。
 
 ---
 

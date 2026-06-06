@@ -4,7 +4,7 @@ name: Generation Pipeline
 catalog_ref: ../COMPONENT_CATALOG.md#c05--generation-pipeline
 spec_refs: [architecture.md §3.1, architecture.md §3.2, architecture.md §13.11 (custom CRAG vs LangGraph ADR)]
 status: v1-active
-last_updated: 2026-05-04
+last_updated: 2026-06-07
 ---
 
 # C05 — Generation Pipeline Design Note
@@ -15,6 +15,7 @@ last_updated: 2026-05-04
 > - W3 D3 F4 `synthesize_stream` async generator + `stream_composer.compose_query_stream` pure-data composer + 9 unit tests(SSE wire)
 > - W4 D1 F1 CRAG L2 correction loop:`crag.py` `CragGrader`(GPT-5.4-mini judge)+ `CragLoop` orchestrator(grade → maybe rewrite + re-fetch top_k=20 + re-synth)+ threshold from `Settings.crag_confidence_threshold` (default 0.70)+ max_corrections from `Settings.crag_max_reformulations` (default 1)+ graceful fallback on grader/rewrite/re-retrieve/re-synth failure + 14 unit tests
 > - L3 routing deferred to W5 conditional on Gate 2 全 pass per architecture.md §6.1 W5 row
+> - **CH-006**(2026-06-07)per-KB answer detail level:`prompt_builder` 加 `SYSTEM_PROMPT_DETAILED`(= concise `.replace()` Rule 3 → 無字數上限 + 逐 sub-step 鋪開)+ `_system_prompt_for(detail_level)`;`build_prompt` / `synthesize` / `synthesize_stream` / CRAG re-synth 全部 thread `detail_level`(由 `EffectiveConfig.answer_detail` resolve,per-query > per-KB > global)。`concise` = W2 baseline 逐字不變(零行為改變)。live-verified:procedural query 722→3531 字。see `docs/03-implementation/changes/CH-006-per-kb-answer-detail-level/`
 >
 > **Owner**:AI
 

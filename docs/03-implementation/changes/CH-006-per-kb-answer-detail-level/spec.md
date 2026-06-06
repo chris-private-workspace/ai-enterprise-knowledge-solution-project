@@ -1,7 +1,7 @@
 ---
 change_id: CH-006
 title: "Per-KB answer detail level (concise | detailed) for synthesis"
-status: approved        # draft | proposed | approved | active | done | cancelled
+status: done            # draft | proposed | approved | active | done | cancelled
 created: 2026-06-06
 target_completion: 2026-06-07
 affects_components: [C05, C02]      # C05 Generation (prompt) + C02 KB Manager (KbConfig)
@@ -88,6 +88,8 @@ W56 後續實測(2026-06-06,KB `w56-drive-ab-1` 6-doc DRIVE)揭示:procedural �
 |---|---|---|---|
 | 2026-06-06 | Initial draft | W56 後續 live 揭 synthesis 150-字 cap 係 procedural 答案殘缺根因;用戶揀 per-KB「答案詳細度」config 路線 | (待 approve) |
 | 2026-06-06 | status draft → approved | Chris chat「Approve」;scope/acceptance/risks 確認,`default_rerank_k` wiring gap 明確另案 | Chris |
+| 2026-06-07 | status approved → done | 全 §3 acceptance verified(80 backend test + 6 frontend test + live 對照 detailed 3531 字 / concise 722 字);非 H1 無 ADR;零新 regression | AI |
+| 2026-06-07 | I2 scope 收窄(deviation) | config_test DraftRetrievalConfig 不加 answer_detail(synthesis knob 非 retrieval;config-test 用 KB saved/global)| AI |
 
 ---
 

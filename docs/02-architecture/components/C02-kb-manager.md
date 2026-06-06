@@ -4,12 +4,14 @@ name: Knowledge Base Manager
 catalog_ref: ../COMPONENT_CATALOG.md#c02--knowledge-base-manager
 spec_refs: [architecture.md §3.4, architecture.md §4.4 #4-8]
 status: v2-stable
-last_updated: 2026-05-04
+last_updated: 2026-06-07
 ---
 
 # C02 — Knowledge Base Manager Design Note
 
 > **Status**:`v2-stable`(W2 D5 cont 2026-05-04 — F10.4 carry-over closeout)— W1 D2 in-memory CRUD impl(commit `c6ca6e3`)+ W2 D5 cont 14 unit tests for `InMemoryKBBackend` + `KBService`(`backend/tests/test_kb_management.py`)。Azure-backed swap via FastAPI dependency override 仍 W3+ stretch(zero call-site change),non Tier 1 critical path。
+>
+> **CH-006 amendment**(2026-06-07):`KbConfig` 加 `answer_detail: Literal["concise","detailed"] | None`(nullable,沿用 W43 per-KB knob inherit 模式;`None` → 全域 `Settings.synthesis_answer_detail` 預設 concise)。經 `EffectiveConfig.answer_detail` query-time resolve(per-query > per-KB > global),驅動 C05 synthesis prompt 詳細度。KB Detail Settings「Retrieval config」card 加 `.seg` 控件。see `docs/03-implementation/changes/CH-006-per-kb-answer-detail-level/`
 >
 > **Owner**:AI
 >
