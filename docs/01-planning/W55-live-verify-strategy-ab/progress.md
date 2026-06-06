@@ -56,5 +56,39 @@ best(keyword-recall)= layout_aware(tie → first)。shared eval-set:`reports/con
 - **建議(交用戶)**:若要 recall 軸真辨別 heading_aware vs layout_aware,re-run 喺**大 corpus**(全 6-doc DRIVE rebuild 或大 manual AR/GL,令 fetch_k=50 < 總 chunk)。本期已證 pipeline + chunking 分化;recall 辨別需更大 corpus。
 - KB 最終狀態:`w54-live-ab-1` 留喺 heading_aware(33 chunks)—— fresh test KB 非 demo,可接受(plan R4)。
 
+### F3 doc-sync(同日)
+- roadmap 修訂史置頂 W55 entry(live-verify 結果 + 2 bug fix + recall-saturation 發現 + W53/W52 carry-over)
+- session-start §10 W55 closed row + W56+ rolling JIT row(local-only,不入 git)
+
+### Phase Gate G1-G4 — **PASS**
+
+| # | Criterion | Verdict | Evidence |
+|---|---|---|---|
+| G1 | fresh KB ingest + sources 存到 + section_path 有值 | ✅ PASS | 28 chunks;`-sources` 1 blob;section_path 10/10 真階層 |
+| G2 | W54 controlled A/B CLI end-to-end(同一 frozen set 跨 2 strategy)| ✅ PASS | exit 0;11 QA × layout_aware/heading_aware;報告 assemble + 兩 recall 數 |
+| G3 | live-path bug 記低 + 最小修(非 architectural)| ✅ PASS | 2 bug(event-loop + unicode)記 progress + 修;scripts only 無 §3/§4 → 無 ADR |
+| G4 | 結果誠實解讀(controlled but synthetic + lexical proxy;信號強弱明標)| ✅ PASS | recall 飽和 = corpus-size artifact 明標;chunk 分化 28vs33 證 ADR-0044;建議大 corpus;§10.6 framing |
+
+**判決:Phase Gate 通過(PASS)**。W54 controlled A/B harness 由 smoke-deferred **正式 live-verified** —— pipeline 完整跑通 + 2 個 live-path bug 修正 + chunking 分化 live 證實 ADR-0044 + recall-saturation 誠實發現(小 corpus ceiling)。
+
+### R5 closeout recheck(§3/§4 touch?)
+- **無 architectural touch → 無 ADR**:唯一 code 改動 = `scripts/run_controlled_ab_comparison.py`(2 個 Windows live-path fix:event-loop guard + ASCII print)= script,非 §3 RAG core / §4 app architecture。無新 vendor/dep。
+
+### Retro
+- **verification 嘅核心價值 = 揭真 live-path bug**:W52/W53/W54 三個 CLI 一直 smoke-deferred,從未 live 跑 → 兩個 Windows-only bug(ProactorEventLoop✗psycopg + cp1252✗unicode)埋伏咗成個 W52-W54。本期一跑即現 → 修 W54(verified)+ 記 W53/W52 carry-over。**「stub test 全綠」≠「live 跑得」** —— 呢個正係 smoke-deferred 嘅風險,本期兌現咗 + 收返。
+- **recall-saturation = corpus-size artifact 嘅誠實發現**:小 KB(28-33 chunks)+ `fetch_k=50` >> chunk 數 → 全 corpus 入候選池 → recall 必然觸頂,**唔關 strategy 事**。呢個唔係 phase fail(plan R2 已預警)而係有價值嘅方法學 insight:**controlled A/B 嘅 recall 軸要喺 `fetch_k < 總 chunk` 嘅 corpus 先有辨別力**。誠實標明 + 建議大 corpus,唔 over-claim「兩 strategy 一樣好」。
+- **chunk-count 軸有信號**:layout_aware 28 vs heading_aware 33(+18%)live 證實 ADR-0044 —— heading_aware no-merge 喺多細-section doc 保留更多細 chunk(方向 = no-merge 主導,因 CB manual 細 section 多)。chunking 真分化 = W53 實作 live 驗證。
+- **誠實階梯延續**:W51 proxy → W52 synthetic → W53 self-retrievability → W54 controlled → **W55 live 但 recall 飽和(corpus artifact)**。每期明標當期可量 / 唔可量嘅嘢。
+- **Karpathy surgical 守住**:只修我 live 驗證咗嘅 W54 CLI;W53/W52 同款 bug 雖知道 fix,但**唔應用 unverified fix** → 記 carry-over,下次大-corpus run 一併修+verify。
+- **Watch(carry W56+)**:大 corpus re-run(recall 辨別)+ 一併修 W53/W52 CLI event-loop;人手標註 ground-truth recall(終極升級)。
+
+### Carry-overs → W56+(rolling JIT)
+- **controlled A/B re-run 大 corpus**(全 6-doc DRIVE rebuild 或大 manual AR/GL → `fetch_k < 總 chunk` 令 recall 軸真辨別 strategy)+ **順帶修+verify W53 `run_strategy_recall_comparison.py` + W52 `run_synthetic_recall.py` CLI 同款 event-loop latent bug**(mirror 本期 live-verified W54 fix)
+- 人手標註 ground-truth recall(eval-set-v1 SME — synthetic 之終極升級)
+- (前期 carry 不變)per-document scope / production v1→v2(Track A)/ Fork B / presets / Layer C(Tier 2)/ W16 Track A IT cred / LLM-profiler(Tier 2)
+
+### Blockers
+- 無 blocker。recall-saturation 非 blocker(corpus-size artifact;大 corpus 可解,留 W56+)。
+
 ### Commits
-- `<pending>` F0 kickoff + `<pending>` F1-F2 ingest+live-run+CLI-fixes
+- `b32b852` F0 kickoff + `aca7131` F1-F2 ingest+live-run+CLI-fixes + F3 closeout commit(pending)

@@ -3,8 +3,8 @@ phase: W55-live-verify-strategy-ab
 name: "Live Verification — W53/W54 chunk-strategy recall harness 對真 KB(smoke-deferred 實證)"
 sprint_week: W55
 start_date: 2026-06-06
-end_date:                     # set at closeout
-status: active
+end_date: 2026-06-06          # actual close (D1)
+status: closed
 spec_refs:
   - W54 (controlled_comparison.py — controlled A/B,本期 live 驗證)
   - W53 (strategy_comparison.py — self-retrievability,本期可選 cross-check)
@@ -92,6 +92,9 @@ combined_vision: "W52/W53/W54 harness 一直 smoke-deferred(judge cred + indexed
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-06 | Initial plan | W55 kickoff;Chris explicit「執行 controlled A/B live eval 對真 KB」。Pre-flight 揭現有 KB 全冇 sources → ingest fresh KB(CB manual)路徑;用戶清 Azure index 騰 Free-tier 3-cap | Chris |
+| 2026-06-06 | F2 兩個 live-path fix(scripts/run_controlled_ab_comparison.py):win32 SelectorEventLoop guard + print glyph ASCII | CLI 從未 live 跑 → 揭 Windows-only bug(ProactorEventLoop✗psycopg + cp1252✗unicode);plan §2 最小修(非 architectural) | AI |
+| 2026-06-06 | F3.2 W53 cross-check → 🚧 deferred | recall 飽和(小 corpus ceiling)→ 同 KB 重跑低 value + 額外成本;W53 CLI 同款 event-loop bug 未 verify → 不應用 unverified fix;carry-over W56+ | AI |
+| 2026-06-06 | status active → closed;end_date set | Phase Gate G1-G4 PASS;W54 controlled A/B live-verified(pipeline 通 + 2 bug 修 + chunk 分化證 ADR-0044 + recall-saturation 誠實發現)| AI |
 
 ---
 

@@ -17,6 +17,6 @@
 - [x] F2.3 2 個 live-path bug 記低 + 最小修(非 architectural):(1) win32 ProactorEventLoop→SelectorEventLoop[psycopg];(2) print unicode `→`/`—`→ ASCII + PYTHONIOENCODING=utf-8。W53/W52 CLI 同款 latent bug 記 carry-over
 
 ## F3 — 結果記錄 + closeout
-- [ ] F3.1 progress 記 live 結果 + 誠實解讀(controlled but synthetic + lexical proxy;chunking 信號強弱)
-- [ ] F3.2 (可選,若 clean)W53 `run_strategy_recall_comparison.py` self-retrievability cross-check
-- [ ] F3.3 Phase Gate G1-G4 + retro + R5 recheck(若有 code 改 → §3/§4 touch?)+ checklist tick / 🚧 + doc-sync(roadmap/session-start live 實證記低,若適用)
+- [x] F3.1 progress 記 live 結果 + 誠實解讀(recall 飽和 = corpus-size artifact;chunk 分化 28vs33 證 ADR-0044;建議大 corpus)
+- [~] F3.2 🚧 **deferred** — W53 self-retrievability cross-check：recall 已飽和(小 corpus ceiling)→ 同一 KB 重跑只 reconfirm artifact + 額外 judge 成本,marginal value 低；且 W53 CLI 有同款 event-loop latent bug 未 live-verify → 不應用 unverified fix。記 carry-over W56+（大 corpus run 時一併修+verify）
+- [x] F3.3 Phase Gate G1-G4 = **PASS** + retro + R5 recheck(只改 script → 非 §3/§4 → 無 ADR)+ checklist tick / 🚧 + doc-sync(roadmap 修訂史 + session-start §10 local-only)
