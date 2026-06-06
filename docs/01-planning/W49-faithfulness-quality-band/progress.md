@@ -69,6 +69,7 @@
 - **Run 1**(`test-kb-20260531-v1`,runs=3,A/B,query「manage AR…」,draft `citation_expansion_max_aux=10`):draft + saved faithfulness 兩邊 **{min:1.0,max:1.0,mean:1.0,band:0}**(質素軸三跑穩定 1.0,presentation cit 8/8/7 微動)→ band=0 = 有效訊號(此 config 質素穩定),但**冇噪音可睇**。
 - **Run 2**(runs=4,draft only,**列舉型 query**「list every step…」+ completeness-max:parent_doc on + citation_expansion_max_aux=10 + section_path_prefix_depth=1 + max_images=20):**faithfulness {min:0.545, max:0.95, mean:0.779, band:0.405}** — per-run cit 15/19/8/16、chars 2442–4005、figRaw 20(capped)。**同一 config 四跑 faithfulness 0.545↔0.95 擺動 0.405**,正正重現 roadmap 證據①(drive_user_manuals 0.929↔0.53,~0.4 swing)。
 - **驗證價值**:W48 single-shot 會隨機顯示 0.545(「好差」)或 0.95(「好正」)→ 憑運氣誤判;W49 顯示 **0.78 ± 0.41** → 用戶即知質素軸對此 config **唔穩定、勿單次定論**。**G1 band 量化噪音 live 證實**(非 mock)。同時觀察到 Run 2 長答案(>3500 字)+ 列舉 query 正係噪音高發區,印證證據② length-bias watch(留 W50+)。
+- **Run 3(瀏覽器 UI 渲染確認,用戶要求親眼睇)**:同列舉 query,frontend config-test 面板 runs=5 / A/B off / draft only,DRAFT 結果卡 headline 渲染 **「忠實度 0.72 ±0.21」**(mean 綠 + ±band 灰,同 presentation 軸風格;引用數 7.4 ±2、答案字數 2479)。**H7 前端 ±band 渲染 live 確認**(超越 vitest);W49 footer copy「忠實度質素軸 + presentation counters 逐 run 算 band · N=1 只方向性」亦 live 顯示。(數值同 API run 0.78±0.41 唔同 = stochastic,band 非零渲染為重點。)
 
 ### Carry-overs → W50+(rolling JIT)
 - ~~🚧 live-verify W49 band~~ → ✅ **RESOLVED 2026-06-05**(Run 2 band=0.405 重現噪音;見上 Post-closeout live-verify)
