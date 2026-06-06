@@ -7,8 +7,8 @@
 - [x] F0.1 plan/checklist/progress committed(R1);scope(heading_aware 真 strategy / per-config 重生 QA self-retrievability / 三 R6 發現)+ key design 鎖定;R6 grep 記 progress
 
 ## F1 — ADR-0044
-- [ ] F1.1 `docs/adr/0044-heading-aware-chunk-strategy.md`(Context 三 R6 發現;Decision heading_aware section-bounded 語意 + _select_chunker dispatch;Alternatives;Consequences;References);Status=Accepted
-- [ ] F1.2 ADR README index 加 0044 row
+- [x] F1.1 `docs/adr/0044-heading-aware-chunk-strategy.md`(Context 三 R6 發現;Decision heading_aware section-bounded 語意[target=hard_cap + min_merge=0 thin subclass] + _select_chunker dispatch;Alternatives 6;Consequences;References);Status=Accepted
+- [x] F1.2 ADR README index 加 0044 row + next NNNN → 0045
 
 ## F2 — heading_aware chunker + chunk_strategy wiring(C01)
 - [ ] F2.1 `HeadingAwareChunker`(section-bounded:只 hard_cap split / 無 target-split / 無 min-merge;reuse layout_aware section-walk/token/image-cap;接 max_images_per_chunk)
