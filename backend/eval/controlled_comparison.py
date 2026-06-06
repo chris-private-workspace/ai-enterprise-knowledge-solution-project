@@ -47,11 +47,16 @@ import json
 import random
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import structlog
+import yaml
 
 from eval.ragas_evaluator import patch_for_gpt5
+from eval.runner import EvalReport
+from eval.synthetic_qa import _collect_chunks
+from retrieval.retrieval_engine import RetrievalEngine
 from storage.settings import Settings
 
 logger = structlog.get_logger(__name__)
@@ -320,3 +325,134 @@ def to_keyword_eval_set_payload(
         },
         "queries": queries,
     }
+
+
+async def build_shared_eval_set(
+    engine: RetrievalEngine,
+    kb_id: str,
+    *,
+    generate_fn: KeywordQAGenerateFn,
+    output_path: Path,
+    sample_size: int = 30,
+    seed: int = 0,
+    max_passage_chars: int = 4000,
+) -> int:
+    """Generate the ONE frozen, text-anchored, keyword-mode eval-set used by every strategy.
+
+    Enumerate the reference KB's chunks (reuse `synthetic_qa._collect_chunks`) → group into
+    strategy-invariant section passages → generate Q + answer keywords → write an
+    EvalRunner-compatible keyword-mode YAML to `output_path` (a reusable, auditable
+    artifact). Returns the pair count. Raises `ControlledRecallError` when no pair could be
+    produced. Run this ONCE, before the strategy loop — the controlled property is that the
+    same frozen file is scored against every reindexed strategy.
+    """
+    chunks = await _collect_chunks(engine, kb_id)
+    passages = build_section_passages(chunks, max_passage_chars=max_passage_chars)
+    pairs = await generate_text_anchored_qa(
+        passages, generate_fn, sample_size=sample_size, seed=seed
+    )
+    if not pairs:
+        raise ControlledRecallError(
+            f"no controlled QA pairs generated for kb_id={kb_id!r} "
+            "(empty KB / no usable section passages / every judge call failed)"
+        )
+    payload = to_keyword_eval_set_payload(pairs, kb_id=kb_id, seed=seed)
+    output_path.write_text(
+        yaml.safe_dump(payload, sort_keys=False, allow_unicode=True), encoding="utf-8"
+    )
+    logger.info(
+        "controlled_eval_set_written",
+        kb_id=kb_id,
+        pairs=len(pairs),
+        output=str(output_path),
+    )
+    return len(pairs)
+
+
+# Apply a chunk_strategy + reindex the KB in place → total chunk count after reindex.
+ReindexWithStrategyFn = Callable[[str], Awaitable[int]]
+# Score the CURRENT (just-reindexed) index against the FROZEN shared eval-set → EvalReport.
+ScoreFn = Callable[[], Awaitable[EvalReport]]
+
+
+@dataclass(slots=True, frozen=True)
+class ControlledStrategyResult:
+    """One chunk_strategy's recall against the shared frozen question set."""
+
+    strategy: str
+    recall_at_k: float  # keyword-containment recall over the SHARED set (lexical proxy)
+    sample_size: int  # questions actually evaluated (non-errored) for this strategy
+    chunk_count: int  # total chunks in the KB after reindexing under this strategy
+    errored: int
+
+
+@dataclass(slots=True, frozen=True)
+class ControlledStrategyComparison:
+    """Controlled shared-question A/B comparison across chunk strategies.
+
+    Unlike W53's `StrategyRecallComparison` (per-config regenerated questions →
+    self-retrievability), this scores ONE frozen question set across all strategies →
+    the per-config question-difficulty confounding is removed. STILL synthetic (LLM
+    question + keywords) and a lexical-containment proxy (a chunk containing a keyword is
+    not proof it is the answer-bearing chunk) — read `best_strategy` as a RELATIVE signal,
+    never an absolute quality verdict.
+    """
+
+    kb_id: str
+    top_k: int
+    eval_set_version: str  # frozen shared set identity (controlled invariant)
+    sample_size: int  # questions in the shared frozen set
+    results: list[ControlledStrategyResult]
+    best_strategy: str | None  # highest keyword recall (ties → first); None when empty
+
+
+async def run_controlled_strategy_comparison(
+    kb_id: str,
+    strategies: list[str],
+    *,
+    eval_set_version: str,
+    shared_sample_size: int,
+    reindex_with_strategy_fn: ReindexWithStrategyFn,
+    score_fn: ScoreFn,
+    top_k: int = 5,
+) -> ControlledStrategyComparison:
+    """For each strategy: reindex under it → score the SAME frozen shared set → collect.
+
+    Sequential + in-place: each strategy reindexes the SAME KB index, so the KB is left in
+    the last strategy's state (an offline dev/eval operation). The shared eval-set is built
+    ONCE before this call (see `build_shared_eval_set`) and `score_fn` closes over its
+    frozen path → every strategy is scored on the identical question set (the controlled
+    invariant). `best_strategy` = highest keyword-containment recall — a relative signal
+    (still synthetic + lexical proxy; see class docstring), not a verdict.
+    """
+    results: list[ControlledStrategyResult] = []
+    for strategy in strategies:
+        chunk_count = await reindex_with_strategy_fn(strategy)
+        report = await score_fn()
+        results.append(
+            ControlledStrategyResult(
+                strategy=strategy,
+                recall_at_k=report.aggregate_recall_at_5,
+                sample_size=report.queries_evaluated,
+                chunk_count=chunk_count,
+                errored=report.queries_errored,
+            )
+        )
+        logger.info(
+            "controlled_strategy_recall_measured",
+            kb_id=kb_id,
+            strategy=strategy,
+            recall_at_k=report.aggregate_recall_at_5,
+            chunk_count=chunk_count,
+            sample_size=report.queries_evaluated,
+        )
+
+    best = max(results, key=lambda r: r.recall_at_k).strategy if results else None
+    return ControlledStrategyComparison(
+        kb_id=kb_id,
+        top_k=top_k,
+        eval_set_version=eval_set_version,
+        sample_size=shared_sample_size,
+        results=results,
+        best_strategy=best,
+    )

@@ -43,5 +43,12 @@ W51 coverage proxy → W52 synthetic 非人手 ground truth → W53 self-retriev
 - **F1 deviation(R3,記 plan changelog)**:drop `source_doc_id` + section_path-only grouping(`_collect_chunks` 唔返 doc_id;避免改 W52 frozen module;multi-doc same-section merge caveat docstring 標明)
 - ruff clean + auto-format;mypy controlled_comparison.py 零 error(exit 1 純 ragas_* 跨模組 pre-existing,同 W52 baseline)
 
+### F2 controlled 比較 harness(同日,C06)
+- `build_shared_eval_set`(reuse `_collect_chunks` → `build_section_passages` → `generate_text_anchored_qa` → `to_keyword_eval_set_payload` → 寫 frozen YAML 可審計 artifact → 返 pair 數;空 → `ControlledRecallError`)—— **loop 前跑一次,frozen set = controlled invariant**
+- `ControlledStrategyResult` + `ControlledStrategyComparison`(controlled-framing dataclass;docstring 明標**對比 W53 `StrategyRecallComparison` self-retrievability** + 仍 synthetic + lexical-containment proxy);`ReindexWithStrategyFn` / `ScoreFn` type alias
+- `run_controlled_strategy_comparison`:per strategy reindex → `score_fn()` 跑**同一 frozen set** → 收 recall+chunk數;best=最高 keyword recall;依賴可注入(W53 loop shape parallel,W54 自有 controlled dataclass + score_fn 取代 W53 per-config recall_fn)
+- **真正 reuse 點**:EvalRunner keyword mode(零新 recall 數學)+ `_collect_chunks`(同 package import)+ W52 generator pattern
+- ruff clean;mypy controlled_comparison.py 唯一 finding = `yaml import-untyped`(W52/runner.py:22 同款 baseline)
+
 ### Commits
-- `dec9373` F0 kickoff + `<pending>` F1 QA 生成
+- `dec9373` F0 kickoff + `dda0574` F1 QA 生成 + `<pending>` F2 harness

@@ -15,10 +15,10 @@
 - [x] F1.6 ruff check+format clean;mypy --strict controlled_comparison.py 零 error(exit 1 純 ragas_runner/ragas_evaluator 跨模組 pre-existing,同 W52 baseline)
 
 ## F2 — Controlled 比較 harness(C06)
-- [ ] F2.1 `build_shared_eval_set(engine, kb_id, *, generate_fn, output_path, sample_size, seed) -> int`(collect chunks → passages → generate → 寫 frozen YAML → 返 pair 數;空 → raise 自有 error)
-- [ ] F2.2 `ControlledStrategyResult`(strategy/recall_at_k/sample_size/chunk_count/errored)+ `ControlledStrategyComparison`(kb_id/top_k/eval_set_version/results/best_strategy;**docstring 明標 controlled A/B + lexical-containment proxy 非人手 ground truth**)
-- [ ] F2.3 `run_controlled_strategy_comparison(kb_id, strategies, *, reindex_with_strategy_fn, score_fn, top_k)`:per strategy reindex → score_fn() 跑同一 frozen set → 收;best=最高 recall;依賴可注入(W53 loop shape parallel,但 W54 自有 controlled dataclass)
-- [ ] F2.4 ruff clean;mypy strategy/harness 零 error
+- [x] F2.1 `build_shared_eval_set(engine, kb_id, *, generate_fn, output_path, sample_size, seed, max_passage_chars) -> int`(reuse `_collect_chunks` → `build_section_passages` → `generate_text_anchored_qa` → `to_keyword_eval_set_payload` → 寫 frozen YAML → 返 pair 數;空 → `ControlledRecallError`)
+- [x] F2.2 `ControlledStrategyResult`(strategy/recall_at_k/sample_size/chunk_count/errored)+ `ControlledStrategyComparison`(kb_id/top_k/eval_set_version/sample_size/results/best_strategy;**docstring 明標 controlled A/B vs W53 self-retrievability + lexical-containment proxy 非人手 ground truth**)
+- [x] F2.3 `run_controlled_strategy_comparison(kb_id, strategies, *, eval_set_version, shared_sample_size, reindex_with_strategy_fn, score_fn, top_k)`:per strategy reindex → score_fn() 跑同一 frozen set → 收;best=最高 recall;依賴可注入(W53 loop shape parallel,W54 自有 controlled dataclass + `ScoreFn`/`ReindexWithStrategyFn` type alias)
+- [x] F2.4 ruff clean;mypy controlled_comparison.py 唯一 finding = `yaml import-untyped`(W52 synthetic_qa.py / runner.py:22 同款 codebase baseline)
 
 ## F3 — CLI driver(scripts)
 - [ ] F3.1 thin CLI `scripts/run_controlled_ab_comparison.py`(`async with lifespan(app)` 攞 populated state + Request shim;build_shared_eval_set 一次 → per strategy update_config→run_kb_reindex→EvalRunner keyword mode 跑同一 frozen set;輸出報告 + 誠實 caveat;live smoke-deferred)
