@@ -3,8 +3,8 @@ phase: W49-faithfulness-quality-band
 name: "Config-Test Faithfulness Quality-Axis Noise Hardening (N-run band + N=1 warning) — 決策 7"
 sprint_week: W49
 start_date: 2026-06-05
-end_date:                     # set at closeout
-status: active
+end_date: 2026-06-05          # actual close (D1; F1-F4 all same-day)
+status: closed
 spec_refs:
   - ROADMAP-per-kb-tunable-config.md §3「候選 — 質素軸抗噪」+ 決策 7 (預設 warning gate;Chris 2026-06-05 揀 Option 1 = 沿用重跑次數做 band)
   - ADR-0040 (per-KB config-scope + config-test 雙軸:presentation + quality)
@@ -123,6 +123,8 @@ prior_phase: W48-config-test-quality-axis
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-05 | Initial plan | W49 kickoff;Chris AskUserQuestion 揀決策 7 抗噪 **Option 1**(沿用重跑次數做 band;N=1 warning;judge 成本 = 用戶 N,無新 toggle)| Chris |
+| 2026-06-05 | F1 minor:band 邏輯抽成 `_faithfulness_band()` helper(非 inline 入 `_run_n`)| 可讀性 + 易測(helper 邊界 graceful 分開驗)| AI |
+| 2026-06-05 | status active → closed;end_date set(D1 全 F1-F4 同日)| Phase Gate G1-G5 PASS;決策 7 RESOLVED | AI |
 
 ---
 

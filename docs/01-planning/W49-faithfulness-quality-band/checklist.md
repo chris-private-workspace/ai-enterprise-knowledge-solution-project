@@ -29,7 +29,7 @@
 - [x] F3.5 frontend vitest:`kb-settings-tuning` 主 A/B test 改驗 band span(±0.16/±0.05)+ 無 warning;NEW N=1 test(`mockResolvedValueOnce` → 「單次 judge」warning + mean 0.80 無 band);FAKE_RESULT 補 MetricBand + runs 3 entries;**4 passed** + full vitest 106 passed(flaky timeout 隔離證非 regression)
 
 ## F4 — Doc-sync + closeout
-- [ ] F4.1 architecture.md §5.5.5 加 W49 amendment(faithfulness N-run band 抗噪;成本 = 用戶 N;graceful)
-- [ ] F4.2 roadmap §3「質素軸抗噪」候選行 → ✅ W49 shipped + 決策 7 → ✅ RESOLVED(Option 1)+ 逐期重點 bullet 標 done
-- [ ] F4.3 session-start §10 W49 closed row + W50+ rolling JIT(local-only,gitignored)+ plan.md status→closed + changelog
-- [ ] F4.4 Phase Gate G1-G5 = **PASS** + retro + carry-overs(見 progress)+ checklist 全 tick(無 🚧)+ W50+ candidates
+- [x] F4.1 architecture.md §5.5.5 加 W49 amendment(faithfulness N-run band 抗噪;成本 = 用戶 N;graceful;length-bias known limitation)
+- [x] F4.2 roadmap §3 候選行 → ✅ W49 shipped + 決策 7 → ✅ RESOLVED(Option 1)+ 逐期重點 bullet 標 done + 修訂史 entry(連帶 commit 2026-06-06 未 commit candidate 內容)
+- [x] F4.3 session-start §10 W49 closed row(local-only,gitignored)+ plan.md status→closed + changelog
+- [x] F4.4 Phase Gate G1-G5 = **PASS** + retro + carry-overs(見 progress)+ checklist 全 tick(W50+ carry:live-verify band + length-bias 對沖)+ W50+ candidates

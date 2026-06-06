@@ -39,8 +39,38 @@
 - frontend `kb-settings-tuning.test.tsx`:FAKE_RESULT draft/saved runs 補至 3 entries + faithfulness → MetricBand(draft ±0.16 / saved ±0.05);主 A/B test 改驗 `±0.16`/`±0.05` band span + 無「單次 judge」warning;NEW N=1 test(`mockResolvedValueOnce` runs=1 → 「單次 judge」warning + mean 0.80 無 band span)
 - 驗:backend **pytest 17 passed**(config_test 10 + eval_ragas 7)0 regression;frontend **kb-settings-tuning 4 passed** + full vitest **106 passed**(kb-detail/kb-settings-reindex full-suite flaky timeout = loaded machine,隔離單跑 5 passed 證非 regression;「Error: boom」= intentional pre-existing)+ tsc + lint(唯一 pre-existing chat `<img>` warning)+ `[oklch`=0
 
+### F4 doc-sync(同日)
+- architecture.md §5.5.5 加 **W49 amendment**(faithfulness 逐 run judge → `MetricBand`;`_faithfulness_band` gather;N≥2 mean±band / N=1 warning;成本 = 用戶 runs;length-bias known limitation note)
+- roadmap:§3 候選行 → ✅ W49 shipped;逐期重點 bullet header → ✅ shipped(採 Option (a)+(c);(d) length-bias 對沖留未來,保留 證據①② context);§5 決策 7 → ✅ RESOLVED;修訂史加 2026-06-05 W49 entry。**連帶 commit 咗 2026-06-06 獨立 session 未 commit 嘅 candidate 內容**(11 行:候選行 + 逐期重點 bullet 證據①② + 決策 7)— 該 session 留底但未 commit,W49 doc-sync 自然帶入
+- session-start §10 W49 closed row(local-only,gitignored)+ plan.md status→closed + changelog
+
+### Phase Gate G1-G5 — **PASS**
+
+| # | Criterion | Verdict | Evidence |
+|---|---|---|---|
+| G1 | faithfulness 返 N-run `MetricBand`(量化噪音)| ✅ PASS | `_band_over_runs` min=0.5/max=0.9/band≈0.4(A/B 各一 MetricBand);`_computed` mean+band |
+| G2 | graceful degradation | ✅ PASS | `_partial_none` band over 成功 run;`_disabled`/`_graceful` → None;config-test 唔 fail |
+| G3 | frontend render band + N=1 warning 100% match mockup | ✅ PASS | design-first mockup KbTestResultCard mean±band/N=1 warning → page.tsx match;vitest 主 A/B ±band + N=1「單次 judge」test |
+| G4 | pytest+ruff+mypy+tsc/lint/build clean | ✅ PASS | backend 17 pass + ruff + mypy(我兩檔零 error);frontend vitest 106 pass + tsc + lint(唯一 pre-existing chat `<img>`)|
+| G5 | judge gpt-5.4-mini + cost=用戶 N + 無新 ADR/vendor | ✅ PASS | reuse `azure_openai_deployment_llm_judge`;無 toggle 成本由 runs 控;extend ADR-0040(無新 ADR)|
+
+**判決:Phase Gate 通過(PASS)**。決策 7 RESOLVED(Option 1);質素軸由 single-shot → N-run band,用戶試跑見到噪音先可信「撥到滿意」。
+
+### Retro
+- **設計收斂(Karpathy §1.2 simplicity)**:R6 grep 早發現 `MetricBand`/`_band()` 現成 → faithfulness 沿用零新 model,改動極窄(schema 1 欄 type + 1 helper + `_run_n` capture 換 list)。無 over-engineer N-run 專屬 model。
+- **成本由用戶 N 控(Option 1 精髓)**:唔加 toggle、唔強制固定 N → judge 成本 = 用戶為 presentation band 已 opt-in 嘅 `runs`,自然對齊。否決 Option 3(固定 N 脫鈎 + 強制成本)。
+- **並發 judge graceful**:`asyncio.gather` 逐 run judge,per-call None(撞 rate limit / error)→ band over 成功 run,全 fail 先 None;`_partial_none` test 證。
+- **H7 design-first 順暢**:mockup KbTestResultCard 先加 `faithBand`+`runs` + N=1 warning,再令 page.tsx match;順帶第三度改正 footer copy(W48 `16fc51f`「每 config 算一次」→ W49「逐 run 算 band」)。
+- **getByText nested-text 坑**:faithfulness headline mean + `±band` span 令 textContent = "0.78±0.16" → `getByText('0.78')` exact-match fail;改驗 band span leaf(`±0.16` 唯一)+ N=1 mean leaf(無 band span 時 textContent 純 "0.80")。
+- **Watch(carry W50+)**:(1) live-verify W49 band 喺真 pipeline(需 restart backend + N judge 成本,stretch 未做);(2) **length-bias 對沖**(roadmap 證據②:faithfulness 系統性懲罰長/全面答案,可能同 completeness 反相關)= 決策 7 Option (d),留未來期 — 配 recall 對沖指標 / UI 標示。
+
+### Carry-overs → W50+(rolling JIT)
+- 🚧 live-verify W49 band 喺真 config-test(restart backend + N judge;stretch,用戶可手動觸發)
+- faithfulness **length-bias 對沖**(證據②;Option (d):completeness/recall 對沖指標 + UI 標示)
+- (前期 carry 不變)per-document scope(決策 1)/ AUDIT-D (ii) correctness+context_recall / production v1→v2(Track A 決策 4)/ presets+config 版本史(決策 5)/ Layer C 視覺內容揀圖(Tier 2 決策 3)/ heading_aware footgun
+
 ### Commits
-- (F0 kickoff `05019c7`;F1-F3 code+tests commit pending)
+- `05019c7` F0 kickoff + `ace414b` F1-F3 code+tests + F4 closeout commit(pending)
 
 ### Blockers / carry-over
-- 無 blocker。infra 已起(azurite 23252 / backend 8000 **跑緊 W48 code,W49 改動未 reload** / frontend 46364 clean .next)。**注**:F4 後若要 live 驗 W49 band,要 restart backend(同 W48→W47F5 一樣)。
+- 無 blocker。infra 已起(azurite 23252 / backend 8000 **跑緊 W48 code,W49 改動未 reload** / frontend 46364 clean .next)。**注**:要 live 驗 W49 band 需 restart backend(同 W48→W47F5)。

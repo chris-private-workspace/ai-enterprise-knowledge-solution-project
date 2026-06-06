@@ -61,6 +61,7 @@ memory 嘅 3 正交層對應:
 |---|---|---|---|---|---|
 | ✅ **W43** | per-KB retrieval 配置 + UI + 試跑 loop | retrieval 策略自助(presentation 軸),唔使改後台 | T1 | — | (已完成) |
 | ✅ **W48**(本期)| config-test 加 reference-free `faithfulness` | 自助 loop 補**質素軸**(反幻覺半邊)| T1 | W43(**不卡 Track A / 不需標註集**)| ✅ **shipped 2026-06-05**(收 AUDIT-D / ADR-0040 雙軸:`ConfigRunSummary.faithfulness` + `make_faithfulness_evaluator` additive helper + 試跑 panel 忠實度 headline;每 config 算一次 cost-conscious;graceful None;judge 維 gpt-5.4-mini。**runtime config-test only** — ingestion config 質素需 reindex→eval 屬未來)|
+| ✅ **W49**(本期)| config-test faithfulness N-run band 抗噪 | 解忠實度單次計算噪音(同一 SAVED config 兩跑 0.929↔0.53)| T1 | W48(不卡外部依賴)| ✅ **shipped 2026-06-05**(決策 7 Option 1:`ConfigRunSummary.faithfulness` float→`MetricBand`;`_faithfulness_band` 逐 run judge `asyncio.gather`;N≥2 顯示 mean±band / N=1 單值+warning;成本 = 用戶 `runs`;judge 維 gpt-5.4-mini;無新 ADR)|
 | ✅ **W44** | Chunker 深層修(ADR-0041,切法 D + cap 8)| 圖洪**根治**(實測 57→8)+ process 策略基礎 | T1 | —(doc-level reindex 驗證,不卡 Track A)| ✅ **closed 2026-06-04 Gate PARTIAL→PASS**(recall/faith flat + corr −2.28pp answer_relevancy noise + 三源證實 = no-regression;SME eval-set-v1-draft validated 順帶解 Q14)|
 | ✅ **W45**(本期)| per-KB 圖數 cap → KbConfig(ADR-0042)| W44 全域 cap 8 → **per-KB 可調**(延 ADR-0040 config-scope 由 query-time 到 **ingest-time**)| T1 | W44 + reuse W20 F4.2 `kb_config` ingest 路徑(不卡 Track A)| ✅ **shipped 2026-06-04**(`KbConfig.chunker_max_images_per_chunk` None=inherit/正整數=cap;`_select_chunker` + factory wiring;+5 test 0 regression;**UI 暴露 out-of-scope** → 下方「UI ingestion 配置」候選)— 收 W44 carry-over「per-KB 圖數 cap 降 KbConfig」|
 | ✅ **W46**(本期)| UI 開放 ingestion 配置 + **真** KB-level re-index(ADR-0043)| process 策略**上 UI 自助**(per-KB cap + chunk_strategy 解鎖)+ 真 KB-level reindex(dev/demo 層)| T1 | W45 per-KB cap + 原始檔 blob 儲存(ADR-0043)| ✅ **shipped 2026-06-05**(原始檔 `-sources` container + `run_kb_reindex` in-place + Settings unlock chunk_strategy/圖數cap + Reindex modal/summary;**prod v1→v2 原子切換仍 Track A** per 決策 4)|
@@ -106,6 +107,16 @@ memory 嘅 3 正交層對應:
     - **(ii) 後期**:`correctness` / `context_recall` 需 per-KB 標註集 → 留工程閘或 synthetic-QA auto-gen;唔強塞自助面。**ingestion config 質素**(chunk_strategy / 圖數cap)config-test 試唔到(query-pipeline-only)→ reindex→eval 屬另一機制,留未來期。
   - **ROI 最高 next 候選 — 已實現**:不卡 Track A、不卡 chunker,補 ADR-0040 自己定義咗卻未交付嘅雙軸前提。
 
+- **✅ W49(本期,shipped 2026-06-05)— faithfulness 質素軸抗噪 N-run band(決策 7 Option 1)**
+  - **已交付**:faithfulness 由「每 config 算一次」改為 **逐 run judge 聚合成 `MetricBand`**(同 presentation band 一致)——`_faithfulness_band()` 用 `asyncio.gather(asyncio.to_thread(...))` 並發逐 run judge,band over judge 成功嘅 run(graceful);panel N≥2 顯示 `mean ± band`(揭噪音)/ **N=1 單值 + 「單次 judge · 方向性」warning**。**judge 成本 = 用戶揀嘅 `runs`**(無新 toggle,Chris AskUserQuestion Option 1);judge 維 `gpt-5.4-mini`;無新 ADR(extend ADR-0040 雙軸)。backend +3 test / frontend +1 test。
+  - **採用 Option (a) N-run band**(下方候選做法)+ **(c) N=1 warning**;**(d) length-bias 標示 / completeness 對沖指標**留未來期(見證據②)。
+  - **現狀(交付前)**:W48 faithfulness **每 config 只算一次**(last-run,無 N-run band)為省 judge 成本(plan §2 刻意取捨)→ single-shot 噪音大。
+  - **2026-06-06 live 實測證據①(噪音)**:同一個 `drive_user_manuals` **SAVED config**(全繼承=好預設),兩次試跑(API run vs UI run,相隔約 4 分鐘)faithfulness **0.929 ↔ 0.53**,擺動 ~0.4;presentation 軸(引用數 23.5、圖片 ~60)同期穩定。即噪音集中喺質素軸單次 judge eval(長答案 3370 字 + 58 圖 context judge 易擺)。
+  - **2026-06-06 live 實測證據②(反轉 / length bias — 更強)**:列舉型 query(「list every step…」)退化 vs 好預設 A/B,presentation 軸戲劇化(引用 2.5 vs 15.0=6×、distinct sections 1 vs 3、答案字數 1246 vs 4486=3.6×)= 完整性差異真實;但 faithfulness **反轉** —— 更完整嘅 SAVED 答案 **0.019**,退化短答案 DRAFT **1.0**。根因:RAGAs faithfulness **系統性懲罰長/全面答案**(claim 多 → 未逐句對上大 context 機會大)→ **質素軸可能同完整性反相關**,對列舉/綜合型 query 尤其誤導。
+  - **風險**:用戶試跑「撥到滿意」可能基於一次好彩/差彩 judge run 誤判 config —— 對齊 memory `project_synthesizer_overview_refuse_w25_d4` 嘅 W25 D4 stochastic-run over-claim 教訓(同一模式套落 W48 質素軸)。
+  - **候選做法**(權衡 judge 成本,維 gpt-5.4-mini per memory `feedback_judge_llm_cost_policy`):(a) faithfulness 加 N-run band(同 presentation band)→ judge 成本翻 N 倍;(b) 加「忠實度需 ≥K 次重跑先可信」warning gate(最平);(c) 維持單次但 UI 明標「方向性、勿單次定論」;(d) **NEW(證據② 驅動)**:UI 明標 faithfulness 對長答案有 **length bias**、勿與 completeness 混為一談;理想配 completeness/recall 對沖指標(對齊 addendum §4 槓桿 6「偏向檢索錨定而非答案相似度」)。
+  - 純 Tier 1,不卡 Track A / 不卡 chunker。決策 7 → ✅ **RESOLVED(W49 Option 1)**。
+
 - **Layer B — query-intent gate(條件觸發,非排定)**
   - 證偽實驗已證 AR **唔需要**(避免 over-engineer per Karpathy §1.2);留 seam,遇「缺 summary chunk」文件先觸發。
 
@@ -143,6 +154,7 @@ W43(done)
 | **4** | **production 安全 reindex 投資時機**(**[AUDIT-C]** 重定義)| **非**「等 Track A 先能動」—— dev/demo 唔卡;呢個係「幾時投 v1→v2 原子切換 + Track A 做 production 零 downtime」 | 先 W44 + W45-dev 證價值,production 化後置 |
 | **5** | **深度 vs 廣度優先** | 先 W44(根治圖洪)定先 W46(覆蓋更多文件)? | 建議深度優先(W44)|
 | **6** | **質素軸 next?**(**[AUDIT-D]** NEW)| config-test 加 reference-free faithfulness(解自助 loop 盲點,不卡外部依賴)排幾前? | ✅ **RESOLVED — W48 shipped 2026-06-05**(高優先 ROI 最高拍板先行) |
+| **7** | **faithfulness 抗噪策略**(NEW 2026-06-06 live 證)| W48 質素軸 single-shot 噪音(SAVED 同 config 兩跑 0.929↔0.53)→ 加 N-run band(judge 成本翻倍)/ warning gate / 維單次標「方向性」 | ✅ **RESOLVED — W49 shipped 2026-06-05**(Chris 揀 Option 1「沿用重跑次數做 N-run band」;成本 = 用戶 `runs`,N=1 配 warning)|
 
 ---
 
@@ -170,6 +182,8 @@ per-document(W46)等決策點 1 拍板先排;production 化 reindex(原子切換
 **狀態**:living roadmap。每期 kickoff 正式建 phase folder 時,回頭 update 本表對應行(done / 決策已拍板)。
 
 **修訂史**:
+- **2026-06-05 W49 shipped → 決策 7 RESOLVED** —— config-test faithfulness 由「每 config 算一次」改為 **N-run `MetricBand`**(逐 run `asyncio.gather` judge;N≥2 顯示 mean±band / N=1 單值+warning;成本 = 用戶 `runs`;judge 維 gpt-5.4-mini;無新 ADR)。Chris AskUserQuestion 揀 **Option 1「沿用重跑次數做 band」**。§3 候選行 → ✅ W49;§5 決策 7 → ✅ RESOLVED;逐期重點 bullet 標 shipped(採 Option (a)+(c);(d) length-bias 對沖留未來)。backend +3 / frontend +1 test;commit `ace414b`。phase folder `W49-faithfulness-quality-band/`。
+- **2026-06-06 live 驗證 → 新增候選「質素軸抗噪」** —— 獨立 session live-verify 配置面 + 試跑 loop(`drive_user_manuals`)期間實測:同一 SAVED config 兩次試跑 faithfulness 0.929↔0.53(presentation 軸同期穩定)→ W48 質素軸 single-shot 噪音明文化。新增:§3 table 候選行 + 逐期重點 bullet(帶 live 證據)+ §5 決策 7(抗噪策略,預設先加 warning gate)。同步記 memory `project_per_kb_tunable_config_vision`(註⑤)。**核心結論不變;此為 W48 已交付質素軸嘅 known limitation,非新風險。**
 - **2026-06-03 addendum 連結** —— 新增 [addendum:LLM Document-Profiler](./ROADMAP-per-kb-tunable-config-addendum-llm-profiler.md)（§1 Layer A bullet + §7 Cross-ref 加 pointer）。完整捕捉 2026-06-03 brainstorm:multimodal LLM 文件畫像自動 seed config + bootstrap 評測;schema 三層 / 閉環 7 步 / 循環論證五槓桿 / probe 五閘 + config-aware + genre-constrain / Gate D 判別預檢 / config-tuning vs production 兩集 governance / KbConfig 對接 + granularity 結論（切塊可 per-doc / 檢索停 per-KB）。Tier 2 定位,未 ADR,不觸發實作。
 - **2026-06-02** 建立(W43 closeout 後)。
 - **2026-06-03 三-session code-grounded audit 校準(A–E)**:(A) 事實修正圖數 20–57(峰值 `ci=15=57`,原「33/20」低估);(B) 標明 doc-level reindex 現成驗證路徑,W44 不懸空;(C) Track A 兩層化(dev/demo 不卡 / production 原子切換才卡)+ 決策 4 重定義為 production 化投資時機;(D) 自助 loop 質素軸缺口明文 + 補分兩步 NEW item(reference-free faithfulness 先行)+ 決策 6;(E) W46 retrieval 旋鈕 per-doc 解析語意 + Layer C Tier 線重畫「章節語意 T1 / 視覺內容 T2」+ presets 提前。**核心結論(可行 / 診斷準 / 邊界誠實)不變。**
