@@ -117,4 +117,25 @@ citation post-hoc expansion(`citation_expansion.py:332-343`)補入嘅 neighbor c
 - [ ] Live:GL query → 11 個 expansion citation 顯示 `—`,2 個 reranked 顯示分數
 
 ### Out-of-scope(C)
-問題1 圖片 recall 相關性 + expansion 闊度調優(收窄 `citation_expansion_window` / `citation_neighbour_section_path_prefix_depth` 等)→ per-KB 配置實驗 + domain 驗證,**另案**(非 code bug;runtime config on `drive-images-1`)。本 BUG 只含 code 修復(A/B/C)。
+問題1 圖片 recall 相關性 + expansion 闊度調優 → 見 Finding D(下)結果:**圖片 ORDERING 屬 presentation,已修;retrieval RELEVANCE 仍不改**。
+
+---
+
+## Finding D addendum(2026-06-07 — 問題1 診斷後,presentation 修法)
+
+> 用戶確認問題1「圖片應 p20-28、返咗 p31」。實地診斷:**唔係 recall 缺失,係排序**。
+
+### Diagnosis(D)
+GL03「post a journal entry」程序 = §3.1.3 GL03-1 Create General Journal(~p20-28,24 圖)→ §3.1.4 Approve → §3.1.5 GL03-3 Post the Journal(~p31,16 圖)。兩段圖**都返咗**(答案 §3.1.3 20 張 + §3.1.5 14 張),但 reranker 將 §3.1.5「Post」排第一(query 字眼「post」直接 match),`dedupeCitationImages` 按 citation/relevance order 排 → **gallery + inline cards lead 住 §3.1.5(p31)**,用戶一眼見 p31。
+
+### Fix(D)— 用戶選「按文件次序排圖」
+`dedupeCitationImages`(`lib/chat/citation-images.ts`)輸出加一個 stable sort,key = 圖片自己嘅 `source_section`(`imageSectionPath`)→ 圖片按 DOCUMENT 次序排(§3.1.1 → 3.1.3 → 3.1.4 → 3.1.5),程序由 Create(p20-28)順住落 Post(p31)。numeric badge(citationIdx)仍錨 citation 位置;只改 render order。純前端 presentation,**不改 retrieval**。
+
+### Acceptance(D)
+- [ ] gallery + inline cards 按 section document 次序排(Create 先於 Post)
+- [ ] 同 section 圖片保持原(citation)次序(stable)
+- [ ] unit test;tsc + lint + vitest 0 regression
+- [ ] Live:GL query 頭幾張圖 = §3.1.1/§3.1.3(p20-28)而非 §3.1.5(p31)
+
+### 仍然 out-of-scope
+Retrieval RELEVANCE 本身(reranker 點解偏好 §3.1.5、要唔要改 rerank_k / query reformulation / low-value flag)**不改** —— text 答案已完整覆蓋全程序,圖片排序已解決 UX;深層 rerank 調優屬獨立 retrieval 課題,有需要先另案。

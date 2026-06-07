@@ -96,6 +96,37 @@ describe('dedupeCitationImages (BUG-026 Finding A)', () => {
     const result = dedupeCitationImages([citation(1, []), citation(2, [])]);
     expect(result).toEqual([]);
   });
+
+  it('orders images by document position, not citation/relevance order (BUG-034 Finding D)', () => {
+    // Reranker put "Post" (§3.1.5) as citation 1 and "Create" (§3.1.3) as citation 2.
+    const post = citation(1, [
+      imageRef({
+        checksum_sha256: 'sha-post',
+        source_section: ['3 GL03. Processing Journal Vouchers', '3.1.5 System Instruction for each step'],
+      }),
+    ]);
+    const create = citation(2, [
+      imageRef({
+        checksum_sha256: 'sha-create',
+        source_section: ['3 GL03. Processing Journal Vouchers', '3.1.3 System Instruction for each step'],
+      }),
+    ]);
+    const result = dedupeCitationImages([post, create]);
+    // Rendered in DOCUMENT order: Create (§3.1.3) before Post (§3.1.5).
+    expect(result.map((r) => r.image.checksum_sha256)).toEqual(['sha-create', 'sha-post']);
+    // …but the numeric badge still reflects citation position (Create was citation 2).
+    expect(result.find((r) => r.image.checksum_sha256 === 'sha-create')!.citationIdx).toBe(2);
+    expect(result.find((r) => r.image.checksum_sha256 === 'sha-post')!.citationIdx).toBe(1);
+  });
+
+  it('keeps same-section images in their original (citation) order — stable sort', () => {
+    const sameSection = ['3 GL03', '3.1.3 System Instruction for each step'];
+    const result = dedupeCitationImages([
+      citation(1, [imageRef({ checksum_sha256: 'sha-1', source_section: sameSection })]),
+      citation(2, [imageRef({ checksum_sha256: 'sha-2', source_section: sameSection })]),
+    ]);
+    expect(result.map((r) => r.image.checksum_sha256)).toEqual(['sha-1', 'sha-2']);
+  });
 });
 
 describe('imageSectionPath (BUG-026 C-ii)', () => {

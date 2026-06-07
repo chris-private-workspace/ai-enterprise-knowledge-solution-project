@@ -35,9 +35,15 @@ report_ref: ./report.md
 - [x] V3 — Live:重啟 backend(~110s)→ `/query` drive-images-1 GL → **11/11 citation 有 doc_id**;Playwright 真 browser → 對話 kb_id dce→drive-images-1 **PASS**
 - [x] V4 — citation[1] 行為不變(reranked-search 路徑未改);concise / 無 expansion 路徑 additive-only 無 regression
 
-## Verification (Finding C)
-- [x] VC1 — frontend tsc exit 0 + eslint 0 error(1 pre-existing `<img>` warning)+ vitest 7/7(3 format + 2 bug034 + 2 bug033)
-- [ ] VC2 — Live:`drive-images-1` GL query → expansion citation 顯示 `—`、reranked 顯示分數(用戶重測或 Playwright)
+## Finding D — 圖片按文件次序排(C10 frontend;問題1 presentation 修法)
+- [x] FD1 — `dedupeCitationImages` 輸出 stable sort by `imageSectionPath`(document order)
+- [x] FD2 — numeric badge(citationIdx)維持 citation 位置;只改 render order
+- [x] FD3 — module doc + 函式內 comment 解釋(Finding D)
+
+## Verification (Finding C + D)
+- [x] VC1 — frontend tsc exit 0 + eslint 0 error(1 pre-existing `<img>` warning)+ vitest 21/21(citation-images 含 Finding D + format + bug034 + bug033)
+- [x] VC2 — Live(數據模擬真實 /query):Finding C 11 個 expansion citation = `—`;**Finding D 頭 8 張圖修前全 §3.1.5(p31)→ 修後 §3.1.1/§3.1.3(p20-28)lead**
+- [ ] VC3 — 用戶 chat 重測肉眼確認(Finding C `—` + Finding D Create 圖 lead)
 
 ## Closeout
 - [x] C1 — report.md status(verifying;Finding C 待 live confirm)→ done after VC2;progress.md addendum
