@@ -1,7 +1,7 @@
 # ADR-0045: Contextual Retrieval — section-context injection for rerank + embedding
 
 **Date**: 2026-06-08
-**Status**: Proposed
+**Status**: Accepted
 **Approver**: Chris
 
 ## Context

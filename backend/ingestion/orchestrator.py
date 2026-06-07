@@ -45,6 +45,7 @@ from ingestion.embedding.base import Embedder
 from ingestion.parsers.base import Parser, ParserResult
 from ingestion.screenshots.extractor import ScreenshotExtractor, ScreenshotRecord
 from ingestion.screenshots.uploader import ScreenshotUploader, UploadResult
+from retrieval.contextual import build_contextual_document
 
 logger = structlog.get_logger(__name__)
 _stdlib_logger = logging.getLogger(__name__)
@@ -150,9 +151,17 @@ class IngestionOrchestrator:
                 )
 
         # 3. Embed chunk_texts in parallel.
-        chunk_texts = [spec.chunk_text for spec in chunks]
+        # Contextual Retrieval (ADR-0045 / CH-008): embed the section-context-
+        # prefixed text so the vector candidate pool itself distinguishes
+        # chapters with structurally similar chunk_text. The STORED chunk_text
+        # (ChunkRecord.chunk_text below) stays the original — only the embedded
+        # vector bakes in section context. section_path absent → helper falls
+        # back to raw chunk_text (bit-identical to pre-CH-008 vectors).
+        embed_inputs = [
+            build_contextual_document(spec.section_path, spec.chunk_text) for spec in chunks
+        ]
         try:
-            embeddings = await self._embedder.embed_batch(chunk_texts)
+            embeddings = await self._embedder.embed_batch(embed_inputs)
         except Exception as exc:  # noqa: BLE001 — embed failure is fatal for the doc
             return IngestionResult(
                 chunks=[],

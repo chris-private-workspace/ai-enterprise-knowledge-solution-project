@@ -432,6 +432,12 @@ EKP Platform
 > BUG-025 report + postmortem for assumption-error analysis + PC1-PC6 preventive controls)。
 > See `backend/retrieval/hybrid.py` `_apply_low_value_post_filter`。
 
+> **CH-008 amendment per ADR-0045**(Contextual Retrieval,2026-06-08):chunk 嘅**檢索表示**(retrieval representation)由純 `chunk_text` 改為 **section context + `chunk_text`**,兩處用同一 helper `build_contextual_document(section_path, chunk_text)` → `"<section_path join ' > '>\n<chunk_text>"`(`section_path` 空 → fallback 純 `chunk_text`,零 regression):
+> - **Rerank document**(query-time,`retrieval/reranker/cohere.py`):Cohere rerank 嘅 `documents[]` 由 `chunk_text` 改為 contextual 串。原 §3.2「Document text uses `chunk_text`」更新為 contextual。
+> - **Embedding input**(ingest-time,`ingestion/orchestrator.py`):chunk embedding 向量 embed contextual 串,令 vector 候選池本身區分章節。
+>
+> **儲存欄位不變**:index `chunk_text` 仍存原文(citation 顯示 / `/chunks` listing / 圖片排序全部用原文);只有 embedded 向量 bake context + rerank document query-time prepend context。Embedding 端改動要 re-index 受影響 KB 先生效(本期只 re-index `drive-images-1`)。根因:DRIVE 手冊跨 GL02/GL03/GL05 共用 generic section leaf「System Instruction for each step」+ 相似步驟表,reranker 只餵 `chunk_text` 分唔清章節(BUG-034 問題1;74-chunk A/B 實驗 PASS)。Azure semantic ranker(`azure_semantic.py`)排序由 index `ekp-semantic-config` 決定(非 code 砌 document),query-time 注入不適用 —— 該 fallback 路徑經 embedding re-index 間接受惠(候選池改善)。
+
 ### 3.7 C13 Email Verification Service(v6 amendment per ADR-0014 hybrid auth)
 
 > **Amendment trigger**:v5.1 → v6 amendment per §13.12(W11 D2 cont 2026-06-10)+ ADR-0014 hybrid auth(SSO + self-service register)+ OQ-Q22 vendor decision Resolved 2026-06-10 W12 D1。

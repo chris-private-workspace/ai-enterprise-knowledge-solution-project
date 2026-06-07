@@ -14,7 +14,11 @@ Body:
 Response:
     {"results": [{"index": int, "relevance_score": float}, ...]}
 
-Document text uses `chunk_text` field per `architecture.md §3.6` index schema.
+Rerank document = section context + `chunk_text` per ADR-0045 / CH-008
+(Contextual Retrieval): each document is `build_contextual_document(section_path,
+chunk_text)` so the reranker can disambiguate chapters with structurally similar
+chunk_text. Stored `chunk_text` field (architecture.md §3.6 index schema) is
+unchanged — context is prepended at query-time only.
 """
 
 from __future__ import annotations
@@ -30,6 +34,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from retrieval.contextual import build_contextual_document
 from retrieval.hybrid import HybridSearchHit
 from retrieval.reranker.base import RerankedChunk
 
@@ -91,7 +96,18 @@ class CohereReranker:
             return []
         assert self._client is not None, "use 'async with' to manage CohereReranker lifecycle"
 
-        documents = [str(h.fields.get("chunk_text", "")) for h in candidates]
+        # Contextual Retrieval (ADR-0045 / CH-008): prefix each rerank document
+        # with its section_path hierarchy so the reranker can disambiguate
+        # chapters whose chunk_text is structurally similar (DRIVE manuals reuse
+        # a generic "System Instruction for each step" leaf across GL02/GL03/GL05).
+        # section_path absent → helper falls back to raw chunk_text (zero regression).
+        documents = [
+            build_contextual_document(
+                h.fields.get("section_path"),
+                str(h.fields.get("chunk_text", "")),
+            )
+            for h in candidates
+        ]
         url = f"{self.endpoint}/v2/rerank"
         payload = {
             "model": self.model,

@@ -11,6 +11,8 @@ last_updated: 2026-06-07
 
 > **BUG-034 amendment(2026-06-07,Finding B)**:`HybridSearcher.list_chunks` 嘅 `$select` 之前缺 `doc_id` / `doc_title` / `doc_format` → citation post-hoc expansion 由 `list_chunks` 物化嘅 neighbor citation 落 `build_citations` 即拎到空 `doc_id`(只有主命中 reranked-search chunk 帶 doc identity)→ 前端 citation pill 連結斷、源頭顯示錯。投影 + 返回 dict 加返呢 3 個欄位(additive;`ChunkSummary` Pydantic 預設 `extra='ignore'` → `/chunks` route 無 regression)。Live 驗證:`/query` drive-images-1 GL 問題 11/11 citation 帶 doc_id。
 
+> **CH-008 amendment(2026-06-08,Contextual Retrieval per ADR-0045)**:Cohere reranker(`reranker/cohere.py`)嘅 rerank document 由純 `chunk_text` 改為 `build_contextual_document(section_path, chunk_text)`(`retrieval/contextual.py` 共用 helper)→ `"<section_path join ' > '>\n<chunk_text>"`;`section_path` 空 → fallback 純 `chunk_text`(零 regression,`test_reranker.py` 無 section_path 嘅 hit assertion 不變)。根因:DRIVE 手冊跨 GL02/GL03/GL05 共用 generic section leaf「System Instruction for each step」+ 相似步驟表,reranker 只餵 `chunk_text` 分唔清章節(BUG-034 問題1;74-chunk A/B 實驗 PASS — off-topic GL05/GL02 清走、GL03-Create 升頂 7/8)。Query-time、零 re-index 依賴。Embedding 端對應改動喺 C01(ingest embed input 同一 helper)。Azure semantic ranker(`azure_semantic.py`)排序由 index `ekp-semantic-config` 決定(非 code 砌 document)→ query-time 注入不適用,該 fallback 路徑經 C01 embedding re-index 間接受惠。Stored `chunk_text` 不變。
+
 # C04 — Retrieval Engine Design Note
 
 > **Status**:`v2-stable`(W4 D1 2026-05-04 bump from v1-active):
