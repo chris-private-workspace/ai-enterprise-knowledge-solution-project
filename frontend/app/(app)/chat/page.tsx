@@ -106,7 +106,7 @@ import {
   type ReactNode,
 } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { conversationsApi, type Conversation } from '@/lib/api/conversations';
 import { kbApi, type KbStatus } from '@/lib/api/kb';
@@ -205,6 +205,7 @@ export default function ChatPage() {
   const [kbId, setKbId] = useState<string>('');
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const queryClient = useQueryClient();
 
   const kbsQuery = useQuery({
     queryKey: ['kb', 'list'],
@@ -335,6 +336,11 @@ export default function ChatPage() {
     const trimmed = input.trim();
     if (!trimmed || isStreaming) return;
 
+    // BUG-034 Finding A — a freshly-created conversation captures the current
+    // kbId correctly; a REUSED one (created earlier, possibly before the user
+    // switched the KB selector) keeps its stale kb_id. Track whether we are
+    // reusing so we can re-bind it to the KB we actually query below.
+    const reusedConversation = activeConvId != null;
     const conversationId = await ensureConversation();
     const now = Date.now();
 
@@ -376,6 +382,16 @@ export default function ChatPage() {
     setIsStreaming(true);
 
     if (conversationId) {
+      // BUG-034 Finding A — keep the persisted kb_id aligned with the KB this
+      // turn actually queries (kbId). Only needed when reusing an existing
+      // conversation whose kb_id may be stale; invalidate the list so the
+      // sidebar label reflects the corrected binding.
+      if (reusedConversation && kbId) {
+        conversationsApi
+          .update(conversationId, { kb_id: kbId })
+          .then(() => queryClient.invalidateQueries({ queryKey: ['conversations'] }))
+          .catch(() => {});
+      }
       conversationsApi
         .appendMessage(conversationId, { role: 'user', content: trimmed })
         .catch(() => {});

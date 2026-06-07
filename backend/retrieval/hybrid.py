@@ -501,9 +501,16 @@ class HybridSearcher:
         """W16 F5.1.2 — list all chunks of a doc (kb_id + doc_id filter;
         ordered by chunk_index ascending).
 
-        Returns list[dict] with chunk_id, chunk_index, chunk_total, chunk_title,
-        section_path, enabled, low_value_flag. chunk_text excluded — Beta
+        Returns list[dict] with chunk_id, doc_id, doc_title, doc_format,
+        chunk_index, chunk_total, chunk_title, section_path, enabled,
+        low_value_flag, embedded_images_json. chunk_text excluded — Beta
         client uses /query for text. Empty filter returns empty list.
+
+        BUG-034 Finding B — doc_id/doc_title/doc_format added to the projection
+        so citation post-hoc expansion (which materializes neighbour Citations
+        from these dicts via build_citations) carries the document identity. The
+        primary reranked-search chunks always had these; the list_chunks-sourced
+        aux citations previously came back with empty doc_id → broken pills.
         """
         if not kb_id or not doc_id:
             return []
@@ -524,7 +531,8 @@ class HybridSearcher:
             "filter": full_filter,
             "top": top,
             "select": (
-                "chunk_id,chunk_index,chunk_total,chunk_title,"
+                "chunk_id,doc_id,doc_title,doc_format,"
+                "chunk_index,chunk_total,chunk_title,"
                 "section_path,enabled,low_value_flag,embedded_images_json"
             ),
             "orderby": "chunk_index asc",
@@ -541,6 +549,11 @@ class HybridSearcher:
         for item in body.get("value", []):
             chunks.append({
                 "chunk_id": str(item.get("chunk_id", "")),
+                # BUG-034 Finding B — document identity so expansion-materialized
+                # neighbour citations resolve a real doc (was empty doc_id).
+                "doc_id": str(item.get("doc_id", "")),
+                "doc_title": str(item.get("doc_title", "")),
+                "doc_format": str(item.get("doc_format", "")),
                 "chunk_index": int(item.get("chunk_index", 0) or 0),
                 "chunk_total": int(item.get("chunk_total", 0) or 0),
                 "chunk_title": str(item.get("chunk_title", "")),
