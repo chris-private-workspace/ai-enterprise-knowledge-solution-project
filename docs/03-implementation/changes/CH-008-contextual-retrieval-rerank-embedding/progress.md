@@ -56,9 +56,20 @@ ADR-0045 Chris Accept → code 解 gate(H1)。落 I1→I3 + tests + I7 docs。
 - **C03→C01 修正**(R6 plan-text contamination):embedding input 改喺 `ingestion/orchestrator.py` = C01 Ingestion,非 C03 Indexing;spec 原寫「C03 Ingestion」component 名張冠李戴。`affects_components` 改 `[C04, C01, C03]`(C03 只係 §3.6 doc 文字)。
 - **I2b deviation → 🚧 待 Chris**:`azure_semantic.py` 唔砌 document list(re-issue semantic search,排序由 `ekp-semantic-config` 決定)→ 無 document 可注入;Azure semantic 非 production reranker(Cohere H2 lock)+ chat 行 semantic OFF。建議 drop(經 I3 embedding re-index 間接受惠);真正注入需改 index schema(額外 H1,Karpathy §1.2 reject)。
 
-### Blockers
-- **V2-V5(re-index + eval + live 驗)** 待:(1) Chris 確認 I2b drop;(2) backend + Azure + Cohere live 環境就緒。
-- ADR-0045 已 Proxxx→Accepted(Chris 2026-06-08);README index 同步。C1/C3 closeout 待 V2-V5。
+### Verification(Day 2 下半,環境就緒後)
+- **Pre-flight**(per session-start 5b):Langfuse `/api/public/health` 200 + Postgres `SELECT 1` OK + azurite :10000 live。
+- **Backend restart**:舊 backend(PID 780 child / 50736 venv parent,改 code 前啟動)停;venv python `-m api.server`(`HYBRID_USE_SEMANTIC_RANKER=false`)重啟,60s `/health` 200(全 component ok 含 cohere + azure_search)。
+- **V2 re-index** `drive-images-1` DONE:6/6 reindexed,0 skipped,0 failed,369 chunks(I3 contextual embedding 生效)。
+- **V3 AC4 PASS**:query「How do I post a journal entry in General Ledger?」top-8 —
+  - rerank=true(contextual,production):#1-#7 全部 GL03「Processing Journal Vouchers」(3.1.x)、#8 GL05 Journal Reversal(唯一 off-topic);對照 ADR 實驗純 chunk_text baseline(#1 GL05 / #3-4 GL02)→ off-topic 清走、GL03 升頂 7/8 live 確認。
+  - rerank=false(候選池):re-index 前 #8 = AR03(跨文件洩漏);re-index 後 AR03 清走、GL03 佔比 4→5/8 → embedding(I3)改善候選池本身。
+- **V4 AC5 = 接設計+live 證據**(Chris 確認):full RAGAs eval **環境性 blocked** —— `/eval/run` 硬編 drive_user_manuals(index 已 drop)+ eval-set-v0 = W1 MFP placeholder synthetic(非 DRIVE corpus);corpus-matched eval(w42diag → test-kb-20260530-1)該 index 都已 drop。所有 eval-baseline KB index 喺 Free-tier 3-slot 下已 drop。改以 ① fallback bit-identical unit test ② strictly-more-context 設計 ③ live DRIVE retrieval-test 改善 三項收 AC5。
+
+### Blockers / Carry-over
+- 🚧 **V5 chat live 驗**(用戶動作):待用戶喺 chat UI 問 GL「post a journal entry」確認答案錨 GL03 + 圖由 Create 章節行先。
+- 🚧 **C1 / C3 closeout**:spec status → done + ff-merge 入 main,待 V5 + 用戶 merge go。
+- ADR-0045 Proposed → **Accepted**(Chris 2026-06-08);README index 同步(C2 ✅)。
+- I2b **DROPPED**(Chris 2026-06-08)。
 
 ### Effort
 - Planned ~0.5-1 day;Actual:I1-I7 + tests ~實作完成(Day 2 上半)。
@@ -67,8 +78,9 @@ ADR-0045 Chris Accept → code 解 gate(H1)。落 I1→I3 + tests + I7 docs。
 | Hash | Subject |
 |---|---|
 | 328e579 | docs(adr+change): ADR-0045 + CH-008 kickoff |
-| _(本次)_ | feat(retrieval): contextual retrieval — section-context inject (I1-I3+tests+docs) |
+| 9af448e | feat(retrieval): contextual retrieval — section-context inject (I1-I3+tests+docs) |
+| _(本次)_ | docs(change): CH-008 V2-V4 verification — AC4 PASS live + AC5 接設計+live 證據 + I2b dropped |
 
 ---
 
-**End of CH-008 progress (Day 2 in-progress — code+tests+docs done;V2-V5 待環境+I2b 確認)**
+**End of CH-008 progress (Day 2 — code+tests+docs done;V2 re-index + V3 AC4 PASS + V4 AC5 settled;🚧 V5 用戶 live 驗 + C1/C3 ff-merge 待)**
