@@ -46,10 +46,18 @@ status: in-progress     # in-progress | closed
 - ADR-0046 加 post-Accept amendment(Decision #3 reverted);spec / architecture.md §3.6 / C10 同步。
 - **教訓**:relevance-select 對「最相關片段」啱,但對「程序流程圖」錯(低分但 pedagogically-first 嘅概覽會被排走)→ document-order 先啱。
 
+### OD-4 — 大正方形 icon filter(2026-06-08 cont,fresh-query live 診斷)
+- 用戶連續多輪(incognito + hard-refresh)仍見 ① figure 1 次序唔對 ② figure 2 = 燈泡。先驗證:fresh query(非 stale stored message)+ :3001 dev server fresh code + SSE 確帶 dims + 前端 filter 確有 run(93×62 Excel-icon 已被隔走)。
+- **根因鎖定**(直接 `/query` CRAG-on,fetch 圖肉眼驗):燈泡 = checksum `6c0bd5c2…` = **384×384 正方形** lightbulb-gear icon;OD-1 `min<64` 漏網(min=384)→ render 成 figure。Query 內唯一 aspect=1.0 圖;真截圖全部 aspect≥1.29。
+- **Fix(OD-4)**:`isDecorativeImage` 加 rule `max(w,h)≤512 && aspect≤1.15` → 判 decorative。零誤殺(最近正方形真截圖 778×604=1.29 安全過關)。純前端,零 re-index。vitest 25 passed(+4 OD-4)+ tsc clean。
+- ADR-0046 加 OD-4 amendment。**教訓**:單一 min-dim threshold 不足捉裝飾 icon — icon 有多種匯出尺寸,需 size + aspect 兩維度。
+- ⚠️ **次序問題另有根因(非 OD-4 可解)**:此 fresh query 嘅 §3.1.1 Overview citation **0 張 embedded image** — 用戶期望 lead 嘅 High Level Process / Business Process Flow 流程圖根本冇 attach 到任何 retrieved citation,故無得排第一。屬 retrieval/neighbour-attach completeness,**待用戶決定是否另開項目**。
+
 ### Blockers / Carry-over
-- 🚧 **V5 chat live 驗**(用戶):chat 問 GL 確認 ① 無燈泡 ② 概覽圖(§3.1.1 High Level Process)lead ③ 照文件次序。
+- 🚧 **V5 chat live 驗**(用戶):fresh New-chat 問 GL,確認 ① 無燈泡(OD-4)② 照文件次序。
+- 🚧 **V6 次序根因決策**(用戶):§3.1.1 概覽流程圖未 attach 到 citation → 是否另開 bug/change(neighbour-attach overview 圖 / retrieval completeness)。
 - 🚧 **C-1 / C-3 closeout**:spec done + ff-merge,待 V5 + merge go。
-- 🔵 **BUG-035**(NEW):conversation kb_id 綁定 —— `handleNewChat` eager-create 用 default kbId(kbs[0]=DCE archived),切 KB 後只靠 submit re-bind;robust fix = onKbChange 即時 re-bind active conv 或 defer 建立到首 submit。獨立 bug。
+- 🔵 **BUG-035**(committed `6a7322e`):conversation kb_id 綁定 defer-creation fix done;🚧 V2/V3 live 驗 + closeout。
 
 ### Effort
 - Planned ~1-1.5 day;Actual:_(填)_

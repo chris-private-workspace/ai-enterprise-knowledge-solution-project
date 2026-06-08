@@ -5,6 +5,8 @@
 **Approver**: Chris
 
 > **Amendment 2026-06-08(post-Accept,Chris)**:**Decision #3(query-relevance ordering)REVERTED → 純 document-order**。Live 驗揭 relevance-select 把低 rerank 分數(score 0,expansion neighbour)嘅 §3.1.1 章節概覽圖(High Level Process)排出 cap,令 chat lead 變成高分 mid-procedure step 圖(§3.1.4)。程序手冊嘅正確 image 流程 = 照 document order(概覽 → step),概覽圖必須 lead。`selectInlineImages` 改為 `deduped.slice(0, cap)`(純 document-order + per-KB cap),移除 relevance sort。**Decision #1(decorative filter)+ #2(per-KB cap)維持**。教訓:relevance-select 對「最相關片段」有用,但對「程序流程圖」係錯方向(document-order 先啱)。
+>
+> **Amendment 2026-06-08 OD-4(post-Accept,Chris)— decorative filter 加「大正方形 icon」維度**:OD-1 嘅 `min(w,h) < 64` rule 只捉到細 icon(實測 93×62 Excel 檔連結 glyph 已成功隔走),但**捉唔到高解析度版本嘅 tip/idea 燈泡 icon**(實測 `drive-images-1` checksum `6c0bd5c2…` = **384×384 正方形**燈泡-齒輪圖,`min=384 ≥ 64` 漏網 → render 成 figure)。用戶連續多輪仍見燈泡 = 此 gap。**修正**:`isDecorativeImage` 加第二條 rule —— `max(w,h) ≤ DECORATIVE_SQUARE_MAX_PX(512)` **且** `aspect = max/min ≤ DECORATIVE_MAX_ASPECT(1.15)` 即判 decorative。理據:Drive 手冊所有真內容圖都係 landscape UI 截圖(實測最接近正方形嘅真截圖 778×604 = aspect 1.29,清楚高於 1.15 threshold),故零誤殺;>512px 大正方形 diagram 不受影響。純前端 display filter(`citation-images.ts`),**零 re-index、零 backend 改動**。binding:reverse-direction fidelity fix(令 implementation 更貼近 mockup「只顯示內容截圖」)→ per CLAUDE.md §5.7 **非 H7 trigger**。**Decision #1 base(min<64)+ #2(per-KB cap)維持;#3 仍 reverted**。教訓:decorative 判定純靠單一 min-dim threshold 不足 —— icon 有多種匯出尺寸,大正方形 + landscape-aspect 兩條維度合用先 robust。
 
 ## Context
 

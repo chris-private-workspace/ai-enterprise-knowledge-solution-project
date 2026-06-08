@@ -168,6 +168,44 @@ describe('dedupeCitationImages — decorative filter (CH-009 / ADR-0046 OD-1)', 
   });
 });
 
+describe('dedupeCitationImages — large near-square icon filter (CH-009 / ADR-0046 OD-4)', () => {
+  it('drops the 384×384 lightbulb/idea icon (square, ≤512px) that slips past OD-1', () => {
+    // Real-world repro: sha 6c0bd5c2 in drive-images-1 — the lightbulb-with-gear
+    // "idea" graphic. min(384,384)=384 ≥ 64 so OD-1 keeps it; OD-4 catches it.
+    const result = dedupeCitationImages([
+      citation(1, [
+        imageRef({ checksum_sha256: 'shot', width: 836, height: 329 }),
+        imageRef({ checksum_sha256: 'lightbulb', width: 384, height: 384 }),
+      ]),
+    ]);
+    expect(result.map((r) => r.image.checksum_sha256)).toEqual(['shot']);
+  });
+
+  it('keeps a real landscape screenshot just above the aspect threshold (778×604, aspect 1.29)', () => {
+    const result = dedupeCitationImages([
+      citation(1, [imageRef({ checksum_sha256: 'real-near-square', width: 778, height: 604 })]),
+    ]);
+    expect(result).toHaveLength(1);
+  });
+
+  it('keeps a large square content diagram (>512px — only small near-square icons are dropped)', () => {
+    const result = dedupeCitationImages([
+      citation(1, [imageRef({ checksum_sha256: 'big-diagram', width: 1024, height: 1024 })]),
+    ]);
+    expect(result).toHaveLength(1);
+  });
+
+  it('keeps a 512×512 image at the size ceiling but drops a 384×384 below it', () => {
+    const result = dedupeCitationImages([
+      citation(1, [
+        imageRef({ checksum_sha256: 'ceiling', width: 600, height: 520 }), // maxDim 600 > 512 → kept
+        imageRef({ checksum_sha256: 'icon', width: 384, height: 384 }), // square + ≤512 → dropped
+      ]),
+    ]);
+    expect(result.map((r) => r.image.checksum_sha256)).toEqual(['ceiling']);
+  });
+});
+
 describe('selectInlineImages — document-order cap (CH-009 / ADR-0046 OD-2; OD-3 reverted)', () => {
   // Helper: a citation with a single image in a given section (relevance kept on
   // the model but NOT used for selection — OD-3 relevance-select reverted 2026-06-08).

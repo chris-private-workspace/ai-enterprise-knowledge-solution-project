@@ -14,6 +14,7 @@ adr_ref: ../../../adr/0046-chat-image-relevance-decorative-dims.md
 - [x] A3 — `decorative` 判定 + filter 喺 **frontend display**(`citation-images.ts` `isDecorativeImage`,`min(w,h)<DECORATIVE_MIN_PX=64`,dims 已知先判;0×0 legacy 保留)+ `dedupeCitationImages` skip decorative
 - [x] A7a — architecture.md §3.6 CH-009 amendment block(ImageRef dims + decorative filter + cap + relevance ordering + H4 邊界)
 - [x] A7b — C01 design note bump(extractor probe + orchestrator dims);C03 schema 欄位 width/height 早存在(只 populate,無 schema 改)
+- [x] A8 — **OD-4 大正方形 icon filter**(2026-06-08 fresh-query 診斷):`isDecorativeImage` 加第二條 rule `max(w,h)≤DECORATIVE_SQUARE_MAX_PX(512) && aspect≤DECORATIVE_MAX_ASPECT(1.15)` → 捉 384×384 燈泡(`6c0bd5c2`)等大 icon(OD-1 `min<64` 漏網);零誤殺真截圖(最近正方 778×604=1.29);ADR-0046 OD-4 amendment
 
 ## I-B — Per-KB cap wiring (OD-2)
 - [x] B1 — `MessageRow` cap = `maxImagesPerAnswer ?? INLINE_IMAGE_CAP`;`ChatThread`/`MessageRow` thread `maxImagesPerAnswer`;chat page 讀 `activeKb.config.max_images_per_answer ?? null`
@@ -29,13 +30,14 @@ adr_ref: ../../../adr/0046-chat-image-relevance-decorative-dims.md
 - [x] T2 — decorative filter(`citation-images.test.ts`:<64 drop / 一維 thin drop / 0×0 keep / =64 keep)
 - [x] T3 — `selectInlineImages` cap(<=cap full / cap<=0 empty)
 - [x] T4 — relevance-select + document-display(over-cap 揀高 relevance + document order;max relevance across citations)
+- [x] T5 — **OD-4** large near-square icon(`citation-images.test.ts` +4:384×384 燈泡 drop / 778×604 真截圖 keep / 1024×1024 大正方 keep / 600×520 ceiling keep + 384 below drop)→ vitest 25 total
 
 ## Re-index + Verification
 - [x] V1 — backend pytest(`test_ch009_image_dims` 9 + `test_orchestrator` 12 = 21 passed)+ frontend vitest 22 passed + tsc clean + ruff clean + mypy 改檔 0 新 error(16 pre-existing docling)(AC6)
 - [x] V2 — `drive-images-1` in-place re-index DONE(6/6,369 chunks;CH-009 dims probe 生效)
 - [x] V3 — `/query` GL「post a journal entry」**AC1+AC2 PASS**:40 unique images **0 個 dims=0**(probe 全中);**1 個 93×62(min 62<64)= 燈泡 icon → 前端 filter**;39 內容圖(min≥237)保留;64 閾值穩坐 62-vs-237 gap
 - [x] V4 — **AC3+AC4**:cap per-KB(`maxImagesPerAnswer ?? 8`,drive-images-1 null→8)+ relevance-select(`selectInlineImages` top-cap by `relevance_score` + document-order)— T3/T4 unit + live relevance_score 數據背書
-- [ ] 🚧 V5 — chat live 驗(**用戶動作**):chat 問 GL「post a journal entry」確認 ① 無裝飾燈泡 ② 8 張圖貼題(最相關)③ 文件次序 — 待用戶
+- [x] V5 — chat live 驗(**用戶 2026-06-08**):① **無裝飾燈泡 PASS**(OD-4 後 figure 2 唔再係燈泡,用戶 live 確認)。② 次序 + ③ 概覽圖未出現 = **非 CH-009 範圍 → 轉 CH-010**(章節 §3.1.1 Overview 流程圖未 attach 到 narrow-step query 嘅 citation;OD-4/document-order 解唔到,需 chapter-overview pin)
 - [x] V6 — 無 regression:decorative filter 只喺 dims 已知時觸發(0×0 legacy 保留)+ `selectInlineImages` ≤cap 時 return 原 document-order list;Finding D dedup + CH-008 文字 rerank 不受影響(orchestrator/citation-images 既有 test 全綠)(AC5)
 
 ## Closeout
