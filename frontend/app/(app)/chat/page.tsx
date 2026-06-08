@@ -222,7 +222,11 @@ export default function ChatPage() {
   // non-existent Azure index. BUG-006.
   useEffect(() => {
     if (kbs.length > 0 && !kbs.some((k) => k.kb_id === kbId)) {
-      setKbId(kbs[0].kb_id);
+      // BUG-035 — default to the first NON-archived KB. `kbs[0]` may be archived
+      // (e.g. dce-integration-images-1 sits first in the list), and an archived
+      // default then mis-binds new conversations / can't be queried.
+      const firstActive = kbs.find((k) => !k.archived) ?? kbs[0];
+      setKbId(firstActive.kb_id);
     }
   }, [kbs, kbId]);
 
@@ -284,8 +288,12 @@ export default function ChatPage() {
   async function ensureConversation(): Promise<string | null> {
     if (activeConvId) return activeConvId;
     try {
+      // BUG-035 Option A — deferred creation: the conversation is created HERE on
+      // the first submit, bound to the kbId the user actually chose at send time
+      // (not an eager new-chat default). Surface it in the sidebar immediately.
       const conv = await conversationsApi.create({ kb_id: kbId });
       setActiveConvId(conv.id);
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
       return conv.id;
     } catch {
       return null;
@@ -323,8 +331,13 @@ export default function ChatPage() {
     }
   }
 
-  function handleConversationCreate(conv: Conversation) {
-    setActiveConvId(conv.id);
+  // BUG-035 Option A — "New chat" no longer eagerly creates a conversation (which
+  // bound it to the default KB before the user could switch). It just resets to a
+  // blank thread; `ensureConversation` creates the real conversation on first
+  // submit with the chosen kbId. (Empty new chat shows in the sidebar only after
+  // the first message — standard chat UX.)
+  function handleStartNewChat() {
+    setActiveConvId(null);
     setMessages([]);
   }
 
@@ -499,9 +512,8 @@ export default function ChatPage() {
       {!historyCollapsed && (
         <ConversationHistoryPanel
           activeConvId={activeConvId}
-          kbId={kbId}
           onSelect={(id) => void loadConversation(id)}
-          onCreate={handleConversationCreate}
+          onNewChat={handleStartNewChat}
           onActiveDeleted={handleActiveDeleted}
           onClose={() => toggleHistory()}
         />
@@ -584,16 +596,14 @@ export default function ChatPage() {
 
 function ConversationHistoryPanel({
   activeConvId,
-  kbId,
   onSelect,
-  onCreate,
+  onNewChat,
   onActiveDeleted,
   onClose,
 }: {
   activeConvId: string | null;
-  kbId: string;
   onSelect: (id: string) => void;
-  onCreate: (conv: Conversation) => void;
+  onNewChat: () => void;
   onActiveDeleted: () => void;
   onClose: () => void;
 }) {
@@ -604,14 +614,11 @@ function ConversationHistoryPanel({
   });
   const conversations = useMemo(() => listQuery.data?.items ?? [], [listQuery.data]);
 
-  async function handleNewChat() {
-    try {
-      const conv = await conversationsApi.create({ kb_id: kbId });
-      onCreate(conv);
-      listQuery.refetch();
-    } catch {
-      /* swallow */
-    }
+  // BUG-035 Option A — defer creation: just reset to a blank thread. The real
+  // conversation is created on first submit (ensureConversation) bound to the
+  // kbId chosen at send time, then invalidates ['conversations'] to appear here.
+  function handleNewChat() {
+    onNewChat();
   }
 
   const filtered = useMemo(() => {
