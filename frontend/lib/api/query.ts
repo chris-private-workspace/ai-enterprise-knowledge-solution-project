@@ -29,6 +29,12 @@ export interface ImageRef {
    *  image shows ITS section, not the citing chunk's. Optional: absent for
    *  images indexed before C-ii + legacy stored conversations. */
   source_section?: string[];
+  /** CH-011 / ADR-0048 — the image's true document position (parser `doc_order`,
+   *  monotonic across the document). Primary key for ordering images by reading
+   *  flow even WITHIN one section (all §X.Y step figures share one source_section,
+   *  so the lexical section sort can't page-order them). Optional / 0 = images not
+   *  yet re-indexed under CH-011 → falls back to source_section ordering. */
+  doc_order?: number;
 }
 
 export interface Citation {

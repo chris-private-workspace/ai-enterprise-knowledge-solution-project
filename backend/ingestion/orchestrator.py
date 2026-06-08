@@ -67,7 +67,7 @@ class IngestionResult:
     chunks: list[ChunkRecord]
     failure: FailureRecord | None
     images_uploaded: int  # number of unique blobs uploaded (post-dedup)
-    images_deduped: int   # number of dedup-skipped
+    images_deduped: int  # number of dedup-skipped
 
 
 class IngestionOrchestrator:
@@ -123,7 +123,9 @@ class IngestionOrchestrator:
             screenshot_records: list[ScreenshotRecord] = []
         else:
             screenshot_records = ScreenshotExtractor.extract(
-                result.embedded_images, kb_id=kb_id, doc_id=doc_id,
+                result.embedded_images,
+                kb_id=kb_id,
+                doc_id=doc_id,
             )
         sha_to_url: dict[str, str] = {}
         sha_to_alt: dict[str, str] = {}
@@ -202,6 +204,16 @@ class IngestionOrchestrator:
                 if sha is None or sha not in sha_to_url:
                     continue  # uploader skipped this image OR parser did not extract
                 dims = sha_to_dims.get(sha)
+                # CH-011 / ADR-0048 — recover the image's document position from the
+                # "img@<doc_order>" position key (parser `doc_order`, monotonic across
+                # the doc) so the chat can page-order images even within one section.
+                # Defensive: malformed / non-"img@" key → 0 (legacy ordering fallback).
+                doc_order = 0
+                if pos.startswith("img@"):
+                    try:
+                        doc_order = int(pos[len("img@") :])
+                    except ValueError:
+                        doc_order = 0
                 image_refs.append(
                     ImageRef(
                         blob_url=sha_to_url[sha],
@@ -216,6 +228,8 @@ class IngestionOrchestrator:
                         # attach later surfaces the image's TRUE section, not the
                         # citing intro/meta chunk's.
                         source_section=list(spec.section_path),
+                        # CH-011 / ADR-0048 — true document position for page-ordering.
+                        doc_order=doc_order,
                     ),
                 )
 

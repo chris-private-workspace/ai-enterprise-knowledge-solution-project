@@ -35,15 +35,17 @@ def test_parse_empty_array_returns_empty() -> None:
 
 
 def test_parse_valid_array_returns_imagerefs() -> None:
-    payload = json.dumps([
-        {
-            "blob_url": "https://x/blob/a.png",
-            "alt_text": "Diagram",
-            "checksum_sha256": "deadbeef",
-            "width": 800,
-            "height": 600,
-        }
-    ])
+    payload = json.dumps(
+        [
+            {
+                "blob_url": "https://x/blob/a.png",
+                "alt_text": "Diagram",
+                "checksum_sha256": "deadbeef",
+                "width": 800,
+                "height": 600,
+            }
+        ]
+    )
     images = parse_embedded_images(payload)
     assert len(images) == 1
     assert images[0].blob_url == "https://x/blob/a.png"
@@ -63,47 +65,53 @@ def test_parse_non_array_top_level_returns_empty() -> None:
 
 def test_parse_imageref_carries_source_section() -> None:
     """BUG-026 C-ii — image's own section propagated through embedded_images_json."""
-    payload = json.dumps([
-        {
-            "blob_url": "https://x/blob/a.png",
-            "alt_text": "",
-            "checksum_sha256": "deadbeef",
-            "width": 800,
-            "height": 600,
-            "source_section": ["8. Integration scenarios", "8.4 Scenario D"],
-        }
-    ])
+    payload = json.dumps(
+        [
+            {
+                "blob_url": "https://x/blob/a.png",
+                "alt_text": "",
+                "checksum_sha256": "deadbeef",
+                "width": 800,
+                "height": 600,
+                "source_section": ["8. Integration scenarios", "8.4 Scenario D"],
+            }
+        ]
+    )
     images = parse_embedded_images(payload)
     assert images[0].source_section == ["8. Integration scenarios", "8.4 Scenario D"]
 
 
 def test_parse_imageref_source_section_defaults_empty_when_absent() -> None:
     """Backward compat — chunks indexed before C-ii lack the field → []."""
-    payload = json.dumps([
-        {
-            "blob_url": "https://x/blob/a.png",
-            "alt_text": "d",
-            "checksum_sha256": "abc",
-            "width": 1,
-            "height": 1,
-        }
-    ])
+    payload = json.dumps(
+        [
+            {
+                "blob_url": "https://x/blob/a.png",
+                "alt_text": "d",
+                "checksum_sha256": "abc",
+                "width": 1,
+                "height": 1,
+            }
+        ]
+    )
     images = parse_embedded_images(payload)
     assert images[0].source_section == []
 
 
 def test_parse_imageref_source_section_non_list_coerced_empty() -> None:
     """Defensive — a malformed non-list source_section degrades to []."""
-    payload = json.dumps([
-        {
-            "blob_url": "https://x/blob/a.png",
-            "alt_text": "d",
-            "checksum_sha256": "abc",
-            "width": 1,
-            "height": 1,
-            "source_section": "not-a-list",
-        }
-    ])
+    payload = json.dumps(
+        [
+            {
+                "blob_url": "https://x/blob/a.png",
+                "alt_text": "d",
+                "checksum_sha256": "abc",
+                "width": 1,
+                "height": 1,
+                "source_section": "not-a-list",
+            }
+        ]
+    )
     images = parse_embedded_images(payload)
     assert images[0].source_section == []
 
@@ -127,6 +135,65 @@ def test_source_section_round_trips_storage_to_query() -> None:
     assert images[0].source_section == ["8. Integration scenarios", "8.4 Scenario D"]
 
 
+# ----- CH-011 / ADR-0048 — doc_order propagation -----
+
+
+def test_parse_imageref_carries_doc_order() -> None:
+    """CH-011 — the per-image document position is read back onto the API ImageRef."""
+    payload = json.dumps(
+        [
+            {
+                "blob_url": "https://x/blob/a.png",
+                "alt_text": "d",
+                "checksum_sha256": "abc",
+                "width": 800,
+                "height": 600,
+                "doc_order": 27,
+            }
+        ]
+    )
+    images = parse_embedded_images(payload)
+    assert images[0].doc_order == 27
+
+
+def test_parse_imageref_doc_order_defaults_zero_when_absent() -> None:
+    """Backward compat — chunks indexed before CH-011 lack the field → 0 (legacy
+    section ordering fallback on the frontend)."""
+    payload = json.dumps(
+        [
+            {
+                "blob_url": "https://x/blob/a.png",
+                "alt_text": "d",
+                "checksum_sha256": "abc",
+                "width": 1,
+                "height": 1,
+            }
+        ]
+    )
+    images = parse_embedded_images(payload)
+    assert images[0].doc_order == 0
+
+
+def test_doc_order_round_trips_storage_to_query() -> None:
+    """CH-011 / ADR-0048 — doc_order survives the storage→index→query JSON contract.
+
+    The storage-side ImageRef.model_dump() (as ChunkRecord.to_search_doc serializes
+    it into `embedded_images_json`) must carry doc_order so the query-side
+    parse_embedded_images reconstructs it onto the API ImageRef — the basis for the
+    frontend document-order image sort.
+    """
+    from indexing.schemas import ImageRef as StorageImageRef
+
+    stored = StorageImageRef(
+        blob_url="https://b/img.png",
+        checksum_sha256="abc",
+        doc_order=42,
+    )
+    embedded_images_json = json.dumps([stored.model_dump(mode="json")])
+    images = parse_embedded_images(embedded_images_json)
+    assert images[0].doc_order == 42
+
+
 # ----- build_citations -----
 
 
@@ -143,7 +210,9 @@ def test_build_citations_skips_unknown_chunk_ids() -> None:
 
 
 def test_build_citations_populates_fields_from_retrieved() -> None:
-    chunks = [_chunk("c1", doc_id="d-9", doc_title="Manual 9", section_path=["X"], doc_format="pdf")]
+    chunks = [
+        _chunk("c1", doc_id="d-9", doc_title="Manual 9", section_path=["X"], doc_format="pdf")
+    ]
     out = build_citations(["c1"], chunks)
     assert out[0].doc_id == "d-9"
     assert out[0].doc_title == "Manual 9"
@@ -171,15 +240,17 @@ def test_build_citations_empty_list_returns_empty() -> None:
 
 
 def test_build_citations_with_real_image_json() -> None:
-    img_json = json.dumps([
-        {
-            "blob_url": "https://b/img.png",
-            "alt_text": "fig 1",
-            "checksum_sha256": "abc",
-            "width": 100,
-            "height": 50,
-        }
-    ])
+    img_json = json.dumps(
+        [
+            {
+                "blob_url": "https://b/img.png",
+                "alt_text": "fig 1",
+                "checksum_sha256": "abc",
+                "width": 100,
+                "height": 50,
+            }
+        ]
+    )
     chunks = [_chunk("c1", embedded_images_json=img_json)]
     out = build_citations(["c1"], chunks)
     assert len(out[0].embedded_images) == 1

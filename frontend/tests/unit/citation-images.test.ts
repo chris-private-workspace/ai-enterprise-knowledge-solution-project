@@ -135,6 +135,54 @@ describe('dedupeCitationImages (BUG-026 Finding A)', () => {
   });
 });
 
+describe('dedupeCitationImages — within-section page order (CH-011 / ADR-0048)', () => {
+  const STEP_SECTION = [
+    '3 GL03. Processing Journal Vouchers',
+    '3.1.3 System Instruction for each step',
+  ];
+
+  it('page-orders images WITHIN one section by doc_order (the figure-3+ scramble fix)', () => {
+    // All three step figures share ONE source_section, so the lexical section sort
+    // cannot disambiguate them — neighbour-attach delivered them out of page order.
+    // doc_order restores true reading order regardless of input order.
+    const result = dedupeCitationImages([
+      citation(1, [
+        imageRef({ checksum_sha256: 'import-p24', source_section: STEP_SECTION, doc_order: 30 }),
+        imageRef({ checksum_sha256: 'step1-p21', source_section: STEP_SECTION, doc_order: 25 }),
+        imageRef({ checksum_sha256: 'step2-p22', source_section: STEP_SECTION, doc_order: 27 }),
+      ]),
+    ]);
+    expect(result.map((r) => r.image.checksum_sha256)).toEqual([
+      'step1-p21',
+      'step2-p22',
+      'import-p24',
+    ]);
+  });
+
+  it('orders across sections by doc_order too (overview leads the procedure)', () => {
+    const OVERVIEW = ['3 GL03. Processing Journal Vouchers', '3.1.1 Overview'];
+    const result = dedupeCitationImages([
+      citation(1, [imageRef({ checksum_sha256: 'step', source_section: STEP_SECTION, doc_order: 27 })]),
+      citation(2, [imageRef({ checksum_sha256: 'overview', source_section: OVERVIEW, doc_order: 24 })]),
+    ]);
+    // doc_order 24 (overview) < 27 (step) → overview leads.
+    expect(result.map((r) => r.image.checksum_sha256)).toEqual(['overview', 'step']);
+  });
+
+  it('falls back to source_section order when any image lacks doc_order (production-preserve)', () => {
+    // Mixed (e.g. legacy stored conversation): one image has doc_order, one does not →
+    // mode resolves to legacy section sort, transitive + no crash.
+    const STEP_5 = ['3', '3.1.5 step'];
+    const STEP_3 = ['3', '3.1.3 step'];
+    const result = dedupeCitationImages([
+      citation(1, [imageRef({ checksum_sha256: 'late', source_section: STEP_5, doc_order: 5 })]),
+      citation(2, [imageRef({ checksum_sha256: 'early', source_section: STEP_3 })]), // no doc_order
+    ]);
+    // allHaveDocOrder=false → section lexical: 3.1.3 (early) before 3.1.5 (late).
+    expect(result.map((r) => r.image.checksum_sha256)).toEqual(['early', 'late']);
+  });
+});
+
 describe('dedupeCitationImages — decorative filter (CH-009 / ADR-0046 OD-1)', () => {
   it('drops a decorative icon (min dim < threshold) when dims are known', () => {
     const result = dedupeCitationImages([

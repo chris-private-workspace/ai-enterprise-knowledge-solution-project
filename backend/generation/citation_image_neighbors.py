@@ -219,11 +219,15 @@ def _find_section_neighbour_images(
     Attaches images from chunks in the SAME section as the citation (matched by
     `section_path[:section_path_prefix_depth]`), ignoring chunk-index window
     proximity — so ALL §8.* scenario figures surface under a §8 intro citation,
-    not only the two inside ±window. Candidates are ordered nearest-first by
-    chunk-index distance for a deterministic cap (closest siblings win when
-    capped); images are deduped against the citation's own images + each other;
-    capped at max_aux. Returns [] when the citation's section_path is shorter
-    than the requested prefix depth (no stable section key to match on).
+    not only the two inside ±window. CH-011 / ADR-0048 — candidates are ordered by
+    DOCUMENT position (chunk_index ascending), NOT nearest-first distance, so the
+    attached figures span the section in reading order (procedure start → end) and
+    a truncating cap keeps the EARLIER (procedure-start) figures rather than the
+    ones clustered around the lead. The frontend's CH-011 `doc_order` sort governs
+    the final render order; this only governs WHICH figures survive `max_aux`.
+    Images are deduped against the citation's own images + each other; capped at
+    max_aux. Returns [] when the citation's section_path is shorter than the
+    requested prefix depth (no stable section key to match on).
 
     Pure function; no IO; testable in isolation without mocks.
     """
@@ -235,8 +239,10 @@ def _find_section_neighbour_images(
         img.checksum_sha256 for img in citation.embedded_images if img.checksum_sha256
     }
 
-    # Collect same-section candidates with chunk-index distance so the cap takes
-    # the nearest sibling figures first (deterministic ordering, no IO).
+    # CH-011 / ADR-0048 — collect same-section candidates keyed by DOCUMENT position
+    # (chunk_index) so the cap takes the procedure in reading order (start → end),
+    # not the figures nearest the lead. A truncating cap then keeps the earlier
+    # document positions; the frontend doc_order sort fixes the final render order.
     candidates: list[tuple[int, dict]] = []
     for chunk in doc_chunks:
         chunk_idx_raw = chunk.get("chunk_index", 0)
@@ -251,12 +257,12 @@ def _find_section_neighbour_images(
             continue
         if list(cand_section_path[:section_path_prefix_depth]) != cited_prefix:
             continue
-        candidates.append((abs(chunk_idx - citation.chunk_index), chunk))
+        candidates.append((chunk_idx, chunk))
 
     candidates.sort(key=lambda pair: pair[0])
 
     new_images: list[ImageRef] = []
-    for _distance, chunk in candidates:
+    for _chunk_idx, chunk in candidates:
         images = parse_embedded_images(
             str(chunk.get("embedded_images_json", "") or ""),
         )

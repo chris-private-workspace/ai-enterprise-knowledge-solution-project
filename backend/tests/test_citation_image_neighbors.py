@@ -230,7 +230,10 @@ async def test_attach_happy_path_intro_citation_gets_neighbour_image() -> None:
     engine = _mock_engine({"doc-A": doc_chunks})
 
     result = await attach_neighbour_images(
-        [intro_cit], kb_id="kb1", engine=engine, max_aux_per_citation=2,
+        [intro_cit],
+        kb_id="kb1",
+        engine=engine,
+        max_aux_per_citation=2,
     )
 
     assert len(result) == 1
@@ -254,10 +257,12 @@ async def test_attach_multiple_citations_same_doc_batches_fetch() -> None:
 async def test_attach_multiple_citations_different_docs_fetches_each() -> None:
     c1 = _citation(chunk_id="ch-1", doc_id="doc-A", chunk_index=5)
     c2 = _citation(chunk_id="ch-2", doc_id="doc-B", chunk_index=5)
-    engine = _mock_engine({
-        "doc-A": [_doc_chunk_dict(5)],
-        "doc-B": [_doc_chunk_dict(5)],
-    })
+    engine = _mock_engine(
+        {
+            "doc-A": [_doc_chunk_dict(5)],
+            "doc-B": [_doc_chunk_dict(5)],
+        }
+    )
 
     await attach_neighbour_images([c1, c2], kb_id="kb1", engine=engine)
     assert engine.list_chunks.call_count == 2
@@ -328,7 +333,10 @@ async def test_attach_respects_max_aux_per_citation_setting() -> None:
     engine = _mock_engine({"doc-A": doc_chunks})
 
     result = await attach_neighbour_images(
-        [cit], kb_id="kb1", engine=engine, max_aux_per_citation=1,
+        [cit],
+        kb_id="kb1",
+        engine=engine,
+        max_aux_per_citation=1,
     )
     assert len(result[0].embedded_images) == 1
 
@@ -343,8 +351,11 @@ async def test_attach_respects_neighbour_window_setting() -> None:
     engine = _mock_engine({"doc-A": doc_chunks})
 
     result = await attach_neighbour_images(
-        [cit], kb_id="kb1", engine=engine,
-        max_aux_per_citation=5, neighbour_window=2,
+        [cit],
+        kb_id="kb1",
+        engine=engine,
+        max_aux_per_citation=5,
+        neighbour_window=2,
     )
     checksums = [img.checksum_sha256 for img in result[0].embedded_images]
     assert checksums == ["within-window"]
@@ -368,7 +379,8 @@ def _section_chunk(
 def test_section_mode_attaches_all_same_section_beyond_window() -> None:
     """BUG-027 — §8 intro (chunk 44) surfaces ALL §8.* scenario figures (chunk
     45/47/49/51/53) even though 49/51/53 sit outside the ±3 window. Section
-    membership replaces window proximity; nearest-first ordering."""
+    membership replaces window proximity; CH-011 document-order (chunk_index
+    ascending) ordering."""
     intro = _citation(chunk_index=44, section_path=["8. Integration scenarios"])
     sp = ["8. Integration scenarios", "8.x Scenario"]
     doc_chunks = [
@@ -379,7 +391,11 @@ def test_section_mode_attaches_all_same_section_beyond_window() -> None:
         _section_chunk(53, sp, images=[_img_dict("E")]),  # outside window=3
     ]
     result = _find_neighbour_images(
-        intro, doc_chunks, max_aux=8, window=3, section_path_prefix_depth=1,
+        intro,
+        doc_chunks,
+        max_aux=8,
+        window=3,
+        section_path_prefix_depth=1,
     )
     assert [img.checksum_sha256 for img in result] == ["A", "B", "C", "D", "E"]
 
@@ -393,24 +409,38 @@ def test_section_mode_excludes_other_sections() -> None:
         _section_chunk(43, ["3. Architecture"], images=[_img_dict("in-3")]),
     ]
     result = _find_neighbour_images(
-        intro, doc_chunks, max_aux=8, window=3, section_path_prefix_depth=1,
+        intro,
+        doc_chunks,
+        max_aux=8,
+        window=3,
+        section_path_prefix_depth=1,
     )
     assert [img.checksum_sha256 for img in result] == ["in-8"]
 
 
-def test_section_mode_caps_at_max_aux_nearest_first() -> None:
-    """Cap takes the closest siblings by chunk-index distance."""
-    intro = _citation(chunk_index=44, section_path=["8. Integration scenarios"])
+def test_section_mode_caps_at_max_aux_document_order() -> None:
+    """CH-011 / ADR-0048 — the cap takes the EARLIEST document positions
+    (chunk_index ascending), NOT the nearest-by-distance siblings, so a capped
+    set spans the procedure from its start. The lead sits in the MIDDLE (49) so
+    the two orderings diverge: nearest-first would pick chunks 47+51 (distance 2),
+    but document-order picks chunks 45+47 (the procedure start)."""
+    intro = _citation(chunk_index=49, section_path=["8. Integration scenarios"])
     sp = ["8. Integration scenarios", "8.x"]
     doc_chunks = [
-        _section_chunk(53, sp, images=[_img_dict("far")]),    # distance 9
-        _section_chunk(45, sp, images=[_img_dict("near")]),   # distance 1
-        _section_chunk(49, sp, images=[_img_dict("mid")]),    # distance 5
+        _section_chunk(53, sp, images=[_img_dict("e")]),  # last
+        _section_chunk(45, sp, images=[_img_dict("a")]),  # first
+        _section_chunk(51, sp, images=[_img_dict("d")]),  # nearest-first would pick this
+        _section_chunk(47, sp, images=[_img_dict("b")]),  # second
     ]
     result = _find_neighbour_images(
-        intro, doc_chunks, max_aux=2, window=3, section_path_prefix_depth=1,
+        intro,
+        doc_chunks,
+        max_aux=2,
+        window=3,
+        section_path_prefix_depth=1,
     )
-    assert [img.checksum_sha256 for img in result] == ["near", "mid"]
+    # document-order ascending = 45(a),47(b),51(d),53(e); cap 2 → a,b (procedure start)
+    assert [img.checksum_sha256 for img in result] == ["a", "b"]
 
 
 def test_section_mode_requires_citation_section_path_else_window() -> None:
@@ -419,7 +449,11 @@ def test_section_mode_requires_citation_section_path_else_window() -> None:
     cit = _citation(chunk_index=44, section_path=[])
     doc_chunks = [_section_chunk(45, ["8. Integration scenarios"], images=[_img_dict("x")])]
     result = _find_neighbour_images(
-        cit, doc_chunks, max_aux=8, window=3, section_path_prefix_depth=1,
+        cit,
+        doc_chunks,
+        max_aux=8,
+        window=3,
+        section_path_prefix_depth=1,
     )
     assert [img.checksum_sha256 for img in result] == ["x"]
 
@@ -432,7 +466,11 @@ def test_section_mode_citation_shallower_than_depth_returns_empty() -> None:
         _section_chunk(45, ["8. Integration scenarios", "8.1"], images=[_img_dict("x")]),
     ]
     result = _find_neighbour_images(
-        cit, doc_chunks, max_aux=8, window=99, section_path_prefix_depth=2,
+        cit,
+        doc_chunks,
+        max_aux=8,
+        window=99,
+        section_path_prefix_depth=2,
     )
     assert result == []
 
@@ -440,16 +478,23 @@ def test_section_mode_citation_shallower_than_depth_returns_empty() -> None:
 def test_section_mode_dedup_against_own() -> None:
     own = _img(checksum="own")
     intro = _citation(
-        chunk_index=44, section_path=["8. Integration scenarios"], embedded_images=[own],
+        chunk_index=44,
+        section_path=["8. Integration scenarios"],
+        embedded_images=[own],
     )
     doc_chunks = [
         _section_chunk(
-            45, ["8. Integration scenarios", "8.1"],
+            45,
+            ["8. Integration scenarios", "8.1"],
             images=[_img_dict("own"), _img_dict("new")],
         ),
     ]
     result = _find_neighbour_images(
-        intro, doc_chunks, max_aux=8, window=3, section_path_prefix_depth=1,
+        intro,
+        doc_chunks,
+        max_aux=8,
+        window=3,
+        section_path_prefix_depth=1,
     )
     assert [img.checksum_sha256 for img in result] == ["new"]
 
@@ -459,7 +504,9 @@ async def test_attach_section_mode_surfaces_all_section_figures() -> None:
     """End-to-end: attach_neighbour_images(section_path_prefix_depth=1) surfaces
     same-section figures across the whole doc, not just within ±window."""
     intro = _citation(
-        chunk_id="ch-44", doc_id="doc-A", chunk_index=44,
+        chunk_id="ch-44",
+        doc_id="doc-A",
+        chunk_index=44,
         section_path=["8. Integration scenarios"],
     )
     sp = ["8. Integration scenarios", "8.x"]
@@ -470,7 +517,11 @@ async def test_attach_section_mode_surfaces_all_section_figures() -> None:
     ]
     engine = _mock_engine({"doc-A": doc_chunks})
     result = await attach_neighbour_images(
-        [intro], kb_id="kb1", engine=engine,
-        max_aux_per_citation=8, neighbour_window=3, section_path_prefix_depth=1,
+        [intro],
+        kb_id="kb1",
+        engine=engine,
+        max_aux_per_citation=8,
+        neighbour_window=3,
+        section_path_prefix_depth=1,
     )
     assert [img.checksum_sha256 for img in result[0].embedded_images] == ["A", "C", "E"]

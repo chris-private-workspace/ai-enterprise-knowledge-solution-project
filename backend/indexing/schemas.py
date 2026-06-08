@@ -39,6 +39,16 @@ class ImageRef(BaseModel):
     # surfaces it under a different (intro/meta) citation. Default [] for chunks
     # indexed before C-ii — frontend falls back to the citing chunk's section.
     source_section: list[str] = Field(default_factory=list)
+    # CH-011 / ADR-0048 — the image's true document position (the parser's
+    # monotonic `doc_order`, shared across headings/paragraphs/images). Stamped at
+    # ingest from the `"img@<doc_order>"` position key (orchestrator). Lets the
+    # chat surface order images by reading flow even WITHIN one section (where
+    # `source_section` is identical for every step figure, so the lexical section
+    # sort can't disambiguate). Serialized into `embedded_images_json` via
+    # `to_search_doc` (model_dump auto-includes it). Default 0 = images indexed
+    # before CH-011 (re-index required to populate) → frontend falls back to the
+    # legacy `source_section` ordering (production-preserve).
+    doc_order: int = 0
 
 
 def make_chunk_id(kb_id: str, doc_id: str, chunk_index: int) -> str:
@@ -89,7 +99,8 @@ class ChunkRecord(BaseModel):
 
         data = self.model_dump(mode="json")
         data["embedded_images_json"] = _json.dumps(
-            data.pop("embedded_images"), ensure_ascii=False,
+            data.pop("embedded_images"),
+            ensure_ascii=False,
         )
         data["content_vector"] = data.pop("embedding")
         return data

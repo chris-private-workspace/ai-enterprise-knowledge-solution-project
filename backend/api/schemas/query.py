@@ -16,6 +16,13 @@ class ImageRef(BaseModel):
     # section even when a neighbour-attach surfaces it under an intro/meta
     # citation. Default [] for images indexed before C-ii.
     source_section: list[str] = Field(default_factory=list)
+    # CH-011 / ADR-0048 — the image's true document position (parser `doc_order`,
+    # monotonic across the document). Read back from `embedded_images_json` by
+    # `parse_embedded_images`. Lets the chat order images by reading flow even
+    # WITHIN one section (all §X.Y step figures share one `source_section`, so the
+    # lexical section sort can't page-order them). Default 0 = pre-CH-011 / not yet
+    # re-indexed → frontend falls back to `source_section` ordering (production-preserve).
+    doc_order: int = 0
 
 
 class ChunkPreview(BaseModel):
@@ -84,4 +91,3 @@ class QueryResponse(BaseModel):
     model_used: str
     reranker_used: str
     refused: bool = False
-

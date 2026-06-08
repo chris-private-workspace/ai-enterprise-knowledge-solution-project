@@ -43,9 +43,7 @@ def parse_embedded_images(json_str: str) -> list[ImageRef]:
             continue
         # BUG-026 C-ii — image's own section (list[str]); defensive coerce.
         section_raw = item.get("source_section")
-        source_section = (
-            [str(s) for s in section_raw] if isinstance(section_raw, list) else []
-        )
+        source_section = [str(s) for s in section_raw] if isinstance(section_raw, list) else []
         try:
             images.append(
                 ImageRef(
@@ -55,6 +53,9 @@ def parse_embedded_images(json_str: str) -> list[ImageRef]:
                     width=int(item.get("width", 0) or 0),
                     height=int(item.get("height", 0) or 0),
                     source_section=source_section,
+                    # CH-011 / ADR-0048 — true document position (0 when absent:
+                    # pre-CH-011 chunks not yet re-indexed → legacy section ordering).
+                    doc_order=int(item.get("doc_order", 0) or 0),
                 )
             )
         except (TypeError, ValueError):
@@ -99,9 +100,7 @@ def build_citations(
                 chunk_index=int(f.get("chunk_index", 0) or 0),
                 section_path=list(f.get("section_path") or []),
                 relevance_score=float(chunk.score),
-                embedded_images=parse_embedded_images(
-                    str(f.get("embedded_images_json", "") or "")
-                ),
+                embedded_images=parse_embedded_images(str(f.get("embedded_images_json", "") or "")),
             )
         )
     if hallucinated_ids:
