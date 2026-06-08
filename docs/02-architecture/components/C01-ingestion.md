@@ -9,6 +9,8 @@ last_updated: 2026-05-06
 
 # C01 — Ingestion Pipeline Design Note
 
+> **CH-009 amendment(2026-06-08,Chat image relevance per ADR-0046)**:`ScreenshotExtractor.extract` 新增 `probe_png_dimensions`(stdlib `struct` 解 PNG IHDR header,零新 dep,避 H2;非 PNG / 截斷 / 0-dim → `None`)→ populate `ScreenshotRecord.width/height`;`orchestrator.ingest` build `sha_to_dims` → 傳入 `ChunkRecord.ImageRef(width,height)`(serialize 經 `to_search_doc` 已自動落 `embedded_images_json`)。令 chat display 層可按 `min(w,h)<64px` 過濾裝飾 icon(燈泡 Tip/Note)。dims 改動要 re-index 受影響 KB populate(本期 `drive-images-1`);decorative 過濾 + cap + relevance 排序喺 C10 display 層,本 component 只負責 probe + 落 index。
+
 > **CH-008 amendment(2026-06-08,Contextual Retrieval per ADR-0045)**:`orchestrator.ingest` 計 chunk embedding 時,embed input 由 `spec.chunk_text` 改為 `build_contextual_document(spec.section_path, spec.chunk_text)`(`retrieval/contextual.py` 共用 helper,與 C04 rerank 同一條),令 vector 候選池本身區分章節。**儲存嘅 `ChunkRecord.chunk_text` 維持原文不變**(citation / `/chunks` listing / 圖片排序全部用原文);只有 embedded 向量 bake section context。`section_path` 空 → fallback 純 `chunk_text`(bit-identical 現行向量,`test_orchestrator.py` 全綠)。Embedding 改動要 re-index 受影響 KB 先生效(本期只 re-index `drive-images-1`)。Rerank 端對應改動喺 C04;index schema(§3.6)文字同步更新但 `chunk_text` 欄位定義不變(C03 sink 結構零變)。
 
 > **Status**:`v1-active`(W2 D1 F1 Docling-based docx_parser PoC delivered 2026-05-03 — `backend/ingestion/parsers/{base.py, docx_parser.py}` + `scripts/run_docx_parser_sanity.py`;all 6 Drive sample manuals parsed clean — 217 headings(6.3% coverage,2× W1 D4 F6 raw style baseline 3%)+ 1018 images + 156 tables;0 parse failures。`reports/w02_d1_docx_parser_sanity.yaml` is the sanity baseline)

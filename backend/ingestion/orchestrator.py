@@ -127,6 +127,10 @@ class IngestionOrchestrator:
             )
         sha_to_url: dict[str, str] = {}
         sha_to_alt: dict[str, str] = {}
+        # CH-009 / ADR-0046 — sha → (width, height) probed at extraction, so the
+        # emitted ImageRef carries real dims (lets the chat surface flag decorative
+        # icons by min-dim threshold). Absent → ImageRef dims stay 0 (probe miss).
+        sha_to_dims: dict[str, tuple[int, int]] = {}
         images_uploaded = 0
         images_deduped = 0
         if self._uploader is not None and screenshot_records:
@@ -139,6 +143,8 @@ class IngestionOrchestrator:
                         continue  # BUG-030 — per-image upload failed (logged in uploader); best-effort skip
                     sha_to_url[rec.sha256] = ur.blob_url
                     sha_to_alt[rec.sha256] = rec.alt_text
+                    if rec.width is not None and rec.height is not None:
+                        sha_to_dims[rec.sha256] = (rec.width, rec.height)
                     if ur.deduped:
                         images_deduped += 1
                     else:
@@ -195,11 +201,16 @@ class IngestionOrchestrator:
                 sha = position_to_sha.get(pos)
                 if sha is None or sha not in sha_to_url:
                     continue  # uploader skipped this image OR parser did not extract
+                dims = sha_to_dims.get(sha)
                 image_refs.append(
                     ImageRef(
                         blob_url=sha_to_url[sha],
                         alt_text=sha_to_alt.get(sha, ""),
                         checksum_sha256=sha,
+                        # CH-009 / ADR-0046 — real dims from PNG IHDR probe (0 when
+                        # probe missed); lets the chat surface flag decorative icons.
+                        width=dims[0] if dims else 0,
+                        height=dims[1] if dims else 0,
                         # BUG-026 C-ii — stamp the image with its owning chunk's
                         # section (parser-correct post-BUG-017) so a neighbour-
                         # attach later surfaces the image's TRUE section, not the

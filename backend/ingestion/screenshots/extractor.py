@@ -23,10 +23,38 @@ ADR-0018 Phase 3 Session 2.
 
 from __future__ import annotations
 
+import struct
 from collections.abc import Iterable
 from dataclasses import dataclass
 
 from ingestion.parsers.base import EmbeddedImage
+
+# PNG 8-byte signature; the F1 parser normalizes all embedded images to PNG bytes
+# (see module docstring), so a PNG-only dimension probe covers the corpus.
+_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+def probe_png_dimensions(image_bytes: bytes) -> tuple[int, int] | None:
+    """Read (width, height) from a PNG's IHDR header — stdlib only, no Pillow (CH-009 / ADR-0046).
+
+    PNG layout: 8-byte signature, then the IHDR chunk
+    `[4-byte length][b"IHDR"][4-byte width BE][4-byte height BE]…`, so width/height
+    live at bytes 16:24. Best-effort: returns None for non-PNG / truncated /
+    malformed input (never raises) so a probe miss leaves dims unset rather than
+    failing ingest. Lets CH-009 flag decorative icons (min dim < threshold) without
+    adding an image-decode dependency (H2-safe).
+    """
+    if len(image_bytes) < 24 or image_bytes[:8] != _PNG_SIGNATURE:
+        return None
+    if image_bytes[12:16] != b"IHDR":
+        return None
+    try:
+        width, height = struct.unpack(">II", image_bytes[16:24])
+    except struct.error:
+        return None
+    if width <= 0 or height <= 0:
+        return None
+    return int(width), int(height)
 
 
 @dataclass(slots=True, frozen=True)
@@ -67,6 +95,10 @@ class ScreenshotExtractor:
         records: list[ScreenshotRecord] = []
         for img in embedded_images:
             content_type = _content_type_for_ext(img.ext)
+            # CH-009 / ADR-0046 — probe PNG dimensions so downstream can flag
+            # decorative icons (min dim < threshold). None on non-PNG / malformed
+            # (best-effort) → dims stay unset, image treated as non-decorative.
+            dims = probe_png_dimensions(img.image_bytes)
             records.append(
                 ScreenshotRecord(
                     image_bytes=img.image_bytes,
@@ -77,6 +109,8 @@ class ScreenshotExtractor:
                     doc_order=img.doc_order,
                     kb_id=kb_id,
                     doc_id=doc_id,
+                    width=dims[0] if dims else None,
+                    height=dims[1] if dims else None,
                 ),
             )
         return records

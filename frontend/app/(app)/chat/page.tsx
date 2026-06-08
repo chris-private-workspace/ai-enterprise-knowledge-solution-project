@@ -116,6 +116,7 @@ import {
   formatRelevance,
   imageSectionPath,
   imageTitle,
+  selectInlineImages,
   type DedupedCitationImage,
 } from '@/lib/chat/citation-images';
 
@@ -532,6 +533,7 @@ export default function ChatPage() {
           messages={messages}
           citationMode={citationMode}
           kbId={kbId || activeKb?.kb_id || ''}
+          maxImagesPerAnswer={activeKb?.config?.max_images_per_answer ?? null}
           onOpenScreenshot={(citation, image) => setModalImage({ citation, image })}
         />
 
@@ -1007,11 +1009,13 @@ function ChatThread({
   messages,
   citationMode,
   kbId,
+  maxImagesPerAnswer,
   onOpenScreenshot,
 }: {
   messages: Message[];
   citationMode: CitationMode;
   kbId: string;
+  maxImagesPerAnswer: number | null;
   onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
 }) {
   const threadRef = useRef<HTMLDivElement | null>(null);
@@ -1036,6 +1040,7 @@ function ChatThread({
               message={m}
               citationMode={citationMode}
               kbId={kbId}
+              maxImagesPerAnswer={maxImagesPerAnswer}
               onOpenScreenshot={onOpenScreenshot}
             />
           ))
@@ -1095,11 +1100,13 @@ function MessageRow({
   message,
   citationMode,
   kbId,
+  maxImagesPerAnswer,
   onOpenScreenshot,
 }: {
   message: Message;
   citationMode: CitationMode;
   kbId: string;
+  maxImagesPerAnswer: number | null;
   onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
 }) {
   if (message.role === 'user') {
@@ -1135,10 +1142,12 @@ function MessageRow({
   // mega-chunks (one §x.y.z chunk can own 20-57 figures) × aggressive
   // citation_expansion surface 20+ images for a NARROW query. The mockup
   // (ekp-page-chat.jsx:621) renders all — its demo had ≤5 imgs and never flooded.
-  // Cap the inline answer-body cards + the gallery grid to the first N; the gallery
-  // badge keeps the TRUE total and the existing "View all in Image Library →"
-  // overflow button (wired to the KB images tab) carries images N+1.. .
-  const cappedImages = dedupedImages.slice(0, INLINE_IMAGE_CAP);
+  // CH-009 / ADR-0046 (OD-2 + OD-3): cap = per-KB max_images_per_answer (null →
+  // INLINE_IMAGE_CAP default); selection takes the most query-relevant figures
+  // (text rerank signal, H4) then renders them in document order (Finding D). The
+  // gallery badge keeps the TRUE total + "View all in Image Library →" carries the rest.
+  const inlineCap = maxImagesPerAnswer ?? INLINE_IMAGE_CAP;
+  const cappedImages = selectInlineImages(dedupedImages, inlineCap);
 
   return (
     <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>

@@ -10,7 +10,13 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Citation, ImageRef } from '@/lib/api/query';
-import { dedupeCitationImages, imageSectionPath, imageTitle } from '@/lib/chat/citation-images';
+import {
+  DECORATIVE_MIN_PX,
+  dedupeCitationImages,
+  imageSectionPath,
+  imageTitle,
+  selectInlineImages,
+} from '@/lib/chat/citation-images';
 
 function imageRef(over: Partial<ImageRef> = {}): ImageRef {
   return {
@@ -126,6 +132,97 @@ describe('dedupeCitationImages (BUG-026 Finding A)', () => {
       citation(2, [imageRef({ checksum_sha256: 'sha-2', source_section: sameSection })]),
     ]);
     expect(result.map((r) => r.image.checksum_sha256)).toEqual(['sha-1', 'sha-2']);
+  });
+});
+
+describe('dedupeCitationImages — decorative filter (CH-009 / ADR-0046 OD-1)', () => {
+  it('drops a decorative icon (min dim < threshold) when dims are known', () => {
+    const result = dedupeCitationImages([
+      citation(1, [
+        imageRef({ checksum_sha256: 'real', width: 800, height: 480 }),
+        imageRef({ checksum_sha256: 'icon', width: 32, height: 32 }), // lightbulb-style icon
+      ]),
+    ]);
+    expect(result.map((r) => r.image.checksum_sha256)).toEqual(['real']);
+  });
+
+  it('drops a tall-thin decorative strip (one dim < threshold)', () => {
+    const result = dedupeCitationImages([
+      citation(1, [imageRef({ checksum_sha256: 'strip', width: 600, height: 20 })]),
+    ]);
+    expect(result).toHaveLength(0);
+  });
+
+  it('keeps images with unknown dims (0×0 — pre-re-index data, cannot judge)', () => {
+    const result = dedupeCitationImages([
+      citation(1, [imageRef({ checksum_sha256: 'legacy', width: 0, height: 0 })]),
+    ]);
+    expect(result).toHaveLength(1);
+  });
+
+  it('keeps an image exactly at the threshold (>= is not decorative)', () => {
+    const result = dedupeCitationImages([
+      citation(1, [imageRef({ checksum_sha256: 'edge', width: DECORATIVE_MIN_PX, height: 200 })]),
+    ]);
+    expect(result).toHaveLength(1);
+  });
+});
+
+describe('selectInlineImages — relevance-select + document-order (CH-009 / ADR-0046 OD-2/OD-3)', () => {
+  // Helper: a citation with explicit relevance + a single image in a given section.
+  function cit(idx: number, relevance: number, sha: string, section: string[]): Citation {
+    return {
+      chunk_id: `chunk-${idx}`,
+      doc_id: 'doc.docx',
+      doc_title: 'Doc',
+      doc_format: 'docx',
+      chunk_title: `S${idx}`,
+      chunk_index: idx,
+      section_path: section,
+      relevance_score: relevance,
+      embedded_images: [imageRef({ checksum_sha256: sha, source_section: section })],
+    };
+  }
+
+  it('returns the full list (document order) when count <= cap', () => {
+    const deduped = dedupeCitationImages([
+      cit(1, 0.9, 'a', ['3', '3.1.5']),
+      cit(2, 0.5, 'b', ['3', '3.1.3']),
+    ]);
+    const selected = selectInlineImages(deduped, 8);
+    // document order: 3.1.3 (b) before 3.1.5 (a)
+    expect(selected.map((d) => d.image.checksum_sha256)).toEqual(['b', 'a']);
+  });
+
+  it('keeps the most query-relevant figures when over cap, shown in document order', () => {
+    // low-relevance early-section image must NOT crowd out high-relevance later ones.
+    const deduped = dedupeCitationImages([
+      cit(1, 0.2, 'low', ['3', '3.1.1']), // earliest section, lowest relevance
+      cit(2, 0.9, 'hiB', ['3', '3.1.5']), // latest section, highest
+      cit(3, 0.8, 'hiA', ['3', '3.1.3']), // middle section, high
+    ]);
+    const selected = selectInlineImages(deduped, 2);
+    // top-2 by relevance = hiB(0.9) + hiA(0.8); 'low' dropped.
+    // displayed in document order: 3.1.3 (hiA) before 3.1.5 (hiB).
+    expect(selected.map((d) => d.image.checksum_sha256)).toEqual(['hiA', 'hiB']);
+  });
+
+  it('tracks MAX relevance across citations referencing the same image', () => {
+    const section = ['3', '3.1.3'];
+    const shared = imageRef({ checksum_sha256: 'shared', source_section: section });
+    const deduped = dedupeCitationImages([
+      // expansion neighbour (sentinel 0) references it first…
+      { ...cit(1, 0, 'unused', ['3', '3.1.1']), embedded_images: [shared] },
+      // …and the genuinely-reranked chunk also references it.
+      { ...cit(2, 0.85, 'unused2', section), embedded_images: [imageRef({ ...shared })] },
+    ]);
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0]!.relevanceScore).toBe(0.85); // max, not the 0 sentinel
+  });
+
+  it('returns empty for cap <= 0', () => {
+    const deduped = dedupeCitationImages([cit(1, 0.9, 'a', ['3', '3.1.1'])]);
+    expect(selectInlineImages(deduped, 0)).toEqual([]);
   });
 });
 

@@ -1,7 +1,7 @@
 # ADR-0046: Chat image relevance — decorative filter + dims probe + query-relevance ordering
 
 **Date**: 2026-06-08
-**Status**: Proposed
+**Status**: Accepted
 **Approver**: Chris
 
 ## Context

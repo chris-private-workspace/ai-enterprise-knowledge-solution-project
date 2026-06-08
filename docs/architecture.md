@@ -438,6 +438,13 @@ EKP Platform
 >
 > **儲存欄位不變**:index `chunk_text` 仍存原文(citation 顯示 / `/chunks` listing / 圖片排序全部用原文);只有 embedded 向量 bake context + rerank document query-time prepend context。Embedding 端改動要 re-index 受影響 KB 先生效(本期只 re-index `drive-images-1`)。根因:DRIVE 手冊跨 GL02/GL03/GL05 共用 generic section leaf「System Instruction for each step」+ 相似步驟表,reranker 只餵 `chunk_text` 分唔清章節(BUG-034 問題1;74-chunk A/B 實驗 PASS)。Azure semantic ranker(`azure_semantic.py`)排序由 index `ekp-semantic-config` 決定(非 code 砌 document),query-time 注入不適用 —— 該 fallback 路徑經 embedding re-index 間接受惠(候選池改善)。
 
+> **CH-009 amendment per ADR-0046**(Chat image relevance,2026-06-08):圖片 `ImageRef` 加 **真實 `width`/`height`** —— ingest 時 `ScreenshotExtractor` 用 stdlib 解 PNG IHDR header probe 尺寸(`probe_png_dimensions`,零新 dep;非 PNG / 截斷 → 不設,dims=0),經 `embedded_images_json` 落 index。三項 chat 圖片質素改動:
+> - **Decorative filter(OD-1)**:`min(width,height) < 64px`(可調)視為裝飾 icon(手冊 Tip/Note 燈泡),**chat display 時** filter 走(`frontend/lib/chat/citation-images.ts`);圖照存 index(dims=0 legacy 不判,保 production-preserve)。
+> - **Per-KB cap(OD-2)**:chat inline 圖片數 = per-KB `KbConfig.max_images_per_answer`(`null` → 前端 `INLINE_IMAGE_CAP=8` fallback)。
+> - **Relevance ordering(OD-3)**:inline cap 揀 owning citation `relevance_score`(Cohere 文字 rerank 信號)最高嘅 N 張,cap 內按 document-order(Finding D)顯示。**H4 邊界:只用文字信號,無 image embedding / multimodal(Tier 2)**。
+>
+> Embedding 端不變;只 ImageRef 多 dims(要 re-index 受影響 KB populate;本期 `drive-images-1`)。stored 圖片 + Finding D dedup 不變(decorative 只 display filter)。
+
 ### 3.7 C13 Email Verification Service(v6 amendment per ADR-0014 hybrid auth)
 
 > **Amendment trigger**:v5.1 → v6 amendment per §13.12(W11 D2 cont 2026-06-10)+ ADR-0014 hybrid auth(SSO + self-service register)+ OQ-Q22 vendor decision Resolved 2026-06-10 W12 D1。
