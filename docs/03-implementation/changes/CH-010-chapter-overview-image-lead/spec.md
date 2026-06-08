@@ -1,117 +1,126 @@
 ---
 change_id: CH-010
-title: "Chapter-overview image lead — 程序類答案自動帶章節概覽/流程圖行頭"
+title: "Chapter-overview image lead + step-image completeness — 程序類答案概覽圖行頭 + 補齊缺失步驟圖"
 status: draft          # draft | approved | done
-adr_ref: TBD (next NNNN=0047) — H1, code GATED on user approve + ADR Accept
-affects_components: [C05]   # C05 Generation (citation attach/expansion);Option A 預期 backend-only,frontend 既有 document-order 排序自動令概覽圖 lead
+adr_ref: TBD (next NNNN=0047) — H1, code/config GATED on user approve + ADR Accept
+affects_components: [C05, C03]   # C05 Generation (citation attach/expansion);C03 per-KB config (ADR-0040 tunable knobs — runtime,無 re-index)
 spec_refs:
   - architecture.md §3.6 (index schema / citation embedded_images)
   - architecture.md §3.7 (citation expansion / post-hoc neighbour materialization)
-  - ADR-0034 (neighbour image attach) · BUG-027 (section-aware attach `section_path_prefix_depth`) · CH-009 / ADR-0046 (chat image relevance — decorative filter + document-order)
+  - ADR-0034 (neighbour image attach) · BUG-027 (section-aware attach `section_path_prefix_depth`) · ADR-0040 (per-KB tunable config) · CH-009 / ADR-0046 (decorative filter + document-order)
+  - memory `[[project_chat_demo_rag_quality_followups]]` #1（完整性已 root-caused + 跨文件 30-query eval PASS，default flip 待決）
 ---
 
-# CH-010 — Chapter-overview image lead
+# CH-010 — Chapter-overview image lead + step-image completeness
 
-> **接 CH-009 衍生**:CH-009 OD-3 revert 已令 chat 圖**照 document-order 排序**(概覽 → step),但 live 診斷(2026-06-08,drive-images-1,「confirm voucher transactions」narrow query)揭一個**獨立根因**:當 query 命中嘅係某章節嘅**具體步驟**(§3.1.3/3.1.5),該章 §X.1 Overview 嘅概覽/流程圖**根本冇 attach 到任何 citation** → 無圖可排頭。用戶要求程序類答案由章節概覽流程圖(High Level Process / Business Process Flow,Word page 20)行先。
+> **接 CH-009 衍生 + 用戶「做到足」要求(2026-06-08)**。CH-009 OD-3 revert 已令 chat 圖照 document-order 排，OD-4 修咗裝飾燈泡。但 live 診斷揭**兩個並存問題**:① 章節概覽/流程圖(§X.1 Overview)冇 attach → 冇 lead;② 其他 §X.x 步驟圖缺失(唔齊)。用戶要求 CH-010 **同時**解兩者(概覽圖行頭 + 補齊缺失步驟圖)。
 >
-> **Status draft — DECISION PENDING(Option A vs B)+ code GATED on user approve + ADR Accept(H1)。本 spec 唔含 code、唔建 checklist/progress,等方案鎖定。**
+> **Status draft — DECISION PENDING(Approach 1 vs 2)+ code/config GATED on user approve + ADR-0047 Accept(H1)。本 spec 唔含 code、唔建 checklist/progress,等方案鎖定。**
 
-## 1. Problem(2026-06-08 live 診斷)
+## 1. Problem(2026-06-08 live 診斷,drive-images-1)
 
-**證據**(`/query/stream` CRAG-on,drive-images-1,「How do I process and confirm journal voucher transactions」):
+### 1.1 證據
+
+`/query/stream`(CRAG-on,「process and confirm journal voucher transactions」):
 
 | Citation | section_path | embedded_images |
 |---|---|---|
-| CIT 1-11 | 全部 §3.1.3 / §3.1.4 / §3.1.5(步驟) | 步驟截圖 |
-| **§3.1.1 Overview**(CIT 12)| `3 GL03 > 3.1.1 Overview` | **0 張** |
+| CIT 1-2 | §3.1.3 | §3.1.3 步驟圖(去重後 ~11 張)|
+| CIT 3-13 | §3.1.3 / §3.1.4 / §3.1.5 | **大部分 0 張** |
+| §3.1.1 Overview | (本 query 未 retrieve / 0 張)| — |
 
-對照另一條 query(「GL03 high level process overview」)當 §3.1.1 Overview chunk **有被 retrieve** 時,佢帶住:
-- `60a8a6e9` **367×87** = High Level Process(GL03-1/2/3 細橫圖)
-- `cfe10a8d` **1167×565** = Business Process Flow(swimlane 大流程圖)
+對照「GL03 overview」query(§3.1.1 有被 retrieve 時)→ 帶 `60a8a6e9` **367×87** High Level Process + `cfe10a8d` **1167×565** Business Process Flow。
 
-**根因**:概覽圖**存在於 index**(attach 到 §3.1.1 Overview chunk),但:
-1. narrow step query retrieve 嘅係 §3.1.3/3.1.5,§3.1.1 Overview chunk 未被 retrieve;
-2. 現有 attach 機制(`attach_neighbour_images` / `citation_expansion`)即使開 `section_path_prefix_depth`,亦有 **`max_aux` cap + nearest-first ordering** —— §3.1.1 Overview chunk(chunk ~20)離命中嘅 §3.1.5 步驟 chunk(~31)太遠,個 cap 俾近距離步驟圖食晒 → 概覽圖無被帶出;
-3. 前端已按 document-order 排序(§3.1.1 < §3.1.3),**所以只要可靠 attach 到概覽圖,佢就會自動 lead** —— 缺失嘅唯一一環係「reliably attach 章節概覽圖」。
+### 1.2 drive-images-1 per-KB config 現況(API 實測)
 
-**非 recall bug**:答案文字正確、步驟圖正確;純粹「概覽流程圖未被帶入候選池」。亦**非** CH-009 decorative filter(OD-4)範圍(嗰個係燈泡,已修)。
+**所有完整性 knobs = `null`(fallback 全域 default = 關 / 最小)**:
+- `enable_parent_doc_retrieval: null`(default `False`)
+- `enable_citation_neighbour_images / citation_neighbour_section_path_prefix_depth / citation_neighbour_max_aux_images: null`(default depth `0` / max_aux `2`)
+- `enable_citation_post_hoc_expansion / citation_expansion_section_path_prefix_depth / citation_expansion_max_aux: null`(default depth `0` / max_aux `2`)
+- `default_rerank_k: 5`(只有 5 個 reranked chunk 做 primary citation)
+- `max_images_per_answer: 20`(顯示 cap)
 
-## 2. Scope — 兩個候選方案(DECISION PENDING)
+### 1.3 根因
 
-> 共通目標:**當答案 citations 集中喺某章節時,確保該章 §X.1 Overview 嘅概覽/流程圖被 attach**;前端既有 document-order 排序自動令其 lead。**H4 硬邊界**:只用文字 / section 信號,**嚴禁 image embedding / multimodal**(Tier 2 禁)。
+1. **只有 5 個 chunk 入 citation**(`rerank_k=5`)→ primary citation 池細;
+2. **neighbour-attach depth=0 + max_aux=2** → 每 citation 只帶 chunk_index ±3 窗內最近 2 張新圖 → 遠離嘅 §3.1.1 概覽 + 其他 §3.1.x 步驟圖**唔入候選池**;
+3. 前端已 document-order 排序 + cap=20 未滿 → **唔係 cap 截斷 / 唔係排序 bug,係候選池本身唔齊**;
+4. 概覽圖**存在於 index**(attach 到 §3.1.1 chunk),只係冇被帶入 → 一旦帶入,document-order 自動令其 lead。
 
-### Option A — Chapter-overview pin(推薦,backend-only,explicit)
+**非 recall 章節錯**(答案文字 + section 正確)、**非 CH-009 decorative**(燈泡已修)。係**圖片候選池完整性**。
 
-**機制**:citation 組裝後(`attach_neighbour_images` / `expand_citations` 之後),新增一個「章節概覽 pin」步驟:
-1. 偵測 citations 嘅**主導章節**(`section_path[0]`,或 `[:1]` 出現次數最多者);
-2. 喺已 fetch 嘅 doc chunk list(`engine.list_chunks`,attach 階段已攞,**零額外 IO**)揾該章 **Overview chunk**(`section_path` 命中 `[chapter]` 且 leaf section 名含 "Overview" / 係該章首 §X.1 子節);
-3. 抽其概覽圖,**pin attach 到 lead citation**(繞過 `max_aux` nearest-first cap,但仍 dedup against 既有),令 document-order 排序把佢排第一。
+## 2. Scope — 兩個 goal,一套機制覆蓋(DECISION PENDING)
 
-**Files**:
-- 新函式(pure,no IO)於 `backend/generation/citation_image_neighbors.py`(或新 `chapter_overview_pin.py`)；
-- wire 入 `backend/generation/synthesizer.py` citation 組裝路徑(`expand_citations` 之後);
-- settings flag gate(`chapter_overview_pin_enabled`,default **off** 待驗);
-- 可選 per-KB override(對齊 ADR-0040 per-KB tunable config 方向)。
+> **Goal A(做到足)**:補齊該程序章節(如 GL03 §3.1.x)嘅**所有相關步驟圖** + 概覽圖,入候選池(顯示量受 per-KB cap=20 bound)。
+> **Goal B(概覽 lead)**:章節 §X.1 Overview 概覽/流程圖**排最前**。
+> **關鍵 insight**:Goal A 嘅機制(section-aware 同章節 attach)順帶解 Goal B —— 一旦概覽圖被 attach,前端既有 document-order 排序(§3.1.1 < §3.1.3)**自動**令其 lead。所以「補齊」+「lead」可一套機制達成。
+> **H4 硬邊界**:全程只用 section / 文字信號,**嚴禁 image embedding / multimodal**(Tier 2 禁)。
 
-**Pros**:explicit / 可預測;document-order 自動 lead;**對冇 Overview 子節嘅章節零副作用**;bypass-cap 確保概覽圖必出;**frontend 零改動**(C10 不動)。
-**Cons**:新 code 較多;需「Overview section 偵測」heuristic(section 名 match);需「主導章節」規則(citations 跨章時)。
+### Approach 1 — Per-KB 完整性 config(推薦;最少新 code)
 
-### Option B — Config 微調(現有機制 knobs)
+**機制**:為 drive-images-1 開啟 per-KB 完整性 knobs(ADR-0040 tunable,**runtime config,零 re-index**):
+1. `enable_citation_neighbour_images=true` + `citation_neighbour_section_path_prefix_depth=1`(同章節 attach,繞 window 距離)+ `citation_neighbour_max_aux_images` 調大(建議 ≈ display cap,如 20)→ 把該章**全部** §3.1.x 圖(含 §3.1.1 概覽)attach 入 citations;
+2.(可選,for 文字完整性)`enable_parent_doc_retrieval=true` + `enable_citation_post_hoc_expansion=true` + `citation_expansion_section_path_prefix_depth=1` + `citation_expansion_max_aux` 調大 —— 即 memory `[[project_chat_demo_rag_quality_followups]]` #1 跨文件 eval 已 PASS 嘅完整性組合;
+3. 前端 dedup + document-order + cap=20 → 概覽圖 lead + 步驟圖按文件次序補齊,超 20 入 Image Library。
 
-**機制**:開 `section_path_prefix_depth=1`(`attach_neighbour_images` + `citation_expansion`)+ 改 `_find_section_neighbour_images` nearest-first ordering 令 **Overview-section 候選優先於距離** + 調大 `max_aux`。
+**Files**:主要 = per-KB config patch(drive-images-1)+ 可能微調 `_find_section_neighbour_images` 嘅 cap 行為;**無 / 極少新 code**。
+**Pros**:用現成已驗證機制;一套解兩 goal;per-KB 隔離(唔影響其他 KB)。
+**Cons**:depth=1 + 大 max_aux 有**圖洪水**傾向(靠 cap=20 bound + 必須跨文件 eval);overview-lead 靠「概覽圖入到候選池 + document-order」**間接**達成 —— 若某 query 概覽 chunk 距離極遠 + max_aux 不足,理論上仍可能漏(由 Approach 2 補強)。
 
-**Files**:
-- `backend/api/server.py` / settings(`citation_neighbour_section_path_prefix_depth` + `citation_expansion_section_path_prefix_depth` + `max_aux`)；
-- `backend/generation/citation_image_neighbors.py` `_find_section_neighbour_images` ordering tweak(Overview-section 置頂)。
+### Approach 2 — Approach 1 + 明確章節概覽 pin(最 robust)
 
-**Pros**:新 code 最少(config + 細 ordering tweak)。
-**Cons**:**heuristic**;depth=1 會 pull 全章節 sibling 圖(**圖洪水** risk → `max_aux` 要調 + 需與 CH-009 OD-2 per-KB cap 互動驗證);調大 `max_aux` 影響**所有** citation / 章節;與 memory `[[project_chat_demo_rag_quality_followups]]` 完整性 tuning(`parent_doc` / `citation_expansion_max_aux=10` / `prefix_depth=1`)互動 → **必須跑跨文件 eval 確認無 regression**。
+**機制**:Approach 1 **加** 一個明確「章節概覽 pin」(原 spec Option A):偵測主導章節 → 明確攞該章 §X.1 Overview 圖 → pin attach 到 lead citation(繞過 max_aux cap),**保證**概覽圖 lead,即使日後 cap 收窄 / max_aux 不足。
 
-### 對比表
+**Files**:Approach 1 config + 新 pure function(`chapter_overview_pin`,no IO)於 `citation_image_neighbors.py` + wire `synthesizer.py` + settings/per-KB flag gate(default off)。
+**Pros**:overview-lead **保證**(唔靠距離 / cap 運氣);完整性 + lead 兩者都 explicit。
+**Cons**:新 code 較多;需「Overview section 偵測」+「主導章節」heuristic。
 
-| 維度 | Option A (pin) | Option B (config) |
+### 對比
+
+| 維度 | Approach 1(config 完整性)| Approach 2(config + pin)|
 |---|---|---|
-| 新 code 量 | 中(新函式 + wire)| 細(config + ordering tweak)|
-| 可預測性 | 高(explicit 偵測 + pin)| 中(heuristic,受 cap/距離影響)|
-| 副作用面 | 窄(只影響有 Overview 子節嘅章節 lead citation)| 闊(改全域 neighbour-attach 行為)|
-| 圖洪水風險 | 低(只 pin Overview 圖)| 中-高(depth=1 全章節 sibling)|
-| Frontend 改動 | 無 | 無 |
-| Regression 驗證需求 | 單元 + GL live | 單元 + GL live + **跨文件 30-query eval** |
-| Rollback | flag off | config 還原 |
+| 新 code | 無 / 極少 | 中(pin function + wire)|
+| 補齊步驟圖(Goal A)| ✅ section-aware attach | ✅ 同 1 |
+| 概覽 lead(Goal B)| 間接(document-order;靠概覽入池)| ✅ **保證**(explicit pin)|
+| 圖洪水風險 | 中(cap bound + eval)| 中(同 1)|
+| Regression 驗證 | **跨文件 30-query eval 必須** | 同 1 + pin 單元 test |
+| Rollback | per-KB config 還原 | config 還原 + flag off |
 
 ## 3. Acceptance Criteria(draft — 待方案鎖定 finalize)
 
-- **AC1** — GL03 narrow-step query(如「confirm voucher transactions」)→ inline figure 1 = §3.1.1 概覽/流程圖(`60a8a6e9` 367×87 或 `cfe10a8d` 1167×565),lead 步驟截圖。
-- **AC2** — 冇 Overview 子節嘅章節 / 已 retrieve §3.1.1 嘅 query → 行為不變(無重複概覽圖,dedup holds;無 spurious 圖)。
-- **AC3** — citations 跨多章節時主導章節規則 deterministic(無亂 pin)。
-- **AC4** — **無 regression**:跨文件 30-query eval(per memory `[[project_chat_demo_rag_quality_followups]]` 既有 harness)recall / faithfulness flat;CH-009 decorative filter(OD-4)+ document-order + per-KB cap 不受影響。
-- **AC5** — backend pytest(generation)+ ruff + mypy 改檔 0 新 error。
-- **AC6** — pin 嘅概覽圖與 CH-009 OD-2 per-KB cap 互動明確(決定:pinned overview 是否計入 cap;建議**計入**但永遠排 cap 內最前)。
+- **AC1(Goal B)** — GL03 narrow-step query → inline figure 1 = §3.1.1 概覽/流程圖(`60a8a6e9` 或 `cfe10a8d`),lead 步驟圖。
+- **AC2(Goal A 補齊)** — GL03 query 候選池含該章**全部**相關步驟圖(§3.1.3/3.1.4/3.1.5)+ 概覽圖;顯示首 20(document-order),其餘入 Image Library;對比現況(只 ~11 張 §3.1.3)**明顯增加覆蓋**。
+- **AC3** — 無 Overview 子節 / 已 retrieve §3.1.1 嘅 query → 無重複(dedup holds)、無 spurious。
+- **AC4(無 regression — 必須)** — 跨文件 30-query eval(per memory 既有 harness)recall / faithfulness flat;p95 latency 增幅可接受(neighbour-attach 多 list_chunks fetch + 更多圖);CH-009 OD-4 decorative + document-order + cap 不受影響;其他 KB(per-KB null → 行為不變)。
+- **AC5** — pin(若 Approach 2)與 cap 互動明確:pinned 概覽計入 cap 但永遠排最前。
+- **AC6** — backend pytest(generation)+ ruff + mypy 改檔 0 新 error;若純 config(Approach 1)→ 加 config-resolution / attach test。
 
 ## 4. H1 / H4 / H7 flags
 
-- **H1** ✅:改 §3.6/§3.7 citation attach / expansion documented behavior → **需新 ADR(NNNN=0047)**。code GATED on Accept。
-- **H4** ✅:只用 section / 文字信號偵測 Overview chunk,**無 image embedding / multimodal**(Tier 2 禁區);ADR 明文記。
-- **H7** ✅(Option A frontend 零改動):概覽圖 lead 對齊 mockup「程序由概覽行先」嘅閱讀流程(同 CH-009 OD-3 revert 方向一致);Option B 亦 frontend 零改動。
+- **H1** ✅:開 §3.6/§3.7 attach / expansion documented behavior(即使 per-KB config)+ 確立完整性 recipe → **需 ADR-0047**。code/config GATED on Accept。
+- **H4** ✅:只用 section / 文字信號;**無 image embedding / multimodal**(Tier 2 禁);ADR 明文記。
+- **H7** ✅:frontend 零改動(Approach 1 純 backend config;Approach 2 pin 亦 backend);概覽 lead + 補齊對齊 mockup「程序由概覽行先 + 步驟齊全」閱讀流程。
 
 ## 5. Test plan
 
-- **單元**(pure function,no mock):
-  - Option A:Overview-section 偵測(section 名 match / §X.1 首節)+ 主導章節選擇(跨章 tie-break)+ pin attach + dedup + bypass-cap + 無 Overview 章節 no-op。
-  - Option B:`_find_section_neighbour_images` Overview-section 置頂 ordering + cap 行為。
-- **整合 / live**:`/query/stream` drive-images-1 GL narrow query → 概覽圖 lead(AC1)。
-- **跨文件 eval**(尤其 Option B):30-query harness → recall / faithfulness 無 regression(AC4)。
+- **單元**:
+  - Approach 1:per-KB config resolution(`effective_config`)+ `_find_section_neighbour_images` depth=1 / 大 max_aux 行為(同章節全 attach + dedup + cap)。
+  - Approach 2:額外 chapter-overview pin(Overview-section 偵測 + 主導章節 tie-break + pin + dedup + bypass-cap + 無 Overview 章 no-op)。
+- **整合 / live**:`/query/stream` drive-images-1 GL narrow query →(AC1)概覽 lead +(AC2)步驟圖覆蓋明顯增加。
+- **跨文件 eval(必須,AC4)**:30-query harness → recall / faithfulness flat + latency 增幅記錄;對照 memory `[[project_chat_demo_rag_quality_followups]]` #1 既有結果。
 
 ## 6. Risks
 
-- **R1**:「Overview section」偵測 heuristic —— section 命名可能係 "Overview" / "Business Process Flow" 各自獨立子節 / 中文。需 robust 偵測規則(spec 鎖定方案後 finalize)。
-- **R2**:主導章節 ambiguity(citations 跨章節)→ 需 deterministic tie-break(建議:出現最多 citations 嘅章;tie 取最前 document-order)。
-- **R3**:概覽章可能有多張圖(High Level Process 細橫圖 367×87 + Business Process Flow 大圖 1167×565)→ 決定 pin 邊張 / 全 pin(建議全 pin,document-order 內部排序)。
-- **R4**:Option B depth=1 圖洪水 + 與既有完整性 tuning 互動 → 必須跨文件 eval。
-- **R5**:pin bypass-cap 與 per-KB `max_images_per_answer`(CH-009 OD-2)互動(見 AC6)。
+- **R1 圖洪水**:depth=1 + 大 max_aux → 同章節大量圖;靠 cap=20 bound + document-order + 跨文件 eval 緩解。
+- **R2 latency**:更多 list_chunks fetch + 更多圖序列化 → p95 升;eval 量化,必要時調 max_aux。
+- **R3 Overview 偵測(Approach 2)**:section 命名("Overview" / "Business Process Flow" 各自子節 / 中文)→ robust 偵測規則待鎖定。
+- **R4 主導章節 ambiguity(Approach 2)**:citations 跨章 → deterministic tie-break(出現最多;tie 取最前 document-order)。
+- **R5 default flip vs per-KB**:本期只 drive-images-1 per-KB(隔離、可逆);全域 default flip 屬另一決定(memory 記「eval 背書但待決」),CH-010 **不**順手 flip 全域,除非用戶明示。
+- **R6 cap 互動**:concept「補齊」會撞 cap=20 上限 → 超出部分入 Image Library(可接受;概覽 + 程序開頭 lead,其餘可查)。
 
 ## 7. Changelog
 
 | Date | Change | Reason |
 |---|---|---|
-| 2026-06-08 | spec draft 建立 | CH-009 衍生:OD-4 修燈泡後,次序根因(章節概覽圖未 attach)獨立成 CH-010。用戶(Chris)揀「先寫 spec 詳細評估」兩方案 tradeoff,讀完再決定 Option A/B + 是否寫 ADR。**DECISION PENDING — 無 code** |
+| 2026-06-08 | spec draft 建立(原範圍:概覽圖 lead;Option A pin vs B config)| CH-009 衍生:OD-4 修燈泡後,次序根因(章節概覽圖未 attach)獨立成 CH-010 |
+| 2026-06-08 | **scope 擴大 → 概覽 lead + 步驟圖完整性(用戶「做到足」)**;重寫 §2 為 Approach 1(per-KB 完整性 config)vs 2(+ 明確 pin)| 用戶要求 CH-010 連「補齊缺失步驟圖」一齊做。grounding:drive-images-1 完整性 knobs 全 null(關)+ rerank_k=5 + cap=20 實測;memory 完整性組合已跨文件 eval PASS 未 flip。**DECISION PENDING — 無 code** |
