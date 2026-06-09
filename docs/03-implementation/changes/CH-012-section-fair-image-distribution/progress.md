@@ -2,7 +2,7 @@
 change_id: CH-012
 spec_ref: ./spec.md
 checklist_ref: ./checklist.md
-status: implementing     # implementing | closed
+status: closed     # implementing | closed
 ---
 
 # CH-012 — Progress
@@ -43,8 +43,25 @@ status: implementing     # implementing | closed
 
 ---
 
-## Closeout（填於 status=closed）
-_(待)_
+## Closeout — 2026-06-09
+
+**判決**:✅ DONE（用戶 live UI 確認 OK）
+
+- **交付**:`_find_section_neighbour_images` round-robin 跨 sub-section（ADR-0049）→ 解尾段 section 圖片餓死。主修一個搞掂,次修(cap section-fair)實測後判定唔需要。
+- **驗證鏈**:30 unit test 綠(4 新 + 26 production-preserve)→ /query 實測 §3.1.4:5 / §3.1.5:6（baseline 0）→ 用戶 live UI PASS。
+- **commit**:`cf94a63`（kickoff spec+ADR）+ `dcfc189`（impl+test）;ff-merge → main。
+- **Gap C / Platform P1 完成**:CH-011（C-1 doc_order 排序）+ CH-012（C-2 完整性 section-fair）= layer C 地基齊。platform design doc §7 P1 標 done。
+
+### Retro（教訓）
+- **數據驅動 scope 救咗一次盲改**:初步假設「cap budget 食重複圖」**錯**;/query 實測揭真因 = 兩重 front-loading cap 把圖全堆 §3.1.1 lead + max_aux 擠走尾段。先實測再寫 spec(Karpathy §1.1)避免修錯層。
+- **次修按實測判定唔做**:F2(cap section-fair)spec 標 conditional,主修 verify PASS 後判定多餘 → 唔做投機改動(§1.2)。
+- **production-preserve 靠單-group 退化**:round-robin 喺單 sub-section 退化做 sequential = bit-identical,26 既有 test 零改動全綠。
+
+### Next（platform 後續）
+- **Gap A / P2**（per-doc 配置平台 + UI）= 用戶 vision 核心,未起。
+- **Gap B / P3**（query 意圖 gate）必要性未證實,最低優先。
+
+**Spec status → done。**
 
 ---
 

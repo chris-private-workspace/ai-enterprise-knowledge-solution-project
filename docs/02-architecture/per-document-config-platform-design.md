@@ -15,7 +15,7 @@
    - **Gap A — per-DOCUMENT 粒度**:配置現時 resolve 到 per-KB,vision 要 per-doc。
    - **Gap B — query 意圖 gate**:未建(且 Fork B 必要性未獲證實,優先級最低)。
    - **Gap C — per-image 位置 + 相關性**:`doc_order` ingest 已有但**冇 propagate 到 `ImageRef`** → 圖片 section 內排唔到(用戶 Q3)+ 完整性受 nearest-first + caps 限(用戶 Q1)。**呢個係用戶即時痛點 + layer C 地基,而且最輕**。
-3. **推薦 phasing**:**C → A →(B 視乎需要)**。Gap C 一個 phase 同時打 vision 地基 + 解即時圖片問題,且資料 ingest 已有,改動最 surgical。
+3. **推薦 phasing**:**C → A →(B 視乎需要)**。Gap C 一個 phase 同時打 vision 地基 + 解即時圖片問題,且資料 ingest 已有,改動最 surgical。**【進度 2026-06-09:Gap C ✅ 完成 — C-1 = CH-011/ADR-0048,C-2 = CH-012/ADR-0049,均 merged + 用戶 live PASS。下一步 = Gap A / P2(per-doc 配置平台 + UI,vision 核心)。】**
 4. **3 條 H4 紅線**:per-doc config ≠ multi-tenancy(Tier 1 OK);query gate 必須輕量啟發式(唔可以 multi-agent);layer C 必須文字/section/`doc_order` signal(**唔可以** image embedding = Tier 2 multi-modal retrieval)。
 
 ---
@@ -228,7 +228,7 @@ GL03 程序問題應出 ~35 圖(§3.1.1 High Level Process → §3.1.5 Confirm),
 
 | Phase | 範圍 | 交付 | re-index | ADR |
 |---|---|---|---|---|
-| **P1 — Gap C(推薦先行)** | C-1 位置 primitive(`doc_order` propagate + 排序)+ C-2 document-span 揀圖 | 解 Q1/Q3 圖片順序+完整性;打 layer C 地基 | **是** | ADR(`ImageRef` schema + 揀圖模式)|
+| **P1 — Gap C ✅ DONE(2026-06-09)** | C-1 位置 primitive(`doc_order` propagate + 排序）= **CH-011 / ADR-0048**(merged）+ C-2 完整性 section-fair 分配 = **CH-012 / ADR-0049**(merged;實測尾段 §3.1.4/3.1.5 由 0 圖 → 5/6 圖,用戶 live PASS） | ✅ 解 Q1（完整性）/ Q3（順序）;layer C 地基齊 | C-1 是 / C-2 否 | ADR-0048(doc_order + document-span）+ ADR-0049(section-fair 分配）|
 | **P2 — Gap A** | per-doc profile storage + EffectiveConfig per-DOC layer + config-test doc scope + Document config UI | per-document 度身訂做配置 | — | ADR(per-doc config scope + 多-doc resolve 策略)|
 | **P3 — Gap B(視乎需要)** | query 意圖 heuristic gate | 列舉型 query completeness 傾向 | — | ADR(僅當實測證實必要;否則 drop)|
 

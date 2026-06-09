@@ -1,7 +1,7 @@
 ---
 change_id: CH-012
 spec_ref: ./spec.md
-status: implementing     # planning | implementing | verifying | done
+status: done     # planning | implementing | verifying | done
 last_updated: 2026-06-09
 ---
 
@@ -26,9 +26,9 @@ last_updated: 2026-06-09
 ## Verify
 - [x] V1 — pytest **30 passed**（test_citation_image_neighbors）;ruff format clean;ruff check 只 2 pre-existing（B905 L83 `attach_neighbour_images` zip + I001 import block,皆 CH-011 已記錄保留,非我新增）；我嘅新 function + tests 零新 error
 - [x] V2 — /query drive-images-1 GL03 **PASS**（AC1）:20 distinct 圖 by section = §3.1.1:2 / §3.1.3:7 / **§3.1.4:5** / **§3.1.5:6**（baseline 修前 §3.1.4+§3.1.5 = 0）。尾段 Approve/Reject + Post 唔再零圖
-- [ ] V3 — 用戶 live 驗(chat UI hard refresh + 問 GL03,確認 Approve/Reject + Post 步驟有圖 + 順序 + 文字格式仍 OK）
-- [ ] V4 —(可選 AC6）BUG-037 `--kb-id drive-images-1` eval 順手量化(視 Azure key + load）
+- [x] V3 — 用戶 live 驗 **PASS**（2026-06-09「確認 OK」— chat UI hard refresh + 新 GL03 query;Approve/Reject + Post 步驟有圖 + 順序 + 文字格式仍 OK）
+- [ ] 🚧 V4 —（可選 AC6）BUG-037 `--kb-id drive-images-1` eval 量化：**deferred** — 視 Azure key + Free-tier semantic + machine load;live UI 已 PASS,正式 eval 留下次跑
 
 ## Closeout
-- [ ] C1 — spec status → done;progress retro
-- [ ] C2 — commit + ff-merge(用戶確認）;platform design doc §3.3 C-2 標 done
+- [x] C1 — spec status → done;progress retro
+- [x] C2 — commit `dcfc189` + ff-merge → main（用戶確認）;platform design doc §7 P1/Gap C 標 done

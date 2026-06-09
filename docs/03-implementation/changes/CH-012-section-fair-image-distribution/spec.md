@@ -1,7 +1,7 @@
 ---
 change_id: CH-012
 title: "Section-fair 圖片分配 — 解決程序尾段 section 圖片餓死(Gap C C-2 完整性)"
-status: approved        # proposed | approved | implementing | done
+status: done        # proposed | approved | implementing | done
 created: 2026-06-09
 author: "Claude (AI)"
 approver: "Chris (approved 2026-06-09 — 方向 A section-fair)"
