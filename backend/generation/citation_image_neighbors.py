@@ -214,20 +214,27 @@ def _find_section_neighbour_images(
     max_aux: int,
     section_path_prefix_depth: int,
 ) -> list[ImageRef]:
-    """BUG-027 — section-aware variant of `_find_neighbour_images`.
+    """BUG-027 / CH-011 / CH-012 — section-aware variant of `_find_neighbour_images`.
 
     Attaches images from chunks in the SAME section as the citation (matched by
     `section_path[:section_path_prefix_depth]`), ignoring chunk-index window
-    proximity — so ALL §8.* scenario figures surface under a §8 intro citation,
-    not only the two inside ±window. CH-011 / ADR-0048 — candidates are ordered by
-    DOCUMENT position (chunk_index ascending), NOT nearest-first distance, so the
-    attached figures span the section in reading order (procedure start → end) and
-    a truncating cap keeps the EARLIER (procedure-start) figures rather than the
-    ones clustered around the lead. The frontend's CH-011 `doc_order` sort governs
-    the final render order; this only governs WHICH figures survive `max_aux`.
-    Images are deduped against the citation's own images + each other; capped at
-    max_aux. Returns [] when the citation's section_path is shorter than the
-    requested prefix depth (no stable section key to match on).
+    proximity — so a §3 intro citation surfaces figures across the whole procedure,
+    not only the two inside ±window.
+
+    CH-012 / ADR-0049 — section-FAIR distribution. Candidate figures are grouped by
+    the finer SUB-section (`section_path[:section_path_prefix_depth + 1]`, e.g.
+    §3.1.1 / §3.1.3 / §3.1.4 / §3.1.5) and the `max_aux` budget is taken ROUND-ROBIN
+    across those sub-sections (sub-sections ordered by document position; document
+    order within each). This stops the earliest sub-sections (§3.1.1-§3.1.3) from
+    saturating `max_aux` and starving the procedure's tail steps (Approve/Reject
+    §3.1.4, Post §3.1.5) — pre-CH-012, candidates were one document-ordered list
+    truncated at `max_aux`, leaving tail steps with zero figures. With no finer
+    sub-section to split on (single group), the round-robin degenerates to the prior
+    document-ordered take (bit-identical). Images are deduped against the citation's
+    own images + each other (first occurrence wins across sub-sections); capped at
+    max_aux. The frontend's CH-011 `doc_order` sort still governs the final render
+    order — this only governs WHICH figures survive `max_aux`. Returns [] when the
+    citation's section_path is shorter than the requested prefix depth.
 
     Pure function; no IO; testable in isolation without mocks.
     """
@@ -239,11 +246,14 @@ def _find_section_neighbour_images(
         img.checksum_sha256 for img in citation.embedded_images if img.checksum_sha256
     }
 
-    # CH-011 / ADR-0048 — collect same-section candidates keyed by DOCUMENT position
-    # (chunk_index) so the cap takes the procedure in reading order (start → end),
-    # not the figures nearest the lead. A truncating cap then keeps the earlier
-    # document positions; the frontend doc_order sort fixes the final render order.
-    candidates: list[tuple[int, dict]] = []
+    # CH-012 / ADR-0049 — collect same-section candidates, grouped by the finer
+    # SUB-section (one level deeper than the match depth) so the max_aux budget can
+    # spread round-robin across sub-sections instead of front-loading the earliest.
+    # Sub-section groups are ordered by their first document position; chunks within
+    # a group stay in document order.
+    sub_depth = section_path_prefix_depth + 1
+    groups: dict[tuple[str, ...], list[tuple[int, dict]]] = {}
+    group_first_idx: dict[tuple[str, ...], int] = {}
     for chunk in doc_chunks:
         chunk_idx_raw = chunk.get("chunk_index", 0)
         try:
@@ -257,24 +267,50 @@ def _find_section_neighbour_images(
             continue
         if list(cand_section_path[:section_path_prefix_depth]) != cited_prefix:
             continue
-        candidates.append((chunk_idx, chunk))
+        sub_key = tuple(str(p) for p in cand_section_path[:sub_depth])
+        groups.setdefault(sub_key, []).append((chunk_idx, chunk))
+        prev = group_first_idx.get(sub_key)
+        if prev is None or chunk_idx < prev:
+            group_first_idx[sub_key] = chunk_idx
 
-    candidates.sort(key=lambda pair: pair[0])
+    if not groups:
+        return []
 
+    # Per sub-section, extract candidate images in document order (own-dedup only;
+    # cross-group dedup happens during the round-robin via `seen`).
+    ordered_keys = sorted(groups, key=lambda k: group_first_idx[k])
+    per_group: list[list[ImageRef]] = []
+    for key in ordered_keys:
+        imgs: list[ImageRef] = []
+        for _idx, chunk in sorted(groups[key], key=lambda pair: pair[0]):
+            for img in parse_embedded_images(str(chunk.get("embedded_images_json", "") or "")):
+                if not img.checksum_sha256 or img.checksum_sha256 in own_checksums:
+                    continue
+                imgs.append(img)
+        per_group.append(imgs)
+
+    # Round-robin across sub-sections: one image per group per pass, in document
+    # order of sub-sections, until max_aux or all groups exhausted. `seen` enforces
+    # global dedup (a figure shared across sub-sections counts once; first wins).
     new_images: list[ImageRef] = []
-    for _chunk_idx, chunk in candidates:
-        images = parse_embedded_images(
-            str(chunk.get("embedded_images_json", "") or ""),
-        )
-        for img in images:
-            if not img.checksum_sha256:
-                continue
-            if img.checksum_sha256 in own_checksums:
-                continue
-            own_checksums.add(img.checksum_sha256)
-            new_images.append(img)
+    seen: set[str] = set(own_checksums)
+    cursors = [0] * len(per_group)
+    progressed = True
+    while len(new_images) < max_aux and progressed:
+        progressed = False
+        for gi, imgs in enumerate(per_group):
             if len(new_images) >= max_aux:
-                return new_images
+                break
+            i = cursors[gi]
+            while i < len(imgs) and imgs[i].checksum_sha256 in seen:
+                i += 1
+            cursors[gi] = i
+            if i < len(imgs):
+                img = imgs[i]
+                seen.add(img.checksum_sha256)
+                new_images.append(img)
+                cursors[gi] = i + 1
+                progressed = True
 
     return new_images
 

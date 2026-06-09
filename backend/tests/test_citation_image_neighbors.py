@@ -525,3 +525,84 @@ async def test_attach_section_mode_surfaces_all_section_figures() -> None:
         section_path_prefix_depth=1,
     )
     assert [img.checksum_sha256 for img in result[0].embedded_images] == ["A", "C", "E"]
+
+
+# ---------- CH-012 / ADR-0049 section-fair round-robin distribution ----------
+
+
+def test_section_mode_round_robin_spreads_budget_across_subsections() -> None:
+    """CH-012 / ADR-0049 — the max_aux budget is taken ROUND-ROBIN across the finer
+    sub-sections (section_path[:depth+1]) so each step gets representation, instead
+    of the earliest sub-section saturating the cap. With 4 sub-sections and
+    max_aux=4, one figure from EACH sub-section is taken (not 4 from the first)."""
+    intro = _citation(chunk_index=20, section_path=["3 GL03"])
+    g111 = ["3 GL03", "3.1.1 Overview"]
+    g113 = ["3 GL03", "3.1.3 Create"]
+    g114 = ["3 GL03", "3.1.4 Approve"]
+    g115 = ["3 GL03", "3.1.5 Post"]
+    doc_chunks = [
+        _section_chunk(21, g111, images=[_img_dict("a1"), _img_dict("a2")]),
+        _section_chunk(25, g113, images=[_img_dict("b1"), _img_dict("b2")]),
+        _section_chunk(31, g114, images=[_img_dict("c1")]),
+        _section_chunk(34, g115, images=[_img_dict("d1")]),
+    ]
+    result = _find_neighbour_images(
+        intro, doc_chunks, max_aux=4, window=3, section_path_prefix_depth=1
+    )
+    # pass 1 = one figure from each sub-section, sub-sections in document order
+    assert [img.checksum_sha256 for img in result] == ["a1", "b1", "c1", "d1"]
+
+
+def test_section_mode_round_robin_tail_section_not_starved_bug() -> None:
+    """CH-012 — the GL03 bug: the §3.1.1 sub-section (many figures) saturated
+    max_aux and starved the procedure tail (§3.1.5 Post got zero figures).
+    Round-robin guarantees the tail sub-section a slot within the SAME budget."""
+    intro = _citation(chunk_index=20, section_path=["3 GL03"])
+    head = ["3 GL03", "3.1.1 Overview"]
+    tail = ["3 GL03", "3.1.5 Post"]
+    doc_chunks = [
+        _section_chunk(21, head, images=[_img_dict(f"h{i}") for i in range(10)]),  # 10 head
+        _section_chunk(34, tail, images=[_img_dict("post-fig")]),  # 1 tail
+    ]
+    result = _find_neighbour_images(
+        intro, doc_chunks, max_aux=3, window=3, section_path_prefix_depth=1
+    )
+    checksums = [img.checksum_sha256 for img in result]
+    # round-robin: h0, post-fig, h1 — the tail figure SURVIVES the cap (pre-fix it
+    # would be h0,h1,h2 and post-fig starved).
+    assert "post-fig" in checksums
+    assert len(result) == 3
+
+
+def test_section_mode_round_robin_within_group_keeps_document_order() -> None:
+    """CH-012 — within a single sub-section the round-robin degenerates to the
+    prior document-ordered take (production-preserve for single-group sections)."""
+    intro = _citation(chunk_index=20, section_path=["3 GL03"])
+    one = ["3 GL03", "3.1.1 Overview"]
+    doc_chunks = [
+        _section_chunk(23, one, images=[_img_dict("third")]),
+        _section_chunk(21, one, images=[_img_dict("first")]),
+        _section_chunk(22, one, images=[_img_dict("second")]),
+    ]
+    result = _find_neighbour_images(
+        intro, doc_chunks, max_aux=8, window=3, section_path_prefix_depth=1
+    )
+    assert [img.checksum_sha256 for img in result] == ["first", "second", "third"]
+
+
+def test_section_mode_round_robin_dedups_shared_figure_first_wins() -> None:
+    """CH-012 — a figure that appears in two sub-sections counts once (first
+    occurrence in round-robin order wins); the cap is not wasted on the dup."""
+    intro = _citation(chunk_index=20, section_path=["3 GL03"])
+    g1 = ["3 GL03", "3.1.1 Overview"]
+    g2 = ["3 GL03", "3.1.5 Post"]
+    doc_chunks = [
+        _section_chunk(21, g1, images=[_img_dict("shared"), _img_dict("a-only")]),
+        _section_chunk(34, g2, images=[_img_dict("shared"), _img_dict("b-only")]),
+    ]
+    result = _find_neighbour_images(
+        intro, doc_chunks, max_aux=8, window=3, section_path_prefix_depth=1
+    )
+    checksums = [img.checksum_sha256 for img in result]
+    assert checksums.count("shared") == 1  # deduped across sub-sections
+    assert set(checksums) == {"shared", "a-only", "b-only"}
