@@ -1,7 +1,7 @@
 ---
 phase: W57
 name: per-doc-config-backend
-status: active        # draft | active | closed
+status: closed        # draft | active | closed
 created: 2026-06-09
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "Gap A / P2a (per-document config platform — backend layer)"

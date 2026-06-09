@@ -2,7 +2,7 @@
 phase: W57
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active     # active | closed
+status: closed     # active | closed
 ---
 
 # W57 — Progress
@@ -52,8 +52,32 @@ status: active     # active | closed
 | Hash | Subject |
 |---|---|
 | `2d98de1` | docs(planning): W57 kickoff — plan + ADR-0050 |
-| _(pending)_ | feat(generation): W57 per-doc config backend layer(F1-F6) |
+| `e1713b2` | feat(generation): W57 per-doc config backend layer(F1-F6) |
+| _(closeout)_ | docs(planning): W57 closeout + platform design P2a done |
 
 ---
 
-**End of W57 progress(Day 1)**
+## Closeout — 2026-06-09
+
+**判決**:✅ DONE(用戶揀「ff-merge 落 main + 收尾」)
+
+- **交付**:per-document 配置後端層 —— `DocConfig` schema + `DocConfigStore`(新表 `document_configs`)+ `EffectiveConfig` per-DOC layer + dominant-doc pipeline 注入(`/query` + `/query/stream`)+ CRUD API + config-test doc-scope。
+- **驗證鏈**:62 unit + 端到端 test 綠(含 dominant-doc → store → re-resolve → synth 全鏈)→ ruff/mypy clean → 用戶 review PASS。
+- **commit**:`2d98de1`(kickoff)+ `e1713b2`(impl)+ closeout;ff-merge → main。
+- **Platform P2a 完成**:Gap A 後端地基齊;`per-document-config-platform-design.md` §7 P2a 標 done、§0 TL;DR phasing 更新。
+
+### Retro(教訓)
+- **R6 recursive verification 救咗 wiring 設計**:寫 plan 前先 grep pipeline(`execute_query_pipeline` 收 already-resolved effective,無 kb_config/per_query)→ 揭「雞同蛋」(檢索入口旋鈕喺引文未知前已消耗)+ overlay 需 route 層 close over resolution inputs → 用 callback 而非硬塞參數,單點注入 downstream 不變。
+- **dominant-doc + post-retrieval 旋鈕 = 對的 cut**:避開 retrieval 二次 resolve 嘅重構,而單文件 query(主用例)效果 = 全 per-doc(Karpathy §1.2 simplicity)。
+- **新 file typed 過鄰居**:`_connect` 用 `DictRow` typed → 零新 mypy error;但**不** retro-fix postgres_backend.py 同 pattern 缺口(非我 mess,§1.3 surgical)。
+- **H7 守住**:零 frontend 改動,UI 缺口明確留 P2b 待 mockup 決定 —— 唔自行 approximate。
+
+### Next(platform 後續)
+- **P2b / Gap A UI**(per-doc 配置面 + per-doc config-test,消費 W57 CRUD API)= 用戶已揀下一步;**H7 缺口** doc-detail mockup 無 config 面 → kickoff 先決定 mockup 處理。
+- **Gap B / P3**(query 意圖 gate)必要性未證實,最低優先。
+
+**Spec status → closed。**
+
+---
+
+**End of W57 progress**

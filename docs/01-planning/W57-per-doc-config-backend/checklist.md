@@ -1,7 +1,7 @@
 ---
 phase: W57
 plan_ref: ./plan.md
-status: active     # active | closed
+status: closed     # active | closed
 last_updated: 2026-06-09
 ---
 
@@ -47,9 +47,9 @@ last_updated: 2026-06-09
 
 ## Verify
 - [x] V1 — pytest **62 passed**(W57 + regression);ruff format clean(12 檔);ruff check 專案預設**全綠**(server.py 30 E402 = pre-existing truststore pattern,我加 import 已 noqa);mypy `--explicit-package-bases` 新 file **零新 error**(剩 7 全在 pre-existing postgres_backend.py)
-- [ ] V2 —(可選)live /query drive-images-1 + per-doc config upsert,確認 dominant-doc 解析生效
-- [ ] V3 — 用戶 review
+- [ ] 🚧 V2 —(可選 AC6-類)live /query drive-images-1 + per-doc config upsert,確認 dominant-doc 解析生效:**deferred** — 視 Azure key + Free-tier semantic + 機器 load;單元 + 端到端 TestClient overlay test 已覆蓋全鏈,正式 live 留下次(同 CH-012 V4 precedent)
+- [x] V3 — 用戶 review:**PASS**(2026-06-09 — 用戶 AskUserQuestion 揀「ff-merge 落 main + 收尾」)
 
 ## Closeout
-- [ ] C1 — plan/checklist/progress status → closed;progress retro
-- [ ] C2 — ff-merge → main(用戶確認);platform design doc §7 P2 標 done + §0 TL;DR phasing 更新
+- [x] C1 — plan/checklist/progress status → closed;progress retro
+- [x] C2 — ff-merge → main(用戶確認);platform design doc §7 P2a 標 done + §0 TL;DR phasing 更新
