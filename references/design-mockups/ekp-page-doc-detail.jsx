@@ -8,6 +8,9 @@ function PageDocDetail({ kbId, docId, onNavigate }) {
   const doc = window.MOCK_DOC_DETAIL;
   const allImages = window.MOCK_IMAGES.filter((img) => img.used_in_docs.includes(doc.doc_id));
   const [selectedChunk, setSelectedChunk] = useState(0);
+  // W58 / ADR-0051 — doc-detail tabs (design-stage expansion: read-only inspector
+  // + per-document config surface consuming the ADR-0050 per-doc CRUD API).
+  const [tab, setTab] = useState("inspector");
 
   const sampleChunks = [
     { idx: 84, title: "4.2 Multi-Currency Setup — Exchange Rate Mapping", section_path: ["GL Setup", "Posting Definitions", "Multi-Currency"], tokens: 312, has_image: true, image_idx: 0, low_value: false, preview: "When configuring posting definitions for multi-currency journals, the **exchange rate type** field must align with the legal entity's accounting currency. Failure to map this field triggers a posting validation error at month-end close." },
@@ -57,6 +60,22 @@ function PageDocDetail({ kbId, docId, onNavigate }) {
         </div>
       </div>
 
+      {/* W58 / ADR-0051 — tab strip: read-only inspector + per-doc config surface */}
+      <div className="tabs">
+        {[
+          { id: "inspector", label: "Chunk inspector", icon: IcLayers },
+          { id: "config", label: "Per-doc 配置", icon: IcSettings },
+        ].map((t) => {
+          const Ic = t.icon;
+          return (
+            <div key={t.id} className="tab" data-active={tab === t.id} onClick={() => setTab(t.id)}>
+              <Ic size={14} /> {t.label}
+            </div>
+          );
+        })}
+      </div>
+
+      {tab === "inspector" && (<>
       {/* Pipeline stages strip */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-body" style={{ padding: 0 }}>
@@ -205,6 +224,9 @@ function PageDocDetail({ kbId, docId, onNavigate }) {
           <ChunkInspector chunk={chunk} kb={kb} image={chunkImage} />
         </div>
       </div>
+      </>)}
+
+      {tab === "config" && <DocConfigTab kb={kb} doc={doc} />}
     </div>
   );
 }
@@ -377,6 +399,276 @@ function ChunkInspector({ chunk, kb, image }) {
         </div>
       </div>
     </>
+  );
+}
+
+// ── W58 / ADR-0051 — Per-document config tab ────────────────────────────────
+// Consumes the ADR-0050 per-doc CRUD API. Mirrors the KB TabKbSettings tuning
+// pattern (ekp-page-kb.jsx), but: per-DOCUMENT scope, post-retrieval knobs ONLY
+// (retrieval-entry knobs stay per-KB per ADR-0050), and 繼承 KB (not 繼承全域)
+// inherit semantics.
+function DocConfigTab({ kb, doc }) {
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      {/* scope banner */}
+      <div className="banner banner-info">
+        <IcSettings size={15} style={{ color: "oklch(var(--info))" }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13 }}>
+            <b>此文件度身訂做配置</b> — 留空 = 繼承 KB(<span className="mono">{kb.name}</span>)再全域。
+          </div>
+          <div className="text-xs muted" style={{ marginTop: 2 }}>
+            解析優先:per-query &gt; <b>per-DOC(此文件)</b> &gt; per-KB &gt; 全域 · ADR-0050 ·
+            <span className="mono"> PUT /kb/{kb.kb_id}/docs/{doc.doc_id}/config</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Per-doc advanced tuning — post-retrieval knobs only */}
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <h3 className="card-title">Per-document 配置</h3>
+            <div className="card-desc">
+              覆寫此文件嘅<b>合成 + 引用後處理</b>行為。未覆寫嘅旋鈕沿用 KB 預設。
+              全部 runtime — <b>唔需要重新索引</b>。
+            </div>
+          </div>
+          <span className="badge badge-info" style={{ fontSize: 9.5 }}><IcEdit size={10} /> Runtime · no re-index</span>
+        </div>
+        <div className="card-body" style={{ display: "grid", gap: 12 }}>
+          {/* answer_detail — synthesis (dominant doc) */}
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label className="label" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              答案詳細度(answer_detail)
+              <span className="badge badge-muted" style={{ fontSize: 9, fontWeight: 500 }}>繼承 KB</span>
+            </label>
+            <div className="seg" style={{ width: "100%", maxWidth: 380 }}>
+              {[
+                { v: "inherit", l: "繼承 KB" },
+                { v: "concise", l: "concise" },
+                { v: "detailed", l: "detailed" },
+              ].map((o) => (
+                <button key={o.v} className="seg-btn" data-active={o.v === "inherit"} style={{ flex: 1, padding: "5px 8px", fontSize: 11.5 }}>{o.l}</button>
+              ))}
+            </div>
+            <div className="hint">合成詳細度。程序手冊文件可設 <span className="mono">detailed</span>(逐步列盡);繼承 = 用 KB 設定。</div>
+          </div>
+
+          <DocTuneGroup icon={IcLink} title="Citation post-hoc expansion" enabled enabledInherit
+            desc="答案生成後,為每個引用補充鄰近輔助 chunk,提升完整性。">
+            <DocTuneKnob label="Max aux / citation" inherit kbValue="10" />
+            <DocTuneKnob label="Expansion window" inherit kbValue="1" />
+            <DocTuneKnob label="Section path prefix depth" inherit kbValue="1" />
+          </DocTuneGroup>
+
+          <DocTuneGroup icon={IcEye} title="Citation neighbour images + 圖片上限" enabled enabledInherit
+            desc="控制引用鄰近圖片帶入,同每個答案最多顯示幾多張圖(圖洪水收斂)。">
+            <DocTuneKnob label="Neighbour max aux images" inherit kbValue="18" />
+            <DocTuneKnob label="Neighbour prefix depth" inherit kbValue="1" />
+            <DocTuneKnob label="Max images / answer" inherit kbValue="20" />
+            <DocSwitchKnob label="章節概覽圖置頂(overview pin)" inherit kbValue="開" />
+          </DocTuneGroup>
+        </div>
+        <div className="card-footer">
+          <div className="text-xs muted">配置 scope:per-query &gt; <b>per-DOC(此文件)</b> &gt; per-KB &gt; 全域 · ADR-0050</div>
+          <div className="row">
+            <button className="btn btn-secondary btn-sm"><IcRefresh size={13} /> 還原全部至 KB</button>
+            <button className="btn btn-primary btn-sm">儲存到此文件</button>
+          </div>
+        </div>
+      </div>
+
+      {/* retrieval-entry knobs — KB-level only explainer (per ADR-0050) */}
+      <div className="card">
+        <div className="card-body" style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: 14 }}>
+          <IcShield size={15} style={{ color: "oklch(var(--warning))", flexShrink: 0, marginTop: 2 }} />
+          <div className="text-xs" style={{ lineHeight: 1.6, flex: 1 }}>
+            <b>檢索入口旋鈕</b>(default_top_k / default_rerank_k / parent-document retrieval)
+            <b>喺 KB 設定</b>,唔可以 per-document 覆寫 —— 呢類旋鈕喺「邊個文件被引用」確定<b>之前</b>
+            已驅動檢索(ADR-0050)。
+            <button className="btn btn-ghost btn-xs" style={{ marginLeft: 6 }}>去 KB 設定 →</button>
+          </div>
+        </div>
+      </div>
+
+      {/* per-doc config-test (scoped to this doc) */}
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <h3 className="card-title">
+              <IcZap size={14} style={{ verticalAlign: "-2px", marginRight: 6, color: "oklch(var(--accent))" }} />
+              試跑(此文件 scope)
+            </h3>
+            <div className="card-desc">
+              用此文件嘅配置喺真 pipeline 試跑(主導 doc = 此文件)。
+              <span className="mono"> POST /kb/{kb.kb_id}/config-test · doc_id={doc.doc_id}</span>
+            </div>
+          </div>
+        </div>
+        <div className="card-body">
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap", marginBottom: 16 }}>
+            <div className="field" style={{ flex: 1, minWidth: 240, marginBottom: 0 }}>
+              <label className="label">測試問題</label>
+              <input className="input" defaultValue="How do I process and confirm journal voucher transactions?" />
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label className="label">重跑次數</label>
+              <div className="seg">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button key={n} className="seg-btn" data-active={n === 3} style={{ minWidth: 34 }}>{n}</button>
+                ))}
+              </div>
+            </div>
+            <label className="row" style={{ gap: 6, fontSize: 12.5, alignItems: "center", cursor: "pointer", paddingBottom: 8 }}>
+              <span className="switch" data-on /> 同繼承 KB 對照(A/B)
+            </label>
+            <button className="btn btn-primary"><IcZap size={14} /> 試跑</button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <DocTestResultCard label="此文件配置(DRAFT)" accent faith="0.82" faithBand="0.10" runs={3}
+              cit="13" citBand="0" sec="4" secBand="0" imgRaw="20" imgDedup="15" imgBand="0" lat="5.2s" chars="1620" refused="否" />
+            <DocTestResultCard label="繼承 KB(SAVED)" faith="0.84" faithBand="0.08" runs={3}
+              cit="13" citBand="0" sec="2" secBand="0" imgRaw="20" imgDedup="15" imgBand="0" lat="5.1s" chars="1580" refused="否" />
+          </div>
+          <div className="hint" style={{ marginTop: 10, display: "flex", gap: 6, alignItems: "flex-start" }}>
+            <IcAlert size={13} style={{ color: "oklch(var(--warning))", marginTop: 1, flexShrink: 0 }} />
+            <span>忠實度對長 / 全面答案有 <b style={{ color: "oklch(var(--warning))" }}>length bias</b> —— 低分若配合高 <b>涵蓋章節數</b> / 字數,多為 bias 而非 config 差,宜一齊判讀。</span>
+          </div>
+        </div>
+        <div className="card-footer">
+          <div className="text-xs muted">N 次重跑取平均 · band = max − min · 此文件 scope 注入 dominant-doc 解析</div>
+          <button className="btn btn-secondary btn-sm"><IcDownload size={13} /> 把草稿儲存到此文件</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── W58 per-doc tuning helpers (ADR-0051) — mirror KbTune* with 繼承 KB framing ──
+// A single numeric/text knob. inherit → placeholder shows the KB value + no value;
+// overridden → shows per-doc value + 「還原至 KB」affordance.
+function DocTuneKnob({ label, inherit, kbValue, value, suffix }) {
+  return (
+    <div className="field" style={{ marginBottom: 0 }}>
+      <label className="label" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        {label}
+        {inherit
+          ? <span className="badge badge-muted" style={{ fontSize: 9, fontWeight: 500 }}>繼承 KB</span>
+          : <span className="badge badge-success" style={{ fontSize: 9 }}><IcEdit size={9} /> 已覆寫</span>}
+      </label>
+      <input
+        className="input mono"
+        defaultValue={inherit ? "" : value}
+        placeholder={inherit ? `${kbValue}${suffix || ""}` : undefined}
+      />
+      <div className="hint" style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+        <span>KB 預設 <span className="mono">{kbValue}{suffix || ""}</span></span>
+        {!inherit && (
+          <span style={{ display: "inline-flex", gap: 3, alignItems: "center", cursor: "pointer", color: "oklch(var(--muted-foreground))" }}>
+            <IcRefresh size={10} /> 還原至 KB
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// A boolean toggle cell (for overview pin) — switch + 繼承 KB / 已覆寫 badge.
+function DocSwitchKnob({ label, inherit, kbValue }) {
+  return (
+    <div className="field" style={{ marginBottom: 0 }}>
+      <label className="label" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        {label}
+        {inherit
+          ? <span className="badge badge-muted" style={{ fontSize: 9, fontWeight: 500 }}>繼承 KB</span>
+          : <span className="badge badge-success" style={{ fontSize: 9 }}><IcEdit size={9} /> 已覆寫</span>}
+      </label>
+      <div className="row" style={{ gap: 8, alignItems: "center", paddingTop: 4 }}>
+        <span className="switch" data-on={!inherit} />
+        <span className="text-xs muted">{inherit ? "繼承" : "覆寫"}</span>
+      </div>
+      <div className="hint">KB 預設 <span className="mono">{kbValue}</span></div>
+    </div>
+  );
+}
+
+// A toggle-led group (enable_* switch + title/desc + 繼承/覆寫 badge) with a
+// collapsible 進階 numeric grid. Mirrors KbTuneGroup (§4.3 OptionRow language).
+function DocTuneGroup({ icon, title, desc, enabled, enabledInherit, children }) {
+  const [open, setOpen] = useState(false);
+  const Ic = icon;
+  return (
+    <div style={{ border: "1px solid oklch(var(--border))", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
+      <div style={{ display: "flex", gap: 12, padding: "12px 14px", alignItems: "flex-start", background: enabled ? "oklch(var(--muted) / 0.4)" : "transparent" }}>
+        <span className="switch" data-on={enabled} style={{ flexShrink: 0, marginTop: 2 }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <Ic size={13} style={{ color: "oklch(var(--muted-foreground))" }} />
+            <span style={{ fontSize: 13, fontWeight: 500 }}>{title}</span>
+            {enabledInherit
+              ? <span className="badge badge-muted" style={{ fontSize: 9 }}>繼承 KB</span>
+              : <span className="badge badge-success" style={{ fontSize: 9 }}>已覆寫</span>}
+          </div>
+          <div className="text-xs muted" style={{ marginTop: 3, lineHeight: 1.5 }}>{desc}</div>
+        </div>
+        <button className="btn btn-ghost btn-sm" style={{ flexShrink: 0 }} onClick={() => setOpen(!open)}>
+          進階 <IcChevRight size={11} style={{ transform: open ? "rotate(90deg)" : "none" }} />
+        </button>
+      </div>
+      {open && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, padding: 14, borderTop: "1px solid oklch(var(--border))" }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// One A/B result column for the per-doc test-run panel. accent = DRAFT.
+function DocTestResultCard({ label, accent, faith, faithBand, runs, cit, citBand, sec, secBand, imgRaw, imgDedup, imgBand, lat, chars, refused }) {
+  return (
+    <div style={{
+      border: accent ? "1px solid oklch(var(--accent) / 0.4)" : "1px solid oklch(var(--border))",
+      borderRadius: "var(--radius-sm)",
+      background: accent ? "oklch(var(--accent) / 0.04)" : "transparent",
+      overflow: "hidden",
+    }}>
+      <div style={{ padding: "10px 14px", borderBottom: "1px solid oklch(var(--border))", fontSize: 12, fontWeight: 600 }}>{label}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "oklch(var(--border))" }}>
+        <div style={{ gridColumn: "1 / -1", background: "oklch(var(--card))", padding: "10px 14px" }}>
+          <div className="text-xs muted">忠實度(faithfulness · 反幻覺 · 0–1)</div>
+          <div className="mono" style={{ fontSize: 18, fontWeight: 700, marginTop: 2, color: faith != null ? "oklch(var(--success))" : "oklch(var(--muted-foreground))" }}>
+            {faith != null ? faith : "—"}
+            {faith != null && runs >= 2 && <span className="text-xs muted" style={{ fontWeight: 400, marginLeft: 6 }}>±{faithBand}</span>}
+          </div>
+          {faith != null && runs === 1 && (
+            <div className="text-xs" style={{ marginTop: 3, color: "oklch(var(--warning))" }}>
+              單次 judge · 方向性 · 重跑次數調高至 ≥2 先見穩定度 band
+            </div>
+          )}
+        </div>
+        <DocTestMetric k="引用數" v={cit} band={citBand} />
+        <DocTestMetric k="涵蓋章節數" v={sec} band={secBand} sub="completeness proxy · 非 recall" />
+        <DocTestMetric k="圖片(dedup)" v={imgDedup} sub={`raw ${imgRaw}`} band={imgBand} />
+        <DocTestMetric k="延遲 p50" v={lat} />
+        <DocTestMetric k="答案字數" v={chars} />
+        <DocTestMetric k="是否拒答" v={refused} />
+      </div>
+    </div>
+  );
+}
+
+function DocTestMetric({ k, v, sub, band }) {
+  return (
+    <div style={{ background: "oklch(var(--card))", padding: "10px 14px" }}>
+      <div className="text-xs muted">{k}</div>
+      <div className="mono" style={{ fontSize: 16, fontWeight: 600, marginTop: 2 }}>
+        {v}
+        {band != null && <span className="text-xs muted" style={{ fontWeight: 400, marginLeft: 4 }}>±{band}</span>}
+      </div>
+      {sub && <div className="text-xs muted mono" style={{ marginTop: 1 }}>{sub}</div>}
+    </div>
   );
 }
 
