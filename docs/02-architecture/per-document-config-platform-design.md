@@ -15,7 +15,7 @@
    - **Gap A — per-DOCUMENT 粒度**:配置現時 resolve 到 per-KB,vision 要 per-doc。
    - **Gap B — query 意圖 gate**:未建(且 Fork B 必要性未獲證實,優先級最低)。
    - **Gap C — per-image 位置 + 相關性**:`doc_order` ingest 已有但**冇 propagate 到 `ImageRef`** → 圖片 section 內排唔到(用戶 Q3)+ 完整性受 nearest-first + caps 限(用戶 Q1)。**呢個係用戶即時痛點 + layer C 地基,而且最輕**。
-3. **推薦 phasing**:**C → A →(B 視乎需要)**。Gap C 一個 phase 同時打 vision 地基 + 解即時圖片問題,且資料 ingest 已有,改動最 surgical。**【進度 2026-06-09:Gap C ✅ 完成 — C-1 = CH-011/ADR-0048,C-2 = CH-012/ADR-0049,均 merged + 用戶 live PASS。Gap A 後端層 ✅ 完成 — P2a = W57/ADR-0050(per-doc config storage + EffectiveConfig per-DOC layer + dominant-doc 解析 + config-test doc-scope + CRUD API),merged。下一步 = P2b(per-doc 配置 UI;doc-detail mockup 無 config 面 = H7,kickoff 待 mockup 決定)。】**
+3. **推薦 phasing**:**C → A →(B 視乎需要)**。Gap C 一個 phase 同時打 vision 地基 + 解即時圖片問題,且資料 ingest 已有,改動最 surgical。**【進度 2026-06-09:Gap C ✅ 完成 — C-1 = CH-011/ADR-0048,C-2 = CH-012/ADR-0049,均 merged + 用戶 live PASS。Gap A ✅ **完整完成** — P2a = W57/ADR-0050(per-doc config 後端:storage + EffectiveConfig per-DOC layer + dominant-doc 解析 + config-test doc-scope + CRUD API)+ P2b = W58/ADR-0051(per-doc 配置 UI:doc-detail config tab,先擴 mockup + user-review + frontend 逐元素對齊),均 merged。vision「per 文件 UI 操作配置管理」端到端打通。下一步 = Gap B / P3(query 意圖 gate,必要性未證實,最低優先)或用戶其他 trigger。】**
 4. **3 條 H4 紅線**:per-doc config ≠ multi-tenancy(Tier 1 OK);query gate 必須輕量啟發式(唔可以 multi-agent);layer C 必須文字/section/`doc_order` signal(**唔可以** image embedding = Tier 2 multi-modal retrieval)。
 
 ---
@@ -230,7 +230,7 @@ GL03 程序問題應出 ~35 圖(§3.1.1 High Level Process → §3.1.5 Confirm),
 |---|---|---|---|---|
 | **P1 — Gap C ✅ DONE(2026-06-09)** | C-1 位置 primitive(`doc_order` propagate + 排序）= **CH-011 / ADR-0048**(merged）+ C-2 完整性 section-fair 分配 = **CH-012 / ADR-0049**(merged;實測尾段 §3.1.4/3.1.5 由 0 圖 → 5/6 圖,用戶 live PASS） | ✅ 解 Q1（完整性）/ Q3（順序）;layer C 地基齊 | C-1 是 / C-2 否 | ADR-0048(doc_order + document-span）+ ADR-0049(section-fair 分配）|
 | **P2a — Gap A 後端 ✅ DONE(2026-06-09)** | per-doc profile storage(新表 `document_configs` + `DocConfigStore`)+ EffectiveConfig per-DOC layer + **dominant-doc 解析**(主導 doc + post-retrieval 旋鈕;檢索入口旋鈕維持 per-KB)+ config-test doc-scope + CRUD API = **W57 / ADR-0050**(merged;62 test PASS) | per-document 度身訂做配置(後端)| — | ADR-0050(per-doc config scope + dominant-doc resolve）|
-| **P2b — Gap A UI** | Document 配置面 + per-doc config-test(消費 W57 CRUD API)| per-doc 配置 UI 操作 | — | **⏳ H7 缺口** — doc-detail mockup 無 config 面;kickoff 待 mockup 決定(擴 mockup / 沿用 KB SettingsTab pattern)|
+| **P2b — Gap A UI ✅ DONE(2026-06-09)** | doc-detail 頁 per-doc 配置 tab(answer_detail + citation/image tuning groups,只 post-retrieval 旋鈕;「繼承 KB」語意;per-doc config-test;消費 W57 CRUD API)= **W58 / ADR-0051**(merged;先擴 doc-detail mockup + user-review PASS + frontend 逐元素對齊 H7;4 test PASS;零後端改動)| per-doc 配置 UI 操作 | — | ADR-0051(doc-detail per-doc config surface,design-stage expansion）|
 | **P3 — Gap B(視乎需要)** | query 意圖 heuristic gate | 列舉型 query completeness 傾向 | — | ADR(僅當實測證實必要;否則 drop)|
 
 **點解 C 先**:① 解用戶即時痛點(三問全落 C);② 資料 ingest 已有(`doc_order`),改動最 surgical;③ 係 layer C 地基,A/B 都依賴乾淨嘅 per-image signal;④ 一個 re-index 同時搞掂 dims(已 re-index 過)+ doc_order。

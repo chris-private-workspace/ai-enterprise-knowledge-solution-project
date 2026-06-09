@@ -1,7 +1,7 @@
 ---
 phase: W58
 name: per-doc-config-ui
-status: active        # draft | active | closed
+status: closed        # draft | active | closed
 created: 2026-06-09
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "Gap A / P2b (per-document config platform — UI layer)"

@@ -1,7 +1,7 @@
 ---
 phase: W58
 plan_ref: ./plan.md
-status: active     # active | closed
+status: closed     # active | closed
 last_updated: 2026-06-09
 ---
 
@@ -34,5 +34,9 @@ last_updated: 2026-06-09
 - [x] F4.2 — §12 H7 fidelity self-check:逐元素對齊 approved mockup。**一處偏差**:config-test 機制由 mockup 暗示嘅 `doc_id` scope 改為 `draft_config` 預覽(免 backend 改動 + 「proposed-doc vs 繼承 KB」A/B 更清晰);`answer_detail` 不在 `DraftRetrievalConfig` → 試跑預覽唔覆蓋(經「儲存」real-query 生效,W57 dominant-doc 解析覆蓋)→ **mockup 2 句文字已對齊 frontend**(single source of truth)。既有 KB SettingsTab test(kb-detail-tabs/kb-settings-reindex/kb-detail)全綠 = 零回歸(R2 守)。tsc/eslint/prettier clean
 
 ## Closeout
-- [ ] C1 — plan/checklist/progress closed;progress retro
-- [ ] C2 — ff-merge → main(用戶確認);platform design doc §7 P2b 標 done
+- [x] C1 — plan/checklist/progress closed;progress retro
+- [x] C2 — ff-merge → main(用戶確認);platform design doc §7 P2b 標 done + §0 TL;DR Gap A 完整完成
+
+## 🚧 延後(可選)
+- [ ] 🚧 V — live 全 stack 視覺驗證(起 frontend 開 doc-detail Per-doc 配置 tab 睇實際渲染 + upsert 一個 per-doc config + 試跑):**deferred** — fidelity by construction(逐元素 mirror approved mockup + tsc/eslint/prettier/vitest 全綠 + KB tests 零回歸);live 視覺驗留下次(同 P2a V2 precedent;視機器 load + Azure key)
+- [ ] 🚧 answer_detail 試跑預覽:現經「儲存」real-query 生效(W57 dominant-doc 解析);若要 in-harness 預覽 = 細 follow-up(`DraftRetrievalConfig` + `ConfigTestRequest` 加 `answer_detail`,後端 `PerQueryOverrides` 已有此 field)

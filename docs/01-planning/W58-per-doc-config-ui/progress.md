@@ -2,7 +2,7 @@
 phase: W58
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active     # active | closed
+status: closed     # active | closed
 ---
 
 # W58 — Progress
@@ -44,8 +44,32 @@ status: active     # active | closed
 | Hash | Subject |
 |---|---|
 | `bf7769d` | docs(planning): W58 kickoff — per-doc config UI + doc-detail mockup |
-| _(pending)_ | feat(frontend): W58 per-doc config UI(F2-F4) |
+| `aa1f826` | feat(frontend): W58 per-doc config UI(F2-F4) |
+| _(closeout)_ | docs(planning): W58 closeout + platform design Gap A done |
 
 ---
 
-**End of W58 progress(Day 1)**
+## Closeout — 2026-06-09
+
+**判決**:✅ DONE(用戶揀「ff-merge 落 main + 收尾」)
+
+- **交付**:doc-detail 頁 per-document 配置 UI —— 先擴 mockup(H7 gate user-review PASS)→ frontend 逐元素對齊(tab strip + DocConfigTab:answer_detail seg + citation/image tuning groups + retrieval-entry explainer + per-doc config-test)→ 消費 W57 CRUD API,零後端改動。
+- **驗證鏈**:F1 mockup user-review PASS(H7)→ F4 4 unit test 綠 + KB regression 全綠 + tsc/eslint/prettier clean。
+- **commit**:`bf7769d`(kickoff + mockup)+ `aa1f826`(F2-F4)+ closeout;ff-merge → main。
+- **Gap A 完整完成**:P2a 後端(W57)+ P2b UI(W58)= 用戶 vision「per 文件 UI 操作配置管理」端到端打通。platform design §7 P2b done、§0 Gap A 標完整完成。
+
+### Retro(教訓)
+- **H7 路徑 A 行得通**:先擴 mockup(design-stage expansion + ADR-route)+ user-review gate + frontend 逐元素對齊 —— 避免「大概模仿」一個未確認設計,守 binding H7。
+- **self-contained over extract(§1.3)**:3174 行 KB 頁唔掂,複製 Doc* helpers(framing 不同)= 零回歸;mockup 本身分開 Doc*/Kb* 佐證此 split。
+- **fidelity self-check 抓到機制偏差**:config-test draft_config vs mockup 暗示 doc_id → 即時 align mockup 文字(reverse-drift fix 方向),保 single source of truth;answer_detail 預覽缺口明確記 documented limitation 而非靜默。
+- **deviation 全部記 changelog(R3)**:R2 self-contained + config-test 機制 —— 無 silent drift。
+
+### Next(platform 後續)
+- **Gap B / P3**(query 意圖 gate)必要性未證實(§1.2 證偽 Fork B),最低優先 / 可能 drop。
+- 可選:answer_detail 試跑 in-harness 預覽(細 follow-up)+ live 視覺驗證。
+
+**Spec status → closed。**
+
+---
+
+**End of W58 progress**
