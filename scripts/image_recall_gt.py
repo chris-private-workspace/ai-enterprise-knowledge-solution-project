@@ -250,20 +250,38 @@ main{padding:20px;max-width:1180px;margin:0 auto}
 .sec input{margin-right:8px;vertical-align:top}
 .sechd{font-size:13px;font-weight:600}
 .sechd em{color:#999;font-weight:400}
-.thumbs{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 0 26px}
-.thumbs img{width:84px;height:auto;border:1px solid #ccc;border-radius:3px;background:#fff}
+.thumbs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 0 26px}
+.thumbs img{width:120px;height:auto;border:1px solid #ccc;border-radius:3px;background:#fff;cursor:zoom-in}
+.thumbs img:hover{border-color:#2563eb;box-shadow:0 0 0 2px #bfdbfe}
 .sec:has(input:checked){background:#eff6ff}
+#lightbox{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;z-index:100;cursor:zoom-out;flex-direction:column;gap:10px}
+#lightbox.on{display:flex}
+#lightbox img{max-width:94vw;max-height:86vh;box-shadow:0 4px 24px rgba(0,0,0,.5);background:#fff}
+#lbcap{color:#eee;font-size:13px;font-family:monospace}
 </style>
 </head>
 <body>
 <header>
 <h1>__TITLE__</h1>
 <button onclick="exportFilled()">匯出填好的 worksheet</button>
-<span class="hint">勾選每條 query 預期附帶的 section(縮圖可看圖判斷)→ 匯出 → 跑 expand。圖片需 azurite 在跑才顯示。</span>
+<span class="hint">勾選每條 query 預期附帶的 section;點縮圖可放大睇清楚(再點背景或按 Esc 關閉)→ 匯出 → 跑 expand。圖片需 azurite 在跑才顯示。</span>
 </header>
 <main>__CARDS__</main>
+<div id="lightbox" onclick="this.classList.remove('on')"><img id="lbimg" alt=""><div id="lbcap"></div></div>
 <script id="wsdata" type="application/json">__WSDATA__</script>
 <script>
+document.addEventListener('click',function(e){
+ if(e.target.tagName==='IMG' && e.target.closest('.thumbs')){
+  e.preventDefault();        // don't toggle the section checkbox
+  e.stopPropagation();
+  document.getElementById('lbimg').src=e.target.src;
+  document.getElementById('lbcap').textContent=e.target.title||'';
+  document.getElementById('lightbox').classList.add('on');
+ }
+});
+document.addEventListener('keydown',function(e){
+ if(e.key==='Escape')document.getElementById('lightbox').classList.remove('on');
+});
 function exportFilled(){
  const ws=JSON.parse(document.getElementById('wsdata').textContent);
  const picked={};
@@ -283,7 +301,7 @@ function exportFilled(){
 """
 
 
-def _query_card(q: dict, sections: list[dict], cs_to_url: dict[str, str]) -> str:
+def _query_card(q: dict, sections: list[dict], cs_to_meta: dict[str, dict]) -> str:
     """Render one query card: query text + every section as a checkbox row + thumbs."""
     prefilled = set(q.get("expected_sections") or [])
     qid = html.escape(str(q.get("query_id", "")))
@@ -292,11 +310,14 @@ def _query_card(q: dict, sections: list[dict], cs_to_url: dict[str, str]) -> str
         sid = str(s.get("section_id", ""))
         checked = "checked" if sid in prefilled else ""
         path = html.escape(" › ".join(str(p) for p in s.get("section_path", [])))
-        thumbs = "".join(
-            f'<img loading="lazy" src="{html.escape(cs_to_url.get(str(cs), ""))}" '
-            f'title="{html.escape(str(cs)[:12])}">'
-            for cs in s.get("checksums", [])
-        )
+        thumbs = ""
+        for cs in s.get("checksums", []):
+            m = cs_to_meta.get(str(cs), {})
+            cap = f"#{m.get('doc_order', '?')} · {str(cs)[:12]}"
+            thumbs += (
+                f'<img loading="lazy" src="{html.escape(str(m.get("url", "")))}" '
+                f'title="{html.escape(cap)}">'
+            )
         rows.append(
             f'<label class="sec"><input type="checkbox" data-q="{qid}" '
             f'data-sec="{html.escape(sid)}" {checked}>'
@@ -331,12 +352,15 @@ def _cmd_html(worksheet_path: Path, catalog_path: Path | None, out_path: Path) -
         )
         return 1
     catalog = _load_yaml(cat_path)
-    cs_to_url = {
-        str(img.get("checksum_sha256", "")): str(img.get("blob_url", ""))
+    cs_to_meta = {
+        str(img.get("checksum_sha256", "")): {
+            "url": str(img.get("blob_url", "")),
+            "doc_order": img.get("doc_order", "?"),
+        }
         for img in catalog.get("images", [])
     }
 
-    cards = "\n".join(_query_card(q, sections, cs_to_url) for q in queries)
+    cards = "\n".join(_query_card(q, sections, cs_to_meta) for q in queries)
     title = f"W59 圖片標注 — {meta.get('module', '')} · {meta.get('doc_title', '')}"
     # Embed the worksheet so export can rebuild it; guard against </script> injection.
     wsdata = json.dumps(ws, ensure_ascii=False).replace("</", "<\\/")
