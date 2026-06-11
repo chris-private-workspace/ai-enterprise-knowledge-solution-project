@@ -300,6 +300,7 @@ async def test_synthesize_stream_closes_underlying_stream_on_finally() -> None:
 
 def _chunk_w32(
     cid: str, doc_id: str, chunk_index: int, chunk_title: str,
+    section_path: list[str] | None = None,
 ) -> RetrievedChunk:
     return RetrievedChunk(
         score=0.5,
@@ -309,7 +310,13 @@ def _chunk_w32(
             "chunk_index": chunk_index,
             "chunk_title": chunk_title,
             "chunk_text": f"body for {cid}",
-            "section_path": [],
+            # DD-4 flip (ADR-0052) made citation_expansion_section_path_prefix_depth=1
+            # the default → engine-fetch expansion now applies the W37 (j') prefix
+            # filter, which defensive-skips candidates whose section_path is missing.
+            # Real ingested chunks always carry section_path; tests that exercise
+            # engine-fetch expansion must pass a realistic one (default [] preserves
+            # prior fixtures that never reach the prefix filter).
+            "section_path": list(section_path) if section_path is not None else [],
         },
     )
 
@@ -322,7 +329,7 @@ async def test_synthesize_invokes_engine_fetch_expansion_when_engine_and_kb_id_p
     Verifies engine.list_chunks called with kb_id + cited doc_id, and result fields
     replace synthesizer's answer + citation_ids。
     """
-    chunks = [_chunk_w32("0044", "doc-A", 44, "8. Integration")]
+    chunks = [_chunk_w32("0044", "doc-A", 44, "8. Integration", section_path=["Doc", "§8: Integration"])]
 
     # Mock completion: cited intro chunk-0044 only
     completion = SimpleNamespace(
@@ -339,10 +346,15 @@ async def test_synthesize_invokes_engine_fetch_expansion_when_engine_and_kb_id_p
 
     # Mock engine.list_chunks returns full doc with §8.1 + §8.2 walkthroughs
     mock_engine = AsyncMock()
+    # section_path on every candidate: DD-4 default depth=1 prefix filter requires it
+    # (all same root "Doc" → prefix ["Doc"] matches cited; W37 (j') same-section guard).
     mock_engine.list_chunks = AsyncMock(return_value=[
-        {"chunk_id": "0044", "chunk_index": 44, "chunk_title": "8. Integration"},
-        {"chunk_id": "0046", "chunk_index": 46, "chunk_title": "8.1 Scenario A walkthrough"},
-        {"chunk_id": "0048", "chunk_index": 48, "chunk_title": "8.2 Scenario B walkthrough"},
+        {"chunk_id": "0044", "chunk_index": 44, "chunk_title": "8. Integration",
+         "section_path": ["Doc", "§8: Integration"]},
+        {"chunk_id": "0046", "chunk_index": 46, "chunk_title": "8.1 Scenario A walkthrough",
+         "section_path": ["Doc", "§8: Integration"]},
+        {"chunk_id": "0048", "chunk_index": 48, "chunk_title": "8.2 Scenario B walkthrough",
+         "section_path": ["Doc", "§8: Integration"]},
     ])
 
     with patch("generation.synthesizer.AsyncAzureOpenAI") as MockClient:
