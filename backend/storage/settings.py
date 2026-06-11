@@ -251,11 +251,12 @@ class Settings(BaseSettings):
     # already indexed Collection(Edm.String) filterable per architecture.md
     # §3.6 line 364). 6 knob defaults locked via Chris AskUserQuestion
     # 2026-05-25 D1 cont (Q1 + Q2 + Q4 + Q6 Recommended picks + Q3 + Q5 +
-    # Q7 + Q8 batch-locked). Default False = W26 F2 measurement experiment
-    # only via env override (per ADR-0034 enable_query_expansion precedent —
-    # measurement-first discipline, NOT default flip). See ADR-0037 §
-    # Decision Log for full pick rationale.
-    enable_parent_doc_retrieval: bool = False
+    # Q7 + Q8 batch-locked). W26 default False = measurement-only via env
+    # override (per ADR-0034 enable_query_expansion precedent). DD-4 production
+    # flip 2026-06-11 → True (ADR-0052): eval PASS backing (single-doc 13-query
+    # + cross-doc 30-query, recall 1.0 / 0 regression / +413ms p95). See
+    # ADR-0037 § Decision Log for pick rationale + ADR-0052 for the flip.
+    enable_parent_doc_retrieval: bool = True
     # Q2 pick — parent = section_path[:-1] (drop last level). Anchor in
     # ["Doc", "§8: Integration Scenarios", "Scenario A"] → parent =
     # ["Doc", "§8: Integration Scenarios"] aggregates all 5 scenarios.
@@ -336,9 +337,11 @@ class Settings(BaseSettings):
     # crosses sections, larger if §X.M walkthroughs span longer doc).
     citation_expansion_window: int = 10
     # Safety cap on auto-added neighbors per existing citation — parallel to
-    # W25 F5 D1 `citation_neighbour_max_aux_images=2` convention. 2 = max 2
-    # extra `[chunk-{id}]` markers inserted per original citation marker.
-    citation_expansion_max_aux: int = 2
+    # W25 F5 D1 `citation_neighbour_max_aux_images=2` convention. N = max N
+    # extra `[chunk-{id}]` markers inserted per original citation marker. W32
+    # default 2; DD-4 production flip 2026-06-11 → 10 (ADR-0052, paired with
+    # section_path_prefix_depth=1 below) — eval PASS backing, see ADR-0052.
+    citation_expansion_max_aux: int = 10
     # W37 (j') section_path prefix filter for engine-fetch citation expansion —
     # additive constraint applied inside `_find_neighbour_chunks` after the
     # existing chunk_title `\b\d+\.\d+\b` regex. When depth>0, a neighbor
@@ -347,10 +350,11 @@ class Settings(BaseSettings):
     # cross-section drift (W32+W33 Run 1/3/4 mixed §3/§6/§7/§9 alongside §8).
     # depth=0 = filter disabled (W37 baseline preserve W36); depth=1 = top-level
     # section match (e.g. shared "Doc" root); depth=2 = top + sub-level match
-    # (e.g. ["Doc","§8"] cite expands within §8 only). Default 0 per W26 PC1
-    # 「一次只郁一個旋鈕」— production flip is a separate W38+ decision based on
-    # W37 F2 outcome.
-    citation_expansion_section_path_prefix_depth: int = 0
+    # (e.g. ["Doc","§8"] cite expands within §8 only). W37 default 0; DD-4
+    # production flip 2026-06-11 → 1 (ADR-0052) — top-level section match bounds
+    # expansion to the cited chunk's root section (the W37 (j') intent). eval
+    # PASS backing, see ADR-0052.
+    citation_expansion_section_path_prefix_depth: int = 1
 
     # W38 — Reranker cross-section deboost (per ADR-0035 W25 F5 D2 symmetric
     # pattern reference; post-rerank client-side score multiply, non-architectural
