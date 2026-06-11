@@ -97,3 +97,60 @@
   (§4.6 結構路線)。把「配置邊界」講得更精準。
 - **零 code 改動達標**:全程重用 W59 harness(`run_image_recall.py` 零改),純 env + 跑數 + 分析 → 守 H1/H6。
 
+---
+
+## ⚠️ Day 1 (cont) — 方法論失誤糾正 + 真重做(2026-06-11)
+
+> **上方 F1–F4 + 第一份 Retro 的「DD-4 +3.7pp / 解 Q005」結論 INVALID。保留作 audit trail,勿引用。**
+
+### 致命缺陷:env override 被 per-KB config 鎖死
+準備做 cap 軸時查 drive-images-1 per-KB config,發現它**早已設了 DD-4 三旋鈕的值**:
+`enable_parent_doc_retrieval=false / citation_expansion_max_aux=10 / citation_expansion_section_path_prefix_depth=1`。
+
+鐵證鏈:
+- `_resolve(pq, kb, global)`(effective_config.py:117-121):per-KB 非 None 就贏,global 只係 fallback。
+- `/query` route(query.py:144-145)讀 per-KB config 並 resolve;driver 只送 `{query, kb_id}`(pq=None)。
+- → 兩臂 effective config **完全相同**(都係 per-KB `false/10/1`);process env override global **完全沒生效**。
+- → 第一次「A 臂 0.572 vs B 臂 0.609」差異 = **純 run variance**,非 DD-4。
+
+**第一份 Retro 第 2 點「A 臂重現 baseline 係關鍵 sanity」本身係假 sanity** —— 重現恰因 config 根本沒變,
+gate 沒 disambiguate「env 生效→pre-DD-4」vs「config 沒變」。正係 ekp-anti-patterns 的 gate-only 偽驗收。
+
+### 真重做:改 per-KB config 真 toggle(用戶選「正確重做」)
+`PATCH /kb/drive-images-1/settings`(per-KB config 即時生效,不需重啟)真 toggle 三旋鈕,跑完改回原值 `false/10/1`。
+
+| Query | A 臂 `false/2/0` | B 臂#1 `true/10/1` | B 臂#2 confirm |
+|---|---|---|---|
+| Q001 | 0.31 (20/65) | 0.31 | 0.31 |
+| Q002 | 1.00 (18/18) | 1.00 | 1.00 |
+| Q003 | 0.46 (17/37) | 0.51 | 0.51 |
+| Q004 | 1.00 (12/12) | 1.00 | 1.00 |
+| Q005 | 0.28 (9/32) | **0.00 (fluke)** | 0.28 (9/32) |
+| Q006 | 1.00 (8/8) | 1.00 | 1.00 |
+| Q036 | 0.31 (20/65) | 0.29 | 0.29 |
+| Q038 | 0.51 (19/37) | 0.51 | 0.46 |
+| Q043 | 0.27 (20/73) | 0.27 | 0.27 |
+| **mean** | **0.572** | **0.545** | **0.570** |
+
+reports:`image_recall_ar_predd4_v2.yaml` / `_postdd4_v2.yaml` / `_postdd4_v2_confirm.yaml`(gitignored per §6.1)。
+
+### 真結論
+1. **citation_expansion(max_aux/depth)對 image-recall 中性** —— 真 A 臂(2/0)與 baseline(10/1)逐條相同
+   (佢加 text neighbour chunk,不帶圖)。A 臂超穩定:4 次 corroboration(兩次無效 A 臂 + 真 A 臂 + W59 baseline 全 ~0.572)。
+2. **parent_doc=true 中性偏負 + 增加不穩定** —— B 臂 mean 0.545–0.570 ≈ A 臂 0.572(差異落喺 single-run
+   variance band 內),但 parent_doc=true 下 Q005 出現 returned 0 的波動(A 臂沒有)。
+3. **→ DD-4 三旋鈕對 drive-images-1 圖片召回沒有正面影響**(中性或略負),與第一次無效結論「+3.7pp」**相反**。
+   drive-images-1 per-KB 鎖 `parent_doc=false` 不但沒犧牲圖片召回,反而可能更穩定 —— per-KB override 正好擋住
+   DD-4 global flip 對圖密 KB 的潛在傷害(一個 per-KB 配置價值的實證)。
+4. **Q005 係 stochastic borderline query**(returned 喺 0–9 間波動,Q038 0.46↔0.51 同理),非 config 可解;
+   第一次「DD-4 解 Q005」純 variance 巧合。
+
+### 方法論教訓(比第一次重要)
+- **env override global ≠ 改 effective config**:目標 KB 有 per-KB config 設咗該旋鈕時,env override global
+  被鎖死無效。要 toggle 必須改對應層(per-KB / per-doc / per-query),或用 null-config KB(如 `drive_user_manuals`,
+  DD-4 eval 背書正係用佢 — 全 null config,所以 global flip 有效)。
+- **假 sanity gate**:「重現 baseline」可能來自「config 沒變」而非「變數正確」。sanity gate 必須能 disambiguate
+  competing 假設,否則 = ekp-anti-patterns 的 gate-only 偽驗收。
+- **single-run 不可信**:Q005 同 config 下 0↔9 波動。borderline query 必須多 run 取 band(本次 B 臂跑 2 次先抓到 Q005=0 係 fluke)。
+- **修正觸發點**:準備做 cap 軸順手查 per-KB config 先發現 —— 早一步查 effective config(而非信 env)就能避免整輪白做。
+

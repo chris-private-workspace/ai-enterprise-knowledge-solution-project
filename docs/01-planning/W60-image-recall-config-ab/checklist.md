@@ -1,5 +1,8 @@
 # W60 Checklist — 圖片召回 config A/B(DD-4 前後)
 
+> ⚠️ **下方 F1–F4 基於第一次 env-override A/B,結論已 INVALIDATED**(env 被 drive-images-1 per-KB config 鎖死)。
+> 已正確重做(改 per-KB config 真 toggle)。**真結論 = DD-4 對圖片召回中性偏負**(非 +3.7pp)。詳 progress.md「Day 1 (cont)」。
+
 ## F1 — B 臂(post-DD-4 現 default)
 - [x] pre-flight:azurite(port 10000)+ index `drive-images-1` populated(B 臂 9/9 出非零數確認 index ok)
 - [x] pre-flight:Langfuse `/api/public/health` 200 + Postgres(`/health` 5 component 全 ok)
