@@ -47,11 +47,11 @@
 - [x] 驗證:369 chunks 全 walk — 205 有圖 chunk == 205 有 marked 一一對應;`chunk_text` 零標記污染;全部 marker sha8 ⊆ 該 chunk `embedded_images_json` checksums;肉眼樣本(AR chunk-0001 封面圖 `[IMG#019f36cf]` 原位交織)PASS
 
 ## F8 — 驗證
-- [ ] `scripts/run_marker_placement.py`(四指標:validity / coverage / placement accuracy / dup rate + 人工覆核表輸出)
-- [ ] drive-images-1 knob ON(per-KB PATCH,跑完保留俾 W71 判斷)
-- [ ] 九 query 實跑 → 報告 `reports/marker_placement_ar.yaml`
-- [ ] image-recall 對照跑(knob ON)→ mean recall 對 W68 基線跌幅 ≤ 0.02
-- [ ] 人工覆核 placement 錯位 → AC4 判決寫入 progress.md
+- [x] `scripts/run_marker_placement.py`(四指標:validity / coverage / placement accuracy / dup rate + 人工覆核表輸出;core `backend/eval/marker_placement.py` + 13 tests;另加 `scripts/check_marker_order.py` 次序一致性覆核工具)
+- [x] drive-images-1 knob ON(per-KB PATCH full replacement,80/10/40 保留;跑完**保留 ON** 俾 W71 判斷)
+- [x] 九 query 實跑 → 報告 `reports/marker_placement_ar.yaml`(+ `_answers.yaml` raw 持久化;run 2:validity 1.000 / coverage 0.767 / dup 0.081)
+- [x] image-recall 對照跑(knob ON)→ mean recall **1.000** vs W68 基線 0.9954,零回退(`reports/image_recall_ar_w70_markers_on.yaml`)
+- [x] 人工覆核 placement 錯位 → AC4 判決寫入 progress.md(proxy 字面 25.43% 結構性誤報全歸因;真調換 0/249;判決 = 達標,建議 W71 go)
 
 ## F9 — 收爐
 - [ ] user-guide `03-configuration-reference.md` 加新旋鈕

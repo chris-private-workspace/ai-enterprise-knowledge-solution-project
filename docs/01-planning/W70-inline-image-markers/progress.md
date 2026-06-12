@@ -193,3 +193,51 @@
   AR chunk-0001 封面 `[IMG#019f36cf]` 原位交織。VERDICT PASS。
 - 下一步:F8 驗證(`scripts/run_marker_placement.py` harness 四指標 + drive-images-1
   knob ON per-KB PATCH + 九 query 實跑 + image-recall 對照 + AC4 判決)。
+
+## Day 2 — 2026-06-12 深夜 → 06-13 凌晨(session 3 跨夜)
+
+### F8 — 驗證(四指標 harness + AC4/AC5 判決)✅
+- **三件套跟 image_recall 切法**:`backend/eval/marker_placement.py` 純邏輯 core
+  (四指標 + 人工覆核表序列化)+ `backend/tests/test_marker_placement.py`(13 條,
+  含構造 swap 案例證明錯位 flag 真係捉到)+ `scripts/run_marker_placement.py` 薄
+  IO driver(全 index walk 起 source map → `/query` 九 query → YAML 報告;**零標記
+  = exit 2** 防 per-KB resolve 陷阱假乾淨 run)。
+- **placement 自動評分設計**:標記前文(答案)vs 標記前文(原文 `chunk_text_marked`)
+  詞級 SequenceMatcher;錯位 flag = **相對判別**(同答案另一張圖嘅原文上下文贏過
+  自己先 flag,抗 paraphrase)。
+- knob ON:`PATCH /kb/drive-images-1/settings` full replacement(GET 原值只改
+  `enable_inline_image_markers: true`,80/10/40 配方逐項保留)— **跑完保留 ON 俾
+  W71 判斷**(per checklist)。
+- **Run 1**(280 標記):validity 1.000 / coverage 0.704 / dup 0.092 / 自動錯位
+  0.2429。覆核發現量度污染:答案 citation placeholder(`[chunk-…]`)token soup
+  稀釋 context 相似度 → driver 評分前剝走 + **raw answers 持久化**
+  (`reports/marker_placement_ar_answers.yaml`,離線重評唔使再燒 query)。
+- **Run 2**(291 標記,污染已除):validity **1.000** / coverage 0.767 / dup 0.081 /
+  自動錯位 **0.2543** — strip 後冇跌,證明主因唔係污染而係 proxy 本身對重複性
+  procedural corpus 結構性誤報。**人工逐行覆核 74 flagged 行**,三類機制全部誤報,
+  零誤導性錯配:(1) 標記 pile 喺 section 標題位 — 原文上下文係 TOC boilerplate
+  (「System Instruction for each step / Process step list of each group」),答案
+  合理唔重現;(2) 章節 overview 圖喺 AR0X 標題後 — 鏡像原文位置;(3) 重複程序
+  孖生截圖(「Click OK」式)— 文字級無法分辨,對讀者無影響。
+- **獨立次序一致性訊號**(正交於相似度,boilerplate 影響唔到):答案標記序列 vs
+  原文 doc_order 數鄰接對倒轉。工具化 = core `order_consistency`(artifact /
+  cross_chunk / local_swap 三分類 + tests)+ `scripts/check_marker_order.py`
+  (食 saved answers + live index,免再 query)。結果:**真・局部調換 0/249 =
+  0.0000**;9 個倒轉 = 8 個多重出現映射 artifact(例 `316c3f31` 原文出現 26 次嘅
+  重複 boilerplate 截圖)+ 1 個答案章節重組(cross_chunk,非錯圖)。
+- **AC5 image-recall 對照(knob ON)**:mean recall **1.000**(九 query 全 1.00)/
+  precision 0.979(`reports/image_recall_ar_w70_markers_on.yaml`)vs W68 基線
+  0.9954 / 0.9883(`image_recall_ar_dedup_cap70.yaml`)— **零回退,AC5 PASS**
+  (門檻 ≥ 0.9754)。
+- **AC4 判決**:相似度 proxy 字面數 25.43% **超** plan 嘅 3% 門檻 — 但人工覆核
+  (74/74 行誤報歸因)+ 次序一致性(真調換 0/249)兩個獨立方法一致證明 **真錯位
+  率 = 0%、無誤導性錯配** — gate 意圖(標記擺位可信賴)成立。**判決:placement
+  達標,建議 W71 go(交織 render)**;字面 proxy 未達 + 結構性誤報機制原文記低,
+  W71 kickoff 由用戶最終裁決。已知特性(W71 顯示語意要處理,非錯位):dup rate
+  ~8-9%(同一截圖答案內重提 — W71 解析 dedup 即可,顯示語意已預鎖 anchored 唔
+  重複);coverage 0.70-0.77(合成選擇性引用,唔係漏放)。
+- 教訓:上下文相似度做 placement proxy 喺重複性手冊 corpus 會結構性誤報(門檻
+  錯位率指標應以 order-consistency 為準);quality gate 字面數同意圖背離時,唔好
+  靜靜重新定義 gate — 兩個數都報,判決理據寫明。
+- 下一步:F9 收爐(user-guide 03 加旋鈕 + DEFERRED_REGISTER copy-含標記 caveat +
+  memory + plan closeout + retro)。
