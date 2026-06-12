@@ -54,6 +54,6 @@
 - [x] 人工覆核 placement 錯位 → AC4 判決寫入 progress.md(proxy 字面 25.43% 結構性誤報全歸因;真調換 0/249;判決 = 達標,建議 W71 go)
 
 ## F9 — 收爐
-- [ ] user-guide `03-configuration-reference.md` 加新旋鈕
-- [ ] DEFERRED_REGISTER 記 copy-含標記 caveat(W71 處理)
-- [ ] memory 更新 + plan closeout + progress retro
+- [x] user-guide `03-configuration-reference.md` 加新旋鈕(§2.3 12→13 / 組 4 + copy caveat + 驗證數 / §4 速查表 row + per-doc API-vs-UI footnote)
+- [x] DEFERRED_REGISTER 記 copy-含標記 caveat(**DD-8**,W71 處理)
+- [x] memory 更新(`project_inline_image_markers_w70` + MEMORY.md index)+ plan closeout(status closed)+ progress retro + session-start 座標 bump(SESSION_SUMMARY.md → W70 + 01-session-start.md 頭注)

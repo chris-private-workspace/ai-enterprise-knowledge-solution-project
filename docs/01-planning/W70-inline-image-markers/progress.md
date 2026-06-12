@@ -241,3 +241,50 @@
   靜靜重新定義 gate — 兩個數都報,判決理據寫明。
 - 下一步:F9 收爐(user-guide 03 加旋鈕 + DEFERRED_REGISTER copy-含標記 caveat +
   memory + plan closeout + retro)。
+
+### F9 — 收爐 ✅
+- user-guide `03-configuration-reference.md`:§2.3「12 個三組」→「13 個四組」+
+  組 4(開關 + W70 驗證數 + copy caveat + drive-images-1 已開)+ §4 速查表 row
+  (per-doc = API 層已支援、UI 未開放 footnote — 唔誤導 UI 用戶)。
+- `DEFERRED_REGISTER.md` 加 **DD-8**:copy / export 答案帶 `[IMG#…]` 標記(W70 只
+  strip 顯示層;close 條件 = W71 copy 路徑 strip 或 no-go 退 knob OFF)。
+- memory 新檔 `project_inline_image_markers_w70`(機制 / 現場狀態 / 判決 / proxy
+  方法論教訓 / W71 接力位)+ MEMORY.md index;SESSION_SUMMARY.md 座標 bump → W70
+  + `01-session-start.md` 頭注「最近 closed = W70」。
+- plan.md frontmatter `status: closed`。
+
+### Phase Gate 自評(closeout)
+- **AC1 零回歸** ✅:OFF bit-identical tests(F2/F4/F5)+ F7 live re-index chunk 數
+  逐份對齊 369 雙重證據。
+- **AC2 標記正確性** ✅:F7 全 index walk(205/205 一一對應、`chunk_text` 零污染、
+  sha8 ⊆ embedded checksums)。
+- **AC3 端到端** ✅(帶 DD-1 類注):F8 兩 run 答案全部帶合法標記;顯示 strip +
+  streaming hold-back 由 14 條 vitest 驗證;互動 browser walkthrough 未行(屬 DD-1
+  smoke-user-deferred class,非 W70 新增 debt)。
+- **AC4 驗證報告判決** ✅:四指標報告 + 人工覆核表產出;判決 = placement 達標
+  (人工覆核 74/74 誤報歸因 + 次序一致性真調換 0/249),**建議 W71 go**;相似度
+  proxy 字面 25.43% 未達 3% — 機制歸因 + 兩個數並報(詳 Day 2 entry),W71 kickoff
+  用戶最終裁決。
+- **AC5 召回不回退** ✅:knob ON mean recall 1.000 vs 基線 0.9954(precision 0.979
+  vs 0.9883)。
+- **AC6 H6 test 同步** ✅:chunker 9 / orchestrator+index 6 / config 5 / prompt 路
+  11 / eval core 13 / 前端 vitest 14。
+- **判決:Phase Gate 通過**(AC4 以 gate 意圖達標 + 字面 caveat 記錄)。
+
+### Retro(W70)
+- **順利**:驗證先行策略正確 — proxy 失效(結構性誤報)時有兩個獨立 fallback
+  訊號(人工覆核表 + 次序一致性)兜住,判決唔使靠單一指標;G3 零回歸由「test
+  bit-identical + live re-index 對齊」雙面證,冇假驗收;F7 嘅 backend stale-code
+  catch(13:25 進程早過 commits)再次證明 pre-flight 要查「行緊邊個 code」唔只查
+  「服務有冇起」。
+- **教訓 1(方法論,已入 memory)**:上下文相似度做 placement proxy 喺重複性
+  procedural corpus 結構性誤報;真錯位指標 = order-consistency;答案 citation
+  placeholder 要評分前剝走。
+- **教訓 2(gate 紀律)**:字面數同 gate 意圖背離 → 兩個數並報 + 機制歸因 + plan
+  changelog,唔好靜靜重定義 gate 或者靜靜當 fail 退守。
+- **教訓 3(run 漂移)**:每 run 答案重新合成,標記數 / coverage run 間有 ±20% 級
+  漂移 — run 間比較冇意義,所有對照要 run 內(同一答案集)做。
+- **Carry-overs**:W71 交織 render(go 候選,用戶拍板;mockup reverse-drift +
+  membership 驗證 + 顯示語意已預鎖 per ADR-0055)/ DD-8 copy 標記 / 其他 KB
+  re-ingest 前必須先 index PUT(known gate)/ per-doc tab UI 未開放 marker 旋鈕
+  (W71 一併考慮)。

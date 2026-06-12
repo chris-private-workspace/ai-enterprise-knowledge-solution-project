@@ -1,7 +1,7 @@
 ---
 phase: W70
 name: inline-image-markers
-status: active       # draft | active | closed
+status: closed       # draft | active | closed(2026-06-13 closeout — gate 判決見 progress Day 2)
 created: 2026-06-12
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "chat 答案文字同圖片分離(全文後先一批圖卡 + gallery),唔跟原文「步驟後跟截圖」嘅閱讀流;要起「答案文字 ↔ 原文圖片位置」嘅映射基建,先可以做 W71 交織顯示"

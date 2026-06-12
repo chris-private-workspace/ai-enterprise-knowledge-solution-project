@@ -38,9 +38,9 @@ per-query(試跑草稿,唔落地)
 另有 W20 三個 multimodal 開關(per-KB):`extract_embedded_images`(出廠 **False**,ingest-time)/
 `slide_screenshots`(出廠 True)/ `return_images_in_chat`(出廠 **False**,runtime)— 見 02 §2 陷阱說明。
 
-### 2.3 Advanced retrieval tuning card(12 個 runtime 旋鈕,三組)
+### 2.3 Advanced retrieval tuning card(13 個 runtime 旋鈕,四組)
 
-全部 runtime、即時生效。每組一個總開關 +「進階」摺疊區內嘅細旋鈕。
+全部 runtime、即時生效。每組一個總開關 +「進階」摺疊區內嘅細旋鈕(組 4 只有開關,無進階區)。
 
 **組 1 — Parent-document retrieval**(把命中嘅子 chunk 擴展到所屬父段落,文字完整性機制之一)
 
@@ -71,6 +71,15 @@ per-query(試跑草稿,唔落地)
 
 > 組 3 仲有一個唔喺呢個 card 嘅關聯旋鈕:章節概覽圖置頂(overview pin,全域出廠 False)—
 > 喺 per-doc tab 有得設(§4),令章節開頭嘅 High-Level 概覽圖排最前。
+
+**組 4 — Inline image markers(圖文位置標記,W70 / ADR-0055)**
+
+| 旋鈕 | 全域出廠值 | 說明 |
+|---|---|---|
+| 開關 `enable_inline_image_markers` | **False** | ON = 答案生成時 LLM 見到帶 `[IMG#…]` 位置標記嘅原文,答案會喺對應步驟原位帶標記(chat 顯示自動隱藏,你唔會見到爛字)。係 W71「文字+圖片交織顯示」嘅基建;W70 驗證(drive-images-1 九 query):標記有效率 100%、次序零調換、image-recall 1.00 零回退 |
+
+> 過渡 caveat:knob ON 之下,**copy / export 答案文字會帶 `[IMG#…]` 標記**(顯示層先有
+> strip;W71 處理 copy 路徑)。驗證 KB drive-images-1 已開呢個 knob(W70 F8 起保留)。
 
 ### 2.4 配方 preset 一鍵套用(card 內第一行)
 
@@ -132,6 +141,9 @@ Per-doc tab 都有自己嘅試跑 panel(「此文件配置(DRAFT)vs 繼承 KB(SA
 | citation_neighbour_section_path_prefix_depth | 0 | ✅ | ✅ | ✅ |
 | max_images_per_answer | 無上限 | ✅ | ✅ | ✅ |
 | enable_chapter_overview_pin | False | —(global/doc)| ✅ | ✅ |
+| enable_inline_image_markers | False | ✅ | ✅* | ✅ |
+
+> *per-doc 層 backend 四層解析已支援(API),per-doc tab UI 未開放呢個旋鈕(W71 一併考慮)。
 
 > 另:系統層仲有答案生成 timeout(120 秒,ADR-0053)同 hybrid 檢索 top 50 — 唔喺 UI 開放,
 > 屬平台運維層,一般唔使理。
