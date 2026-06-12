@@ -1,7 +1,7 @@
 ---
 phase: W65
 name: config-test-image-section-coverage
-status: active       # draft | active | closed
+status: closed       # draft | active | closed
 created: 2026-06-12
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "差距 ④ 輕量切法(用戶 2026-06-12 揀「輕量 proxy 先行」)— 試跑面板圖片軸補無需 GT 嘅 section 覆蓋 proxy"
@@ -77,3 +77,4 @@ spec_refs:
 | Date | Change | Reason |
 |---|---|---|
 | 2026-06-12 | Initial plan(active)| 隊列 ④ 輕量切法;R6 發現 ref-vs-unique 已存在 + 隊列 ③ 係已完成項(W49/W50/W51)→ 範圍收斂至單一 image_section_count 指標 |
+| 2026-06-12 | **Phase closed**(F1–F4 全 done,code `e8e61ba`)| backend(17 pytest + ruff)+ mockup-first H7 ×2 + frontend ×2 panel(tsc 0 / eslint 0 / vitest 11 含雙卡 render 斷言)。Live 驗證:Q005 喺 W64 persisted preset 下 `image_section_count=6` = GT S17–S22 全覆蓋(高過文字 cited sections=4,鄰居補圖 source_section 令圖片覆蓋更真)— 指標出世即自證。AC1–AC4 全達,無 ADR |

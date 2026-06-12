@@ -321,11 +321,21 @@ Q005 0.69 = cite/expansion 組成 variance,非 0-flip)。**drive-images-1 圖片
 (production 條件,零 code 改動)**。沿途兩次 infra 中斷(transient + DNS)probe-恢復-重試,
 降級網絡下嘅部分數據作廢不入判決。
 
+**✅ W65 落地(2026-06-12,phase `W65-config-test-image-section-coverage`,code `e8e61ba`,無 ADR —
+additive metric per W48/W51 precedent)**:config-test 試跑面板加 **`image_section_count`**(圖片章節數)
+— W51 文字 `distinct_sections` 嘅圖片版鏡像(unique 圖按 `source_section` 計 distinct section,空值
+fallback citation section;BUG-026 資料)。文字覆蓋闊 + 圖片覆蓋窄 = W63 b-1 風險直接喺試跑面睇到。
+mockup-first(H7)+ 兩個 panel(KB Settings / per-doc)+ 17 pytest + vitest render 斷言。Live:Q005 喺
+W64 preset 下 `image_section_count=6` = GT S17–S22 全覆蓋,指標出世即自證。**隊列修正記錄**:原隊列 ③
+(faithfulness 警告閘)係 stale memory 生成嘅幻影項 — W49(N-run band)/ W50(length-bias affordance)/
+W51(completeness 對沖)早已完成,決策 7 RESOLVED;memory 已修正。GT 型 image-recall 入 UI 留成功定義
+拍板後。
+
 **未盡部分(後續)**:**prose 型第二份 GT**(硬依賴用戶提供 prose 文件 + 親自標注 GT,延後)= §4.5 唯一剩餘項
-(cap 放寬軸 W61 + 供給側軸 W62 + section-miss 機制 W63 已做);§4.6 結構性路線必要性**大幅下降**(W62 證
-供給側 per-KB 旋鈕已把 mean 推到 ~0.89 / GT37 全召回;mega-query 剩餘缺口 0.62–0.74 vs GT,係咪仍需 caption
-路線取決於用戶「成功定義」決策 — 2026-06-12 用戶方向 = 先補完定義無關差距,後評定義);b-2 零引用模式
-(synthesizer 層,低概率)留 production 觀察。
+(cap 放寬軸 W61 + 供給側軸 W62 + section-miss 機制 W63 + 試跑面圖片覆蓋 proxy W65 已做);§4.6 結構性路線
+必要性**大幅下降**(W62 證供給側 per-KB 旋鈕已把 mean 推到 ~0.89 / GT37 全召回;mega-query 剩餘缺口
+0.62–0.74 vs GT,係咪仍需 caption 路線取決於用戶「成功定義」決策 — 2026-06-12 用戶方向 = 先補完定義
+無關差距,後評定義);b-2 零引用模式(synthesizer 層,低概率)留 production 觀察。
 
 ### 4.6 結構性根治路線(僅記錄,不屬現階段)
 
