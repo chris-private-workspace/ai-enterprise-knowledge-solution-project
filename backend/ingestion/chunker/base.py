@@ -37,6 +37,12 @@ class ChunkSpec:
     - low_value_flag: per architecture.md §3.3 soft-floor heuristic
     - heading_anchor: ParserResult.heading_tree.anchor for traceability (None for
                       tables not anchored to a heading)
+    - chunk_text_marked: ADR-0055 marked-text variant — chunk_text with
+                         `[IMG@<doc_order>]` placeholders interleaved at image
+                         positions (orchestrator rewrites to `[IMG#sha8]`).
+                         "" when the chunk carries no markers; downstream falls
+                         back to chunk_text. Never feeds retrieval, embedding,
+                         or chunk_token_count.
     """
 
     section_path: list[str]
@@ -48,6 +54,7 @@ class ChunkSpec:
     low_value_flag: bool
     embedded_image_positions: list[str] = field(default_factory=list)
     heading_anchor: str | None = None
+    chunk_text_marked: str = ""
 
 
 @runtime_checkable

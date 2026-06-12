@@ -5,12 +5,12 @@
 - [x] `docs/adr/README.md` index 加 0055
 
 ## F2 — chunker(marked text 組裝)
-- [ ] `_SectionAccumulator` 加 ordered `flow`(paragraph / image 事件按 doc_order 入列)
-- [ ] `ChunkSpec.chunk_text_marked` 欄位 + `_build_text_chunk` 組裝 marked 文字
-- [ ] 三個 flush 點(`_flush_text_section` / token-cap 內 flush / `_force_flush_images`)flow 重置正確
-- [ ] `_merge_adjacent_shorts` 合併 marked text
-- [ ] tests:標記位置按 doc_order / `chunk_text` bit-identical / 三 flush 點 + merge case
-- [ ] 既有 chunker tests 全綠
+- [x] `_SectionAccumulator` 加 ordered `flow`(paragraph / image 事件按 doc_order 入列)
+- [x] `ChunkSpec.chunk_text_marked` 欄位 + `_build_text_chunk` 組裝 marked 文字
+- [x] 三個 flush 點(`_flush_text_section` / token-cap 內 flush / `_force_flush_images`)flow 重置正確(另 cover 第 5 個出 chunk 位:oversized standalone 段落 snapshot 語義)
+- [x] `_merge_adjacent_shorts` 合併 marked text(marker-less 一側以乾淨 chunk_text fallback 拼入)
+- [x] tests:標記位置按 doc_order / `chunk_text` bit-identical / 三 flush 點 + merge case(9 條新 test;chunker 48 全綠)
+- [x] 既有 chunker tests 全綠(連 ChunkSpec 消費者 suite 共 75 passed)
 
 ## F3 — orchestrator + index schema
 - [ ] orchestrator `[IMG@n]` → `[IMG#sha8]` 改寫 pass(uploader 跳過嘅圖標記剝走)

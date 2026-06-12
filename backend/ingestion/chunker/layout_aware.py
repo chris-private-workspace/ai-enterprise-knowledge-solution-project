@@ -24,6 +24,13 @@ Algorithm:
      _MIN_CHUNK_MERGE_FLOOR (160). Tables stay independent.
    - Merge respects hard_cap_tokens (skip merge if combined would exceed).
    - Re-indexes chunks 0..N-1 contiguous after merge pass.
+7. Marked-text variant (W70 per ADR-0055): the accumulator keeps a parallel
+   doc_order-interleaved event flow (paragraph / image) and every emitted text
+   chunk carries chunk_text_marked — chunk_text with `[IMG@<doc_order>]`
+   placeholders at the image's document position (orchestrator rewrites them
+   to `[IMG#sha8]`). chunk_text / chunk_token_count / embedding input stay
+   bit-identical: the marked stream is assembled from a separate buffer and
+   never feeds the clean-text path. "" when a chunk has no markers.
 
 Carry-over from W2 D1: 6 sample chunk count expected to land below plan §2 F2
 estimate "2000-3000 chunks total" — that estimate assumed per-row table chunks,
@@ -70,6 +77,10 @@ class _SectionAccumulator:
     token_count: int
     image_positions: list[str]
     start_doc_order: int  # doc_order where this section opened (after the heading)
+    # ADR-0055 — doc_order-interleaved event stream mirroring paragraphs +
+    # image_positions: ("para", <text>) / ("img", "[IMG@<doc_order>]"). Feeds
+    # ONLY the chunk_text_marked variant; never the clean chunk_text path.
+    flow: list[tuple[str, str]]
 
 
 class LayoutAwareChunker:
@@ -132,6 +143,7 @@ class LayoutAwareChunker:
                         token_count=0,
                         image_positions=[],
                         start_doc_order=p.doc_order,
+                        flow=[],
                     )
                 else:
                     # Body text under current section (or pre-heading orphan)
@@ -145,6 +157,7 @@ class LayoutAwareChunker:
                             token_count=0,
                             image_positions=[],
                             start_doc_order=p.doc_order,
+                            flow=[],
                         )
                     self._add_paragraph(accumulator, p.text, chunks, chunk_index_counter)
                     # Refresh chunk_index_counter in case _add_paragraph flushed
@@ -154,6 +167,7 @@ class LayoutAwareChunker:
                 img_pos = ev  # doc_order int
                 if accumulator is not None:
                     accumulator.image_positions.append(f"img@{img_pos}")
+                    accumulator.flow.append(("img", f"[IMG@{img_pos}]"))
                     # 切法 D / ADR-0041 — image cap force-split: when the open
                     # section's accumulated images hit the cap, flush the current
                     # chunk (text-so-far + this image batch) and continue the SAME
@@ -213,30 +227,56 @@ class LayoutAwareChunker:
 
         # If single paragraph exceeds hard cap, emit it standalone (rare, but safe)
         if para_tokens >= self.hard_cap_tokens and not acc.paragraphs:
-            chunks.append(self._build_text_chunk(acc, [text], para_tokens, len(chunks)))
+            # ADR-0055 — mirror the snapshot semantics of image_positions (the
+            # standalone chunk carries acc's images without resetting them), so
+            # the marked flow is a snapshot too: acc.flow stays untouched.
+            chunks.append(
+                self._build_text_chunk(
+                    acc,
+                    [text],
+                    para_tokens,
+                    len(chunks),
+                    flow=[*acc.flow, ("para", text)],
+                ),
+            )
             return
 
         prospective = acc.token_count + para_tokens
         if prospective > self.hard_cap_tokens and acc.paragraphs:
             # Flush before adding (hard cap)
             chunks.append(
-                self._build_text_chunk(acc, acc.paragraphs, acc.token_count, len(chunks)),
+                self._build_text_chunk(
+                    acc,
+                    acc.paragraphs,
+                    acc.token_count,
+                    len(chunks),
+                    flow=acc.flow,
+                ),
             )
             acc.paragraphs = []
             acc.token_count = 0
             self._reset_images_on_flush(acc)
+            self._reset_flow_on_flush(acc)
 
         acc.paragraphs.append(text)
         acc.token_count += para_tokens
+        acc.flow.append(("para", text))
 
         # Soft target: flush early if past target on a clean paragraph boundary
         if acc.token_count >= self.target_tokens:
             chunks.append(
-                self._build_text_chunk(acc, acc.paragraphs, acc.token_count, len(chunks)),
+                self._build_text_chunk(
+                    acc,
+                    acc.paragraphs,
+                    acc.token_count,
+                    len(chunks),
+                    flow=acc.flow,
+                ),
             )
             acc.paragraphs = []
             acc.token_count = 0
             self._reset_images_on_flush(acc)
+            self._reset_flow_on_flush(acc)
 
     def _flush_text_section(
         self,
@@ -252,7 +292,15 @@ class LayoutAwareChunker:
         has_residual_images = self.max_images_per_chunk is not None and bool(acc.image_positions)
         if not acc.paragraphs and not has_residual_images:
             return []
-        return [self._build_text_chunk(acc, acc.paragraphs, acc.token_count, base_index)]
+        return [
+            self._build_text_chunk(
+                acc,
+                acc.paragraphs,
+                acc.token_count,
+                base_index,
+                flow=acc.flow,
+            ),
+        ]
 
     def _reset_images_on_flush(self, acc: _SectionAccumulator) -> None:
         """切法 D / ADR-0041 — distribute images per text-flush instead of piling
@@ -260,6 +308,17 @@ class LayoutAwareChunker:
         cap=None preserves the pre-W44 whole-section pile-on (bit-identical)."""
         if self.max_images_per_chunk is not None:
             acc.image_positions = []
+
+    def _reset_flow_on_flush(self, acc: _SectionAccumulator) -> None:
+        """ADR-0055 — keep the marked flow in lockstep with the flush semantics
+        of the buffers it mirrors: flushed paragraphs always drop; image events
+        follow _reset_images_on_flush (cap set → reset per flush; cap=None →
+        pre-W44 pile-on keeps images, so their markers re-emit in later
+        sub-chunks exactly like embedded_image_positions does)."""
+        if self.max_images_per_chunk is not None:
+            acc.flow = []
+        else:
+            acc.flow = [ev for ev in acc.flow if ev[0] == "img"]
 
     def _force_flush_images(
         self,
@@ -274,10 +333,17 @@ class LayoutAwareChunker:
         acceptable, citation neighbours (prev/next + section-aware attach) still
         reach surrounding context. Only called when max_images_per_chunk is set.
         """
-        chunk = self._build_text_chunk(acc, acc.paragraphs, acc.token_count, base_index)
+        chunk = self._build_text_chunk(
+            acc,
+            acc.paragraphs,
+            acc.token_count,
+            base_index,
+            flow=acc.flow,
+        )
         acc.paragraphs = []
         acc.token_count = 0
         acc.image_positions = []
+        acc.flow = []
         return [chunk]
 
     def _build_text_chunk(
@@ -286,6 +352,8 @@ class LayoutAwareChunker:
         paragraphs: list[str],
         token_count: int,
         chunk_index: int,
+        *,
+        flow: list[tuple[str, str]],
     ) -> ChunkSpec:
         chunk_content = "\n\n".join(paragraphs)
         chunk_text = f"{acc.chunk_title}\n\n{chunk_content}" if acc.chunk_title else chunk_content
@@ -300,7 +368,19 @@ class LayoutAwareChunker:
             low_value_flag=self._is_low_value(acc.chunk_title, chunk_content, full_token_count),
             embedded_image_positions=list(acc.image_positions),
             heading_anchor=acc.heading_anchor,
+            chunk_text_marked=self._build_marked_text(acc.chunk_title, flow),
         )
+
+    def _build_marked_text(self, chunk_title: str, flow: list[tuple[str, str]]) -> str:
+        """ADR-0055 — assemble the marked-text variant: paragraphs and
+        `[IMG@<doc_order>]` placeholders joined in document order, with the
+        same title-prefix rule as chunk_text. Returns "" when the flow carries
+        no image events — downstream consumers fall back to chunk_text, so
+        marker-less text is never duplicated into storage."""
+        if not any(kind == "img" for kind, _ in flow):
+            return ""
+        marked_content = "\n\n".join(payload for _, payload in flow)
+        return f"{chunk_title}\n\n{marked_content}" if chunk_title else marked_content
 
     def _build_table_chunk(
         self,
@@ -376,6 +456,14 @@ class LayoutAwareChunker:
             combined_images = list(prev.embedded_image_positions) + list(
                 chunk.embedded_image_positions,
             )
+            # ADR-0055 — marked variant merges in parallel; a marker-less side
+            # contributes its clean text so the marked stream stays complete.
+            combined_marked = ""
+            if prev.chunk_text_marked or chunk.chunk_text_marked:
+                combined_marked = (
+                    f"{prev.chunk_text_marked or prev.chunk_text}\n\n"
+                    f"{chunk.chunk_text_marked or chunk.chunk_text}"
+                )
             merged[-1] = ChunkSpec(
                 section_path=list(prev.section_path),
                 chunk_title=prev.chunk_title,
@@ -390,6 +478,7 @@ class LayoutAwareChunker:
                 ),
                 embedded_image_positions=combined_images,
                 heading_anchor=prev.heading_anchor,
+                chunk_text_marked=combined_marked,
             )
 
         # Re-index 0..N-1 contiguous after any merges.

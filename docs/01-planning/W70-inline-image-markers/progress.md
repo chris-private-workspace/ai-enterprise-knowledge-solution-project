@@ -33,3 +33,36 @@
   doc-scope 推斷)— ingest 寫死身份零推斷歧義,理據記 ADR Alternatives。
 - **Chris 拍板(2026-06-12):「Accept 但先只 commit 文件」— ADR + README + W70 plan
   套件 commit;F2+ code 下個 session 開工。**
+
+## Day 1(同日續,session 2)— 2026-06-12
+
+### F2 — chunker marked-text 流 ✅
+- `_SectionAccumulator` 加 `flow: list[tuple[str, str]]` — `("para", text)` /
+  `("img", "[IMG@<doc_order>]")` 按 doc_order 入列,同 `paragraphs` /
+  `image_positions` 平行鏡像;**乾淨 `chunk_text` 組裝路徑一行未郁**(diff 證:
+  layout_aware.py 被改嘅 5 行全部係 `_build_text_chunk` call site 加 `flow` 參數)
+  → G3 bit-identical by construction。
+- `ChunkSpec.chunk_text_marked`(default `""`)— 無標記 chunk 留空,下游
+  `marked or chunk_text` fallback,慳儲存 +「有值 = 有標記」語義清晰。
+- 出 chunk 位共 **5 個**(plan 講三個 flush 點之外,實際多兩個)全部接 flow:
+  (1) `_flush_text_section`(2) hard-cap pre-flush(3) soft-target flush
+  (4) `_force_flush_images`(5) **oversized standalone 段落** — 第 5 個跟現有
+  image snapshot 語義(袋走 acc 嘅 marker 但唔 reset,residual tail 會重複,
+  同 `embedded_image_positions` double-attach 行為平行一致,pre-existing 唔郁)。
+- flow 重置語義跟 `_reset_images_on_flush`:cap 設 → 全清;cap=None(pre-W44
+  pile-on)→ 保留 img 事件,marker 喺後續 sub-chunk 重現,同 image list 鏡像。
+- `_merge_adjacent_shorts`:marked 平行合併;marker-less 一側以乾淨 `chunk_text`
+  fallback 拼入,merged marked 流保持完整;兩側都無標記 → `""`。
+- Tests:9 條新(exact interleave 斷言 / chunk_text 永不含 marker + token 計數
+  以乾淨文字計 / 無圖留空 / soft-target flush 重置 / hard-cap pre-flush 邊界 /
+  切法 D batch 對應 `embedded_image_positions` / oversized snapshot / merge
+  fallback / cap=None pile-on 鏡像)。chunker 48 全綠;連 ChunkSpec 消費者
+  (test_orchestrator / test_ch009_image_dims / test_contextual_retrieval_ch008)
+  共 **75 passed**。
+- Lint:ruff check 全過;layout_aware.py format clean;test_chunker.py 只
+  range-format 新增 W70 section(檔案其餘部分 pre-existing 唔 format-clean,
+  per Karpathy §1.3 唔全檔 reformat);mypy --strict 新 code 零新 error
+  (layout_aware.py:125/184 `ev` assignment + parsers docling typing 全部
+  pre-existing)。
+- 下一步:F3 orchestrator sha8 改寫 + `ChunkRecord` 欄位 + `schema.json` +
+  drive-images-1 index PUT 遷移(記住先 GET 對照)。

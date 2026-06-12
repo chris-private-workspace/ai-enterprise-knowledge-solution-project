@@ -595,6 +595,225 @@ def test_w44_residual_images_flushed_on_section_tail() -> None:
     assert img_counts == [2, 8]
 
 
+# ─── W70 / ADR-0055 inline image markers (chunk_text_marked) ────────
+
+
+def test_w70_marked_text_interleaves_markers_by_doc_order() -> None:
+    """ADR-0055 AC2 — chunk_text_marked carries [IMG@<doc_order>] placeholders
+    strictly at the image's document position; chunk_text stays clean."""
+    paragraphs = [
+        _heading(2, "Section", 0),
+        _para("Step one body.", 1),
+        _para("Step two body.", 3),
+    ]
+    images = [
+        EmbeddedImage(
+            image_bytes=b"\x89PNG", alt_text="a", doc_order=2, ext="png", sha256="a" * 64
+        ),
+        EmbeddedImage(
+            image_bytes=b"\x89PNG", alt_text="b", doc_order=4, ext="png", sha256="b" * 64
+        ),
+    ]
+    chunks = LayoutAwareChunker().chunk(_build_result(paragraphs, images=images))
+    assert len(chunks) == 1
+    c = chunks[0]
+    assert c.chunk_text == "Section\n\nStep one body.\n\nStep two body."
+    assert c.chunk_text_marked == (
+        "Section\n\nStep one body.\n\n[IMG@2]\n\nStep two body.\n\n[IMG@4]"
+    )
+    assert c.embedded_image_positions == ["img@2", "img@4"]
+
+
+def test_w70_chunk_text_never_contains_markers_and_token_count_stays_clean() -> None:
+    """ADR-0055 G3 — across a composite doc (dense images forcing 切法 D splits,
+    plus a table), chunk_text carries no marker and chunk_token_count is still
+    computed from the clean text only."""
+    import tiktoken
+
+    paragraphs = [
+        _heading(2, "Dense Steps", 0),
+        _para("Short step body.", 1),
+        _heading(2, "Plain", 30),
+        _para("Plain body " * 40, 31),
+    ]
+    table = Table(rows=[["a", "b"]], headers=["c1", "c2"], doc_order=32)
+    chunks = LayoutAwareChunker().chunk(
+        _build_result(paragraphs, tables=[table], images=_dense_images(12)),
+    )
+    enc = tiktoken.get_encoding("cl100k_base")
+    assert chunks
+    for c in chunks:
+        assert "[IMG@" not in c.chunk_text
+        assert c.chunk_token_count == len(enc.encode(c.chunk_text))
+
+
+def test_w70_marked_empty_when_no_images() -> None:
+    """ADR-0055 — marker-less chunks (text, table, and post-merge text) carry
+    chunk_text_marked == "" so downstream falls back to chunk_text."""
+    paragraphs = [
+        _heading(2, "Parent", 0),
+        _heading(3, "Sub A", 1),
+        _para("alpha " * 60, 2),
+        _heading(3, "Sub B", 3),
+        _para("beta " * 60, 4),
+    ]
+    table = Table(rows=[["a", "b"]], headers=["c1", "c2"], doc_order=5)
+    chunks = LayoutAwareChunker().chunk(_build_result(paragraphs, tables=[table]))
+    assert chunks
+    assert all(c.chunk_text_marked == "" for c in chunks)
+
+
+def test_w70_soft_target_flush_resets_flow_between_subchunks() -> None:
+    """ADR-0055 — soft-target flush point: each sub-chunk's marked text carries
+    only its own paragraphs + markers; nothing leaks across the flush."""
+    para_a = "alpha " * 220  # ~220 tokens ≥ target 200 → flush on append
+    para_b = "beta " * 220
+    paragraphs = [
+        _heading(2, "Sec", 0),
+        _para(para_a, 2),
+        _para(para_b, 4),
+    ]
+    images = [
+        EmbeddedImage(
+            image_bytes=b"\x89PNG", alt_text="a", doc_order=1, ext="png", sha256="a" * 64
+        ),  # before para A
+        EmbeddedImage(
+            image_bytes=b"\x89PNG", alt_text="b", doc_order=3, ext="png", sha256="b" * 64
+        ),  # between A and B
+    ]
+    chunker = LayoutAwareChunker(target_tokens=200, hard_cap_tokens=600)
+    chunks = chunker.chunk(_build_result(paragraphs, images=images))
+    text_chunks = [c for c in chunks if c.chunk_kind == "text"]
+    assert len(text_chunks) == 2
+    first, second = text_chunks
+    assert first.chunk_text_marked == f"Sec\n\n[IMG@1]\n\n{para_a}"
+    assert second.chunk_text_marked == f"Sec\n\n[IMG@3]\n\n{para_b}"
+
+
+def test_w70_hard_cap_preflush_keeps_pending_paragraph_out_of_marked() -> None:
+    """ADR-0055 — hard-cap pre-flush point: the flushed chunk's marked text ends
+    at the marker; the paragraph that triggered the flush starts the next flow."""
+    para_a = "alpha " * 150  # ~150 tokens
+    para_b = "beta " * 150  # prospective 300 > hard cap 200 → pre-flush
+    paragraphs = [
+        _heading(2, "Sec", 0),
+        _para(para_a, 1),
+        _para(para_b, 3),
+    ]
+    images = [
+        EmbeddedImage(
+            image_bytes=b"\x89PNG", alt_text="a", doc_order=2, ext="png", sha256="a" * 64
+        ),  # after para A
+    ]
+    chunker = LayoutAwareChunker(target_tokens=500, hard_cap_tokens=200)
+    chunks = chunker.chunk(_build_result(paragraphs, images=images))
+    text_chunks = [c for c in chunks if c.chunk_kind == "text"]
+    assert len(text_chunks) == 2
+    first, second = text_chunks
+    assert first.chunk_text_marked == f"Sec\n\n{para_a}\n\n[IMG@2]"
+    assert second.chunk_text_marked == ""
+    assert "beta" in second.chunk_text
+
+
+def test_w70_force_flush_marker_batches_match_image_positions() -> None:
+    """ADR-0055 — 切法 D force-flush point: each sub-chunk's markers mirror its
+    embedded_image_positions batch exactly; 10 imgs / cap 8 → 8 + 2, no leak."""
+    import re as _re
+
+    chunks = LayoutAwareChunker().chunk(
+        _build_result([_heading(2, "Dense", 0), _para("body", 1)], images=_dense_images(10)),
+    )
+    text_chunks = [c for c in chunks if c.chunk_kind == "text"]
+    assert len(text_chunks) == 2
+    for c in text_chunks:
+        markers = _re.findall(r"\[IMG@(\d+)\]", c.chunk_text_marked)
+        assert [f"img@{m}" for m in markers] == c.embedded_image_positions
+    total_markers = [
+        m for c in text_chunks for m in _re.findall(r"\[IMG@\d+\]", c.chunk_text_marked)
+    ]
+    assert len(total_markers) == 10
+    assert len(set(total_markers)) == 10
+
+
+def test_w70_oversized_standalone_paragraph_snapshots_prior_markers() -> None:
+    """ADR-0055 — oversized-standalone emit point mirrors the pre-existing
+    image snapshot semantics: the standalone chunk carries the accumulated
+    markers WITHOUT resetting them (so the residual-image tail chunk repeats
+    them, exactly like embedded_image_positions does today)."""
+    para_huge = "huge " * 320  # ≥ hard cap 300, emitted standalone
+    paragraphs = [
+        _heading(2, "Sec", 0),
+        _para(para_huge, 2),
+    ]
+    images = [
+        EmbeddedImage(
+            image_bytes=b"\x89PNG", alt_text="a", doc_order=1, ext="png", sha256="a" * 64
+        ),
+    ]
+    chunker = LayoutAwareChunker(target_tokens=200, hard_cap_tokens=300)
+    chunks = chunker.chunk(_build_result(paragraphs, images=images))
+    text_chunks = [c for c in chunks if c.chunk_kind == "text"]
+    assert len(text_chunks) == 2  # standalone + residual-image tail
+    standalone, tail = text_chunks
+    assert standalone.chunk_text_marked == f"Sec\n\n[IMG@1]\n\n{para_huge}"
+    # Tail repeats the snapshot — parallel to its embedded_image_positions.
+    assert tail.embedded_image_positions == ["img@1"]
+    assert tail.chunk_text_marked == "Sec\n\n[IMG@1]"
+
+
+def test_w70_merge_combines_marked_with_clean_text_fallback() -> None:
+    """ADR-0055 — adjacent-short-merge: a marker-less side contributes its
+    clean chunk_text so the merged marked stream stays complete."""
+    paragraphs = [
+        _heading(1, "Chapter 1", 0),
+        _heading(2, "1.1", 1),
+        _para("alpha " * 60, 2),
+        _heading(2, "1.2", 4),
+        _para("beta " * 60, 5),
+    ]
+    images = [
+        EmbeddedImage(
+            image_bytes=b"\x89PNG", alt_text="a", doc_order=3, ext="png", sha256="a" * 64
+        ),  # in Sub 1.1, after its paragraph
+    ]
+    chunks = LayoutAwareChunker().chunk(_build_result(paragraphs, images=images))
+    text_chunks = [c for c in chunks if c.chunk_kind == "text"]
+    assert len(text_chunks) == 1  # short siblings merged
+    merged = text_chunks[0]
+    assert "[IMG@" not in merged.chunk_text
+    assert "[IMG@3]" in merged.chunk_text_marked
+    # Marker-less Sub 1.2 entered the marked stream via its clean text.
+    assert "1.2" in merged.chunk_text_marked
+    assert "beta" in merged.chunk_text_marked
+
+
+def test_w70_cap_none_pile_on_marked_mirrors_image_accumulation() -> None:
+    """ADR-0055 — cap=None (pre-W44 pile-on): image events survive each flush
+    exactly like embedded_image_positions, so later sub-chunks re-emit earlier
+    markers in lockstep with their (pile-on) image lists."""
+    para_a = "alpha " * 220
+    para_b = "beta " * 220
+    paragraphs = [
+        _heading(2, "Sec", 0),
+        _para(para_a, 2),
+        _para(para_b, 3),
+    ]
+    images = [
+        EmbeddedImage(
+            image_bytes=b"\x89PNG", alt_text="a", doc_order=1, ext="png", sha256="a" * 64
+        ),
+    ]
+    chunker = LayoutAwareChunker(target_tokens=200, max_images_per_chunk=None)
+    chunks = chunker.chunk(_build_result(paragraphs, images=images))
+    text_chunks = [c for c in chunks if c.chunk_kind == "text"]
+    assert len(text_chunks) == 2
+    first, second = text_chunks
+    assert first.chunk_text_marked == f"Sec\n\n[IMG@1]\n\n{para_a}"
+    # Pile-on: second chunk re-carries the image AND its marker; not para A.
+    assert second.embedded_image_positions == ["img@1"]
+    assert second.chunk_text_marked == f"Sec\n\n[IMG@1]\n\n{para_b}"
+
+
 def test_w44_under_cap_doc_identical_to_no_cap() -> None:
     """ADR-0041 — a normal section carrying < cap images produces the SAME chunks
     with cap=8 (default) and cap=None (no-op for under-cap, no-flush docs)."""
