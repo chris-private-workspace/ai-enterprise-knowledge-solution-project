@@ -119,6 +119,7 @@ import {
   selectInlineImages,
   type DedupedCitationImage,
 } from '@/lib/chat/citation-images';
+import { stripInlineImageMarkers } from '@/lib/chat/inline-image-markers';
 
 // ──────────────────────────────────────────────────────────────────────────
 // Local types + state
@@ -1243,7 +1244,11 @@ function MessageRow({
             }}
           >
             {message.content ? (
-              <AnswerBodyMarkdown content={message.content} citations={message.citations} />
+              <AnswerBodyMarkdown
+                content={message.content}
+                citations={message.citations}
+                streaming={Boolean(message.isStreaming)}
+              />
             ) : (
               <span className="muted">{message.isStreaming ? 'Thinking…' : '(no content)'}</span>
             )}
@@ -1429,10 +1434,21 @@ function injectPillsIntoChildren(
   return children;
 }
 
-function AnswerBodyMarkdown({ content, citations }: { content: string; citations: Citation[] }) {
+function AnswerBodyMarkdown({
+  content,
+  citations,
+  streaming = false,
+}: {
+  content: string;
+  citations: Citation[];
+  streaming?: boolean;
+}) {
   const processed = useMemo(
-    () => preprocessAnswerContent(content, citations),
-    [content, citations],
+    // W70 (ADR-0055) — strip [IMG#sha8] position markers before any other
+    // transform; while streaming, a trailing partial marker is held back so
+    // fragments never flash. W71 interleaved render will consume them instead.
+    () => preprocessAnswerContent(stripInlineImageMarkers(content, streaming), citations),
+    [content, citations, streaming],
   );
 
   const components = useMemo(

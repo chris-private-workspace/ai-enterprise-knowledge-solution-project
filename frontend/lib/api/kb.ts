@@ -48,6 +48,12 @@ export interface KbConfig {
   // default ("concise" = 150-word cap). "detailed" relaxes the synthesis prompt so
   // procedural answers reproduce every sub-step. Query-time knob (no re-index needed).
   answer_detail?: 'concise' | 'detailed' | null;
+  // W70 (ADR-0055) — per-KB inline image markers gate. `null`/absent = inherit the
+  // global default (False = clean-text prompts). True = answers carry [IMG#sha8]
+  // position markers (stripped by the chat display until the W71 interleaved
+  // render lands). Query-time knob; the KB's index must be re-indexed with the
+  // marked field populated for markers to actually surface.
+  enable_inline_image_markers?: boolean | null;
 }
 
 export const DEFAULT_KB_CONFIG: KbConfig = {

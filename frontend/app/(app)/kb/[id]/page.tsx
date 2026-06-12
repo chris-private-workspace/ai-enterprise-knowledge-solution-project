@@ -45,6 +45,7 @@ import {
   Settings as SettingsIcon,
   Shield,
   Sparkles,
+  Tag,
   Trash2,
   Upload,
   Zap,
@@ -1665,7 +1666,8 @@ type TuneKnobKey =
   | 'enable_citation_neighbour_images'
   | 'citation_neighbour_max_aux_images'
   | 'citation_neighbour_section_path_prefix_depth'
-  | 'max_images_per_answer';
+  | 'max_images_per_answer'
+  | 'enable_inline_image_markers';
 
 type KnobState = Record<TuneKnobKey, number | boolean | null>;
 
@@ -1708,6 +1710,16 @@ const TUNE_GROUPS: {
       { key: 'citation_neighbour_section_path_prefix_depth', label: 'Neighbour prefix depth' },
       { key: 'max_images_per_answer', label: 'Max images / answer' },
     ],
+  },
+  // W70 (ADR-0055) — bool-only knob (no 進階 numeric grid; mockup ekp-page-kb.jsx
+  // tuning card 第 4 行). ON = answers carry [IMG#sha8] position markers (display
+  // strips them until the W71 interleaved render).
+  {
+    icon: Tag,
+    title: 'Inline image markers(圖文位置標記)',
+    desc: '答案文字沿原文圖片位置帶 [IMG#…] 標記 — 文字+圖片跟原文順序顯示(W71 交織)嘅基建;未啟用交織前顯示層自動剝走標記。OFF = 現狀乾淨文字。',
+    enableKey: 'enable_inline_image_markers',
+    knobs: [],
   },
 ];
 
@@ -1789,6 +1801,8 @@ function KbTuneKnob({
 
 // A toggle-led group: enable_* switch + title/desc + 繼承/覆寫 badge + collapsible
 // 進階 numeric grid. Mirrors the OptionRow visual language (DESIGN_SYSTEM §4.3).
+// W70 (ADR-0055) — children optional: a bool-only knob (inline image markers)
+// renders the same row WITHOUT the 進階 button / grid (mockup parity).
 function KbTuneGroup({
   icon: Ic,
   title,
@@ -1804,7 +1818,7 @@ function KbTuneGroup({
   enabled: boolean | null;
   onToggle: (v: boolean) => void;
   onReset: () => void;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const overridden = enabled !== null;
@@ -1871,17 +1885,19 @@ function KbTuneGroup({
             {desc}
           </div>
         </div>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          style={{ flexShrink: 0 }}
-          onClick={() => setOpen(!open)}
-          aria-expanded={open}
-        >
-          進階 <ChevronRight size={11} style={{ transform: open ? 'rotate(90deg)' : 'none' }} />
-        </button>
+        {children != null && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            style={{ flexShrink: 0 }}
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+          >
+            進階 <ChevronRight size={11} style={{ transform: open ? 'rotate(90deg)' : 'none' }} />
+          </button>
+        )}
       </div>
-      {open && (
+      {open && children != null && (
         <div
           style={{
             display: 'grid',
@@ -2681,14 +2697,16 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
               onToggle={(v) => setKnob(g.enableKey, v)}
               onReset={() => setKnob(g.enableKey, null)}
             >
-              {g.knobs.map((kn) => (
-                <KbTuneKnob
-                  key={kn.key}
-                  label={kn.label}
-                  value={knobs[kn.key] as number | null}
-                  onChange={(v) => setKnob(kn.key, v)}
-                />
-              ))}
+              {g.knobs.length > 0
+                ? g.knobs.map((kn) => (
+                    <KbTuneKnob
+                      key={kn.key}
+                      label={kn.label}
+                      value={knobs[kn.key] as number | null}
+                      onChange={(v) => setKnob(kn.key, v)}
+                    />
+                  ))
+                : null}
             </KbTuneGroup>
           ))}
         </div>

@@ -12,7 +12,7 @@
  *      cards + the per-citation breakdown.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -362,6 +362,40 @@ describe('W69 — 圖密手冊 preset 一鍵套用', () => {
           // full-replacement 安全:其餘欄位原樣保留
           embedding_model: 'text-embedding-3-large',
           enable_parent_doc_retrieval: true,
+        }),
+      ),
+    );
+  });
+});
+
+
+describe('W70 - inline image markers toggle (ADR-0055)', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('renders the bool-only 4th group without an extra advanced toggle', async () => {
+    renderSettings();
+    expect(await screen.findByText(/Inline image markers/)).toBeInTheDocument();
+    // the 3 numeric groups keep their advanced toggles; the marker group adds none
+    expect(screen.getAllByRole('button', { name: /進階/ })).toHaveLength(3);
+  });
+
+  it('toggle ON + save PATCHes enable_inline_image_markers=true in the full body', async () => {
+    renderSettings();
+    const title = await screen.findByText('Inline image markers(圖文位置標記)');
+    // span(title) -> title row -> info div -> group header row (holds the switch)
+    const headerRow = title.parentElement!.parentElement!.parentElement!;
+    const sw = within(headerRow).getByRole('switch');
+    expect(sw).toHaveAttribute('aria-checked', 'false'); // inherit global OFF
+    await userEvent.click(sw);
+    await userEvent.click(screen.getByRole('button', { name: '儲存到此 KB' }));
+    await waitFor(() =>
+      expect(kbApi.patchSettings).toHaveBeenCalledWith(
+        'test-kb',
+        expect.objectContaining({
+          enable_inline_image_markers: true,
+          // full-replacement safety: existing knobs preserved
+          enable_parent_doc_retrieval: true,
+          max_images_per_answer: 8,
         }),
       ),
     );

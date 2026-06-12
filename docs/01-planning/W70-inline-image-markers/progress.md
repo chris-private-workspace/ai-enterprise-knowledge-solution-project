@@ -143,3 +143,33 @@
   `citation_image_neighbors.py` B905 pre-existing。
 - 下一步:F6 前端最小面(mockup 先行 tuning card 開關行 + 答案顯示 marker strip
   含 streaming 半截 buffer + H7 fidelity check)。
+
+### F6 — 前端最小面(mockup 先行)✅
+- **mockup 先改**(`ekp-page-kb.jsx`):`KbTuneGroup` 加 children-optional 分支
+  (bool-only knob 無「進階」掣 / grid);tuning card 圖片群後加第 4 行
+  「Inline image markers(圖文位置標記)」(icon `IcTag`,繼承全域 OFF 初始);
+  knob 數 comment 12→13。
+- **implementation 對齊 mockup**:`kb/[id]/page.tsx` `TuneKnobKey` +
+  `TUNE_GROUPS` 加第 4 組(`knobs: []`,icon lucide `Tag`);`KbTuneGroup`
+  children optional + caller 空 knobs 傳 null(同 mockup 同一條件結構);
+  `lib/api/kb.ts` `KbConfig` type 加欄位。PATCH 行現有 full-replacement 流程,
+  開關值自動入 body — 零新 persist code。
+- **marker strip**:新 `lib/chat/inline-image-markers.ts` —
+  `stripInlineImageMarkers(text, streaming)`:完整標記寬鬆剝(`[IMG#[^\]\s]*\]`,
+  畸形都唔俾用戶見;W71 先做 membership 驗證);`streaming=true` 時尾部半截
+  標記(`[`→`[IMG#a1b` 全系 prefix)hold-back,下個 delta 完成或反證先放行 —
+  標記碎片永不閃現。`AnswerBodyMarkdown` 加 `streaming` prop,strip 喺
+  citation placeholder 前處理**之前**;caller 傳 `message.isStreaming`。
+- Tests 14 條新:strip 單/多/畸形標記 + citation `[chunk-…]` 不受影響 + 快路
+  不變 / streaming 六款半截 hold + 完整照剝 + 非 streaming 不 hold + held `[`
+  下 delta 反證放行;tuning 第 4 組 render(進階掣維持 3 個)+ 開關 ON → PATCH
+  body 帶 `enable_inline_image_markers: true` 且現有 knobs 保留。
+- Gates:tsc 0 / eslint 0 error(唯一 warning = chat `<img>` pre-existing)/
+  prettier 我嘅新行全 clean(報 dirty 三檔全 pre-existing,含 BUG-033 `ol`/`ul`
+  行)/ vitest 全 suite 162/163(`chat-meta-row` 1 條 full-run 資源競爭 flake,
+  單獨跑 9/9 過,與 marker 無關)。
+- **H7 fidelity check**:mockup 先行流程(plan §6 預核 scope);同一
+  `KbTuneGroup` 視覺語言;icon / title / desc 逐字一致;開關初始「繼承全域」
+  badge + switch off 兩邊一致;strip 後答案視覺 == 現狀 == mockup。
+- 下一步:F7 re-index drive-images-1(pre-flight → multipart re-upload 全 doc →
+  chunk 數對齊 369 + `chunk_text_marked` 有值)。

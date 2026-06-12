@@ -826,7 +826,8 @@ function TabKbSettings({ kb }) {
         </div>
       </div>
 
-      {/* W43 — Per-KB advanced retrieval tuning (ADR-0040). 12 runtime knobs.
+      {/* W43 — Per-KB advanced retrieval tuning (ADR-0040). 13 runtime knobs
+          (W70 ADR-0055 +1 bool: inline image markers).
           null = inherit global; set = per-KB override. All runtime → no re-index.
           Grouped 檢索 / 引用 / 圖片. See backend KbConfig + EffectiveConfig resolver. */}
       <div className="card" style={{ gridColumn: "1 / -1" }}>
@@ -886,6 +887,12 @@ function TabKbSettings({ kb }) {
             {/* 已覆寫示範:此 AR KB set max_images_per_answer = 8(per Finding #8 standing config) */}
             <KbTuneKnob label="Max images / answer" globalValue="—(無上限)" value="8" />
           </KbTuneGroup>
+
+          {/* W70 (ADR-0055) — inline image markers 開關(bool-only,無進階旋鈕)。
+              ON = 合成答案沿原文圖片位置帶 [IMG#sha8] 標記;W70 顯示層自動剝走,
+              W71 交織 render(mockup ekp-page-chat.jsx AnswerBody 設計意圖)用佢落圖。 */}
+          <KbTuneGroup icon={IcTag} title="Inline image markers(圖文位置標記)" enabledInherit
+            desc="答案文字沿原文圖片位置帶 [IMG#…] 標記 — 文字+圖片跟原文順序顯示(W71 交織)嘅基建;未啟用交織前顯示層自動剝走標記。OFF = 現狀乾淨文字。" />
         </div>
         <div className="card-footer">
           <div className="text-xs muted">配置 scope:per-query &gt; <b>per-KB(此頁)</b> &gt; 全域 · ADR-0040</div>
@@ -1118,6 +1125,8 @@ function KbTuneKnob({ label, inherit, globalValue, value, suffix }) {
 
 // A toggle-led group (enable_* switch + title/desc + 繼承/覆寫 badge) with a
 // collapsible 進階 numeric grid. Mirrors the OptionRow visual language (§4.3).
+// W70 (ADR-0055) — children optional: a bool-only knob (e.g. inline image
+// markers) renders the same row WITHOUT the 進階 button / grid.
 function KbTuneGroup({ icon, title, desc, enabled, enabledInherit, children }) {
   const [open, setOpen] = useState(false);
   const Ic = icon;
@@ -1135,11 +1144,13 @@ function KbTuneGroup({ icon, title, desc, enabled, enabledInherit, children }) {
           </div>
           <div className="text-xs muted" style={{ marginTop: 3, lineHeight: 1.5 }}>{desc}</div>
         </div>
-        <button className="btn btn-ghost btn-sm" style={{ flexShrink: 0 }} onClick={() => setOpen(!open)}>
-          進階 <IcChevRight size={11} style={{ transform: open ? "rotate(90deg)" : "none" }} />
-        </button>
+        {children && (
+          <button className="btn btn-ghost btn-sm" style={{ flexShrink: 0 }} onClick={() => setOpen(!open)}>
+            進階 <IcChevRight size={11} style={{ transform: open ? "rotate(90deg)" : "none" }} />
+          </button>
+        )}
       </div>
-      {open && (
+      {open && children && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, padding: 14, borderTop: "1px solid oklch(var(--border))" }}>
           {children}
         </div>

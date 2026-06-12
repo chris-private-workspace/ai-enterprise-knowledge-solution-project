@@ -34,11 +34,11 @@
 - [x] tests:OFF bit-identical / ON 三路徑都帶標記 / system rule 出現條件 / route 級 use_marked wire 雙向(11 條新;F5 suites 125 passed)
 
 ## F6 — 前端(最小面)
-- [ ] mockup 先行:`ekp-page-kb.jsx` tuning card 加開關行
-- [ ] `kb/[id]/page.tsx`:`TuneKnobKey` + `TUNE_GROUPS` 加 `enable_inline_image_markers`
-- [ ] 答案顯示 marker strip(`AnswerBodyMarkdown` + streaming 半截標記 buffer)
-- [ ] tests:開關 PATCH body / strip 完整標記 / strip streaming 半截
-- [ ] tsc 0 / eslint 0 / H7 fidelity check(tuning card 行對齊 mockup)
+- [x] mockup 先行:`ekp-page-kb.jsx` tuning card 加開關行(`KbTuneGroup` 支援 bool-only 無進階;icon `IcTag`;knob 數 comment 12→13)
+- [x] `kb/[id]/page.tsx`:`TuneKnobKey` + `TUNE_GROUPS` 加 `enable_inline_image_markers`(第 4 組 `knobs: []`;`KbTuneGroup` children optional 同 mockup parity;`lib/api/kb.ts` KbConfig type 同步)
+- [x] 答案顯示 marker strip(新 `lib/chat/inline-image-markers.ts`;`AnswerBodyMarkdown` 加 `streaming` prop,strip 喺 citation 前處理之前;streaming 尾部半截標記 hold-back)
+- [x] tests:開關 PATCH body(full-replacement 保留現有 knobs)/ strip 完整+畸形標記 / citation marker 不受影響 / streaming 半截六款 hold / 非 streaming 不 hold(vitest 14 條新;全 suite 162/163,1 條 `chat-meta-row` flake 單獨跑過)
+- [x] tsc 0 / eslint 0 error(`<img>` warning pre-existing)/ prettier 新行全 clean(三檔 dirt 全 pre-existing)/ H7 fidelity check:同一 `KbTuneGroup` 視覺語言 + icon/title/desc 字串逐字一致 + strip 後答案視覺 == 現狀 == mockup(plan §6 預核)
 
 ## F7 — re-index drive-images-1
 - [ ] pre-flight(Langfuse 200 + Postgres SELECT 1 + backend /health + azurite)
