@@ -1,7 +1,7 @@
 ---
 phase: W67
 name: missing-image-chunk-mapping
-status: active       # draft | active | closed
+status: closed       # draft | active | closed
 created: 2026-06-12
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "全圖召回定義下 mega-query 漏網圖(Q001 17 張 / Q043 20 張)嘅 chunk-level 定位 — W66 三岔口(harvest 擴展 / caption / 接受)嘅揀武器判據"
@@ -62,3 +62,4 @@ spec_refs:
 | Date | Change | Reason |
 |---|---|---|
 | 2026-06-12 | Initial plan(active)| 用戶同意 W66 建議;R6 核實 catalog 現成有效 + 含 owning_chunk_ids |
+| 2026-06-12 | **Phase closed**(F1–F4 全 done)| **W66 判決推翻**:漏網 17 張 owning chunk **全部被 cite**(26 citations 覆蓋 ci 5–30 成個章節,供給+reach 完整);真兇 = cap 計 refs + 前置 citation 高重複 aux 食盡預算(時間線:cit 1–4 = 150 refs,cit 5–26 全 0;行到第一張漏網需 cap≈360)。**dedup-before-cap 由邊際項升返做唯一槓桿**(預算計 unique → cap=70 行勻 26 citations,Q001 65/65 in reach)→ H1 提案 STOP+ask,本 phase 不實作。方法論:三軸唔夠,要 per-citation 預算時間線 |
