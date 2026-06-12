@@ -213,6 +213,11 @@ data/temp/
 # Claude Code(per-developer local state:settings、memory、sessions)
 .claude/
 
+# 本機 dev 工具 / 參考(2026-06-09 第三方 review 後建;只經 OneDrive 同步,唔入 git)
+docs/01-planning/DEFERRED_REGISTER.md
+scripts/check-claude-size.ps1
+docs/06-reference/02-sample-development-workflow/
+
 
 # ----------------------------------------------------------------------------
 # OS-specific
