@@ -889,6 +889,13 @@ function DocConfigResultCard({
           sub={`raw ${fmt(summary.figure_count_raw)}`}
           band={summary.figure_count_dedup.band}
         />
+        {/* W65 — image-axis coverage proxy (mirror of 涵蓋章節數; wide text + narrow image = b-1 risk) */}
+        <DocConfigMetric
+          k="圖片章節數"
+          v={fmt(summary.image_section_count)}
+          sub="有圖 section 覆蓋 · proxy 非 recall"
+          band={summary.image_section_count.band}
+        />
         <DocConfigMetric k="延遲 p50" v={`${(summary.latency_ms.mean / 1000).toFixed(1)}s`} />
         <DocConfigMetric k="答案字數" v={String(last?.answer_chars ?? 0)} />
         <DocConfigMetric k="是否拒答" v={last?.refused ? '是' : '否'} />

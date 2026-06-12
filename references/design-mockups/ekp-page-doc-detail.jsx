@@ -527,9 +527,9 @@ function DocConfigTab({ kb, doc }) {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <DocTestResultCard label="此文件配置(DRAFT)" accent faith="0.82" faithBand="0.10" runs={3}
-              cit="13" citBand="0" sec="4" secBand="0" imgRaw="20" imgDedup="15" imgBand="0" lat="5.2s" chars="1620" refused="否" />
+              cit="13" citBand="0" sec="4" secBand="0" imgSec="3" imgSecBand="0" imgRaw="20" imgDedup="15" imgBand="0" lat="5.2s" chars="1620" refused="否" />
             <DocTestResultCard label="繼承 KB(SAVED)" faith="0.84" faithBand="0.08" runs={3}
-              cit="13" citBand="0" sec="2" secBand="0" imgRaw="20" imgDedup="15" imgBand="0" lat="5.1s" chars="1580" refused="否" />
+              cit="13" citBand="0" sec="2" secBand="0" imgSec="1" imgSecBand="0" imgRaw="20" imgDedup="15" imgBand="0" lat="5.1s" chars="1580" refused="否" />
           </div>
           <div className="hint" style={{ marginTop: 10, display: "flex", gap: 6, alignItems: "flex-start" }}>
             <IcAlert size={13} style={{ color: "oklch(var(--warning))", marginTop: 1, flexShrink: 0 }} />
@@ -626,7 +626,7 @@ function DocTuneGroup({ icon, title, desc, enabled, enabledInherit, children }) 
 }
 
 // One A/B result column for the per-doc test-run panel. accent = DRAFT.
-function DocTestResultCard({ label, accent, faith, faithBand, runs, cit, citBand, sec, secBand, imgRaw, imgDedup, imgBand, lat, chars, refused }) {
+function DocTestResultCard({ label, accent, faith, faithBand, runs, cit, citBand, sec, secBand, imgSec, imgSecBand, imgRaw, imgDedup, imgBand, lat, chars, refused }) {
   return (
     <div style={{
       border: accent ? "1px solid oklch(var(--accent) / 0.4)" : "1px solid oklch(var(--border))",
@@ -651,6 +651,8 @@ function DocTestResultCard({ label, accent, faith, faithBand, runs, cit, citBand
         <DocTestMetric k="引用數" v={cit} band={citBand} />
         <DocTestMetric k="涵蓋章節數" v={sec} band={secBand} sub="completeness proxy · 非 recall" />
         <DocTestMetric k="圖片(dedup)" v={imgDedup} sub={`raw ${imgRaw}`} band={imgBand} />
+        {/* W65 — image-axis coverage proxy (mirror of 涵蓋章節數; wide text + narrow image = b-1 risk) */}
+        <DocTestMetric k="圖片章節數" v={imgSec} band={imgSecBand} sub="有圖 section 覆蓋 · proxy 非 recall" />
         <DocTestMetric k="延遲 p50" v={lat} />
         <DocTestMetric k="答案字數" v={chars} />
         <DocTestMetric k="是否拒答" v={refused} />

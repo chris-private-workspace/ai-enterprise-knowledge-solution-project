@@ -55,6 +55,26 @@ def _figure_counts(citations: list[Citation]) -> tuple[int, int]:
     return raw, len(seen)
 
 
+def _image_section_count(citations: list[Citation]) -> int:
+    """W65 — distinct sections covered by the answer's UNIQUE images (the image-axis
+    mirror of the W51 `distinct_sections` text proxy). A wide `distinct_sections` with
+    a narrow `image_section_count` flags the W63 b-1 shape: text cites a section whose
+    images never made it into the answer. Dedup keys match `_figure_counts`; each
+    unique image's section is its `source_section` (BUG-026 ingest-stamped), falling
+    back to the carrying citation's `section_path` for pre-BUG-026 ingests where
+    `source_section` is empty. Breadth proxy only — NOT ground-truth recall."""
+    seen: set[str] = set()
+    sections: set[tuple[str, ...]] = set()
+    for c in citations:
+        for img in c.embedded_images:
+            key = img.checksum_sha256 or img.blob_url
+            if key in seen:
+                continue
+            seen.add(key)
+            sections.add(tuple(img.source_section) or tuple(c.section_path))
+    return len(sections)
+
+
 def _band(values: list[float]) -> MetricBand:
     return MetricBand(
         min=min(values),
@@ -125,6 +145,7 @@ async def _run_n(
                 run=i,
                 citation_count=len(resp.citations),
                 distinct_sections=distinct_sections,
+                image_section_count=_image_section_count(resp.citations),
                 figure_count_raw=raw,
                 figure_count_dedup=dedup,
                 latency_ms=resp.latency_ms,
@@ -148,6 +169,7 @@ async def _run_n(
         runs=metrics,
         citation_count=_band([float(m.citation_count) for m in metrics]),
         distinct_sections=_band([float(m.distinct_sections) for m in metrics]),
+        image_section_count=_band([float(m.image_section_count) for m in metrics]),
         figure_count_raw=_band([float(m.figure_count_raw) for m in metrics]),
         figure_count_dedup=_band([float(m.figure_count_dedup) for m in metrics]),
         latency_ms=_band([float(m.latency_ms) for m in metrics]),

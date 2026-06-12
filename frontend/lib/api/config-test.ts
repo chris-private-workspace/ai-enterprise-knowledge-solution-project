@@ -74,6 +74,10 @@ export interface RunMetrics {
   /** W51 (決策 7 option d) — distinct cited sections = completeness/coverage proxy
    * (breadth, NOT ground-truth recall). */
   distinct_sections: number;
+  /** W65 — distinct sections covered by the answer's UNIQUE images (image-axis mirror
+   * of `distinct_sections`). Wide text coverage + narrow image coverage = the W63 b-1
+   * shape (a cited section's images never surfaced). Breadth proxy, NOT recall. */
+  image_section_count: number;
   figure_count_raw: number;
   figure_count_dedup: number;
   latency_ms: number;
@@ -97,6 +101,8 @@ export interface ConfigRunSummary {
    * Read ALONGSIDE faithfulness (RAGAs faithfulness penalises long/comprehensive
    * answers). NOT ground-truth recall — a breadth proxy. */
   distinct_sections: MetricBand;
+  /** W65 — image-axis coverage proxy band (see RunMetrics.image_section_count). */
+  image_section_count: MetricBand;
   figure_count_raw: MetricBand;
   figure_count_dedup: MetricBand;
   latency_ms: MetricBand;

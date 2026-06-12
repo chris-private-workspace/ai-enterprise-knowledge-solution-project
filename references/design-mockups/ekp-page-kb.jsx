@@ -911,9 +911,9 @@ function TabKbSettings({ kb }) {
           {/* results A/B — DRAFT (保守草稿) vs SAVED (已存激進) ; 數字 = F2.6 dogfood */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <KbTestResultCard label="草稿配置(DRAFT)" accent faith="0.78" faithBand="0.16" runs={3}
-              cit="1" citBand="0" sec="1" secBand="0" imgRaw="6" imgDedup="6" imgBand="0" lat="4.1s" chars="612" refused="否" />
+              cit="1" citBand="0" sec="1" secBand="0" imgSec="1" imgSecBand="0" imgRaw="6" imgDedup="6" imgBand="0" lat="4.1s" chars="612" refused="否" />
             <KbTestResultCard label="已存配置(SAVED)" faith="0.92" faithBand="0.05" runs={3}
-              cit="11" citBand="0" sec="5" secBand="1" imgRaw="36" imgDedup="28.7" imgBand="0" lat="5.8s" chars="1840" refused="否" />
+              cit="11" citBand="0" sec="5" secBand="1" imgSec="3" imgSecBand="1" imgRaw="36" imgDedup="28.7" imgBand="0" lat="5.8s" chars="1840" refused="否" />
           </div>
 
           {/* W50 (決策 7 option d) — length-bias caveat: RAGAs faithfulness penalises
@@ -1125,7 +1125,7 @@ function KbTuneGroup({ icon, title, desc, enabled, enabledInherit, children }) {
 }
 
 // One A/B result column for the test-run panel. accent = DRAFT (草稿).
-function KbTestResultCard({ label, accent, faith, faithBand, runs, cit, citBand, sec, secBand, imgRaw, imgDedup, imgBand, lat, chars, refused }) {
+function KbTestResultCard({ label, accent, faith, faithBand, runs, cit, citBand, sec, secBand, imgSec, imgSecBand, imgRaw, imgDedup, imgBand, lat, chars, refused }) {
   return (
     <div style={{
       border: accent ? "1px solid oklch(var(--accent) / 0.4)" : "1px solid oklch(var(--border))",
@@ -1154,6 +1154,8 @@ function KbTestResultCard({ label, accent, faith, faithBand, runs, cit, citBand,
         {/* W51 (決策 7 option d) — completeness/coverage proxy (breadth, NOT recall) */}
         <KbTestMetric k="涵蓋章節數" v={sec} band={secBand} sub="completeness proxy · 非 recall" />
         <KbTestMetric k="圖片(dedup)" v={imgDedup} sub={`raw ${imgRaw}`} band={imgBand} />
+        {/* W65 — image-axis coverage proxy (mirror of 涵蓋章節數; wide text + narrow image = b-1 risk) */}
+        <KbTestMetric k="圖片章節數" v={imgSec} band={imgSecBand} sub="有圖 section 覆蓋 · proxy 非 recall" />
         <KbTestMetric k="延遲 p50" v={lat} />
         <KbTestMetric k="答案字數" v={chars} />
         <KbTestMetric k="是否拒答" v={refused} />

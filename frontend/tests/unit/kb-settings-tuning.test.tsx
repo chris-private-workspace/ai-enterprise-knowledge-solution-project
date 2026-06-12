@@ -79,6 +79,7 @@ const FAKE_RESULT = {
     ],
     citation_count: band(1),
     distinct_sections: band(1), // W51 — coverage proxy (1 cited section)
+    image_section_count: band(1), // W65 — image-axis coverage proxy
     figure_count_raw: band(6),
     figure_count_dedup: band(6),
     latency_ms: band(4100),
@@ -94,6 +95,7 @@ const FAKE_RESULT = {
     ],
     citation_count: band(11),
     distinct_sections: band(5), // W51 — coverage proxy (5 cited sections, broader)
+    image_section_count: band(3), // W65 — image-axis coverage proxy (narrower than text = b-1 signal)
     figure_count_raw: band(36),
     figure_count_dedup: band(29),
     latency_ms: band(5800),
@@ -225,6 +227,8 @@ describe('W43 F3.3 — config-test 試跑 panel', () => {
     expect(screen.getByText('length bias')).toBeInTheDocument();
     // W51 (決策 7 option d ideal) — completeness proxy「涵蓋章節數」renders on both cards
     expect(screen.getAllByText('涵蓋章節數').length).toBeGreaterThanOrEqual(2);
+    // W65 — image-axis coverage proxy「圖片章節數」renders on both cards
+    expect(screen.getAllByText('圖片章節數').length).toBeGreaterThanOrEqual(2);
   });
 
   it('shows a single-shot warning + no band when faithfulness has 1 run (W49)', async () => {

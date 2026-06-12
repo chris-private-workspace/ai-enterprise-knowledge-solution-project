@@ -22,6 +22,7 @@ from api.routes import config_test as ct_route
 from api.routes import query as query_route
 from api.schemas.doc_config import DocConfig
 from api.schemas.kb import KbConfig, KbCreate
+from api.schemas.query import Citation, ImageRef
 from kb_management.doc_config_store import InMemoryDocConfigStore
 from kb_management.service import KBService, get_kb_service
 from kb_management.storage import InMemoryKBBackend
@@ -197,8 +198,75 @@ def test_config_test_multi_run_counts_and_band() -> None:
     assert r0["distinct_sections"] == 2
     assert body["draft"]["distinct_sections"]["mean"] == 2
     assert body["draft"]["distinct_sections"]["band"] == 0
+    # W65 — image section coverage: fixture images have empty source_section, so each
+    # unique image falls back to its citation's section_path → [Doc,A] + [Doc,B] = 2
+    assert r0["image_section_count"] == 2
+    assert body["draft"]["image_section_count"]["mean"] == 2
+    assert body["draft"]["image_section_count"]["band"] == 0
     # per-citation breakdown from the last run
     assert {c["chunk_id"] for c in body["draft"]["per_citation"]} == {"chunk-a", "chunk-b"}
+
+
+def _img_ref(checksum: str, source_section: list[str] | None = None) -> ImageRef:
+    return ImageRef(
+        blob_url=f"blob://{checksum}",
+        alt_text="",
+        checksum_sha256=checksum,
+        width=10,
+        height=10,
+        source_section=source_section or [],
+    )
+
+
+def _citation_with(chunk_id: str, section_path: list[str], imgs: list[ImageRef]) -> Citation:
+    return Citation(
+        chunk_id=chunk_id,
+        doc_id="d",
+        doc_title="D",
+        chunk_title="t",
+        chunk_index=1,
+        section_path=section_path,
+        relevance_score=0.9,
+        embedded_images=imgs,
+    )
+
+
+def test_image_section_count_distinct_source_sections() -> None:
+    """W65 — unique images spanning two source_sections count 2."""
+    cits = [
+        _citation_with(
+            "c1",
+            ["Doc", "X"],
+            [_img_ref("s1", ["Doc", "S17"]), _img_ref("s2", ["Doc", "S18"])],
+        )
+    ]
+    assert ct_route._image_section_count(cits) == 2
+
+
+def test_image_section_count_dedups_by_checksum() -> None:
+    """W65 — the same image re-embedded by an aux citation counts once (the W63
+    ref-vs-unique finding: 20 refs collapsed to 9 uniques)."""
+    img = _img_ref("dup", ["Doc", "S17"])
+    cits = [
+        _citation_with("c1", ["Doc", "X"], [img]),
+        _citation_with("c2", ["Doc", "Y"], [_img_ref("dup", ["Doc", "S17"])]),
+    ]
+    assert ct_route._image_section_count(cits) == 1
+
+
+def test_image_section_count_falls_back_to_citation_section() -> None:
+    """W65 — pre-BUG-026 images (empty source_section) use the carrying citation's
+    section_path, so old-ingest KBs still get a meaningful count."""
+    cits = [
+        _citation_with("c1", ["Doc", "A"], [_img_ref("a1")]),
+        _citation_with("c2", ["Doc", "B"], [_img_ref("b1")]),
+    ]
+    assert ct_route._image_section_count(cits) == 2
+
+
+def test_image_section_count_no_images_is_zero() -> None:
+    cits = [_citation_with("c1", ["Doc", "A"], [])]
+    assert ct_route._image_section_count(cits) == 0
 
 
 def test_config_test_max_images_cap_applies() -> None:

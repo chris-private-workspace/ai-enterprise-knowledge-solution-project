@@ -81,6 +81,10 @@ class RunMetrics(BaseModel):
     # completeness/coverage PROXY (breadth, not ground-truth recall): how many
     # different document sections the answer drew from.
     distinct_sections: int
+    # W65 — distinct sections covered by the answer's UNIQUE images (image-axis mirror
+    # of `distinct_sections`). Wide text coverage + narrow image coverage = the W63 b-1
+    # shape (a cited section's images never surfaced). Breadth proxy, NOT recall.
+    image_section_count: int
     figure_count_raw: int  # total embedded_images across citations (cross-citation dups kept)
     figure_count_dedup: int  # unique by checksum_sha256 (matches the frontend display dedup)
     latency_ms: int
@@ -109,6 +113,8 @@ class ConfigRunSummary(BaseModel):
     # comprehensive answers (a high-coverage config can score LOW faithfulness without
     # being worse). NOT ground-truth recall (no labelled set); a breadth proxy only.
     distinct_sections: MetricBand
+    # W65 — image-axis coverage proxy band (see RunMetrics.image_section_count).
+    image_section_count: MetricBand
     figure_count_raw: MetricBand
     figure_count_dedup: MetricBand
     latency_ms: MetricBand
