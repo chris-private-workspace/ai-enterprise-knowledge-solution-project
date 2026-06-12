@@ -369,9 +369,18 @@ Q001+Q036 **1.00(65/65,W67 預測命中)**、Q005 1.00、Q043 cap=80 後 **73/73
 > drive-images-1 persisted 終態:`max_images_per_answer=80` + `default_rerank_k=10` +
 > `citation_neighbour_max_aux_images=40`(+ DD-4 default + pin=true)。
 
+**✅ W69 落地(2026-06-12,phase `W69-image-dense-preset-ui`,無 ADR — frontend-only,code
+`2424695`)— 配方 preset 一鍵套用 UI**:KB settings tuning card 加 preset 行(圖密步驟手冊
+80/10/40,出處注釋 W62–W68 + ADR-0054),套用 = 填草稿(行現有 dirty → 試跑 → 儲存流程,
+persist 路徑唯一不變),三欄全等時按鈕轉「✓ 已套用」disabled。mockup 先行 per H7;
+test 7/7(全套 147/147);Playwright live 驗 drive-images-1 自動顯示已套用。
+**config-lifecycle 閉環(設定 → 試跑 → 驗證 → 持久化)UI 面完成。**
+
 **未盡部分(後續)**:**prose 型第二份 GT**(硬依賴用戶提供 prose 文件 + 親自標注 GT,延後)—
 圖片線唯一未驗部分;precision 注腳(Q002/Q003/Q038 各 1 張非 GT 圖,0.95–0.97)= 鄰居收割輕微
-over-inclusion,可接受;b-2 零引用模式(synthesizer 層,W68 全部 run 未現身)留 production 觀察。
+over-inclusion,可接受;b-2 零引用模式(synthesizer 層,W68 全部 run 未現身)留 production 觀察;
+2026-06-12 production chat 首個實測點:Q001 backend 65/65 全中 GT(UI 顯示 63 = ADR-0046
+裝飾圖示顯示層過濾,by design)。
 
 ### 4.6 結構性根治路線(僅記錄,不屬現階段)
 

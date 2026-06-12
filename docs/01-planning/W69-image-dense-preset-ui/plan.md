@@ -1,7 +1,7 @@
 ---
 phase: W69
 name: image-dense-preset-ui
-status: active       # draft | active | closed
+status: closed       # draft | active | closed
 created: 2026-06-12
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "圖密手冊配方(cap=80 / rerank_k=10 / max_aux=40,W62–W68 實證)而家要逐欄手動 PATCH;一鍵套用 UI 完成 per-KB config 願景嘅 config-lifecycle 閉環(設定 → 試跑 → 驗證 → 持久化)"
@@ -81,3 +81,4 @@ spec_refs:
 | Date | Change | Reason |
 |---|---|---|
 | 2026-06-12 | Initial plan(active)| 用戶拍板 preset 一鍵套用線;R6 grounding 完成(tuning card / rerankK 獨立 state / mockup card 已存在 / test pattern)|
+| 2026-06-12 | **Phase closed**(F1–F5 全 done,同日)| AC1–AC5 全達:mockup 先行 → 實作對齊 → test 7/7(全套 147/147)→ Playwright live 驗 AC3(drive-images-1 自動「✓ 已套用」)。code `2424695`。config-lifecycle 閉環 UI 面完成 |

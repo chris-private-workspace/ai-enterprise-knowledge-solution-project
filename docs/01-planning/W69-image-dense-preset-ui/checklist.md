@@ -20,4 +20,4 @@
 - [x] drive-images-1 settings tab 顯示「✓ 已套用」disabled(AC3,persisted 80/10/40 自動偵測)
 
 ## F5 — 收爐
-- [ ] rollup §4.5 補一筆 + memory 更新 + plan closeout + progress retro
+- [x] rollup §4.5 補一筆 + memory 更新 + plan closeout + progress retro
