@@ -73,9 +73,33 @@ const FAKE_RESULT = {
   resolved_config: { max_images_per_answer: 8 },
   draft: {
     runs: [
-      { run: 1, citation_count: 1, figure_count_raw: 6, figure_count_dedup: 6, latency_ms: 4100, answer_chars: 612, refused: false },
-      { run: 2, citation_count: 1, figure_count_raw: 6, figure_count_dedup: 6, latency_ms: 4100, answer_chars: 612, refused: false },
-      { run: 3, citation_count: 1, figure_count_raw: 6, figure_count_dedup: 6, latency_ms: 4100, answer_chars: 612, refused: false },
+      {
+        run: 1,
+        citation_count: 1,
+        figure_count_raw: 6,
+        figure_count_dedup: 6,
+        latency_ms: 4100,
+        answer_chars: 612,
+        refused: false,
+      },
+      {
+        run: 2,
+        citation_count: 1,
+        figure_count_raw: 6,
+        figure_count_dedup: 6,
+        latency_ms: 4100,
+        answer_chars: 612,
+        refused: false,
+      },
+      {
+        run: 3,
+        citation_count: 1,
+        figure_count_raw: 6,
+        figure_count_dedup: 6,
+        latency_ms: 4100,
+        answer_chars: 612,
+        refused: false,
+      },
     ],
     citation_count: band(1),
     distinct_sections: band(1), // W51 — coverage proxy (1 cited section)
@@ -83,15 +107,41 @@ const FAKE_RESULT = {
     figure_count_raw: band(6),
     figure_count_dedup: band(6),
     latency_ms: band(4100),
-    per_citation: [{ chunk_id: 'chunk-42', section_path: ['Address Book', 'Sync'], image_count: 6 }],
+    per_citation: [
+      { chunk_id: 'chunk-42', section_path: ['Address Book', 'Sync'], image_count: 6 },
+    ],
     // W49 — faithfulness is now an N-run MetricBand (noisy draft: ±0.16)
     faithfulness: { min: 0.7, max: 0.86, mean: 0.78, band: 0.16 },
   },
   saved: {
     runs: [
-      { run: 1, citation_count: 11, figure_count_raw: 36, figure_count_dedup: 29, latency_ms: 5800, answer_chars: 1840, refused: false },
-      { run: 2, citation_count: 11, figure_count_raw: 36, figure_count_dedup: 29, latency_ms: 5800, answer_chars: 1840, refused: false },
-      { run: 3, citation_count: 11, figure_count_raw: 36, figure_count_dedup: 29, latency_ms: 5800, answer_chars: 1840, refused: false },
+      {
+        run: 1,
+        citation_count: 11,
+        figure_count_raw: 36,
+        figure_count_dedup: 29,
+        latency_ms: 5800,
+        answer_chars: 1840,
+        refused: false,
+      },
+      {
+        run: 2,
+        citation_count: 11,
+        figure_count_raw: 36,
+        figure_count_dedup: 29,
+        latency_ms: 5800,
+        answer_chars: 1840,
+        refused: false,
+      },
+      {
+        run: 3,
+        citation_count: 11,
+        figure_count_raw: 36,
+        figure_count_dedup: 29,
+        latency_ms: 5800,
+        answer_chars: 1840,
+        refused: false,
+      },
     ],
     citation_count: band(11),
     distinct_sections: band(5), // W51 — coverage proxy (5 cited sections, broader)
@@ -152,9 +202,7 @@ describe('W43 F3.2 — Advanced retrieval tuning card', () => {
     expect(screen.getAllByText('已覆寫').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('繼承全域').length).toBeGreaterThanOrEqual(1);
     // config-test panel present (collapsed, empty state)
-    expect(
-      screen.getByRole('heading', { name: /試跑/, level: 3 }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /試跑/, level: 3 })).toBeInTheDocument();
   });
 });
 
@@ -276,6 +324,45 @@ describe('CH-006 — per-KB synthesis answer detail level', () => {
       expect(kbApi.patchSettings).toHaveBeenCalledWith(
         'test-kb',
         expect.objectContaining({ answer_detail: 'detailed' }),
+      ),
+    );
+  });
+});
+
+describe('W69 — 圖密手冊 preset 一鍵套用', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('套用填三欄草稿(無 PATCH)、按鈕轉已套用,儲存先送 preset 值(full body)', async () => {
+    renderSettings();
+    // FAKE_KB(rerank 5 / max_aux 繼承 / cap 8)≠ preset → 按鈕係可撳嘅「套用配方」
+    const applyBtn = await screen.findByRole('button', { name: '套用配方' });
+    await userEvent.click(applyBtn);
+
+    // rerank_k 5→10(General 區,always-visible input)
+    expect(screen.getByDisplayValue('10')).toBeInTheDocument();
+    // max_aux 繼承→40 / cap 8→80 嘅 input 收喺第三組(neighbour images)嘅「進階」
+    // 摺疊區 — 展開先見到(state 已更新,DOM 未 mount)
+    const advancedToggles = screen.getAllByRole('button', { name: /進階/ });
+    await userEvent.click(advancedToggles[2]);
+    expect(screen.getByDisplayValue('40')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('80')).toBeInTheDocument();
+    // 套用本身唔發 PATCH — persist 路徑唯一(「儲存到此 KB」)
+    expect(kbApi.patchSettings).not.toHaveBeenCalled();
+    // 草稿現值 == 配方值 → 按鈕轉 disabled「已套用」
+    expect(screen.getByRole('button', { name: /已套用/ })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole('button', { name: '儲存到此 KB' }));
+    await waitFor(() =>
+      expect(kbApi.patchSettings).toHaveBeenCalledWith(
+        'test-kb',
+        expect.objectContaining({
+          default_rerank_k: 10,
+          citation_neighbour_max_aux_images: 40,
+          max_images_per_answer: 80,
+          // full-replacement 安全:其餘欄位原樣保留
+          embedding_model: 'text-embedding-3-large',
+          enable_parent_doc_retrieval: true,
+        }),
       ),
     );
   });

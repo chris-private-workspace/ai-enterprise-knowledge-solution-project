@@ -23,11 +23,7 @@
  * with inline style only for one-off mockup specifics.
  */
 
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   Archive,
@@ -65,17 +61,8 @@ import {
   type ConfigTestResult,
   type DraftRetrievalConfig,
 } from '@/lib/api/config-test';
-import {
-  documentsApi,
-  type ChunkSummary,
-  type DocumentSummary,
-} from '@/lib/api/documents';
-import {
-  kbApi,
-  type KbConfig,
-  type KbImageItem,
-  type KbStatus,
-} from '@/lib/api/kb';
+import { documentsApi, type ChunkSummary, type DocumentSummary } from '@/lib/api/documents';
+import { kbApi, type KbConfig, type KbImageItem, type KbStatus } from '@/lib/api/kb';
 import {
   retrievalTestApi,
   type RetrievalMode,
@@ -165,8 +152,7 @@ export default function KbDetailPage() {
           <div className="banner banner-error">
             <AlertTriangle size={16} />
             <div style={{ flex: 1 }}>
-              Failed to load KB {kbId}:{' '}
-              {String((query.error as Error)?.message ?? 'unknown')}
+              Failed to load KB {kbId}: {String((query.error as Error)?.message ?? 'unknown')}
             </div>
           </div>
         </div>
@@ -195,8 +181,8 @@ export default function KbDetailPage() {
               >
                 <ChevronLeft size={12} /> Knowledge
               </button>
-              <span className="text-xs muted mono">·</span>
-              <span className="text-xs muted mono">ekp-kb-{kb.kb_id}-v1</span>
+              <span className="muted mono text-xs">·</span>
+              <span className="muted mono text-xs">ekp-kb-{kb.kb_id}-v1</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <h1 className="page-title">{kb.name || kb.kb_id}</h1>
@@ -245,7 +231,7 @@ export default function KbDetailPage() {
                 {kb.failed_documents.length} document
                 {kb.failed_documents.length > 1 ? 's' : ''} failed to index
               </div>
-              <div className="text-xs muted">
+              <div className="muted text-xs">
                 Review parser errors in the Documents tab → &ldquo;failed&rdquo; filter.
               </div>
             </div>
@@ -275,9 +261,7 @@ export default function KbDetailPage() {
                 onClick={() => handleTabChange(t.id)}
               >
                 <Ic size={14} /> {t.label}
-                {count != null && (
-                  <span className="count">{count.toLocaleString()}</span>
-                )}
+                {count != null && <span className="count">{count.toLocaleString()}</span>}
               </button>
             );
           })}
@@ -332,8 +316,8 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
       <div className="banner banner-error">
         <AlertTriangle size={16} />
         <div style={{ flex: 1 }}>
-          Failed to load documents — backend unreachable or Azure AI Search not
-          configured. {String((docs.error as Error)?.message ?? 'unknown')}
+          Failed to load documents — backend unreachable or Azure AI Search not configured.{' '}
+          {String((docs.error as Error)?.message ?? 'unknown')}
         </div>
       </div>
     );
@@ -345,9 +329,7 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
           <Upload size={20} />
         </div>
         <div className="empty-title">No documents yet</div>
-        <div>
-          Word, PDF, or PowerPoint — ingestion pipeline parses + chunks + embeds.
-        </div>
+        <div>Word, PDF, or PowerPoint — ingestion pipeline parses + chunks + embeds.</div>
         <button
           type="button"
           className="btn btn-primary btn-sm"
@@ -374,28 +356,23 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
           <span className="icon-leading">
             <Search size={14} />
           </span>
-          <input
-            className="input"
-            placeholder="Search documents by title or doc_id…"
-          />
+          <input className="input" placeholder="Search documents by title or doc_id…" />
         </div>
         <div className="seg">
-          {(['all', 'indexed', 'indexing', 'failed', 'queued'] as DocStatusFilter[]).map(
-            (f) => (
-              <button
-                type="button"
-                key={f}
-                className="seg-btn"
-                data-active={filter === f}
-                onClick={() => setFilter(f)}
-              >
-                {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
-                <span className="text-xs mono" style={{ opacity: 0.6 }}>
-                  {filterCounts[f]}
-                </span>
-              </button>
-            ),
-          )}
+          {(['all', 'indexed', 'indexing', 'failed', 'queued'] as DocStatusFilter[]).map((f) => (
+            <button
+              type="button"
+              key={f}
+              className="seg-btn"
+              data-active={filter === f}
+              onClick={() => setFilter(f)}
+            >
+              {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+              <span className="mono text-xs" style={{ opacity: 0.6 }}>
+                {filterCounts[f]}
+              </span>
+            </button>
+          ))}
         </div>
         <div className="spacer" />
         <button type="button" className="btn btn-secondary btn-sm" disabled>
@@ -420,9 +397,7 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
             {filtered.map((d) => (
               <tr
                 key={d.doc_id}
-                onClick={() =>
-                  router.push(`/kb/${kb.kb_id}/docs/${encodeURIComponent(d.doc_id)}`)
-                }
+                onClick={() => router.push(`/kb/${kb.kb_id}/docs/${encodeURIComponent(d.doc_id)}`)}
                 style={{ cursor: 'default' }}
               >
                 <td style={{ maxWidth: 360 }}>
@@ -437,22 +412,17 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
                   >
                     {d.doc_title || d.doc_id}
                   </div>
-                  <div className="text-xs muted mono">{d.doc_id}</div>
+                  <div className="muted mono text-xs">{d.doc_id}</div>
                 </td>
                 <td>
-                  <span
-                    className="mono text-xs"
-                    style={{ textTransform: 'uppercase' }}
-                  >
+                  <span className="mono text-xs" style={{ textTransform: 'uppercase' }}>
                     {d.doc_format || '—'}
                   </span>
                 </td>
                 <td className="col-num">{d.total_chunks}</td>
                 <td>
                   {d.tags.length > 0 ? (
-                    <span
-                      style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}
-                    >
+                    <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
                       {d.tags.slice(0, 3).map((t) => (
                         <span key={t} className="badge badge-muted">
                           {t}
@@ -460,7 +430,7 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
                       ))}
                     </span>
                   ) : (
-                    <span className="text-xs muted">—</span>
+                    <span className="muted text-xs">—</span>
                   )}
                 </td>
                 <td>
@@ -468,9 +438,7 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
                     <span className="badge-dot" /> INDEXED
                   </span>
                 </td>
-                <td className="col-num text-xs">
-                  {formatRelative(d.last_indexed_at)}
-                </td>
+                <td className="col-num text-xs">{formatRelative(d.last_indexed_at)}</td>
                 <td className="col-shrink">
                   <button
                     type="button"
@@ -534,9 +502,7 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
   const docList = docs.data ?? [];
   const docParam = searchParams.get('doc');
   const selectedDocId =
-    docParam && docList.some((d) => d.doc_id === docParam)
-      ? docParam
-      : docList[0]?.doc_id;
+    docParam && docList.some((d) => d.doc_id === docParam) ? docParam : docList[0]?.doc_id;
 
   const chunks = useQuery<ChunkSummary[]>({
     queryKey: ['kb', kb.kb_id, 'chunks', selectedDocId],
@@ -546,8 +512,7 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
 
   const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
   const chunkList = chunks.data ?? [];
-  const activeChunk =
-    chunkList.find((c) => c.chunk_id === selectedChunkId) ?? chunkList[0];
+  const activeChunk = chunkList.find((c) => c.chunk_id === selectedChunkId) ?? chunkList[0];
 
   if (docs.isLoading) {
     return (
@@ -611,12 +576,9 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
               </div>
             </div>
           </div>
-          <div
-            className="card-body card-body-tight"
-            style={{ maxHeight: 540, overflowY: 'auto' }}
-          >
+          <div className="card-body card-body-tight" style={{ maxHeight: 540, overflowY: 'auto' }}>
             {chunks.isLoading && (
-              <div style={{ padding: 14 }} className="text-xs muted">
+              <div style={{ padding: 14 }} className="muted text-xs">
                 Loading chunks…
               </div>
             )}
@@ -636,12 +598,10 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
                     borderBottom: '1px solid oklch(var(--border))',
                     cursor: 'default',
                     background: active ? 'oklch(var(--muted) / 0.5)' : 'transparent',
-                    borderLeft: active
-                      ? '2px solid oklch(var(--accent))'
-                      : '2px solid transparent',
+                    borderLeft: active ? '2px solid oklch(var(--accent))' : '2px solid transparent',
                   }}
                 >
-                  <div className="text-xs mono muted" style={{ marginBottom: 2 }}>
+                  <div className="mono muted text-xs" style={{ marginBottom: 2 }}>
                     #{c.chunk_id}
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 2 }}>
@@ -663,11 +623,7 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
             <div>
               <h3 className="card-title">Chunk preview</h3>
               <div className="card-desc">
-                {activeChunk ? (
-                  <span className="mono">{activeChunk.chunk_id}</span>
-                ) : (
-                  '—'
-                )}
+                {activeChunk ? <span className="mono">{activeChunk.chunk_id}</span> : '—'}
               </div>
             </div>
             <div className="row">
@@ -716,32 +672,26 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
                   {activeChunk.low_value_flag && (
                     <span className="badge badge-warning">low_value</span>
                   )}
-                  {!activeChunk.enabled && (
-                    <span className="badge badge-error">disabled</span>
-                  )}
+                  {!activeChunk.enabled && <span className="badge badge-error">disabled</span>}
                 </div>
-                <div
-                  className="section-path text-sm"
-                  style={{ marginBottom: 14 }}
-                >
+                <div className="section-path text-sm" style={{ marginBottom: 14 }}>
                   {activeChunk.section_path.map((s, j) => (
                     <span key={j}>{s}</span>
                   ))}
                 </div>
-                <div className="text-xs muted">
-                  Chunk body text not bulk-listed — use Retrieval Testing tab to
-                  view full chunk text per query.
+                <div className="muted text-xs">
+                  Chunk body text not bulk-listed — use Retrieval Testing tab to view full chunk
+                  text per query.
                 </div>
               </>
             ) : (
-              <div className="text-xs muted">Select a chunk to preview.</div>
+              <div className="muted text-xs">Select a chunk to preview.</div>
             )}
           </div>
           {activeChunk && (
             <div className="card-footer">
-              <div className="text-xs muted mono">
-                embedding_model · {kb.config.embedding_model} ·{' '}
-                {kb.config.embedding_dimension}d MRL
+              <div className="muted mono text-xs">
+                embedding_model · {kb.config.embedding_model} · {kb.config.embedding_dimension}d MRL
               </div>
               <button type="button" className="btn btn-ghost btn-xs" disabled>
                 View raw embedding →
@@ -816,24 +766,18 @@ function ImagesTab({ kb }: { kb: KbStatus }) {
       <div className="banner banner-info" style={{ marginBottom: 16 }}>
         <Sparkles size={15} style={{ color: 'oklch(var(--info))' }} />
         <div style={{ flex: 1, lineHeight: 1.5 }}>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>
-            How chunks reference images
-          </div>
-          <div className="text-xs muted mono" style={{ marginTop: 2 }}>
-            Parser extracts <b style={{ color: 'oklch(var(--foreground))' }}>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>How chunks reference images</div>
+          <div className="muted mono text-xs" style={{ marginTop: 2 }}>
+            Parser extracts{' '}
+            <b style={{ color: 'oklch(var(--foreground))' }}>
               EmbeddedImage{`{sha256, alt_text, doc_order}`}
             </b>{' '}
             → Extractor adds kb_id/doc_id → Uploader pushes blob with{' '}
-            <b style={{ color: 'oklch(var(--foreground))' }}>
-              {'{sha256}.{ext}'}
-            </b>{' '}
-            path (cross-doc dedup) → Chunker references via{' '}
-            <b style={{ color: 'oklch(var(--foreground))' }}>
-              embedded_image_positions
-            </b>{' '}
-            → Orchestrator resolves to{' '}
-            <b style={{ color: 'oklch(var(--foreground))' }}>ImageRef.blob_url</b>{' '}
-            in ChunkRecord.
+            <b style={{ color: 'oklch(var(--foreground))' }}>{'{sha256}.{ext}'}</b> path (cross-doc
+            dedup) → Chunker references via{' '}
+            <b style={{ color: 'oklch(var(--foreground))' }}>embedded_image_positions</b> →
+            Orchestrator resolves to{' '}
+            <b style={{ color: 'oklch(var(--foreground))' }}>ImageRef.blob_url</b> in ChunkRecord.
           </div>
         </div>
       </div>
@@ -850,10 +794,7 @@ function ImagesTab({ kb }: { kb: KbStatus }) {
           <span className="icon-leading">
             <Search size={14} />
           </span>
-          <input
-            className="input"
-            placeholder="Search by alt text or SHA256…"
-          />
+          <input className="input" placeholder="Search by alt text or SHA256…" />
         </div>
         <div className="spacer" />
         <button type="button" className="btn btn-secondary btn-sm" disabled>
@@ -870,8 +811,7 @@ function ImagesTab({ kb }: { kb: KbStatus }) {
         <div className="banner banner-error">
           <AlertTriangle size={16} />
           <div style={{ flex: 1 }}>
-            Failed to load images:{' '}
-            {String((images.error as Error)?.message ?? 'unknown')}
+            Failed to load images: {String((images.error as Error)?.message ?? 'unknown')}
           </div>
         </div>
       ) : items.length === 0 ? (
@@ -990,7 +930,7 @@ function ImageCard({ img, idx }: { img: KbImageItem; idx: number }) {
           {img.ocr_text || <span className="muted">(no ocr text)</span>}
         </div>
         <div
-          className="text-xs muted mono"
+          className="muted mono text-xs"
           style={{
             marginTop: 6,
             whiteSpace: 'nowrap',
@@ -1080,13 +1020,10 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
       <div className="banner banner-info" style={{ marginBottom: 16 }}>
         <Sparkles size={15} style={{ color: 'oklch(var(--info))' }} />
         <div style={{ flex: 1, lineHeight: 1.5 }}>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>
-            Preview chunking on a sample document
-          </div>
-          <div className="text-xs muted" style={{ marginTop: 2 }}>
-            Strategies are picked by{' '}
-            <span className="mono">ingestion/chunker/strategies.py</span>. Only{' '}
-            <span className="mono">layout_aware</span> and{' '}
+          <div style={{ fontSize: 13, fontWeight: 500 }}>Preview chunking on a sample document</div>
+          <div className="muted text-xs" style={{ marginTop: 2 }}>
+            Strategies are picked by <span className="mono">ingestion/chunker/strategies.py</span>.
+            Only <span className="mono">layout_aware</span> and{' '}
             <span className="mono">slide_based</span> are implemented;{' '}
             <span className="mono">heading_aware</span> raises{' '}
             <span className="mono">NotImplementedError</span> (W3+ deferred).
@@ -1106,9 +1043,7 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
           <div className="card-header">
             <div>
               <h3 className="card-title">Sample text</h3>
-              <div className="card-desc">
-                Paste a few paragraphs to preview chunk boundaries
-              </div>
+              <div className="card-desc">Paste a few paragraphs to preview chunk boundaries</div>
             </div>
           </div>
           <div className="card-body">
@@ -1130,7 +1065,7 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
             <div className="field" style={{ marginBottom: 12 }}>
               <label className="label">
                 Chunk size (tokens){' '}
-                <span className="text-xs muted mono" style={{ marginLeft: 6 }}>
+                <span className="muted mono text-xs" style={{ marginLeft: 6 }}>
                   {chunkSize}
                 </span>
               </label>
@@ -1147,7 +1082,7 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
             <div className="field" style={{ marginBottom: 0 }}>
               <label className="label">
                 Overlap{' '}
-                <span className="text-xs muted mono" style={{ marginLeft: 6 }}>
+                <span className="muted mono text-xs" style={{ marginLeft: 6 }}>
                   {overlap}
                 </span>
               </label>
@@ -1182,14 +1117,10 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
             onClick={() => s.supported && setActiveStrategy(s.id)}
             style={{
               border: `1px solid ${
-                activeStrategy === s.id
-                  ? 'oklch(var(--accent))'
-                  : 'oklch(var(--border))'
+                activeStrategy === s.id ? 'oklch(var(--accent))' : 'oklch(var(--border))'
               }`,
               background:
-                activeStrategy === s.id
-                  ? 'oklch(var(--accent) / 0.05)'
-                  : 'oklch(var(--card))',
+                activeStrategy === s.id ? 'oklch(var(--accent) / 0.05)' : 'oklch(var(--card))',
               borderRadius: 'var(--radius-md)',
               padding: 14,
               opacity: s.supported ? 1 : 0.55,
@@ -1207,17 +1138,11 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
               <span style={{ fontWeight: 600, fontSize: 13.5 }}>{s.label}</span>
               {!s.supported && <span className="badge badge-muted">N/A</span>}
             </div>
-            <div
-              className="text-xs muted"
-              style={{ marginBottom: 10, lineHeight: 1.4 }}
-            >
+            <div className="muted text-xs" style={{ marginBottom: 10, lineHeight: 1.4 }}>
               {s.hint}
             </div>
             {!s.supported && s.skip_reason && (
-              <div
-                className="text-xs muted"
-                style={{ lineHeight: 1.5, padding: '8px 0' }}
-              >
+              <div className="muted text-xs" style={{ lineHeight: 1.5, padding: '8px 0' }}>
                 <span
                   style={{
                     color: 'oklch(var(--destructive))',
@@ -1237,8 +1162,7 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
         <div className="card-header">
           <div>
             <h3 className="card-title">
-              Output preview ·{' '}
-              {CHUNK_STRATEGIES.find((s) => s.id === activeStrategy)?.label}
+              Output preview · {CHUNK_STRATEGIES.find((s) => s.id === activeStrategy)?.label}
             </h3>
             <div className="card-desc">
               First {preview.data?.items.length ?? 0} chunks from sample text
@@ -1269,9 +1193,7 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
                 style={{
                   padding: '14px 18px',
                   borderBottom:
-                    i < preview.data!.items.length - 1
-                      ? '1px solid oklch(var(--border))'
-                      : 'none',
+                    i < preview.data!.items.length - 1 ? '1px solid oklch(var(--border))' : 'none',
                 }}
               >
                 <div
@@ -1293,15 +1215,9 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
                   >
                     #{c.chunk_index + 1}
                   </span>
-                  <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>
-                    {c.chunk_title}
-                  </span>
-                  {c.low_value_flag && (
-                    <span className="badge badge-warning">low_value</span>
-                  )}
-                  <span className="text-xs mono muted">
-                    {c.chunk_token_count} tok
-                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>{c.chunk_title}</span>
+                  {c.low_value_flag && <span className="badge badge-warning">low_value</span>}
+                  <span className="mono muted text-xs">{c.chunk_token_count} tok</span>
                 </div>
                 <div
                   style={{
@@ -1376,9 +1292,8 @@ function PipelineTab({ kb }: { kb: KbStatus }) {
         <Check size={15} style={{ color: 'oklch(var(--success))' }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 500 }}>Pipeline healthy</div>
-          <div className="text-xs muted">
-            All stages running within SLOs · last full re-index{' '}
-            {formatRelative(kb.last_indexed_at)}
+          <div className="muted text-xs">
+            All stages running within SLOs · last full re-index {formatRelative(kb.last_indexed_at)}
           </div>
         </div>
         <button type="button" className="btn btn-secondary btn-sm" disabled>
@@ -1398,10 +1313,7 @@ function PipelineTab({ kb }: { kb: KbStatus }) {
                 display: 'flex',
                 gap: 16,
                 padding: '16px 20px',
-                borderBottom:
-                  i < stages.length - 1
-                    ? '1px solid oklch(var(--border))'
-                    : 'none',
+                borderBottom: i < stages.length - 1 ? '1px solid oklch(var(--border))' : 'none',
               }}
             >
               <div style={{ flexShrink: 0 }}>
@@ -1423,19 +1335,17 @@ function PipelineTab({ kb }: { kb: KbStatus }) {
                 </div>
               </div>
               <div style={{ flex: 1 }}>
-                <div
-                  style={{ display: 'flex', alignItems: 'center', gap: 8 }}
-                >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontWeight: 500 }}>{s.name}</span>
                   <span className="badge badge-success">
                     <span className="badge-dot" /> OK
                   </span>
                 </div>
-                <div className="text-sm muted mono" style={{ marginTop: 2 }}>
+                <div className="muted mono text-sm" style={{ marginTop: 2 }}>
                   {s.desc}
                 </div>
               </div>
-              <div className="text-xs muted mono">{s.duration}</div>
+              <div className="muted mono text-xs">{s.duration}</div>
             </div>
           ))}
         </div>
@@ -1446,9 +1356,7 @@ function PipelineTab({ kb }: { kb: KbStatus }) {
 
 // ── Tab: Retrieval Testing ──────────────────────────────────────────────────
 function RetrievalTab({ kb }: { kb: KbStatus }) {
-  const [query, setQuery] = useState(
-    'How do I configure multi-currency posting definitions?',
-  );
+  const [query, setQuery] = useState('How do I configure multi-currency posting definitions?');
   const [mode, setMode] = useState<RetrievalMode>('hybrid');
   const [topK, setTopK] = useState(5);
   const [rerank, setRerank] = useState(true);
@@ -1478,9 +1386,7 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
         <div className="card-header">
           <div>
             <h3 className="card-title">Query</h3>
-            <div className="card-desc">
-              Pure retrieval pass · no LLM synthesis · ADR-0021
-            </div>
+            <div className="card-desc">Pure retrieval pass · no LLM synthesis · ADR-0021</div>
           </div>
         </div>
         <div className="card-body">
@@ -1518,7 +1424,7 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
                   }}
                 >
                   <span style={{ fontSize: 12.5, fontWeight: 600 }}>{m.label}</span>
-                  <span className="text-xs muted" style={{ fontSize: 10 }}>
+                  <span className="muted text-xs" style={{ fontSize: 10 }}>
                     {m.hint}
                   </span>
                 </button>
@@ -1528,8 +1434,7 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
 
           <div className="field">
             <label className="label">
-              Top-K{' '}
-              <span className="text-xs muted mono">retrieve before rerank</span>
+              Top-K <span className="muted mono text-xs">retrieve before rerank</span>
             </label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <input
@@ -1540,10 +1445,7 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
                 onChange={(e) => setTopK(+e.target.value)}
                 style={{ flex: 1 }}
               />
-              <span
-                className="mono"
-                style={{ width: 26, textAlign: 'right', fontSize: 13 }}
-              >
+              <span className="mono" style={{ width: 26, textAlign: 'right', fontSize: 13 }}>
                 {topK}
               </span>
             </div>
@@ -1552,7 +1454,7 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
           <div className="field">
             <label className="label">
               Score threshold{' '}
-              <span className="text-xs muted mono" style={{ marginLeft: 6 }}>
+              <span className="muted mono text-xs" style={{ marginLeft: 6 }}>
                 {mode === 'fulltext' ? 'n/a — BM25 unbounded' : '0.0 – 1.0'}
               </span>
             </label>
@@ -1567,10 +1469,7 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
                 onChange={(e) => setScoreThreshold(+e.target.value)}
                 style={{ flex: 1 }}
               />
-              <span
-                className="mono"
-                style={{ width: 38, textAlign: 'right', fontSize: 13 }}
-              >
+              <span className="mono" style={{ width: 38, textAlign: 'right', fontSize: 13 }}>
                 {scoreThreshold.toFixed(2)}
               </span>
             </div>
@@ -1608,13 +1507,9 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
 
           <div className="hr" />
 
-          <div
-            className="text-xs muted mono"
-            style={{ lineHeight: 1.6 }}
-          >
-            POST <span style={{ color: 'oklch(var(--foreground))' }}>
-              /kb/{kb.kb_id}/retrieval-test
-            </span>
+          <div className="muted mono text-xs" style={{ lineHeight: 1.6 }}>
+            POST{' '}
+            <span style={{ color: 'oklch(var(--foreground))' }}>/kb/{kb.kb_id}/retrieval-test</span>
             <br />
             mode = {mode}, top_k = {topK}, rerank = {rerank.toString()}
             <br />
@@ -1658,11 +1553,10 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
                       key={m.label}
                       style={{
                         padding: '14px 18px',
-                        borderRight:
-                          i < 4 ? '1px solid oklch(var(--border))' : 'none',
+                        borderRight: i < 4 ? '1px solid oklch(var(--border))' : 'none',
                       }}
                     >
-                      <div className="text-xs muted" style={{ marginBottom: 4 }}>
+                      <div className="muted text-xs" style={{ marginBottom: 4 }}>
                         {m.label}
                       </div>
                       <div
@@ -1680,21 +1574,15 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
               </div>
             </div>
 
-            <div
-              className="row"
-              style={{ marginBottom: 12, alignItems: 'center' }}
-            >
+            <div className="row" style={{ marginBottom: 12, alignItems: 'center' }}>
               <h3 className="card-title">
                 Ranked chunks{' '}
-                <span
-                  className="text-xs muted mono"
-                  style={{ marginLeft: 8 }}
-                >
+                <span className="muted mono text-xs" style={{ marginLeft: 8 }}>
                   {result.chunks.length} of {result.total_hits} (threshold)
                 </span>
               </h3>
               <div className="spacer" />
-              <span className="text-xs muted">Visualization →</span>
+              <span className="muted text-xs">Visualization →</span>
               <div className="seg">
                 <button
                   type="button"
@@ -1727,31 +1615,18 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
   );
 }
 
-function ChunkResultRow({
-  chunk,
-  viz,
-}: {
-  chunk: RetrievalTestChunk;
-  viz: 'list' | 'bars';
-}) {
+function ChunkResultRow({ chunk, viz }: { chunk: RetrievalTestChunk; viz: 'list' | 'bars' }) {
   return (
     <div className="chunk">
       <div className="chunk-head">
-        <div
-          className={`chunk-rank ${chunk.rank <= 3 ? 'chunk-rank-top' : ''}`}
-        >
-          #{chunk.rank}
-        </div>
+        <div className={`chunk-rank ${chunk.rank <= 3 ? 'chunk-rank-top' : ''}`}>#{chunk.rank}</div>
         <div className="chunk-source">
           <FileText size={13} />
           <span className="doc-title">{chunk.doc_title}</span>
         </div>
         <div className="chunk-score-wrap">
           {viz === 'bars' && (
-            <div
-              className="score-bar"
-              title={`score ${chunk.score.toFixed(4)}`}
-            >
+            <div className="score-bar" title={`score ${chunk.score.toFixed(4)}`}>
               <i style={{ width: `${Math.min(1, chunk.score) * 100}%` }} />
             </div>
           )}
@@ -1766,16 +1641,11 @@ function ChunkResultRow({
       <div className="chunk-body">{chunk.chunk_text_preview}</div>
       <div className="chunk-foot">
         <span>
-          chunk_id{' '}
-          <span style={{ color: 'oklch(var(--foreground))' }}>
-            {chunk.chunk_id}
-          </span>
+          chunk_id <span style={{ color: 'oklch(var(--foreground))' }}>{chunk.chunk_id}</span>
         </span>
         <span>
           chunk_index{' '}
-          <span style={{ color: 'oklch(var(--foreground))' }}>
-            #{chunk.chunk_index}
-          </span>
+          <span style={{ color: 'oklch(var(--foreground))' }}>#{chunk.chunk_index}</span>
         </span>
       </div>
     </div>
@@ -1845,6 +1715,16 @@ const TUNE_KNOB_KEYS: TuneKnobKey[] = TUNE_GROUPS.flatMap((g) => [
   g.enableKey,
   ...g.knobs.map((k) => k.key),
 ]);
+
+// W69 — 實證配方 preset(圖密步驟手冊)。三值出處:W62 供給側 A/B(max_aux 18→40 =
+// binding 項)+ W63 Q005 機制(rerank_k=10 錨點冗餘)+ W68 ADR-0054 dedup-before-cap
+// (cap=80 = unique 預算語義)— image-recall 0.574 → ~1.00(drive-images-1 9-query GT)。
+// 套用只填草稿(行現有 dirty → 試跑 → 儲存流程),persist 路徑唯一不變。
+const IMAGE_DENSE_PRESET = {
+  default_rerank_k: 10,
+  citation_neighbour_max_aux_images: 40,
+  max_images_per_answer: 80,
+} as const;
 
 // One number knob. null = inherit (empty input + 繼承全域 placeholder); a value =
 // per-KB override (badge + ↺ 還原全域). The env-driven global default value isn't
@@ -1987,7 +1867,7 @@ function KbTuneGroup({
               </button>
             )}
           </div>
-          <div className="text-xs muted" style={{ marginTop: 3, lineHeight: 1.5 }}>
+          <div className="muted text-xs" style={{ marginTop: 3, lineHeight: 1.5 }}>
             {desc}
           </div>
         </div>
@@ -1998,8 +1878,7 @@ function KbTuneGroup({
           onClick={() => setOpen(!open)}
           aria-expanded={open}
         >
-          進階{' '}
-          <ChevronRight size={11} style={{ transform: open ? 'rotate(90deg)' : 'none' }} />
+          進階 <ChevronRight size={11} style={{ transform: open ? 'rotate(90deg)' : 'none' }} />
         </button>
       </div>
       {open && (
@@ -2184,14 +2063,14 @@ function ConfigTestPanel({
               <span>
                 忠實度對長 / 全面答案有{' '}
                 <b style={{ color: 'oklch(var(--warning))' }}>length bias</b> —— 低分若配合高{' '}
-                <b>涵蓋章節數</b> / 引用數 / 長答案,多為 bias 而非 config
-                差,宜對照涵蓋章節數 / 引用數 / 字數一齊判讀,勿與完整性混為一談。
+                <b>涵蓋章節數</b> / 引用數 / 長答案,多為 bias 而非 config 差,宜對照涵蓋章節數 /
+                引用數 / 字數一齊判讀,勿與完整性混為一談。
               </span>
             </div>
 
             {result.draft.per_citation.length > 0 && (
               <div style={{ marginTop: 16 }}>
-                <div className="text-xs muted" style={{ marginBottom: 6 }}>
+                <div className="muted text-xs" style={{ marginBottom: 6 }}>
                   草稿配置 · 每引用 section + 圖數(最後一 run)
                 </div>
                 <div className="table-wrap">
@@ -2226,9 +2105,9 @@ function ConfigTestPanel({
         )}
       </div>
       <div className="card-footer">
-        <div className="text-xs muted">
-          N 次重跑取平均 · band = max − min(越細越穩定)· 忠實度質素軸 +
-          presentation counters 逐 run 算 band · N=1 只方向性
+        <div className="muted text-xs">
+          N 次重跑取平均 · band = max − min(越細越穩定)· 忠實度質素軸 + presentation counters 逐 run
+          算 band · N=1 只方向性
         </div>
         <button
           type="button"
@@ -2258,9 +2137,7 @@ function ConfigResultCard({
   return (
     <div
       style={{
-        border: accent
-          ? '1px solid oklch(var(--accent) / 0.4)'
-          : '1px solid oklch(var(--border))',
+        border: accent ? '1px solid oklch(var(--accent) / 0.4)' : '1px solid oklch(var(--border))',
         borderRadius: 'var(--radius-sm)',
         background: accent ? 'oklch(var(--accent) / 0.04)' : 'transparent',
         overflow: 'hidden',
@@ -2294,7 +2171,7 @@ function ConfigResultCard({
           }}
         >
           <div
-            className="text-xs muted"
+            className="muted text-xs"
             title="RAGAs faithfulness:答案宣稱是否被 retrieved context 支撐(反幻覺)。注意對長/全面答案有 length bias —— claim 多 → 未逐句對上 context 機會大,低分未必代表 config 差,宜對照完整性訊號(引用數 / 字數)判讀,勿與 completeness 混為一談。"
           >
             忠實度(faithfulness · 反幻覺 · 0–1)
@@ -2313,12 +2190,12 @@ function ConfigResultCard({
           >
             {summary.faithfulness != null ? summary.faithfulness.mean.toFixed(2) : '—'}
             {summary.faithfulness != null && summary.runs.length >= 2 && (
-              <span className="text-xs muted" style={{ fontWeight: 400, marginLeft: 6 }}>
+              <span className="muted text-xs" style={{ fontWeight: 400, marginLeft: 6 }}>
                 ±{summary.faithfulness.band.toFixed(2)}
               </span>
             )}
             {summary.faithfulness == null && (
-              <span className="text-xs muted" style={{ fontWeight: 400, marginLeft: 6 }}>
+              <span className="muted text-xs" style={{ fontWeight: 400, marginLeft: 6 }}>
                 未評(無 judge / 已關)
               </span>
             )}
@@ -2329,7 +2206,11 @@ function ConfigResultCard({
             </div>
           )}
         </div>
-        <ConfigMetric k="引用數" v={fmt(summary.citation_count)} band={summary.citation_count.band} />
+        <ConfigMetric
+          k="引用數"
+          v={fmt(summary.citation_count)}
+          band={summary.citation_count.band}
+        />
         {/* W51 (決策 7 option d) — completeness/coverage proxy (breadth, NOT recall) */}
         <ConfigMetric
           k="涵蓋章節數"
@@ -2362,30 +2243,20 @@ function ConfigResultCard({
   );
 }
 
-function ConfigMetric({
-  k,
-  v,
-  sub,
-  band,
-}: {
-  k: string;
-  v: string;
-  sub?: string;
-  band?: number;
-}) {
+function ConfigMetric({ k, v, sub, band }: { k: string; v: string; sub?: string; band?: number }) {
   return (
     <div style={{ background: 'oklch(var(--card))', padding: '10px 14px' }}>
-      <div className="text-xs muted">{k}</div>
+      <div className="muted text-xs">{k}</div>
       <div className="mono" style={{ fontSize: 16, fontWeight: 600, marginTop: 2 }}>
         {v}
         {band != null && (
-          <span className="text-xs muted" style={{ fontWeight: 400, marginLeft: 4 }}>
+          <span className="muted text-xs" style={{ fontWeight: 400, marginLeft: 4 }}>
             ±{band}
           </span>
         )}
       </div>
       {sub && (
-        <div className="text-xs muted mono" style={{ marginTop: 1 }}>
+        <div className="muted mono text-xs" style={{ marginTop: 1 }}>
           {sub}
         </div>
       )}
@@ -2417,8 +2288,7 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
       ? ''
       : String(kb.config.chunker_max_images_per_chunk),
   );
-  const maxImagesValue: number | null =
-    maxImages.trim() === '' ? null : Number(maxImages);
+  const maxImagesValue: number | null = maxImages.trim() === '' ? null : Number(maxImages);
   // W43 F3.2 — the 12 per-KB tuning knobs (null = inherit global). Seeded from the
   // saved config; the UI only writes a boolean to enable_* keys and a number to the
   // rest, so the loose Record value type is correct per-key at runtime.
@@ -2434,6 +2304,22 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
     const cleared = {} as KnobState;
     for (const k of TUNE_KNOB_KEYS) cleared[k] = null;
     setKnobs(cleared);
+  };
+
+  // W69 — preset 套用 = 填草稿(rerank_k 喺 General 區獨立 state,跨兩區寫);
+  // 已套用 = 三欄草稿現值全等於配方值 → 按鈕轉 disabled「已套用」。
+  const presetApplied =
+    rerankK === IMAGE_DENSE_PRESET.default_rerank_k &&
+    knobs.citation_neighbour_max_aux_images ===
+      IMAGE_DENSE_PRESET.citation_neighbour_max_aux_images &&
+    knobs.max_images_per_answer === IMAGE_DENSE_PRESET.max_images_per_answer;
+  const applyImageDensePreset = () => {
+    setRerankK(IMAGE_DENSE_PRESET.default_rerank_k);
+    setKnob(
+      'citation_neighbour_max_aux_images',
+      IMAGE_DENSE_PRESET.citation_neighbour_max_aux_images,
+    );
+    setKnob('max_images_per_answer', IMAGE_DENSE_PRESET.max_images_per_answer);
   };
 
   const knobsDirty = useMemo(
@@ -2524,11 +2410,7 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
         <div className="card-body">
           <div className="field">
             <label className="label">Name</label>
-            <input
-              className="input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
             <div className="hint">PATCH /kb/{kb.kb_id} · KbMetadataPatch.name</div>
           </div>
           <div className="field">
@@ -2555,8 +2437,8 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
             <input className="input mono" disabled value={kb.kb_id} />
             <div className="hint">
               <b style={{ color: 'oklch(var(--warning))' }}>Locked.</b> Forms index{' '}
-              <span className="mono">ekp-kb-{kb.kb_id}-v1</span> · cannot be changed
-              without recreating the KB.
+              <span className="mono">ekp-kb-{kb.kb_id}-v1</span> · cannot be changed without
+              recreating the KB.
             </div>
           </div>
         </div>
@@ -2582,17 +2464,12 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
                 }}
               />
             </label>
-            <select
-              className="select"
-              defaultValue={kb.config.embedding_model}
-              disabled
-            >
+            <select className="select" defaultValue={kb.config.embedding_model} disabled>
               <option>{kb.config.embedding_model}</option>
             </select>
             <div className="hint">
               <b style={{ color: 'oklch(var(--warning))' }}>Locked.</b>{' '}
-              {kb.config.embedding_dimension}d MRL truncate · changing requires full
-              re-index.
+              {kb.config.embedding_dimension}d MRL truncate · changing requires full re-index.
             </div>
           </div>
           <div className="field">
@@ -2609,7 +2486,12 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
             </label>
             <div className="seg" style={{ width: '100%' }}>
               {(
-                ['heading_aware', 'layout_aware', 'slide_based', 'auto'] as KbConfig['chunk_strategy'][]
+                [
+                  'heading_aware',
+                  'layout_aware',
+                  'slide_based',
+                  'auto',
+                ] as KbConfig['chunk_strategy'][]
               ).map((s) => (
                 <button
                   type="button"
@@ -2624,8 +2506,8 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
               ))}
             </div>
             <div className="hint">
-              <b style={{ color: 'oklch(var(--warning))' }}>需重新索引。</b> 改變切分策略 →
-              影響 chunk 邊界,儲存後須 re-index 全部文件先生效。
+              <b style={{ color: 'oklch(var(--warning))' }}>需重新索引。</b> 改變切分策略 → 影響
+              chunk 邊界,儲存後須 re-index 全部文件先生效。
             </div>
           </div>
           <div className="field">
@@ -2649,8 +2531,8 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
               onChange={(e) => setMaxImages(e.target.value)}
             />
             <div className="hint">
-              <b style={{ color: 'oklch(var(--warning))' }}>需重新索引。</b> 留空 = 沿用全域上限(8)。每
-              chunk 圖片數上限,超過即 force-split(ADR-0042)。
+              <b style={{ color: 'oklch(var(--warning))' }}>需重新索引。</b> 留空 =
+              沿用全域上限(8)。每 chunk 圖片數上限,超過即 force-split(ADR-0042)。
             </div>
           </div>
           <div className="field">
@@ -2673,9 +2555,7 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
               max={100}
               onChange={(e) => setTopK(+e.target.value)}
             />
-            <div className="hint">
-              Editable any time · doesn&rsquo;t require re-index
-            </div>
+            <div className="hint">Editable any time · doesn&rsquo;t require re-index</div>
           </div>
           <div className="field">
             <label className="label">
@@ -2748,6 +2628,49 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
           </span>
         </div>
         <div className="card-body" style={{ display: 'grid', gap: 12 }}>
+          {/* W69 — 實證配方 preset 一鍵套用(mockup ekp-page-kb.jsx tuning card preset row) */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '12px 14px',
+              border: '1px solid oklch(var(--border))',
+              borderRadius: 'var(--radius-sm)',
+              background: 'oklch(var(--muted) / 0.3)',
+            }}
+          >
+            <Zap size={15} style={{ color: 'oklch(var(--accent))', flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 13, fontWeight: 500 }}>配方 preset:圖密步驟手冊</span>
+                <span className="badge badge-success" style={{ fontSize: 9.5 }}>
+                  W62–W68 實證
+                </span>
+              </div>
+              <div className="muted text-xs" style={{ marginTop: 3, lineHeight: 1.5 }}>
+                Rerank top-k = 10(上方 General 區)· Neighbour max aux images = 40 · Max images /
+                answer = 80 — image-recall 0.574 → ~1.00(ADR-0054)。
+                套用只填草稿,試跑滿意後撳「儲存到此 KB」先生效。
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              style={{ whiteSpace: 'nowrap' }}
+              onClick={applyImageDensePreset}
+              disabled={presetApplied}
+            >
+              {presetApplied ? (
+                <>
+                  <Check size={13} /> 已套用
+                </>
+              ) : (
+                '套用配方'
+              )}
+            </button>
+          </div>
+
           {TUNE_GROUPS.map((g) => (
             <KbTuneGroup
               key={g.enableKey}
@@ -2770,7 +2693,7 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
           ))}
         </div>
         <div className="card-footer">
-          <div className="text-xs muted">
+          <div className="muted text-xs">
             配置 scope:per-query &gt; <b>per-KB(此頁)</b> &gt; 全域 · ADR-0040
           </div>
           <div className="row">
@@ -2803,7 +2726,7 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
 
       <div className="card" style={{ gridColumn: '1 / -1' }}>
         <div className="card-footer">
-          <div className="text-xs muted">
+          <div className="muted text-xs">
             Last indexed: <span className="mono">{formatRelative(kb.last_indexed_at)}</span>
           </div>
           <div className="row">
@@ -2834,9 +2757,7 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
               className="btn btn-primary btn-sm"
               disabled={!dirty || metaMutation.isPending || configMutation.isPending}
             >
-              {metaMutation.isPending || configMutation.isPending
-                ? 'Saving…'
-                : 'Save changes'}
+              {metaMutation.isPending || configMutation.isPending ? 'Saving…' : 'Save changes'}
             </button>
           </div>
         </div>
@@ -2891,8 +2812,8 @@ function ReindexCard({
         <div>
           <h3 className="card-title">Re-indexing</h3>
           <div className="card-desc">
-            Re-parse every document from its stored original source under the
-            current config. Needed after a chunk_strategy or image-cap change.
+            Re-parse every document from its stored original source under the current config. Needed
+            after a chunk_strategy or image-cap change.
           </div>
         </div>
         <button
@@ -2901,10 +2822,7 @@ function ReindexCard({
           onClick={() => setShowExplainer((v) => !v)}
         >
           {showExplainer ? 'Hide details' : 'What is this?'}{' '}
-          <ChevronRight
-            size={11}
-            style={{ transform: showExplainer ? 'rotate(90deg)' : 'none' }}
-          />
+          <ChevronRight size={11} style={{ transform: showExplainer ? 'rotate(90deg)' : 'none' }} />
         </button>
       </div>
       {showExplainer && (
@@ -2924,33 +2842,29 @@ function ReindexCard({
             </p>
             <ol style={{ paddingLeft: 22, marginBottom: 10, lineHeight: 1.8 }}>
               <li>
-                Each document is re-fetched from its stored original source (Word /
-                PDF / PPT).
+                Each document is re-fetched from its stored original source (Word / PDF / PPT).
               </li>
               <li>
-                Its existing chunks are removed, then it&rsquo;s re-parsed via the{' '}
-                <b>current</b> chunker config (chunk_strategy + max images / chunk).
+                Its existing chunks are removed, then it&rsquo;s re-parsed via the <b>current</b>{' '}
+                chunker config (chunk_strategy + max images / chunk).
               </li>
               <li>
                 Each chunk is re-embedded and upserted into{' '}
                 <span className="mono">ekp-kb-{kb.kb_id}-v1</span>.
               </li>
-              <li>
-                Repeats per document — synchronous, in-place (Tier 1: no task queue).
-              </li>
+              <li>Repeats per document — synchronous, in-place (Tier 1: no task queue).</li>
             </ol>
             <p style={{ marginBottom: 8 }}>
               <b>When you need to re-index:</b>
               <span className="muted">
                 {' '}
-                chunk_strategy change · max-images-per-chunk change · Docling parser
-                upgrade.
+                chunk_strategy change · max-images-per-chunk change · Docling parser upgrade.
               </span>
             </p>
-            <p style={{ marginBottom: 0 }} className="text-xs muted">
-              Docs ingested before W46 (no stored source) are skipped + reported —
-              re-upload them to make them reindexable. Zero-downtime v1→v2 atomic
-              switch + eval gate stays a Track A enhancement.
+            <p style={{ marginBottom: 0 }} className="muted text-xs">
+              Docs ingested before W46 (no stored source) are skipped + reported — re-upload them to
+              make them reindexable. Zero-downtime v1→v2 atomic switch + eval gate stays a Track A
+              enhancement.
             </p>
             <div
               style={{
@@ -2966,10 +2880,8 @@ function ReindexCard({
               }}
             >
               <div>
-                <b style={{ color: 'oklch(var(--foreground))' }}>
-                  {kb.total_documents}
-                </b>{' '}
-                docs to re-parse
+                <b style={{ color: 'oklch(var(--foreground))' }}>{kb.total_documents}</b> docs to
+                re-parse
               </div>
               <div>
                 <b style={{ color: 'oklch(var(--foreground))' }}>
@@ -2978,9 +2890,8 @@ function ReindexCard({
                 chunks to rebuild
               </div>
               <div>
-                in-place ·{' '}
-                <b style={{ color: 'oklch(var(--foreground))' }}>brief</b>{' '}
-                inconsistency window
+                in-place · <b style={{ color: 'oklch(var(--foreground))' }}>brief</b> inconsistency
+                window
               </div>
             </div>
           </div>
@@ -2999,10 +2910,10 @@ function ReindexCard({
             )}
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 500 }}>
-                Re-indexed {summary.documents_reindexed} / {summary.documents_total}{' '}
-                documents · {summary.chunks_total.toLocaleString()} chunks rebuilt
+                Re-indexed {summary.documents_reindexed} / {summary.documents_total} documents ·{' '}
+                {summary.chunks_total.toLocaleString()} chunks rebuilt
               </div>
-              <div className="text-xs muted mono">
+              <div className="muted mono text-xs">
                 skipped (no source): {summary.skipped_no_source.length} · failed:{' '}
                 {summary.failed.length}
               </div>
@@ -3011,9 +2922,9 @@ function ReindexCard({
         </div>
       )}
       <div className="card-footer">
-        <div className="text-xs muted">
-          Last re-index: <span className="mono">{formatRelative(kb.last_indexed_at)}</span>{' '}
-          · current version <span className="mono">v1</span>
+        <div className="muted text-xs">
+          Last re-index: <span className="mono">{formatRelative(kb.last_indexed_at)}</span> ·
+          current version <span className="mono">v1</span>
         </div>
         <div className="row">
           <button type="button" className="btn btn-secondary btn-sm" disabled>
@@ -3042,9 +2953,8 @@ function ReindexCard({
             <div className="modal-header">
               <h2 className="modal-title">Re-index this knowledge base?</h2>
               <p className="modal-desc">
-                Re-parses every document from its stored original source under the
-                current config. Each document is briefly unavailable while it
-                rebuilds.
+                Re-parses every document from its stored original source under the current config.
+                Each document is briefly unavailable while it rebuilds.
               </p>
             </div>
             <div className="modal-body">
@@ -3052,9 +2962,9 @@ function ReindexCard({
                 <AlertTriangle size={15} style={{ color: 'oklch(var(--warning))' }} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 500 }}>Save config changes first</div>
-                  <div className="text-xs muted">
-                    Re-index uses the saved config. Unsaved chunk_strategy /
-                    image-cap edits won&rsquo;t apply until saved.
+                  <div className="muted text-xs">
+                    Re-index uses the saved config. Unsaved chunk_strategy / image-cap edits
+                    won&rsquo;t apply until saved.
                   </div>
                 </div>
               </div>
@@ -3071,10 +2981,7 @@ function ReindexCard({
                 }}
               >
                 <div>
-                  <b style={{ color: 'oklch(var(--foreground))' }}>
-                    {kb.total_documents}
-                  </b>{' '}
-                  docs
+                  <b style={{ color: 'oklch(var(--foreground))' }}>{kb.total_documents}</b> docs
                 </div>
                 <div>
                   <b style={{ color: 'oklch(var(--foreground))' }}>
@@ -3083,14 +2990,11 @@ function ReindexCard({
                   chunks
                 </div>
                 <div>
-                  strategy{' '}
-                  <b style={{ color: 'oklch(var(--foreground))' }}>{chunkStrategy}</b>
+                  strategy <b style={{ color: 'oklch(var(--foreground))' }}>{chunkStrategy}</b>
                 </div>
                 <div>
                   max img{' '}
-                  <b style={{ color: 'oklch(var(--foreground))' }}>
-                    {maxImages || '8 (全域)'}
-                  </b>
+                  <b style={{ color: 'oklch(var(--foreground))' }}>{maxImages || '8 (全域)'}</b>
                 </div>
               </div>
             </div>
@@ -3144,24 +3048,15 @@ function DangerZone({ kb }: { kb: KbStatus }) {
         borderColor: 'oklch(var(--destructive) / 0.3)',
       }}
     >
-      <div
-        className="card-header"
-        style={{ background: 'oklch(var(--destructive) / 0.04)' }}
-      >
+      <div className="card-header" style={{ background: 'oklch(var(--destructive) / 0.04)' }}>
         <div>
-          <h3
-            className="card-title"
-            style={{ color: 'oklch(var(--destructive))' }}
-          >
+          <h3 className="card-title" style={{ color: 'oklch(var(--destructive))' }}>
             Danger zone
           </h3>
           <div className="card-desc">Irreversible · audit-logged</div>
         </div>
       </div>
-      <div
-        className="card-body"
-        style={{ display: 'flex', gap: 8 }}
-      >
+      <div className="card-body" style={{ display: 'flex', gap: 8 }}>
         <button
           type="button"
           className="btn btn-secondary"

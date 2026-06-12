@@ -841,6 +841,30 @@ function TabKbSettings({ kb }) {
           <span className="badge badge-info" style={{ fontSize: 9.5 }}><IcEdit size={10} /> Runtime · no re-index</span>
         </div>
         <div className="card-body" style={{ display: "grid", gap: 12 }}>
+          {/* W69 — 實證配方 preset 一鍵套用。套用 = 填草稿(行現有 dirty 偵測),經「試跑」
+              驗證後撳「儲存到此 KB」先 persist;已套用(三欄現值 == 配方值)時按鈕轉
+              disabled「✓ 已套用」。配方出處:W62–W68 image-recall 弧(0.574 → ~1.00)
+              + ADR-0054 dedup-before-cap;rerank_k 喺上方 General 區,套用會一齊填。 */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 12, padding: "12px 14px",
+            border: "1px solid oklch(var(--border))", borderRadius: "var(--radius-sm)",
+            background: "oklch(var(--muted) / 0.3)",
+          }}>
+            <IcZap size={15} style={{ color: "oklch(var(--accent))", flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 13, fontWeight: 500 }}>配方 preset:圖密步驟手冊</span>
+                <span className="badge badge-success" style={{ fontSize: 9.5 }}>W62–W68 實證</span>
+              </div>
+              <div className="text-xs muted" style={{ marginTop: 3, lineHeight: 1.5 }}>
+                Rerank top-k = 10(上方 General 區)· Neighbour max aux images = 40 ·
+                Max images / answer = 80 — image-recall 0.574 → ~1.00(ADR-0054)。
+                套用只填草稿,試跑滿意後撳「儲存到此 KB」先生效。
+              </div>
+            </div>
+            <button className="btn btn-secondary btn-sm" style={{ whiteSpace: "nowrap" }}>套用配方</button>
+          </div>
+
           <KbTuneGroup icon={IcLayers} title="Parent-document retrieval" enabled enabledInherit
             desc="把命中嘅子 chunk 擴展到所屬父段落,畀 LLM 更完整上下文。">
             <KbTuneKnob label="Section depth offset" inherit globalValue="1" />
