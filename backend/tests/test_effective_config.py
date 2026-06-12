@@ -296,7 +296,11 @@ def _img(i: int) -> ImageRef:
     )
 
 
-def _citation(chunk_id: str, n_images: int) -> Citation:
+def _citation(chunk_id: str, n_images: int, img_offset: int = 0) -> Citation:
+    """`img_offset` keeps checksums DISTINCT across citations — under ADR-0054 the
+    cap budget counts unique images, so tests of the cumulative budget must not
+    accidentally exercise the dedup path (and the dedup tests set offsets to
+    overlap on purpose)."""
     return Citation(
         chunk_id=chunk_id,
         doc_id="doc-a",
@@ -306,18 +310,22 @@ def _citation(chunk_id: str, n_images: int) -> Citation:
         chunk_index=0,
         section_path=["Doc"],
         relevance_score=0.9,
-        embedded_images=[_img(i) for i in range(n_images)],
+        embedded_images=[_img(i) for i in range(img_offset, img_offset + n_images)],
     )
 
 
 def test_cap_none_returns_unchanged() -> None:
     cites = [_citation("c1", 5), _citation("c2", 5)]
     out = cap_images_per_answer(cites, None)
+    # None = no cap AND no dedup (ADR-0054 keeps the capless path bit-identical),
+    # even though c1/c2 here share every checksum.
     assert out is cites  # no copy when no cap (production-preserve)
 
 
 def test_cap_trims_cumulative_total_across_citations() -> None:
-    cites = [_citation("c1", 5), _citation("c2", 5)]
+    # Distinct checksums (ADR-0054 rewrite — the old fixture shared sha-0..4 across
+    # both citations, so the unique-counting budget would dedup c2 to zero).
+    cites = [_citation("c1", 5), _citation("c2", 5, img_offset=5)]
     out = cap_images_per_answer(cites, 7)
     total = sum(len(c.embedded_images) for c in out)
     assert total == 7
@@ -328,15 +336,59 @@ def test_cap_trims_cumulative_total_across_citations() -> None:
 
 
 def test_cap_zero_strips_all_images_but_keeps_citations() -> None:
-    cites = [_citation("c1", 3), _citation("c2", 2)]
+    cites = [_citation("c1", 3), _citation("c2", 2, img_offset=3)]
     out = cap_images_per_answer(cites, 0)
     assert all(len(c.embedded_images) == 0 for c in out)
     assert [c.chunk_id for c in out] == ["c1", "c2"]
 
 
 def test_cap_above_total_keeps_objects_untrimmed() -> None:
-    cites = [_citation("c1", 2), _citation("c2", 1)]
+    cites = [_citation("c1", 2), _citation("c2", 1, img_offset=2)]
     out = cap_images_per_answer(cites, 99)
     # untrimmed citations preserve the original objects (no needless copy)
     assert out[0] is cites[0]
     assert out[1] is cites[1]
+
+
+def test_cap_dedup_duplicate_refs_consume_no_budget() -> None:
+    """ADR-0054 core: c2 re-embeds c1's images (the W67 neighbour-aux overlap shape).
+    The dups are dropped without eating budget, so c3's FRESH images still fit —
+    under the old ref-counting walk c2's dups would have exhausted the budget and
+    zeroed c3 (the 'cited but zeroed' failure W67 mapped)."""
+    cites = [
+        _citation("c1", 4),  # sha-0..3 fresh
+        _citation("c2", 4),  # sha-0..3 again — all dups
+        _citation("c3", 3, img_offset=4),  # sha-4..6 fresh
+    ]
+    out = cap_images_per_answer(cites, 7)
+    assert len(out[0].embedded_images) == 4
+    assert len(out[1].embedded_images) == 0  # dups dropped, no budget consumed
+    assert len(out[2].embedded_images) == 3  # fresh images still within budget
+    kept_keys = [i.checksum_sha256 for c in out for i in c.embedded_images]
+    assert len(kept_keys) == len(set(kept_keys)) == 7
+
+
+def test_cap_dedup_drops_dups_even_with_budget_left() -> None:
+    """ADR-0054 payload hygiene: a dup is dropped even when budget remains."""
+    cites = [_citation("c1", 2), _citation("c2", 2)]  # c2 = same sha-0..1
+    out = cap_images_per_answer(cites, 99)
+    assert len(out[0].embedded_images) == 2
+    assert len(out[1].embedded_images) == 0
+
+
+def test_cap_dedup_within_one_citation() -> None:
+    """Within-citation duplicate refs collapse too (same seen-set walk)."""
+    dup = _img(0)
+    cite = Citation(
+        chunk_id="c1",
+        doc_id="doc-a",
+        doc_title="Doc A",
+        doc_format="docx",
+        chunk_title="T",
+        chunk_index=0,
+        section_path=["Doc"],
+        relevance_score=0.9,
+        embedded_images=[dup, _img(1), dup],
+    )
+    out = cap_images_per_answer([cite], 10)
+    assert [i.checksum_sha256 for i in out[0].embedded_images] == ["sha-0", "sha-1"]

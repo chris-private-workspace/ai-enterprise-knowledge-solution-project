@@ -112,32 +112,45 @@ def cap_images_per_answer(
     citations: list[Citation],
     max_images: int | None,
 ) -> list[Citation]:
-    """W43 F1.6 (ADR-0040 + BUG-031) — blunt per-answer image ceiling.
+    """W43 F1.6 (ADR-0040 + BUG-031) → W68 (ADR-0054) — per-answer UNIQUE-image ceiling.
 
     The BACKEND per-KB counterpart of the BUG-031 frontend `INLINE_IMAGE_CAP=8`.
     `max_images=None` (default for KBs with no explicit per-KB config) → return
-    citations unchanged, leaving the frontend display cap as the only limiter.
-    When set, walk citations in order and trim each citation's `embedded_images`
-    so the cumulative total across the answer is at most `max_images` (closer-to-top
-    citations keep their images first; later citations are trimmed / emptied once the
-    budget is spent). Citations themselves are never dropped — only their image lists.
+    citations unchanged — no cap AND no dedup (production-preserve, bit-identical
+    to the pre-W68 behaviour for capless KBs).
 
-    This is a payload-level ceiling, NOT a fix for the ingestion-bound image flood
-    (chunks that carry 25+ images); the root-cause chunker work is deferred to W44+
-    ADR-0041 per ADR-0040 Non-goals. Deliberately blunt per the ADR — no cross-citation
-    dedup here (the frontend dedups for display; this just bounds the response size).
+    When set, walk citations in order with a budget of `max_images` UNIQUE images
+    (ADR-0054 dedup-before-cap, superseding ADR-0040's blunt ref-counting walk):
+    a duplicate ref — an image whose `checksum_sha256` (fallback `blob_url`) was
+    already kept under an earlier citation — is dropped WITHOUT consuming budget,
+    even while budget remains (payload hygiene; the frontend dedups for display
+    anyway, so a dup ref never rendered twice). A fresh image consumes 1 budget;
+    once the budget is spent, fresh images are trimmed too. Citations themselves
+    are never dropped — only their image lists.
+
+    Why ADR-0054: under the W64 neighbour-aux-heavy preset the first 3-4 citations
+    each carry ~40 highly-overlapping aux refs (W67 measured 150 refs = 48 unique,
+    68% dups) and exhausted ANY reasonable ref-counted cap, zeroing the OWN images
+    of the 22 later cited chunks — capping mega-query image recall at 0.74 with
+    every missing ground-truth image provably in reach.
     """
     if max_images is None or max_images < 0:
         return citations  # None = no backend cap (production-preserve)
 
     budget = max_images
+    seen: set[str] = set()
     capped: list[Citation] = []
     for citation in citations:
-        if budget <= 0:
-            capped.append(citation.model_copy(update={"embedded_images": []}))
-            continue
-        kept = citation.embedded_images[:budget]
-        budget -= len(kept)
+        kept: list = []
+        for img in citation.embedded_images:
+            key = img.checksum_sha256 or img.blob_url
+            if key in seen:
+                continue  # duplicate ref — dropped, consumes no budget (ADR-0054)
+            if budget <= 0:
+                continue
+            seen.add(key)
+            kept.append(img)
+            budget -= 1
         if len(kept) == len(citation.embedded_images):
             capped.append(citation)  # untrimmed — preserve the original object
         else:
