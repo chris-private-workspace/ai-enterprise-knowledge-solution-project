@@ -310,8 +310,16 @@ Q005 section-miss(0↔32 flip)機制診斷(分層:V4 retrieve-only ×5 + `/query
   citation_enrichment.py:111)→ expansion aux 重複 ref 食 cap 預算(Q005 成功 run 20 ref = 9 unique
   → cap=20 時 GT 9/32)。候選改善 dedup-before-cap = pipeline 行為改動(H1-adjacent,未做);
   W62 preset cap≈50 可令其 moot。
-- **圖密 preset 配方(W62+W63 合併實證,未 persist 待用戶)**:`citation_neighbour_max_aux_images=40`
+- **圖密 preset 配方(W62+W63 合併實證)**:`citation_neighbour_max_aux_images=40`
   + `default_rerank_k=10`(供給 + 錨點冗餘雙效)+ `max_images_per_answer≈50`。
+
+**✅ W64 落地(2026-06-12,phase `W64-image-dense-preset-persist`,無 ADR — ADR-0040 per-KB 機制
+as-designed 數據變更)**:用戶拍板後 preset **已 persist 到 drive-images-1**(40/10/50,readback 為證);
+**production 120s timeout(ADR-0053)sanity PASS**:9/9 零 `APITimeoutError`(mega ×3 都喺 120s 內
+完成 — 180s 實驗條件證實非必要)+ mean **0.855** / precision **0.988**(cap-bound 對齊 W62 band;
+Q005 0.69 = cite/expansion 組成 variance,非 0-flip)。**drive-images-1 圖片召回:0.574 → 0.855
+(production 條件,零 code 改動)**。沿途兩次 infra 中斷(transient + DNS)probe-恢復-重試,
+降級網絡下嘅部分數據作廢不入判決。
 
 **未盡部分(後續)**:**prose 型第二份 GT**(硬依賴用戶提供 prose 文件 + 親自標注 GT,延後)= §4.5 唯一剩餘項
 (cap 放寬軸 W61 + 供給側軸 W62 + section-miss 機制 W63 已做);§4.6 結構性路線必要性**大幅下降**(W62 證
