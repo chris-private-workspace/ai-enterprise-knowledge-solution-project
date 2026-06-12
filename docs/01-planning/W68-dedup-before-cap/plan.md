@@ -1,7 +1,7 @@
 ---
 phase: W68
 name: dedup-before-cap
-status: active       # draft | active | closed
+status: closed       # draft | active | closed
 created: 2026-06-12
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "W67 判決:cap 預算被重複 ref 食盡令 cited chunks 圖被清零 = mega-query 0.74 封頂真兇;用戶 2026-06-12 批准實施(AskUserQuestion「批准,实施」)"
@@ -78,3 +78,5 @@ spec_refs:
 | Date | Change | Reason |
 |---|---|---|
 | 2026-06-12 | Initial plan(active)| W67 證據鏈 + 用戶批准;R6 核實 caller ×2 + test fixture 跨 citation 同 checksum(兩 test 預期 fail → 改寫) |
+| 2026-06-12 | **R3 amendment:cap 70→80** | A/B Q043 returned 正正 = cap 70(0.96)→ unique 預算差 3;cap=80 單條驗證 73/73 = 1.00。證據驅動嘅 persist 值修正,同款 per-KB 數據層改動 |
+| 2026-06-12 | **Phase closed**(F1–F6 全 done)| **A/B mean 0.995 / precision 0.988**;Q001+Q036 1.00(65/65,W67 預測命中)/ Q005 1.00 / Q043 cap=80 後 73/73 / 對照持平。**九條 query 全部 1.00 可達** — W59→W68 全弧:0.574 → ~1.00,Tier 1 旋鈕 + ADR-0054 一個 surgical fix 達成,caption / 章節收割機制都唔使做。終態 persist:80/10/40 |

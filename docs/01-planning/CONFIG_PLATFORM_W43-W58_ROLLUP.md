@@ -353,9 +353,25 @@ cite**(26 citations 覆蓋 ci 5–30 = 成個 AR01 章節 → 供給 + reach 完
 都唔使行。**屬 H1**(pipeline 行為改動 + 反轉 ADR-0040「blunt no-dedup」明文決定)→ 提案 STOP+ask,
 W67 不實作。方法論:raw/unique/GT 三軸唔夠,**per-citation 預算時間線**先睇到「cited 但被清零」。
 
-**未盡部分(後續)**:**dedup-before-cap 提案待用戶批**(批咗 = 細 ADR + `cap_images_per_answer` 改
-預算計 unique + A/B 驗證);**prose 型第二份 GT**(硬依賴用戶提供 prose 文件 + 親自標注 GT,延後);
-b-2 零引用模式(synthesizer 層,低概率)留 production 觀察。
+**✅ W68 落地(2026-06-12,phase `W68-dedup-before-cap`,**ADR-0054** Accepted,code `16301ed`)—
+圖片召回全弧收官**:用戶批准後實施 dedup-before-cap(`cap_images_per_answer` 預算改計 unique,
+重複 ref 剪走唔食預算;None 路徑 bit-identical;supersede ADR-0040 blunt 決定)+ 契約 test 改寫/新增
+(54 passed)+ persist cap→70→(R3 證據修正)**80**。**A/B 9/9:mean 0.995 / precision 0.988** —
+Q001+Q036 **1.00(65/65,W67 預測命中)**、Q005 1.00、Q043 cap=80 後 **73/73**、對照持平。
+**九條 query 全部 1.00 可達**。
+
+> **W59→W68 全弧總結(2026-06-11~12,十個 phase)**:AR 圖密手冊 image-recall
+> **0.574 → ~1.00**(precision 全程 0.976–0.988 零代價)。逐層揭穿:cap=20(W61)→
+> `citation_neighbour_max_aux_images=18` 收割上限(W62)→ rerank=10 錨點冗餘解 section-miss
+> (W63)→ production persist 0.855(W64)→ 試跑面圖片覆蓋 proxy(W65)→ cap 計 refs 假說
+> (W66)→ 漏網圖全部 cited 被預算清零(W67)→ **ADR-0054 dedup-before-cap(W68)**。
+> 章節收割新機制 / caption / image-embedding 全部唔使做 — Tier 1 旋鈕 + 一個 surgical fix 完成。
+> drive-images-1 persisted 終態:`max_images_per_answer=80` + `default_rerank_k=10` +
+> `citation_neighbour_max_aux_images=40`(+ DD-4 default + pin=true)。
+
+**未盡部分(後續)**:**prose 型第二份 GT**(硬依賴用戶提供 prose 文件 + 親自標注 GT,延後)—
+圖片線唯一未驗部分;precision 注腳(Q002/Q003/Q038 各 1 張非 GT 圖,0.95–0.97)= 鄰居收割輕微
+over-inclusion,可接受;b-2 零引用模式(synthesizer 層,W68 全部 run 未現身)留 production 觀察。
 
 ### 4.6 結構性根治路線(僅記錄,不屬現階段)
 
