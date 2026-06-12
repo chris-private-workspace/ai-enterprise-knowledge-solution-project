@@ -173,3 +173,23 @@
   badge + switch off 兩邊一致;strip 後答案視覺 == 現狀 == mockup。
 - 下一步:F7 re-index drive-images-1(pre-flight → multipart re-upload 全 doc →
   chunk 數對齊 369 + `chunk_text_marked` 有值)。
+
+### F7 — re-index drive-images-1 ✅
+- pre-flight 全綠(Langfuse 200 / Postgres 1 row / backend /health 五 component
+  ok / azurite TCP 通;Langfuse Docker `(unhealthy)` flag 照舊係 timing artifact)。
+- **關鍵 catch:backend 進程 13:25 起 — 早過 F2-F5 commits,行緊舊 code**;唔重啟
+  嘅話 re-ingest 唔會寫 marked 欄位(假驗收陷阱)。殺 dual-process(parent venv
+  49228 + child 系統 python 15204,以 port 8000 listener 為錨)→ venv python
+  重啟 → /health 200(~80s)。
+- reindex 走 `POST /kb/drive-images-1/documents/{doc_id}/reindex` multipart
+  in-place(裸 POST 被 `document.duplicate` guard 擋,hint 指路);6 doc 逐份:
+  BM 16 / CB 28 / GL 74 / AP 83 / FA 78 / AR 90 — **逐份對齊基線,總 369 不變**
+  (G3 chunker bit-identical 嘅 live 證據);1018 圖全 dedup 零重上傳(blob sha
+  不變)。
+- 驗證 script 全 index walk(369/369;首輪 `orderby chunk_id` 踩 sortable=false
+  4xx,改 `chunk_index` + status check 後通):**205 有圖 chunk == 205 有 marked
+  一一對應零例外**;`chunk_text` 零標記污染;全部 marker sha8 ⊆ 該 chunk
+  `embedded_images_json` checksums(sha8 改寫 + 剝走條件 E2E 正確);肉眼樣本
+  AR chunk-0001 封面 `[IMG#019f36cf]` 原位交織。VERDICT PASS。
+- 下一步:F8 驗證(`scripts/run_marker_placement.py` harness 四指標 + drive-images-1
+  knob ON per-KB PATCH + 九 query 實跑 + image-recall 對照 + AC4 判決)。

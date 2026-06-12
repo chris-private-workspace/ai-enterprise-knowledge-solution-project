@@ -41,9 +41,10 @@
 - [x] tsc 0 / eslint 0 error(`<img>` warning pre-existing)/ prettier 新行全 clean(三檔 dirt 全 pre-existing)/ H7 fidelity check:同一 `KbTuneGroup` 視覺語言 + icon/title/desc 字串逐字一致 + strip 後答案視覺 == 現狀 == mockup(plan §6 預核)
 
 ## F7 — re-index drive-images-1
-- [ ] pre-flight(Langfuse 200 + Postgres SELECT 1 + backend /health + azurite)
-- [ ] index PUT 更新(F3 遷移步驟)
-- [ ] re-upload 全 doc(multipart runbook)→ chunk 數對齊 369 / `chunk_text_marked` 有值
+- [x] pre-flight(Langfuse 200 + Postgres SELECT 1 + backend /health 五 component ok + azurite TCP 通);**backend 重啟載 W70 code**(舊進程 13:25 起早過 F2 commits — 唔重啟 re-ingest 唔會寫 marked)
+- [x] index PUT 更新(F3 已做;本步直接受益)
+- [x] re-upload 全 6 doc(`POST .../documents/{doc_id}/reindex` multipart in-place;duplicate guard 擋咗裸 POST)→ chunk 數逐份對齊(16/28/74/83/78/90)總 369 不變;1018 圖全 dedup 零重上傳
+- [x] 驗證:369 chunks 全 walk — 205 有圖 chunk == 205 有 marked 一一對應;`chunk_text` 零標記污染;全部 marker sha8 ⊆ 該 chunk `embedded_images_json` checksums;肉眼樣本(AR chunk-0001 封面圖 `[IMG#019f36cf]` 原位交織)PASS
 
 ## F8 — 驗證
 - [ ] `scripts/run_marker_placement.py`(四指標:validity / coverage / placement accuracy / dup rate + 人工覆核表輸出)
