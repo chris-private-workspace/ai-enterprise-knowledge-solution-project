@@ -15,7 +15,9 @@ import {
   dedupeCitationImages,
   imageSectionPath,
   imageTitle,
+  planAnchoredImages,
   selectInlineImages,
+  type DedupedCitationImage,
 } from '@/lib/chat/citation-images';
 
 function imageRef(over: Partial<ImageRef> = {}): ImageRef {
@@ -108,13 +110,19 @@ describe('dedupeCitationImages (BUG-026 Finding A)', () => {
     const post = citation(1, [
       imageRef({
         checksum_sha256: 'sha-post',
-        source_section: ['3 GL03. Processing Journal Vouchers', '3.1.5 System Instruction for each step'],
+        source_section: [
+          '3 GL03. Processing Journal Vouchers',
+          '3.1.5 System Instruction for each step',
+        ],
       }),
     ]);
     const create = citation(2, [
       imageRef({
         checksum_sha256: 'sha-create',
-        source_section: ['3 GL03. Processing Journal Vouchers', '3.1.3 System Instruction for each step'],
+        source_section: [
+          '3 GL03. Processing Journal Vouchers',
+          '3.1.3 System Instruction for each step',
+        ],
       }),
     ]);
     const result = dedupeCitationImages([post, create]);
@@ -162,8 +170,12 @@ describe('dedupeCitationImages — within-section page order (CH-011 / ADR-0048)
   it('orders across sections by doc_order too (overview leads the procedure)', () => {
     const OVERVIEW = ['3 GL03. Processing Journal Vouchers', '3.1.1 Overview'];
     const result = dedupeCitationImages([
-      citation(1, [imageRef({ checksum_sha256: 'step', source_section: STEP_SECTION, doc_order: 27 })]),
-      citation(2, [imageRef({ checksum_sha256: 'overview', source_section: OVERVIEW, doc_order: 24 })]),
+      citation(1, [
+        imageRef({ checksum_sha256: 'step', source_section: STEP_SECTION, doc_order: 27 }),
+      ]),
+      citation(2, [
+        imageRef({ checksum_sha256: 'overview', source_section: OVERVIEW, doc_order: 24 }),
+      ]),
     ]);
     // doc_order 24 (overview) < 27 (step) → overview leads.
     expect(result.map((r) => r.image.checksum_sha256)).toEqual(['overview', 'step']);
@@ -360,5 +372,82 @@ describe('imageTitle (BUG-026)', () => {
     cit.chunk_title = 'Section 7';
     cit.section_path = [];
     expect(imageTitle(imageRef({ alt_text: '', source_section: [] }), cit)).toBe('Section 7');
+  });
+});
+
+describe('planAnchoredImages (W71 — ADR-0055 interleave partition)', () => {
+  // Build a deduped entry directly (the caller already deduped + capped).
+  function placed(checksum: string, citationIdx = 1): DedupedCitationImage {
+    const image = imageRef({ checksum_sha256: checksum });
+    return { citation: citation(citationIdx, [image]), image, citationIdx };
+  }
+
+  it('anchors nothing when the answer has no markers — all images trail, figures 1..n', () => {
+    const capped = [placed('aaaaaaaa1111'), placed('bbbbbbbb2222')];
+    const plan = planAnchoredImages('Plain answer, no markers.', capped);
+    expect(plan.inlineBySha8.size).toBe(0);
+    expect(plan.trailing.map((p) => [p.entry.image.checksum_sha256, p.figureIdx])).toEqual([
+      ['aaaaaaaa1111', 1],
+      ['bbbbbbbb2222', 2],
+    ]);
+  });
+
+  it('anchors a marker by its sha8 prefix and leaves the rest trailing', () => {
+    const capped = [placed('aaaaaaaa1111'), placed('bbbbbbbb2222')];
+    const plan = planAnchoredImages('Step. [IMG#aaaaaaaa] done.', capped);
+    expect([...plan.inlineBySha8.keys()]).toEqual(['aaaaaaaa']);
+    expect(plan.inlineBySha8.get('aaaaaaaa')!.figureIdx).toBe(1);
+    // the un-anchored image trails, numbered AFTER the anchored one
+    expect(plan.trailing.map((p) => [p.entry.image.checksum_sha256, p.figureIdx])).toEqual([
+      ['bbbbbbbb2222', 2],
+    ]);
+  });
+
+  it('numbers anchored figures by MARKER order, not capped order', () => {
+    const capped = [placed('aaaaaaaa1111'), placed('bbbbbbbb2222')];
+    // marker for b comes first in the text → b is figure 1, a is figure 2
+    const plan = planAnchoredImages('[IMG#bbbbbbbb] then [IMG#aaaaaaaa]', capped);
+    expect(plan.inlineBySha8.get('bbbbbbbb')!.figureIdx).toBe(1);
+    expect(plan.inlineBySha8.get('aaaaaaaa')!.figureIdx).toBe(2);
+    expect(plan.trailing).toEqual([]);
+  });
+
+  it('anchors a repeated marker at most once (no double card)', () => {
+    const capped = [placed('aaaaaaaa1111')];
+    const plan = planAnchoredImages('[IMG#aaaaaaaa] x [IMG#aaaaaaaa]', capped);
+    expect(plan.inlineBySha8.size).toBe(1);
+    expect(plan.trailing).toEqual([]);
+  });
+
+  it('ignores a marker whose sha8 is not among the surviving images', () => {
+    const capped = [placed('aaaaaaaa1111')];
+    const plan = planAnchoredImages('[IMG#deadbeef] stray', capped);
+    expect(plan.inlineBySha8.size).toBe(0);
+    // the real image still trails (figure 1 — nothing anchored before it)
+    expect(plan.trailing.map((p) => p.figureIdx)).toEqual([1]);
+  });
+
+  it('keeps a checksum-less image in the trailing pile (can never be anchored)', () => {
+    const noChecksum: DedupedCitationImage = {
+      citation: citation(1, []),
+      image: imageRef({ checksum_sha256: '', blob_url: 'https://blob/x.png' }),
+      citationIdx: 1,
+    };
+    const plan = planAnchoredImages('[IMG#aaaaaaaa]', [placed('aaaaaaaa1111'), noChecksum]);
+    expect(plan.inlineBySha8.size).toBe(1);
+    expect(plan.trailing).toHaveLength(1);
+    expect(plan.trailing[0]!.entry.image.blob_url).toBe('https://blob/x.png');
+    expect(plan.trailing[0]!.figureIdx).toBe(2); // continues after the anchored figure 1
+  });
+
+  it('numbers figures continuously across anchored then trailing', () => {
+    const capped = [placed('aaaaaaaa1111'), placed('bbbbbbbb2222'), placed('cccccccc3333')];
+    const plan = planAnchoredImages('only [IMG#bbbbbbbb] anchored', capped);
+    expect(plan.inlineBySha8.get('bbbbbbbb')!.figureIdx).toBe(1);
+    // the two un-anchored images get 2 and 3, in capped order
+    expect(plan.trailing.map((p) => [p.entry.image.checksum_sha256, p.figureIdx])).toEqual([
+      ['aaaaaaaa1111', 2],
+      ['cccccccc3333', 3],
+    ]);
   });
 });

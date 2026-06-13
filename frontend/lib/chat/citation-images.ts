@@ -24,6 +24,7 @@
  * drift fix, not an H7 deviation per CLAUDE.md §5.7).
  */
 import type { Citation, ImageRef } from '@/lib/api/query';
+import { imageMarkerKey, parseInlineImageMarkers } from '@/lib/chat/inline-image-markers';
 
 /**
  * CH-009 / ADR-0046 (OD-1) — a screenshot whose smaller dimension is below this
@@ -140,6 +141,60 @@ export function selectInlineImages(
 ): DedupedCitationImage[] {
   if (cap <= 0) return [];
   return deduped.slice(0, cap);
+}
+
+/** A surviving image placed in the answer, with its 1-based figure number. */
+export interface PlacedImage {
+  entry: DedupedCitationImage;
+  figureIdx: number;
+}
+
+/**
+ * W71 (ADR-0055) — partition the surviving (capped) images into the ones
+ * anchored inline at an `[IMG#<sha8>]` marker in the answer and the ones left
+ * for the trailing pile.
+ *
+ * - `inlineBySha8` maps a marker's sha8 → the image to render at that position
+ *   (the chat's `AnswerBodyMarkdown` injects an `InlineImageCard` there);
+ * - `trailing` is the surviving images with NO anchored marker, rendered as the
+ *   end-of-answer pile (per ADR-0055 an anchored image does NOT repeat there).
+ *
+ * Figure numbers run continuously across the answer: anchored first, in marker
+ * order, then trailing, in document order. Membership + first-occurrence dedup
+ * come from `parseInlineImageMarkers` (the single source of truth shared with
+ * the render). Images without a checksum can't be anchored (no marker can
+ * reference them) and always fall to `trailing`.
+ */
+export interface AnchoredImagePlan {
+  inlineBySha8: Map<string, PlacedImage>;
+  trailing: PlacedImage[];
+}
+
+export function planAnchoredImages(
+  content: string,
+  capped: DedupedCitationImage[],
+): AnchoredImagePlan {
+  const bySha8 = new Map<string, DedupedCitationImage>();
+  for (const entry of capped) {
+    const key = imageMarkerKey(entry.image.checksum_sha256);
+    if (key && !bySha8.has(key)) bySha8.set(key, entry);
+  }
+  const segments = parseInlineImageMarkers(content, new Set(bySha8.keys()));
+  const anchoredOrder = segments.flatMap((s) => (s.type === 'image' ? [s.sha8] : []));
+  const anchoredSet = new Set(anchoredOrder);
+
+  const inlineBySha8 = new Map<string, PlacedImage>();
+  anchoredOrder.forEach((sha8, i) => {
+    inlineBySha8.set(sha8, { entry: bySha8.get(sha8)!, figureIdx: i + 1 });
+  });
+  const trailing: PlacedImage[] = capped
+    .filter((entry) => {
+      const key = imageMarkerKey(entry.image.checksum_sha256);
+      return !key || !anchoredSet.has(key);
+    })
+    .map((entry, i) => ({ entry, figureIdx: anchoredOrder.length + i + 1 }));
+
+  return { inlineBySha8, trailing };
 }
 
 /**

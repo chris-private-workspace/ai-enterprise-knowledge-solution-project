@@ -116,10 +116,12 @@ import {
   formatRelevance,
   imageSectionPath,
   imageTitle,
+  planAnchoredImages,
   selectInlineImages,
   type DedupedCitationImage,
+  type PlacedImage,
 } from '@/lib/chat/citation-images';
-import { stripInlineImageMarkers } from '@/lib/chat/inline-image-markers';
+import { parseInlineImageMarkers, stripInlineImageMarkers } from '@/lib/chat/inline-image-markers';
 
 // ──────────────────────────────────────────────────────────────────────────
 // Local types + state
@@ -1157,6 +1159,18 @@ function MessageRow({
   const inlineCap = maxImagesPerAnswer ?? INLINE_IMAGE_CAP;
   const cappedImages = selectInlineImages(dedupedImages, inlineCap);
 
+  // W71 (ADR-0055) — interleave: anchor each surviving image at its [IMG#sha8]
+  // marker position in the answer; the rest go to the trailing pile, with
+  // figure numbers continuous across both. Computed on FINAL content only — the
+  // partition (and the cards' reflow) must not run mid-stream. When the KB has
+  // no markers (knob off) the plan anchors nothing → strip path + full pile, so
+  // a marker-less answer renders bit-identical to pre-W71. (Plain const, not a
+  // hook — the user-role branch above already returned.)
+  const imagePlan = message.isStreaming ? null : planAnchoredImages(message.content, cappedImages);
+  const trailingImages: PlacedImage[] = imagePlan
+    ? imagePlan.trailing
+    : cappedImages.map((entry, i) => ({ entry, figureIdx: i + 1 }));
+
   return (
     <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
       <div
@@ -1248,6 +1262,8 @@ function MessageRow({
                 content={message.content}
                 citations={message.citations}
                 streaming={Boolean(message.isStreaming)}
+                inlineImages={imagePlan?.inlineBySha8}
+                onOpenScreenshot={onOpenScreenshot}
               />
             ) : (
               <span className="muted">{message.isStreaming ? 'Thinking…' : '(no content)'}</span>
@@ -1271,23 +1287,24 @@ function MessageRow({
           <FootnoteList citations={message.citations} onOpenScreenshot={onOpenScreenshot} />
         )}
 
-        {/* Inline image cards — mockup ekp-page-chat.jsx:470-498 (per imageCitation
-            inline rendering in answer body). Restored by BUG-019 — W22 F4 rebuild
-            wrongly dropped these as "custom abstraction" but mockup line 581-617
-            defines the InlineImageCard function and uses it inline in AnswerBody.
-            BUG-026 Finding A — render the deduped unique-image list (one card per
-            distinct image, not one per (citation, image) pair) so a neighbour-
-            attached image shared by 2+ citations renders once. ImageGallery
-            below draws from the same deduped list as the collective fallback. */}
+        {/* Trailing image cards — mockup ekp-page-chat.jsx:470-498 (per
+            imageCitation inline rendering in answer body). Restored by BUG-019;
+            BUG-026 Finding A dedupes one card per distinct image. W71 (ADR-0055)
+            — these are now the images NOT anchored inline at a marker position
+            (`trailingImages` = capped minus anchored): an anchored image renders
+            within the answer flow (AnswerBodyMarkdown) and must NOT repeat here.
+            Figure numbers continue after the inline ones. With the knob off (no
+            markers) trailingImages == all capped, so this is bit-identical to
+            pre-W71. */}
         {!message.isStreaming &&
-          cappedImages.map(({ citation, image, citationIdx }, flatIdx) => (
+          trailingImages.map(({ entry, figureIdx }) => (
             <InlineImageCard
-              key={`${citation.chunk_id}-${image.checksum_sha256 || image.blob_url}`}
-              citation={citation}
-              image={image}
-              citationIdx={citationIdx}
-              figureIdx={flatIdx + 1}
-              onOpen={() => onOpenScreenshot(citation, image)}
+              key={`${entry.citation.chunk_id}-${entry.image.checksum_sha256 || entry.image.blob_url}`}
+              citation={entry.citation}
+              image={entry.image}
+              citationIdx={entry.citationIdx}
+              figureIdx={figureIdx}
+              onOpen={() => onOpenScreenshot(entry.citation, entry.image)}
             />
           ))}
 
@@ -1434,44 +1451,151 @@ function injectPillsIntoChildren(
   return children;
 }
 
+// W71 (ADR-0055) — image placeholder token (parallel to the ⟦CITn⟧ citation
+// token). AnswerBodyMarkdown substitutes a valid+first-occurrence [IMG#sha8]
+// with ⟦IMG:sha8⟧ before the single ReactMarkdown render, so the markdown block
+// structure (esp. nested step lists) is preserved; the block overrides then
+// harvest the token and emit a block-level InlineImageCard at that position.
+const IMAGE_PLACEHOLDER_PATTERN = /⟦IMG:([0-9a-f]+)⟧/g;
+
+// Pull ⟦IMG:sha8⟧ tokens out of a block's children (removing them from the
+// inline text) and return the sha8s in document order. One level deep — markers
+// land in the block's direct string children (after any bold step lead-in),
+// matching the depth injectPillsIntoChildren walks.
+function harvestImageTokens(children: ReactNode): { cleaned: ReactNode; sha8s: string[] } {
+  const sha8s: string[] = [];
+  const scrub = (s: string) =>
+    s.replace(IMAGE_PLACEHOLDER_PATTERN, (_full, sha8: string) => {
+      sha8s.push(sha8);
+      return '';
+    });
+  if (typeof children === 'string') {
+    return children.includes('⟦IMG:')
+      ? { cleaned: scrub(children), sha8s }
+      : { cleaned: children, sha8s };
+  }
+  if (Array.isArray(children)) {
+    const cleaned = children.map((child) =>
+      typeof child === 'string' && child.includes('⟦IMG:') ? scrub(child) : child,
+    );
+    return { cleaned, sha8s };
+  }
+  return { cleaned: children, sha8s };
+}
+
+// Render the InlineImageCards for the sha8s harvested from one block, in order.
+// A sha8 missing from the map (shouldn't happen — substitution only emits
+// in-map sha8s) is skipped, never a broken card.
+function renderInlineImageCards(
+  sha8s: string[],
+  inlineImages: Map<string, PlacedImage> | undefined,
+  onOpenScreenshot: ((citation: Citation, image: ImageRef) => void) | undefined,
+): ReactNode[] {
+  if (!inlineImages || sha8s.length === 0) return [];
+  return sha8s.flatMap((sha8) => {
+    const placed = inlineImages.get(sha8);
+    if (!placed) return [];
+    const { entry, figureIdx } = placed;
+    return [
+      <InlineImageCard
+        key={`inline-${entry.citation.chunk_id}-${sha8}`}
+        citation={entry.citation}
+        image={entry.image}
+        citationIdx={entry.citationIdx}
+        figureIdx={figureIdx}
+        onOpen={() => onOpenScreenshot?.(entry.citation, entry.image)}
+      />,
+    ];
+  });
+}
+
 function AnswerBodyMarkdown({
   content,
   citations,
   streaming = false,
+  inlineImages,
+  onOpenScreenshot,
 }: {
   content: string;
   citations: Citation[];
   streaming?: boolean;
+  // W71 (ADR-0055) — sha8 → the surviving image to anchor at that marker, with
+  // its figure number. Absent / empty (streaming or knob off) → strip path.
+  inlineImages?: Map<string, PlacedImage>;
+  onOpenScreenshot?: (citation: Citation, image: ImageRef) => void;
 }) {
-  const processed = useMemo(
-    // W70 (ADR-0055) — strip [IMG#sha8] position markers before any other
-    // transform; while streaming, a trailing partial marker is held back so
-    // fragments never flash. W71 interleaved render will consume them instead.
-    () => preprocessAnswerContent(stripInlineImageMarkers(content, streaming), citations),
-    [content, citations, streaming],
-  );
+  const interleave = !streaming && inlineImages !== undefined && inlineImages.size > 0;
+
+  const processed = useMemo(() => {
+    // W71 (ADR-0055) — interleave path: substitute valid+first-occurrence
+    // [IMG#sha8] markers with ⟦IMG:sha8⟧ placeholders (membership + dedup via the
+    // shared parse), stripping the rest, so the block overrides can place cards.
+    if (interleave) {
+      const segments = parseInlineImageMarkers(content, new Set(inlineImages!.keys()));
+      const placeholderText = segments
+        .map((s) => (s.type === 'text' ? s.text : `⟦IMG:${s.sha8}⟧`))
+        .join('');
+      return preprocessAnswerContent(placeholderText, citations);
+    }
+    // W70 strip path: remove [IMG#sha8] before any other transform; while
+    // streaming a trailing partial marker is held back so fragments never flash.
+    return preprocessAnswerContent(stripInlineImageMarkers(content, streaming), citations);
+  }, [content, citations, streaming, interleave, inlineImages]);
 
   const components = useMemo(
     () => ({
-      p: ({ children }: { children?: ReactNode }) => (
-        <p style={{ margin: '0 0 10px 0' }}>{injectPillsIntoChildren(children, citations, 'p')}</p>
-      ),
+      p: ({ children }: { children?: ReactNode }) => {
+        const { cleaned, sha8s } = harvestImageTokens(children);
+        const cards = renderInlineImageCards(sha8s, inlineImages, onOpenScreenshot);
+        const paragraph = (
+          <p style={{ margin: '0 0 10px 0' }}>{injectPillsIntoChildren(cleaned, citations, 'p')}</p>
+        );
+        // A block-level <figure> can't live inside <p>; emit the card(s) as
+        // siblings AFTER the paragraph (mockup AnswerBody places cards between
+        // blocks — ekp-page-chat.jsx:470/490).
+        return cards.length > 0 ? (
+          <>
+            {paragraph}
+            {cards}
+          </>
+        ) : (
+          paragraph
+        );
+      },
       // BUG-033 Finding B — Tailwind `@tailwind base` preflight resets `list-style:
       // none`, so these renderers must re-assert the marker type or numbered/bulleted
       // lists render markerless (LLM markdown is correct; this is the render fix).
       ol: ({ children }: { children?: ReactNode }) => (
-        <ol style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7, listStyleType: 'decimal' }}>
+        <ol
+          style={{
+            paddingLeft: 22,
+            margin: '0 0 10px 0',
+            lineHeight: 1.7,
+            listStyleType: 'decimal',
+          }}
+        >
           {children}
         </ol>
       ),
       ul: ({ children }: { children?: ReactNode }) => (
-        <ul style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7, listStyleType: 'disc' }}>
+        <ul
+          style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7, listStyleType: 'disc' }}
+        >
           {children}
         </ul>
       ),
-      li: ({ children }: { children?: ReactNode }) => (
-        <li style={{ marginBottom: 2 }}>{injectPillsIntoChildren(children, citations, 'li')}</li>
-      ),
+      li: ({ children }: { children?: ReactNode }) => {
+        const { cleaned, sha8s } = harvestImageTokens(children);
+        const cards = renderInlineImageCards(sha8s, inlineImages, onOpenScreenshot);
+        // <figure> IS valid flow content inside <li> (unlike <p> — cf. BUG-023),
+        // so the card sits within the step's list item, after its text.
+        return (
+          <li style={{ marginBottom: 2 }}>
+            {injectPillsIntoChildren(cleaned, citations, 'li')}
+            {cards}
+          </li>
+        );
+      },
       strong: ({ children }: { children?: ReactNode }) => (
         <strong style={{ fontWeight: 600 }}>
           {injectPillsIntoChildren(children, citations, 'strong')}
@@ -1497,7 +1621,7 @@ function AnswerBodyMarkdown({
         </code>
       ),
     }),
-    [citations],
+    [citations, inlineImages, onOpenScreenshot],
   );
 
   return <ReactMarkdown components={components}>{processed}</ReactMarkdown>;
