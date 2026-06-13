@@ -125,6 +125,24 @@ async def test_ingest_links_prev_next_chunk_ids() -> None:
 
 
 @pytest.mark.asyncio
+async def test_ingest_computes_profile() -> None:
+    # W73 / ADR-0056 層 A — orchestrator computes IngestionResult.profile best-effort.
+    # An empty parse → profiler classifies "too_small"; assert the profile is populated.
+    pr = _parser_result()
+    orch = IngestionOrchestrator(
+        parser=_FakeParser(pr),
+        chunker=_FakeChunker([_spec(0, "S1")]),
+        embedder=_FakeEmbedder(),
+        uploader=None,
+    )
+
+    result = await orch.ingest(Path("x.docx"), kb_id="kb", doc_id="d")
+
+    assert result.profile is not None
+    assert result.profile.profile == "too_small"  # empty paragraphs → too_small
+
+
+@pytest.mark.asyncio
 async def test_ingest_parse_failed_returns_failure_record() -> None:
     pr = ParserResult(
         source_path=Path("broken.docx"),

@@ -50,9 +50,12 @@ from ingestion.chunker.heading_aware import HeadingAwareChunker
 from ingestion.embedding.base import Embedder
 from ingestion.orchestrator import IngestionOrchestrator
 from ingestion.parsers import select_parser
+from ingestion.profile_presets import preset_for
+from ingestion.profiler import ProfileResult
 from ingestion.screenshots.uploader import ScreenshotUploader, download_screenshot
 from ingestion.source_store import download_source_document, upload_source_document
 from kb_management import KBNotFoundError, KBService, get_kb_service
+from kb_management.doc_config_store import DocConfigStore
 from retrieval.retrieval_engine import RetrievalEngine
 from storage.kb_naming import kb_id_to_screenshot_container
 from storage.settings import get_settings
@@ -90,6 +93,9 @@ class _IngestionDeps:
     populator: IndexPopulator
     chunker: Chunker
     make_chunker: Callable[[int | None], Chunker] | None = None
+    # W73 / ADR-0056 層 A — per-doc config store for profile→preset routing
+    # (None when the store isn't wired, e.g. some tests → routing skips silently).
+    doc_config_store: DocConfigStore | None = None
 
 
 def _engine_or_503(request: Request) -> RetrievalEngine:
@@ -119,6 +125,8 @@ def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
     # W45 / ADR-0042 — per-KB chunker factory (lifespan-wired in server.py).
     # Absent in tests that only set the singleton → make_chunker=None → inherit path.
     make_chunker = getattr(request.app.state, "make_ingestion_chunker", None)
+    # W73 / ADR-0056 層 A — doc-config store for profile→preset auto-write.
+    doc_config_store = getattr(request.app.state, "doc_config_store", None)
     if embedder is None or populator is None or chunker is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -132,6 +140,7 @@ def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
         populator=populator,
         chunker=chunker,
         make_chunker=make_chunker,
+        doc_config_store=doc_config_store,
     )
 
 
@@ -735,6 +744,21 @@ async def _run_ingest_pipeline(
             data=tmp_path.read_bytes(),
             filename=safe_name,
         )
+
+        # W73 / ADR-0056 層 A — route the doc profile to a per-doc preset
+        # (conservative auto-write, D6 守 — never overwrite a manual per-doc config).
+        # Advisory: a routing failure never fails the ingest (doc is already indexed).
+        if result.profile is not None and deps.doc_config_store is not None:
+            try:
+                await _route_profile_preset(
+                    store=deps.doc_config_store,
+                    kb_id=kb_id,
+                    doc_id=doc_id,
+                    profile=result.profile,
+                )
+            except Exception:  # noqa: BLE001 — profile routing is advisory, never fatal
+                _stdlib_logger.exception("profile_routing_failed kb_id=%s doc_id=%s", kb_id, doc_id)
+
         return {
             "doc_id": doc_id,
             "chunks_emitted": upload_result.succeeded,
@@ -744,6 +768,41 @@ async def _run_ingest_pipeline(
     finally:
         if tmp_dir is not None:
             shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+async def _route_profile_preset(
+    *,
+    store: DocConfigStore,
+    kb_id: str,
+    doc_id: str,
+    profile: ProfileResult,
+) -> None:
+    """W73 / ADR-0056 層 A — conservatively auto-write the profile's per-doc preset.
+
+    D6 admin override 守: if the doc already has a manual per-doc DocConfig, skip
+    (never overwrite). D7 保守: a profile with no preset (too_small / unknown) inherits
+    the per-KB / global config — no per-doc row is written.
+    """
+    preset = preset_for(profile.profile)
+    if preset is None:
+        return  # too_small / unknown — inherit (D7)
+    existing = await store.get(kb_id, doc_id)
+    if existing is not None:
+        _stdlib_logger.info(
+            "profile_routing_skip_manual kb_id=%s doc_id=%s profile=%s",
+            kb_id,
+            doc_id,
+            profile.profile,
+        )
+        return  # D6 — manual per-doc config wins
+    await store.upsert(kb_id, doc_id, preset)
+    _stdlib_logger.info(
+        "profile_routing_applied kb_id=%s doc_id=%s profile=%s confidence=%.2f",
+        kb_id,
+        doc_id,
+        profile.profile,
+        profile.confidence,
+    )
 
 
 def _bytes_to_upload_file(data: bytes, filename: str) -> UploadFile:

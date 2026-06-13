@@ -44,12 +44,17 @@ from indexing.schemas import ChunkRecord, ImageRef, make_chunk_id
 from ingestion.chunker.base import Chunker, ChunkSpec
 from ingestion.embedding.base import Embedder
 from ingestion.parsers.base import Parser, ParserResult
+from ingestion.profiler import DocumentProfiler, ProfileResult
 from ingestion.screenshots.extractor import ScreenshotExtractor, ScreenshotRecord
 from ingestion.screenshots.uploader import ScreenshotUploader, UploadResult
 from retrieval.contextual import build_contextual_document
 
 logger = structlog.get_logger(__name__)
 _stdlib_logger = logging.getLogger(__name__)
+
+# W73 / ADR-0056 層 A — module-level profiler singleton (stateless, pure-rule).
+# Orchestrator computes the doc profile best-effort; the caller routes it to a preset.
+_PROFILER = DocumentProfiler()
 
 # ADR-0055 — the chunker's marked-text placeholder ([IMG@<doc_order>]); rewritten
 # below to the global-identity form [IMG#<sha8>] (checksum_sha256 first 8 hex).
@@ -101,6 +106,9 @@ class IngestionResult:
     failure: FailureRecord | None
     images_uploaded: int  # number of unique blobs uploaded (post-dedup)
     images_deduped: int  # number of dedup-skipped
+    # W73 / ADR-0056 層 A — best-effort doc profile (None if profiling or parse
+    # failed); the caller routes a non-None profile to a per-doc preset.
+    profile: ProfileResult | None = None
 
 
 class IngestionOrchestrator:
@@ -139,6 +147,15 @@ class IngestionOrchestrator:
                 images_deduped=0,
             )
 
+        # W73 / ADR-0056 層 A — compute the doc profile (best-effort; a profiling
+        # failure must NOT abort ingest). Orchestrator only computes; the caller
+        # (_run_ingest_pipeline) routes a non-None profile to a per-doc preset.
+        profile: ProfileResult | None = None
+        try:
+            profile = _PROFILER.profile(result, source)
+        except Exception:  # noqa: BLE001 — profiling is advisory, never fatal
+            logger.warning("profile_compute_failed", doc_id=doc_id)
+
         chunks: list[ChunkSpec] = self._chunker.chunk(result)
         if not chunks:
             return IngestionResult(
@@ -146,6 +163,7 @@ class IngestionOrchestrator:
                 failure=FailureRecord(doc_id=doc_id, stage="parse", error="empty doc — no chunks"),
                 images_uploaded=0,
                 images_deduped=0,
+                profile=profile,
             )
 
         # 2. Upload screenshots — best-effort; per-image failure non-fatal.
@@ -213,6 +231,7 @@ class IngestionOrchestrator:
                 ),
                 images_uploaded=images_uploaded,
                 images_deduped=images_deduped,
+                profile=profile,
             )
 
         # 4. Assemble ChunkRecord — chunk_id, prev/next links, image resolution.
@@ -317,4 +336,5 @@ class IngestionOrchestrator:
             failure=None,
             images_uploaded=images_uploaded,
             images_deduped=images_deduped,
+            profile=profile,
         )
