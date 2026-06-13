@@ -96,3 +96,39 @@
   export 路徑(目前無 backend export 端點)future 沿用同一 helper,不在此 close 範圍。
 - 下一步:F4(knob ON 實跑 drive-images-1 肉眼核交織 + 九 query report-級 sanity +
   AC1-AC6 自評)。
+
+### F4 — 驗證 ✅(headless;browser 肉眼 = DD-1)
+- **九 query 報告級 sanity(headless,跑真實程式碼)**:W70 saved answers(`reports/
+  marker_placement_ar_answers.yaml`,9 條,Q001 63 標記 / 48 distinct = 15 dup,
+  標記深埋巢狀 step list)→ dump JSON → 臨時 vitest import **真實**
+  `parseInlineImageMarkers` + `planAnchoredImages` 跑 →
+  **9/9 PASS**(臨時檔跑完即刪,讀 gitignore reports 不可 commit;同 W70 F8
+  一次性驗證 pattern):
+  - 每 text segment 零 `[IMG#` 洩漏(全消費)
+  - image segment 數 == distinct marker 數、序 == first-occurrence(dup 收斂、無漏)
+  - `planAnchoredImages` inlineBySha8.size == distinct、trailing == []、figure
+    1..N 連續無跳號
+- **AC 自評**:
+  - **AC1 交織正確** ✅(headless):每 valid 標記 → image segment(`InlineImageCard`),
+    標記文字零洩漏(replay 9/9 + F2 render smoke);streaming 半截不出(F1 hold-back
+    test)。卡視覺位置正確 = 🚧 DD-1 browser。
+  - **AC2 membership + dup** ✅:sha8 ∉ surviving → strip 無空卡(`planAnchoredImages`
+    + render smoke「membership strip」case);dup 至多 anchored 一次(replay 真實
+    15-dup answer + unit)。
+  - **AC3 顯示語意** ✅(機制層):anchored 唔重複末尾(`trailingImages` = un-anchored
+    only,replay 全 anchored → trailing []);gallery 全量(`cappedImages` + totalCount
+    未改);figure 連續(replay 1..N)。視覺 = 🚧 DD-1。
+  - **AC4 零回歸** ✅:knob OFF / 無標記 → inlineBySha8 空 → strip 路 + 全 trailing =
+    pre-W71(F1 空 membership == strip / F2 render smoke「無標記」/ chat-meta-row
+    img-count 無回歸)。
+  - **AC5 DD-8** ✅:copy strip(前端 render test)+ RAGAs answer strip(backend 7
+    test);DD-8 已 close。
+  - **AC6 H6/H7** ✅:F1 12 + F2 planAnchoredImages 7 + render smoke 3 + F3 backend
+    7 + copy 1;H7 = `InlineImageCard` 元件原樣 reuse、卡擺位對齊 mockup `AnswerBody`
+    (block 之間)。視覺 fidelity 終核 = 🚧 DD-1 browser。
+- **🚧 DD-1 browser 肉眼(用戶 2026-06-13 明示 headless-only scope)**:drive-images-1
+  knob ON 之下行 chat,人眼確認「卡喺步驟原位 / 末尾只剩 un-anchored / gallery 全量 /
+  巢狀 list 內卡擺位睇落自然(F2 記低嘅子-list-之後 placement 微妙位)」。需全 stack +
+  browser(DD-1 class)。
+- 下一步:F5(收爐 — user-guide 同步交織顯示行為 + DD-8 caveat 解除 + memory +
+  plan closeout + retro)。

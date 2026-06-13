@@ -19,9 +19,9 @@
 - [x] DEFERRED_REGISTER DD-8 → 已 Close(證據:backend 20 passed / 前端 copy render test / tsc 0 / eslint 0;export 路徑 future 同一 helper)
 
 ## F4 — 驗證(knob ON 實跑)
-- [ ] drive-images-1 實跑肉眼核:標記位置出卡 / 末尾無重複 / gallery 全量 / 無爛字無空卡
-- [ ] 九 query 報告級 sanity(標記全消費;可用 `scripts/run_marker_placement.py` 答案 + 前端 parse 對拍)
-- [ ] AC1-AC6 自評記 progress
+- [x] 九 query 報告級 sanity:W70 saved answers(9 條,最多 63 標記 / ~8-9% dup / 深層巢狀 list)過**真實** `parseInlineImageMarkers` + `planAnchoredImages`(臨時 vitest,跑完即刪)→ **9/9 通過**:每標記全消費零洩漏 / 每 distinct marker anchored 一次(dup 收斂)/ first-occurrence 序 / 全 anchored 零 trailing / figure 1..N 連續
+- [x] 「無爛字 / 無空卡 / 標記全消費 / figure 連續」headless 已驗(上條 + F1/F2 unit + F2 render smoke);**「位置出卡 / 末尾無重複 / gallery 全量」之 browser 肉眼視覺確認 🚧 deferred → DD-1**(smoke-user-deferred class,用戶 2026-06-13 明示 headless-only scope)
+- [x] AC1-AC6 自評記 progress.md
 
 ## F5 — 收爐
 - [ ] user-guide 同步(02/03 提交織顯示行為 + DD-8 caveat 解除)
