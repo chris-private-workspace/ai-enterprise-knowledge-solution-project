@@ -72,14 +72,16 @@ per-query(試跑草稿,唔落地)
 > 組 3 仲有一個唔喺呢個 card 嘅關聯旋鈕:章節概覽圖置頂(overview pin,全域出廠 False)—
 > 喺 per-doc tab 有得設(§4),令章節開頭嘅 High-Level 概覽圖排最前。
 
-**組 4 — Inline image markers(圖文位置標記,W70 / ADR-0055)**
+**組 4 — Inline image markers(圖文位置標記,W70 基建 / W71 交織 / ADR-0055)**
 
 | 旋鈕 | 全域出廠值 | 說明 |
 |---|---|---|
-| 開關 `enable_inline_image_markers` | **False** | ON = 答案生成時 LLM 見到帶 `[IMG#…]` 位置標記嘅原文,答案會喺對應步驟原位帶標記(chat 顯示自動隱藏,你唔會見到爛字)。係 W71「文字+圖片交織顯示」嘅基建;W70 驗證(drive-images-1 九 query):標記有效率 100%、次序零調換、image-recall 1.00 零回退 |
+| 開關 `enable_inline_image_markers` | **False** | ON = 答案生成時 LLM 見到帶 `[IMG#…]` 位置標記嘅原文,**chat 會把對應截圖卡擺喺答案對應步驟原位(文字+圖片交織顯示)**,而唔係全部圖卡堆喺答案末尾;末尾只剩冇被原位錨定嘅截圖,「Referenced screenshots」gallery 仍然全量總覽。標記文字本身永不顯示(串流期間半截都唔出)。W70 驗證(drive-images-1 九 query):標記有效率 100%、次序零調換、image-recall 1.00 零回退;W71 交織 9/9 answer 標記全消費、figure 連續 |
 
-> 過渡 caveat:knob ON 之下,**copy / export 答案文字會帶 `[IMG#…]` 標記**(顯示層先有
-> strip;W71 處理 copy 路徑)。驗證 KB drive-images-1 已開呢個 knob(W70 F8 起保留)。
+> 兩個已知特性(非故障):(1)同一截圖喺答案重複提及只**錨定一次**(其餘標記自動隱藏);
+> (2)截圖喺答案無對應位置(LLM 冇放標記)→ 跌返末尾 + gallery,行為同 knob OFF 一樣。
+> 驗證 KB drive-images-1 已開呢個 knob(W70 F8 起保留)。**Copy 答案**已 strip 乾淨(`[IMG#…]`
+> 同引用標記都唔會入剪貼簿,W71 F3 / DD-8 修正)。
 
 ### 2.4 配方 preset 一鍵套用(card 內第一行)
 

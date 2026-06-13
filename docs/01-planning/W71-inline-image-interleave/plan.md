@@ -1,7 +1,7 @@
 ---
 phase: W71
 name: inline-image-interleave
-status: active       # draft | active | closed
+status: closed       # draft | active | closed(2026-06-13 closeout — F1-F5 done;browser 肉眼視覺 = DD-1 deferred)
 created: 2026-06-13
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "W70 基建 + 驗證已判 go(validity 1.000 / 真調換 0/249 / recall 零回退),但 chat 顯示仍係「文字講完先一批圖卡」;要把圖卡按 [IMG#sha8] 標記位置交織入答案文字流,先達成用戶『無限接近原文文字+圖片順序』嘅原始目標"

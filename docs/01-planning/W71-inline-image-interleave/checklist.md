@@ -24,5 +24,5 @@
 - [x] AC1-AC6 自評記 progress.md
 
 ## F5 — 收爐
-- [ ] user-guide 同步(02/03 提交織顯示行為 + DD-8 caveat 解除)
-- [ ] memory 更新(`project_inline_image_markers_w70` 接力位 close)+ plan closeout + retro
+- [x] user-guide 同步:`03-configuration-reference.md` §2.3 組 4 由「W70 隱藏標記」改「W71 交織顯示截圖卡」(末尾只剩 un-anchored + gallery 全量 + 兩個已知特性 dup-anchor-once / 無位跌末尾)+ copy caveat 由「帶標記」改「已 strip 乾淨(W71 F3/DD-8)」;01 chat 描述「截圖 gallery」仍準確不改
+- [x] memory 更新(`project_inline_image_markers_w70` W71 接力位 → 已落地 + R1 巢狀插圖教訓 + DD-8 close;MEMORY.md index 行同步)+ plan closeout(status closed)+ progress retro

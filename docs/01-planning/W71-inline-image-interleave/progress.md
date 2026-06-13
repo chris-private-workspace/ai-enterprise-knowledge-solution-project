@@ -132,3 +132,40 @@
   browser(DD-1 class)。
 - 下一步:F5(收爐 — user-guide 同步交織顯示行為 + DD-8 caveat 解除 + memory +
   plan closeout + retro)。
+
+### F5 — 收爐 ✅
+- **user-guide**:`03-configuration-reference.md` §2.3 組 4 由 W70 描述(「答案會喺
+  對應步驟原位帶標記,chat 顯示自動隱藏」)改 W71 行為(「chat 把對應截圖卡擺喺
+  答案對應步驟原位,文字+圖片交織顯示;末尾只剩冇被錨定嘅截圖,gallery 仍全量」)
+  + 兩個已知特性(dup 只錨定一次 / 無位跌返末尾)+ copy caveat 由「帶標記」改
+  「已 strip 乾淨(W71 F3 / DD-8)」。`01-platform-overview.md` 嘅「截圖 gallery」
+  仍準確(gallery 依然存在),不改。
+- **memory**:`project_inline_image_markers_w70`(W70 名)更新 — W71 接力位 →
+  已落地(F1 解析 / F2 R1 巢狀插圖決策 / F3 DD-8 / F4 驗證)+ 巢狀 markdown 插
+  block 圖卡教訓;MEMORY.md index 行同步。
+- **plan.md** `status: closed`。
+
+### Phase Gate 自評(closeout)
+- **AC1-AC6 全部達標(機制 / headless 層)** — 詳見 F4 entry;唯一未行 = browser
+  肉眼視覺(明示 headless-only scope → DD-1)。
+- **判決:Phase Gate 通過 WITH SMOKE-USER-DEFERRED CAVEAT**(同 W12-W18 同類
+  pattern — static / 機制 / unit / 真實答案 replay 全綠;互動視覺層 DD-1)。
+
+### Retro(W71)
+- **順利**:R6 grounding 提早發現 `InlineImageCard`/`ImageGallery` 已存在(BUG-019/
+  007/021),令 W71 由「起新元件」收窄做「移位 + 解析層」,scope 大減;F1 先起
+  純 parse + 測試,F2 先有穩固地基至接 render;F4 用真實 W70 答案過真實程式碼
+  (唔係另寫 mock)抓到 dup + 巢狀真實形狀。
+- **R1 決策(最大技術判斷)**:睇真實答案發現標記喺深層巢狀 list — segments-split
+  同 lift-to-block 兩個 naive 路都唔得;改 placeholder + 單一 ReactMarkdown +
+  block override 注入。教訓:**插 block 級元素入 markdown 之前,先睇真實內容嘅
+  結構(巢狀深度),唔好憑 mockup 平層例子定 render 策略**。已入 memory。
+- **教訓(`<figure>` HTML 合法性)**:block `<figure>` 入 `<li>` 合法、入 `<p>`
+  唔合法(BUG-023 同源)。下次喺 markdown override 插 block 元素要先分 host 係
+  list-item(直接入)定 paragraph(fragment-sibling)。
+- **教訓(full suite flake)**:重 jsdom render suite 並行喺超載機(environment
+  setup 795s)會 5000ms timeout — 8 fail 全 flake,逐個隔離 pass。判 CI 綠要睇
+  隔離結果,唔好被 full-suite 並行 timeout 嚇親。
+- **Carry-overs**:DD-1 browser 肉眼(drive-images-1 knob ON 行 chat 人眼核交織 +
+  巢狀子-list 卡擺位)/ per-doc tab UI marker 旋鈕未開(W70 §4 footnote)/ 其他 KB
+  re-ingest 前先 index PUT(known gate)/ export 路徑 future 沿用 `strip_inline_image_markers`。
