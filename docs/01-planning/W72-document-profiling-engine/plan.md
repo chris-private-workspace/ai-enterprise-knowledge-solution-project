@@ -1,7 +1,7 @@
 ---
 phase: W72
 name: document-profiling-engine
-status: active       # draft | active | closed
+status: closed       # draft | active | closed(2026-06-13 — F1-F4 done;content accuracy 34/34=100%;profiler standalone 零侵入)
 created: 2026-06-13
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "ADR-0056 層 A 落地第一段 — rule-based 文件畫像分類引擎(六類 profile + 信心度),由真 ParserResult 抽結構信號 + PDF pypdfium2 pre-OCR 探測,33+7 sample accuracy 驗收 ≥90%。standalone 新 module,零侵入(唔接 orchestrator、唔改 ParserResult / parser / chunker / pipeline)。routing / UI / LLM 保險 / D8 PDF picture / 方案 A 全部留後續段。"
@@ -139,3 +139,4 @@ future 真有第二 consumer 先抽上契約。**此決定喺本 changelog + pro
 | Date | Change | Reason |
 |---|---|---|
 | 2026-06-13 | Initial plan(active)| 用戶拍板「同意 ADR-0056,開始執行」+ AskUserQuestion 揀「Profiler engine 先」。R6 grounding 完成 — 關鍵發現:(1) ParserResult 現有欄位足以抽 v2 全部信號零契約改動;(2) D2 每頁文字密度缺口改由 profiler PDF pypdfium2 pre-OCR pass 自含(唔改 ParserResult,Karpathy surgical,記設計決策);(3) P4 必須 pre-OCR(parse 後信號失效);(4) profiler standalone 唔接 orchestrator → 本 phase 零侵入。**設計決策偏離 ADR D2 字面**(page metadata 由 profiler 自抽非 parser 出)屬 implementation 非 architectural,已記 §1 + 本 changelog(R3)|
+| 2026-06-13 | Closeout(closed,PASS)| F1-F4 全成,content accuracy 34/34=100% + 7 scan P4 + 19 unit test。**F3 後 tune**(plan §1 classify v3 已預「tune threshold」範圍內):`_classify_structural` tickbox→P5_form branch 移到 P1_sop_text 之後 — R2 信號漂移 finding(n8n-runbook 帶 checklist ☐ 的真 SOP 曾被 tickbox 誤判 form),結構信號優先於 marker。harness PDF 改 `do_ocr=False`(避 Docling layout bad_alloc,profiler 靠 pypdfium2 不受影響)。無 deferred `[ ]`|

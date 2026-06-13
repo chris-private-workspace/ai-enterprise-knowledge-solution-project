@@ -31,7 +31,7 @@
 
 ## F4 — 收爐
 
-- [ ] memory 更新(`project_per_kb_tunable_config_vision` append profiler 落地)
-- [ ] closeout retro(progress.md 結尾)
-- [ ] ADR-0056 段 ② render-side 交棒記錄(profiler output 契約 → routing 段消費點)
-- [ ] plan.md status → closed
+- [x] memory 更新(`project_per_kb_tunable_config_vision` + MEMORY.md index append profiler 落地)
+- [x] closeout retro(progress.md 結尾 — PASS verdict + 教訓 + commits)
+- [x] ADR-0056 段 ② render-side 交棒記錄(profiler output 契約 + D8/方案 A 前置 + routing 接駁點)
+- [x] plan.md status → closed

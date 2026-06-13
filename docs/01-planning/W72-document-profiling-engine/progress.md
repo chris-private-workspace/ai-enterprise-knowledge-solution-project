@@ -53,3 +53,40 @@
 
 ### Next(F4 收爐)
 - memory 更新 + closeout retro + ADR-0056 段 ② 交棒記錄 + plan status → closed。
+
+---
+
+## Closeout retro — 2026-06-13
+
+**Phase verdict:PASS**。ADR-0056 層 A 第一段(Profiler engine)落地完成,所有 AC 過:
+- AC1 accuracy:content 34/34=100%(gate ≥90%)+ 7 scan 全 P4 ✅
+- AC2 deterministic:純 rule 零 LLM,unit test 驗 ✅
+- AC3 信心度 + D7 fallback:unknown → P2_prose + fallback_applied + conf<0.5 ✅
+- AC4 H4 邊界:零 LLM / 零 image embedding ✅
+- AC5 零侵入:profiler standalone,`git diff` 對現有 ingestion code 零改動(只新增 `profiler.py` + test + harness)✅
+- AC6 H6:`profiler.py` 喺 `backend/ingestion/` 有 19 unit test ✅
+
+**Commits**:
+| Hash | 內容 |
+|---|---|
+| `34afdd8` | ADR-0056 Accept + W72 phase kickoff(plan/checklist/progress)|
+| `f5db3b5` | F1-F3 profiler engine(profiler.py + test_profiler.py + harness)|
+
+**教訓**:
+1. **R2 信號漂移真實發生**:勘查 hardcoded SIGNALS ≠ 真 parse(n8n-runbook tickbox 誤判);productionize 必須真 parse 對齊。結構信號(list_ratio+headings)優先級要高於 marker 信號(tickbox)。
+2. **profiler 對 PDF 唔靠 Docling OCR**:pypdfium2 pre-OCR 獨立路令 P3/P4 robust(Docling layout bad_alloc 都唔影響 classify);只有 P1_sop_text(born-digital procedure)依賴 Docling heading/list count。
+3. **standalone 零侵入** 係降 H1 風險嘅關鍵:profiler build + verify 完全唔掂 production pipeline,接入(routing)留下段獨立決策。
+
+### 段 ② render-side 交棒記錄
+
+profiler output 契約(後續段消費):
+- `ProfileResult.profile`(`DocProfile` Literal 六類 + too_small/unknown)= routing key
+- `ProfileResult.confidence`(0–1)+ `fallback_applied` = 低信心 gate(段 ③ UI badge 黃旗)
+- `ProfileResult.signals`(`ProfileSignals` dataclass)= 段 ③ UI L3「文件畫像」透明展示直接消費
+
+段 ② 落地前置(ADR-0056 D8,**本段唔掂**):
+- **D8 PDF picture 缺口**:`pdf_parser.py:54` `generate_picture_images=False` → PDF 圖入唔到庫;`P1_sop_imgdense`/`P3_slide` 對 PDF 路由到圖流程會空轉。要開 flag + re-index。
+- **方案 A section 級錨定**:W71 §5 未實作 net-new,`P1_sop_imgdense` render 流程依賴。
+- **routing 接駁點**:profile→preset(W69 preset 機制)+ 套 per-doc config(ADR-0050)+ profiler 接入 `orchestrator.py`(ingest 後 profile → 套 preset)。
+
+### 本 phase 無 deferred `[ ]`(checklist 全 tick)。後續段 = ADR-0056 roadmap 段 ②/③,等用戶 trigger(rolling JIT)。
