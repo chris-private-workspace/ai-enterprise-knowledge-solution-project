@@ -57,8 +57,16 @@ ADR-0040 四層擴展,非 new ADR。
   零 infra 風險(唔使殺 dual-process / 等慢 startup)+ 驗證真實數據縮小。inject 純函數設計(answer + citations → new answer)令呢個 offline 驗證可行。
 - **R1 章節內 clump 風險真實存在**(create-master 7 anchored 收 41 un-anchored = 平均每錨點 clump ~6 圖),
   但「末尾堆 → 章節內 clump」係明顯改善;靠 frontend `doc_order` sort(CH-011)緩解,leaf 級精準錨留後續(query-dependent)。
-- 唯一 deferred:**DD-1 browser 肉眼視覺**(W71 同款 headless-only scope)— frontend 零改動 reuse W71 render,
-  注入更多 inline card 嘅章節內 clump 視覺留 browser 確認。
+- **DD-1 browser 肉眼(已做,2026-06-14,closed)**:重啟全部服務後 chat `/query/stream` live 驗證 — 45 圖全 inline
+  交織入步驟 list、**末尾堆 0**、stream path 注入生效(done.answer)、**frontend 零改動兌現**(reuse W71 render)。
+  **但揭示 clump 偏重**:每步驟圖卡分佈 **[39,1,1,1,1,1,1]**,`maxConsecutiveFigureRun=39`(一步驟「Click Close twice」
+  後 39 張連續圖卡 ≈ 換位置嘅末尾堆)。根因:章節級(prefix-1)太粗 + image-recall 39 aux 圖 + synthesizer 少 cite
+  (7 anchored)→ 39 張同章節圖全 clump 一個錨點。**方法論教訓:headless 量化(末尾堆 0)睇落完美,肉眼先見 clump
+  重 —— DD-1 browser 肉眼嘅真實價值**。**用戶判決(2026-06-14):接受現狀(章節級,不優化 clump)**;clump 優化
+  (每錨點 cap / leaf 級精準錨,leaf 可錨率 2-82% 有 tension)留將來 explicit trigger。
+- **Runtime 註**:demo 用 backend env `ENABLE_SECTION_ANCHORED_AUX_IMAGES=true` 啟動令 drive-images-1 生效
+  (per-KB config 無此新旋鈕 → inherit global env);**非 persistent**,下次 backend restart 回 default False。要
+  drive-images-1 持續 ON 需 per-KB config 設旋鈕(或 W73 routing re-ingest)。
 
 **Commits**:
 - `23b3952` docs(planning): W75 kickoff
