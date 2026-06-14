@@ -31,7 +31,9 @@ import logging
 from io import BytesIO
 from pathlib import Path
 
-from docling.document_converter import DocumentConverter
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.types.doc import DocItemLabel
 
 from .base import EmbeddedImage, ParagraphItem, ParserResult, Table
@@ -50,8 +52,21 @@ class DoclingPdfParser:
 
     doc_format = "pdf"
 
-    def __init__(self) -> None:
-        self._converter = DocumentConverter()
+    def __init__(self, generate_picture_images: bool = False) -> None:
+        # ADR-0057 — born-digital PDF embedded-picture extraction. OFF by default
+        # (production-preserve: Docling's default converter does not retain picture
+        # bytes → PDF figures never reach the index). A KB with extract_embedded_images
+        # =True flips it on so the PDF 圖類 profile preset (W73) + inline marker
+        # (ADR-0055) stop spinning on absent images. Cost ~+19% parse on born-digital PDF.
+        self.generate_picture_images = generate_picture_images
+        if generate_picture_images:
+            opts = PdfPipelineOptions()
+            opts.generate_picture_images = True
+            self._converter = DocumentConverter(
+                format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)}
+            )
+        else:
+            self._converter = DocumentConverter()
 
     def parse(self, source: Path) -> ParserResult:
         try:

@@ -69,3 +69,25 @@ def test_select_chunker_heading_aware_returns_heading_aware_chunker() -> None:
     # section-bounded policy: no sub-hard-cap target split + no adjacent merge.
     assert chunker.target_tokens == chunker.hard_cap_tokens
     assert chunker.min_chunk_merge_floor == 0
+
+
+# --- ADR-0057 — per-KB PDF picture extraction thread (select_parser extract_images) ---
+
+
+def test_select_parser_pdf_extract_images_threads_flag() -> None:
+    parser = select_parser(Path("/some/path/report.pdf"), extract_images=True)
+    assert isinstance(parser, DoclingPdfParser)
+    assert parser.generate_picture_images is True
+
+
+def test_select_parser_pdf_default_no_picture_extraction() -> None:
+    # production-preserve — default keeps generate_picture_images False (no PDF figures)
+    parser = select_parser(Path("/some/path/report.pdf"))
+    assert isinstance(parser, DoclingPdfParser)
+    assert parser.generate_picture_images is False
+
+
+def test_select_parser_docx_unaffected_by_extract_images() -> None:
+    # extract_images only flips the .pdf path; docx / pptx stay bit-identical
+    parser = select_parser(Path("/some/path/manual.docx"), extract_images=True)
+    assert isinstance(parser, DoclingDocxParser)

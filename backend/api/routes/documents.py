@@ -610,16 +610,23 @@ async def _run_ingest_pipeline(
         with tmp_path.open("wb") as tmp:
             shutil.copyfileobj(upload_file.file, tmp)
 
-        parser = select_parser(tmp_path)
         # W20 F4.2 — read the KB's KbConfig so the orchestrator honours the
         # ADR-0028 Step-4 multimodal toggles (`extract_embedded_images`, etc).
         # `service.get` already ran upstream via `_assert_kb_exists`, so this
         # second read is a cheap in-memory lookup / single Postgres SELECT.
+        # ADR-0057 — read BEFORE select_parser so the PDF parser can honour the
+        # per-KB extract_embedded_images toggle (generate_picture_images).
         try:
             kb_record = await service.get(kb_id)
             kb_config = kb_record.config
         except Exception:  # noqa: BLE001 — defensive: fall back to W2 baseline
             kb_config = None
+        # ADR-0057 — thread the per-KB image toggle to the PDF parser: a KB that opts
+        # into images extracts born-digital PDF pictures; a text-only KB pays nothing.
+        parser = select_parser(
+            tmp_path,
+            extract_images=bool(kb_config and kb_config.extract_embedded_images),
+        )
         # BUG-009 — wire the screenshot uploader (was `uploader=None` while R12
         # blocked Azurite). The orchestrator only invokes it for a KB that opted
         # into `extract_embedded_images`, so a text-only KB pays nothing beyond a

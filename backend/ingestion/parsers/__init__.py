@@ -20,17 +20,22 @@ from .pdf_parser import DoclingPdfParser
 from .pptx_parser import PptxParser
 
 
-def select_parser(source: Path) -> Parser:
+def select_parser(source: Path, *, extract_images: bool = False) -> Parser:
     """Dispatch to the parser implementation by file extension.
 
     Recognized formats: .docx → DoclingDocxParser, .pdf → DoclingPdfParser,
     .pptx → PptxParser (per architecture.md §3.3 + components/C01 §1 + ADR-0019).
+
+    `extract_images` (ADR-0057): when True the .pdf parser extracts embedded
+    pictures (generate_picture_images=True). Threaded from the KB's
+    `extract_embedded_images` toggle by the ingest caller; default False keeps every
+    existing caller + the .docx / .pptx paths bit-identical.
     """
     suffix = source.suffix.lower()
     if suffix == ".docx":
         return DoclingDocxParser()
     if suffix == ".pdf":
-        return DoclingPdfParser()
+        return DoclingPdfParser(generate_picture_images=extract_images)
     if suffix == ".pptx":
         return PptxParser()
     raise ValueError(
