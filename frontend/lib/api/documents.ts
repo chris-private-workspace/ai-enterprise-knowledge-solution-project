@@ -23,6 +23,12 @@ export interface DocumentSummary {
   last_indexed_at: string;
   source_url: string | null;
   tags: string[];
+  /** W76 / ADR-0056 層 A 段③ — lightweight profile surface for the L2 doc-list
+   * badge (label + confidence only; full signals live on DocumentDetail.profile).
+   * null = not profiled (re-index to populate). Mirrors backend
+   * `api.schemas.listing.DocumentSummary.profile` + `.profile_confidence`. */
+  profile?: string | null;
+  profile_confidence?: number | null;
 }
 
 /** Mirrors backend `api.schemas.listing.ChunkSummary` (Pydantic). */
@@ -58,6 +64,33 @@ export interface ImageRef {
   height: number;
 }
 
+// W76 / ADR-0056 層 A 段③ — per-doc profile read shape. Mirrors backend
+// `api.schemas.doc_profile.DocProfileInfo` + `DocProfileSignals`. Surfaced on
+// DocumentDetail.profile for the L3「文件畫像」section (transparent signals + override).
+export interface DocProfileSignals {
+  paragraphs: number;
+  headings: number;
+  max_depth: number;
+  list_items: number;
+  images: number;
+  tables: number;
+  img_density: number;
+  head_density: number;
+  list_ratio: number;
+  tickbox_density: number;
+  pdf_pages: number | null;
+  pdf_empty_ratio: number | null;
+  pdf_avg_chars: number | null;
+}
+
+export interface DocProfileInfo {
+  profile: string; // DocProfile label (e.g. "P1_sop_imgdense")
+  confidence: number; // 0–1
+  fallback_applied: boolean; // true → low-confidence D7 conservative fallback
+  signals: DocProfileSignals;
+  profiled_at: string; // ISO-8601
+}
+
 export interface DocumentDetail {
   doc_id: string;
   title: string;
@@ -77,6 +110,9 @@ export interface DocumentDetail {
   indexed_at: string;
   outline: OutlineNode[];
   image_refs: ImageRef[];
+  /** W76 / ADR-0056 層 A 段③ — full profile + signals for the L3「文件畫像」
+   * section. null = not profiled (re-index to populate). */
+  profile?: DocProfileInfo | null;
 }
 
 export const documentsApi = {

@@ -111,6 +111,52 @@ function formatRelative(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString();
 }
 
+// W77 / ADR-0056 層 A 段③ — 文件畫像 badge(L2 文件列表)per mockup ekp-page-kb.jsx:139-159.
+// profile = W72 profiler 分類;低信心 → badge-warning 黃旗 + 信心度;未分析(profile=null,
+// ingest 未成功 / 未 re-index)→ muted「未分析」。
+const PROFILE_LABELS: Record<string, string> = {
+  P1_sop_imgdense: 'P1 圖密SOP',
+  P1_sop_text: 'P1 文字SOP',
+  P2_prose: 'P2 散文',
+  P3_slide_imgdense: 'P3 圖密簡報',
+  P3_slide_text: 'P3 文字簡報',
+  P4_scan_imgdense: 'P4 掃描',
+  P5_form: 'P5 表單',
+};
+
+function ProfileBadge({
+  profile,
+  confidence,
+}: {
+  profile?: string | null;
+  confidence?: number | null;
+}) {
+  if (!profile) {
+    return (
+      <span className="badge badge-muted" style={{ opacity: 0.65 }}>
+        未分析
+      </span>
+    );
+  }
+  // L2 輕量 summary 無 fallback_applied 欄;低信心用 confidence < 0.7 判(per W78 plan §4-1，
+  // 視覺零差 — fallback doc confidence 必 < 0.7)。完整 fallback 判斷喺 L3 文件畫像。
+  const low = confidence != null && confidence < 0.7;
+  const label = PROFILE_LABELS[profile] ?? profile;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+      <span
+        className={`badge ${low ? 'badge-warning' : 'badge-muted'}`}
+        title={low ? '低信心 — 建議人手確認 profile' : '偵測 profile'}
+      >
+        <span className="badge-dot" /> {label}
+      </span>
+      {confidence != null && (
+        <span className="text-xs muted mono">{Math.round(confidence * 100)}%</span>
+      )}
+    </span>
+  );
+}
+
 export default function KbDetailPage() {
   const params = useParams<{ id: string }>();
   const kbId = params.id;
@@ -389,6 +435,7 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
               <th>Type</th>
               <th className="col-num">Chunks</th>
               <th>Tags</th>
+              <th>Profile</th>
               <th>Status</th>
               <th className="col-num">Indexed</th>
               <th className="col-shrink" aria-label="row actions" />
@@ -433,6 +480,9 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
                   ) : (
                     <span className="muted text-xs">—</span>
                   )}
+                </td>
+                <td>
+                  <ProfileBadge profile={d.profile} confidence={d.profile_confidence} />
                 </td>
                 <td>
                   <span className="badge badge-success">

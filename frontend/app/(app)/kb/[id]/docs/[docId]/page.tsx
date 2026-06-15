@@ -562,7 +562,9 @@ export default function DocDetailPage() {
         </>
       )}
 
-      {tab === 'config' && <DocConfigTab kbId={kbId} docId={docId} kbName={kb.name} />}
+      {tab === 'config' && (
+        <DocConfigTab kbId={kbId} docId={docId} kbName={kb.name} profile={doc.profile} />
+      )}
     </div>
   );
 }

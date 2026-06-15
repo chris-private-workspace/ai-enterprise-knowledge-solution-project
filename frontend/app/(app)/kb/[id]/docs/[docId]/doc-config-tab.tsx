@@ -37,12 +37,49 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
 import { docConfigApi, type DocConfig } from '@/lib/api/doc-config';
+import { type DocProfileInfo } from '@/lib/api/documents';
 import {
   configTestApi,
   type ConfigRunSummary,
   type ConfigTestResult,
   type DraftRetrievalConfig,
 } from '@/lib/api/config-test';
+
+// W77 / ADR-0056 層 A 段③ — 文件畫像(L3)helpers per mockup ekp-page-doc-detail.jsx:405-429.
+const DOC_PROFILE_LABELS: Record<string, string> = {
+  P1_sop_imgdense: 'P1 圖密SOP',
+  P1_sop_text: 'P1 文字SOP',
+  P2_prose: 'P2 散文',
+  P3_slide_imgdense: 'P3 圖密簡報',
+  P3_slide_text: 'P3 文字簡報',
+  P4_scan_imgdense: 'P4 掃描',
+  P5_form: 'P5 表單',
+};
+
+function DocProfileBadge({ profile }: { profile: DocProfileInfo }) {
+  const low = profile.fallback_applied || profile.confidence < 0.7;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      <span className={`badge ${low ? 'badge-warning' : 'badge-muted'}`} style={{ fontSize: 11 }}>
+        <span className="badge-dot" /> {DOC_PROFILE_LABELS[profile.profile] ?? profile.profile}
+      </span>
+      <span className="text-xs muted mono">信心 {Math.round(profile.confidence * 100)}%</span>
+    </span>
+  );
+}
+
+function ProfileSignal({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="stat">
+      <div className="stat-label" style={{ fontSize: 10.5 }}>
+        {label}
+      </div>
+      <div className="stat-value" style={{ fontSize: 17 }}>
+        {value}
+      </div>
+    </div>
+  );
+}
 
 // The post-retrieval numeric/bool knobs editable per document (DocConfig minus
 // answer_detail, which is its own seg). null = inherit per-KB.
@@ -66,10 +103,12 @@ export function DocConfigTab({
   kbId,
   docId,
   kbName,
+  profile,
 }: {
   kbId: string;
   docId: string;
   kbName: string;
+  profile?: DocProfileInfo | null;
 }) {
   const queryClient = useQueryClient();
   const configQuery = useQuery<DocConfig>({
@@ -103,6 +142,7 @@ export function DocConfigTab({
       kbId={kbId}
       docId={docId}
       kbName={kbName}
+      profile={profile}
       saved={configQuery.data}
       onSaved={() =>
         void queryClient.invalidateQueries({
@@ -117,12 +157,14 @@ function DocConfigEditor({
   kbId,
   docId,
   kbName,
+  profile,
   saved,
   onSaved,
 }: {
   kbId: string;
   docId: string;
   kbName: string;
+  profile?: DocProfileInfo | null;
   saved: DocConfig;
   onSaved: () => void;
 }) {
@@ -205,6 +247,80 @@ function DocConfigEditor({
           </div>
         </div>
       </div>
+
+      {/* W77 / ADR-0056 段③ — 文件畫像(L3:自動偵測 profile + signals 透明展示 + 人手覆寫)
+          per mockup ekp-page-doc-detail.jsx:453-505. profile=null → 唔 render(graceful)。 */}
+      {profile && (
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <h3 className="card-title">文件畫像(自動偵測)</h3>
+              <div className="card-desc">
+                系統由文件結構信號偵測內容類型,自動套對應 recall 流程 preset。偵測錯 → 下方一鍵覆寫。
+                <span className="mono"> W72 profiler · ADR-0056 層 A</span>
+              </div>
+            </div>
+            <DocProfileBadge profile={profile} />
+          </div>
+          <div className="card-body" style={{ display: 'grid', gap: 14 }}>
+            {(profile.fallback_applied || profile.confidence < 0.7) && (
+              <div className="banner banner-warning">
+                <Shield size={15} style={{ color: 'oklch(var(--warning))', flexShrink: 0 }} />
+                <div className="text-xs" style={{ flex: 1, lineHeight: 1.5 }}>
+                  <b>低信心偵測</b>(結構信號矛盾)— 已 fallback 保守 preset。建議人手確認下方 profile。
+                </div>
+              </div>
+            )}
+            <div>
+              <div className="label" style={{ marginBottom: 8 }}>
+                偵測信號(點解判呢個 profile)
+              </div>
+              <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                <ProfileSignal
+                  label="圖密度 img_density"
+                  value={profile.signals.img_density.toFixed(3)}
+                />
+                <ProfileSignal
+                  label="列表比例 list_ratio"
+                  value={profile.signals.list_ratio.toFixed(3)}
+                />
+                <ProfileSignal label="標題深度 max_depth" value={profile.signals.max_depth} />
+                <ProfileSignal label="標題數 headings" value={profile.signals.headings} />
+                {profile.signals.pdf_pages != null && (
+                  <>
+                    <ProfileSignal label="PDF 頁數" value={profile.signals.pdf_pages} />
+                    <ProfileSignal
+                      label="text-layer 空比例"
+                      value={(profile.signals.pdf_empty_ratio ?? 0).toFixed(2)}
+                    />
+                    <ProfileSignal
+                      label="平均字元/頁"
+                      value={Math.round(profile.signals.pdf_avg_chars ?? 0)}
+                    />
+                  </>
+                )}
+                <ProfileSignal label="段落數 paragraphs" value={profile.signals.paragraphs} />
+              </div>
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label className="label">人手覆寫 profile(override)</label>
+              <select className="select" defaultValue={profile.profile} style={{ maxWidth: 260 }}>
+                <option value="P1_sop_imgdense">P1 圖密SOP</option>
+                <option value="P1_sop_text">P1 文字SOP</option>
+                <option value="P2_prose">P2 散文</option>
+                <option value="P3_slide_imgdense">P3 圖密簡報</option>
+                <option value="P3_slide_text">P3 文字簡報</option>
+                <option value="P4_scan_imgdense">P4 掃描</option>
+                <option value="P5_form">P5 表單</option>
+              </select>
+              <div className="hint">
+                改 profile 會套對應 preset 落下方旋鈕。Admin 覆寫永遠優先於自動偵測(ADR-0056 D6)。
+                <span className="muted"> (覆寫持久化為段③後續)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Per-doc advanced tuning — post-retrieval knobs only */}
       <div className="card">

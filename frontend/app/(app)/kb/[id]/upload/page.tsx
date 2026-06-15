@@ -29,6 +29,7 @@ import {
   ChevronRight,
   Cloud,
   Globe,
+  Layers,
   Link as LinkIcon,
   Upload,
 } from 'lucide-react';
@@ -722,6 +723,25 @@ function StepExecute({
               <div className="text-xs muted mono">
                 Docling → {kb?.config.chunk_strategy ?? 'auto'} → embed-3-large →
                 ekp-kb-{kbId}-v1 upsert
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* W78 / ADR-0056 段③ — L1 自動文件分類說明 banner per mockup ekp-page-misc.jsx:266-273.
+            mockup per-doc 即時 profile badge 需 multi-doc batch + upload-response-含-profile;
+            frontend single-file flow + uploadDoc return {doc_id} 無 profile（W78 plan §4-3 §13
+            backend-wins）→ 說明 banner + 完成後 redirect /kb/{id}（L2 table 即見 profile）。 */}
+        {file && (
+          <div className="banner banner-info" style={{ marginBottom: 16 }}>
+            <Layers size={15} style={{ color: 'oklch(var(--info))', flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13 }}>
+                <b>自動文件分類(W72 profiler)</b> —
+                ingest 時偵測每份文件 profile,自動套對應 recall preset。
+              </div>
+              <div className="text-xs muted" style={{ marginTop: 2 }}>
+                偵測錯可去文件詳情頁一鍵覆寫 · ADR-0056 層 A
               </div>
             </div>
           </div>

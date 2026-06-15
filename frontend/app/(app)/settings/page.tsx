@@ -39,6 +39,7 @@
 import {
   Activity,
   KeyRound,
+  Layers,
   LogOut,
   PlugZap,
   RefreshCw,
@@ -60,6 +61,7 @@ import { ErrorBoundary } from '@/components/error/error-boundary';
 import { SettingsApiKeys } from '@/components/settings/settings-api-keys';
 import { SettingsAuditLog } from '@/components/settings/settings-audit-log';
 import { SettingsConnections } from '@/components/settings/settings-connections';
+import { SettingsDocProfiling } from '@/components/settings/settings-doc-profiling';
 import { SettingsIdentity } from '@/components/settings/settings-identity';
 import { TabErrorState } from '@/components/settings/tab-error-state';
 import { DisabledAffordance } from '@/components/ui/disabled-affordance';
@@ -73,6 +75,8 @@ const TABS = [
   { id: 'identity', label: 'Identity & Auth', icon: ShieldCheck },
   { id: 'api-keys', label: 'API Keys & Quotas', icon: KeyRound },
   { id: 'account', label: 'Account', icon: Activity },
+  // W78 / ADR-0056 層 A 段③ — 文件分類規則(admin profiler 指揮中心)
+  { id: 'doc-profiling', label: '文件分類規則', icon: Layers },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -225,6 +229,11 @@ function SettingsPageInner() {
         {tab === 'account' && (
           <TabBoundary tabName="Account">
             <AccountTab onSignOut={() => void signOut()} />
+          </TabBoundary>
+        )}
+        {tab === 'doc-profiling' && (
+          <TabBoundary tabName="文件分類規則">
+            <SettingsDocProfiling />
           </TabBoundary>
         )}
       </div>
