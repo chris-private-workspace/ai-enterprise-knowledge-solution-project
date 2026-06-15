@@ -49,6 +49,24 @@ H4 ✅(rule label,純結構信號)/ H7 ✅(零 frontend → 唔 trigger)/ H6 ✅
   我新 file 零 ruff error;server.py 我加嘅 import 有 `# noqa: E402` 不增 error。mypy --strict 對
   transitive import 報 pre-existing(storage / parsers,我冇 touch),exit 非零但新 code 0(git diff 核實)。
 
+**Retro(Day 1)**:
+- **零侵入確認**:profile read surface 純 additive(DocumentSummary/Detail 加 nullable field)+
+  best-effort persist/join(advisory try/except)→ profiler 未 persist / store 未 wire / join 失敗
+  全部 graceful null。既有 read path bit-identical(57 regression 零 break 兌現)。
+- **mirror pattern 省力**:DocProfileStore verbatim mirror `doc_config_store`(ADR-0050)→ store +
+  factory + test 全對齊既有 pattern,零新 infra 概念(Karpathy §1.2 + §13 既有 pattern wins)。
+- **TYPE_CHECKING seam 解 reverse import**:schema `from_result` 要知 `ProfileResult`(ingestion type),
+  用 `if TYPE_CHECKING` import + duck-typed body → runtime 零 reverse dependency(api.schemas 唔 import ingestion)。
+- **mypy 既有 pattern**:literal narrow(`profile="P1_..."`)唔需 arg-type ignore,變數(`profile=profile`)
+  先需要;`Settings(_env_file=None)` 係 pydantic-settings + mypy known limitation 要 `call-arg` ignore。
+- **關鍵 caveat(交棒段③ + 用戶)**:現有 KB(drive-images-1)做完本 phase 仍係**空 profile** ——
+  profiler 只 ingest 時 compute,原文件 bytes ingest 後冇保留 → backfill 不可行。要 **re-index** 一次
+  (W73 routing compute + W76 persist 一齊生效)先有 data。drive-images-1 production-preserve 唔建議
+  re-index;段③ UI 驗證 / demo 用新 upload 一份 P1 文件即可即時見 profile。
+- **段③ 接駁點齊**:read surface 通咗 —— `DocumentSummary.profile`(L2 badge)/ `DocumentDetail.profile`
+  + signals(L3 文件畫像 section)有 data 可 fetch;段③ UI 卡 H7 OQ-B mockup,等用戶 trigger。
+
 **Commits**:
 - `ff5672b` docs(planning): W76 kickoff
-- (本次)feat(api): W76 profile read surface — persist + expose(F1-F4)
+- `85963a5` feat(api): W76 profile read surface — persist + expose(F1-F4)
+- (closeout)docs(planning): W76 closeout — plan closed + retro + memory

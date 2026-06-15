@@ -35,6 +35,6 @@
 
 ## F5 — closeout
 
-- [ ] F5.1 verify:新 upload → ingest 自動 profile + persist → GET DocumentDetail 見 profile(end-to-end;infra 受限退 unit-level)
-- [ ] F5.2 R5 評估:是否補 ADR-0056 addendum note(段③前置 persist)
-- [ ] F5.3 memory append + MEMORY.md pointer + plan closed + progress retro
+- [x] F5.1 verify:採 unit/route-level(14 test 含 TestClient route-level list_documents/doc_detail 真實 join logic + schema serialization);**live-ingest e2e smoke DEFERRED**(backend 8000 down + Azure cred 受限,對齊 EKP CO smoke-deferred 慣例;現有 KB re-index 後驗自動 persist 留 infra 可用 / 連段③ UI 一齊驗)
+- [x] F5.2 R5 評估:**無新 ADR**(persist+expose 屬 ADR-0056 層 A 既定 D3/D4 範圍,沿用 ADR-0023 Postgres + ADR-0050 store pattern);ADR-0056 正文不改(段落地記 memory+progress,同 W73/W74 慣例)
+- [x] F5.3 memory `project_per_kb_tunable_config_vision` append 段③前置落地 + plan closed + progress retro
