@@ -1,6 +1,6 @@
 # W80 plan — Profile-only backfill(現有 doc 補跑 profiler,ADR-0059 落地)
 
-**Status**: active
+**Status**: closed(2026-06-15,full PASS — backend endpoint + 8 tests + 真實 KB drive-images-1 API 驗端到端 PASS)
 **Kickoff**: 2026-06-15
 **Phase 類型**: backend feature(H1 architectural — 新 endpoint;ADR-0059 已 Accepted)
 **ADR**: ADR-0059(profile-only backfill — 用戶 confirm scope = (b) 輕量,非 (a) 完整 re-ingest)
@@ -104,3 +104,15 @@ re-ingest)。
 ## §7 Changelog
 - 2026-06-15 kickoff — plan active,F1-F3 scope locked;ADR-0059 Accepted(用戶 confirm (b) 輕量 backfill);
   落點 ground(run_kb_reindex 輕量版 + W46 source blob 限制 flag)。
+- 2026-06-15 F1 backend(commit `8ccea0a`)— `run_kb_profile_backfill` + `_backfill_one_doc_profile`
+  (documents.py)+ `backfill_kb_profiles` endpoint(kb.py)+ `test_doc_profile_backfill.py` 8 tests;
+  ruff 0 + mypy 新 code clean + pytest 16 passed(backfill 8 + override 8 regression)。
+- 2026-06-15 **W74 fixture debt 順手修**(commit `8f9160a`)— F1 regression surface `test_documents_route.py`
+  15 pre-existing failures(`git stash` 證 baseline 同 fail = W74/ADR-0057 `_patch_orchestrator` stub 漏更新
+  `extract_images` kwarg,W80 net-new = 0);用戶揀順手修 → 41 passed。**偏離**:W80 scope 外 surgical fix,
+  用戶 explicit 批准(AskUserQuestion「順手修」)。
+- 2026-06-15 **F2 真實 KB API 驗端到端 PASS**(用戶揀「重啟 backend + API 驗」非 browser)— pre-flight endpoint
+  404 坐實舊 code → 殺 W79 dual-process + 重啟 W80 backend → `POST /kb/drive-images-1/profiles/backfill`
+  `202 profiled: 6`(全 P1_sop_imgdense,skipped 全空)+ GET /documents 6 docs profile 非 null + confidence 0.95
+  + `total_chunks` 不變(零 retrieval 影響)。
+- 2026-06-15 closeout — plan closed full PASS,F1-F3 全 tick。

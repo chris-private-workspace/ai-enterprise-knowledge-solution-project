@@ -54,6 +54,39 @@ baseline,加 `_PROFILER` 3 行令 line 116→120 shift)+ pytest **16 passed**(ba
 - idempotent skip 已有 profile → override doc(W79)走 `skipped_has_profile`,**唔會被重 profile**(D6 守);
   `_backfill_one_doc_profile` 仍保 manual_override merge(future force-mode parity)。
 
+**W74 fixture debt(F1 regression 副產品)**:F1 跑鄰近 regression 時 `test_documents_route.py` 15 failures。
+**`git stash` 移走 W80 改動後 baseline 同 fail 同樣錯**(`select_parser(path, extract_images=...)` lambda 不接
+kwarg)→ 確認 W74/ADR-0057 落地時 `_patch_orchestrator` stub 漏更新,**W80 net-new = 0**。用戶揀「順手修」→ stub
+加 `extract_images=False` kwarg → 41 passed(15 回綠)。commit `8f9160a`。
+
+**F2 驗證(Day 1,用戶揀「重啟 backend + API 驗」非 browser)**:
+- **pre-flight**:backend /health 200 但 `POST /profiles/backfill` → **404 = 舊 code**(W79 backend,W80 endpoint
+  未 pick up)+ azurite ✅ + Postgres healthy。**殺 W79 dual-process**(venv parent 56632 → system child 56768,
+  正是上 session background backend task `bxbvsm2su`,殺後它 exit 255)+ port 8000 free → **重啟 backend(W80 code)**
+  輪詢 /health 200 ~42s。
+- **POST backfill**:`202 profiled: 6` — 全 6 docs(AR/AP/GL/CB/BM/FA manual)判 **P1_sop_imgdense**;
+  `skipped_has_profile`/`skipped_no_source`/`failed` **全空** → 證 6 docs 之前全 null(無 profile)+ source blob
+  都在(W46 後 re-index 過)。
+- **GET /documents read surface**:6 docs 全 profile=P1_sop_imgdense + confidence **0.95**(高信心非 fallback)+
+  `total_chunks` 不變(78/74/28/16/90/83)= **零 retrieval 影響**(backfill 零動 chunks 坐實)。
+- **達標**:候選 4「令現有 doc 有 profile」完成 — W78 三層 UI + W79 override 喺 drive-images-1 真正生效
+  (不再淨係臨時 doc 驗)。frontend render 不重驗(W78 已驗 + W80 零 frontend 改動)。
+
+**Retro(Day 1)**:
+- **backfill = `run_kb_reindex` 輕量版** — 高度復用(download_source / profiler / persist / route),拔掉 chunk/
+  embed/upsert,新 code 最少(2 helper + 1 endpoint)。「零 retrieval 影響」by construction(零 populator call)+
+  test `test_backfill_succeeds_without_ingestion_services` 證 + F2 `total_chunks` 不變坐實。
+- **改 backend 後必須重啟先 pick up**(W79 教訓重現):pre-flight `POST` endpoint 404 = 舊 code 直接坐實,
+  省卻盲猜;重啟前先 pre-flight probe endpoint 存在性 = 好習慣。
+- **殺 backend 前確認 dual-process + 非別 session**:TaskList 空 + 進程穩定 18 小時 = 上 session 遺留(非別
+  session 啱啱起)→ 安全殺整對(parent+child);殺後上 session background task notification exit 255 = 預期。
+- **regression 用 `git stash` 科學辨 pre-existing vs net-new**:15 failures 一度似 W80 引入,stash baseline 跑同
+  test 同 fail → 確證 pre-existing,避免錯誤 attribute + 順帶清咗 W74 遺留 debt。
+- **交棒**:現有 doc backfill 已完成(drive-images-1 6 docs);其他現有 KB(如 `drive_user_manuals`)同樣可 `POST
+  backfill` 補(rolling JIT,等需求)。② 層查詢意圖 gate(候選 ②)+ ③ D8 PDF/scan robustness(候選 ③)為下一步。
+
 **Commits**:
-- (kickoff)docs(planning): W80 kickoff + ADR-0059 — profile-only backfill
-- (F1)feat(api): W80 F1 profile-only backfill endpoint (ADR-0059)
+- `6a71e14` docs(planning): W80 kickoff + ADR-0059 — profile-only backfill
+- `8ccea0a` feat(api): W80 F1 profile-only backfill endpoint (ADR-0059)
+- `8f9160a` test(api): fix W74/ADR-0057 _patch_orchestrator select_parser stub
+- (closeout)docs(planning): W80 closeout — full PASS
