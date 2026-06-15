@@ -24,7 +24,7 @@ function PageDocDetail({ kbId, docId, onNavigate }) {
   const chunkImage = chunk.has_image ? allImages[chunk.image_idx] : null;
 
   return (
-    <div className="content content-wide" style={{ paddingTop: 16, paddingBottom: 16 }}>
+    <div className="content" style={{ paddingTop: 16, paddingBottom: 16 }}>
       {/* Header */}
       <div className="page-header" style={{ marginBottom: 16 }}>
         <div style={{ flex: 1, minWidth: 0 }}>

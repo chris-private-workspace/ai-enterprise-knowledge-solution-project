@@ -7,6 +7,12 @@
  * W22 F6.3 (NEW route, W21 F3 fold) per CLAUDE.md §5.7 H7 — 100% mockup fidelity
  * match against references/design-mockups/ekp-page-doc-detail.jsx:6 PageDocDetail.
  *
+ * ADR-0061 (2026-06-15): page wrapper `content content-wide` → `content` to align
+ * with every other authenticated page (`.content-wide`'s 1600px max-width centred
+ * this page on wide screens while all others go edge-to-edge). Mockup
+ * ekp-page-doc-detail.jsx:27 synced in the same change — fidelity preserved. Do NOT
+ * re-add `content-wide` here.
+ *
  * Mockup decomposition adopted (single-file pattern):
  *   Page sections inline: header + 5-stage pipeline strip + image strip + 3-pane
  *   (outline 240px / chunk list 1fr / inspector 380px). ONLY ImageThumb +
@@ -115,7 +121,7 @@ export default function DocDetailPage() {
   const selectedChunk = chunkList[selectedChunkIdx];
 
   return (
-    <div className="content content-wide" style={{ paddingTop: 16, paddingBottom: 16 }}>
+    <div className="content" style={{ paddingTop: 16, paddingBottom: 16 }}>
       {/* Header */}
       <div className="page-header" style={{ marginBottom: 16 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
