@@ -136,6 +136,28 @@ function KbTable({ kbs, onNavigate }) {
   );
 }
 
+// W77 / ADR-0056 層 A 段③ — 文件畫像 badge(L2 文件列表)。profile = W72 profiler 分類;
+// 低信心(fallback_applied 或 confidence < 0.7)→ badge-warning 黃旗 + 信心度,提示人手確認;
+// 未分析(indexing/failed/queued — ingest 未成功)→ muted「未分析」。
+const PROFILE_LABELS = {
+  P1_sop_imgdense: "P1 圖密SOP", P1_sop_text: "P1 文字SOP", P2_prose: "P2 散文",
+  P3_slide_imgdense: "P3 圖密簡報", P3_slide_text: "P3 文字簡報",
+  P4_scan_imgdense: "P4 掃描", P5_form: "P5 表單",
+};
+function ProfileBadge({ profile }) {
+  if (!profile) return <span className="badge badge-muted" style={{ opacity: 0.65 }}>未分析</span>;
+  const low = profile.fallback_applied || profile.confidence < 0.7;
+  const label = PROFILE_LABELS[profile.profile] || profile.profile;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+      <span className={`badge ${low ? "badge-warning" : "badge-muted"}`} title={low ? "低信心 — 建議人手確認 profile" : "偵測 profile"}>
+        <span className="badge-dot" /> {label}
+      </span>
+      <span className="text-xs muted mono">{Math.round(profile.confidence * 100)}%</span>
+    </span>
+  );
+}
+
 // ── /kb/[id] — Detail with 5 tabs ──────────────────────────────────────────
 function PageKbDetail({ kbId, initialTab, onNavigate, tweaks }) {
   const kb = window.MOCK_KBS.find((k) => k.kb_id === kbId) || window.MOCK_KBS[0];
@@ -275,6 +297,7 @@ function TabDocuments({ kb, tweaks, onNavigate }) {
               <th className="col-num">Chunks</th>
               <th className="col-num">Images</th>
               <th>Chunker</th>
+              <th>Profile</th>
               <th>Status</th>
               <th className="col-num">Indexed</th>
               <th className="col-shrink"></th>
@@ -300,6 +323,7 @@ function TabDocuments({ kb, tweaks, onNavigate }) {
                 <td className="col-num">{d.chunks}</td>
                 <td className="col-num">{d.screenshots ?? 0}</td>
                 <td><span className="badge badge-muted">{d.chunk_strategy}</span></td>
+                <td><ProfileBadge profile={d.profile} /></td>
                 <td>
                   {d.status === "indexed"  && <span className="badge badge-success"><span className="badge-dot" /> INDEXED</span>}
                   {d.status === "indexing" && <span className="badge badge-info"><span className="badge-dot" /> {Math.round(d.indexing_progress*100)}%</span>}

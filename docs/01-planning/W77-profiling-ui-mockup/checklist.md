@@ -5,15 +5,15 @@
 
 ## F1 — mock profile data(`ekp-data.jsx`)
 
-- [ ] F1.1 每 doc 加 `profile` + `profile_confidence` + `signals`(13-field,mirror W76 `DocProfileInfo`)
-- [ ] F1.2 cover P1_sop_imgdense(高信心)/ P2_prose / P4_scan / 低信心(黃旗)/ unprofiled(null)
-- [ ] F1.3 shape 對齊 backend `DocProfileInfo`(profile / confidence / signals)
+- [x] F1.1 每 indexed doc 加 `profile` object(profile / confidence / fallback_applied / signals 13-field,mirror W76 `DocProfileInfo`);signals 同 profiler rule 一致(P1_imgdense img_density≥0.15 等)
+- [x] F1.2 cover P1_sop_imgdense×3 / P1_sop_text×2 / P2_prose / P3_slide_imgdense / 低信心黃旗(security 0.56 fallback)/ unprofiled×4(indexing+failed+queued 自然無)
+- [x] F1.3 shape 對齊 backend `DocProfileInfo`(profile / confidence / fallback_applied / signals)
 
 ## F2 — L2 文件列表 profile badge(`ekp-page-kb.jsx` Documents table)
 
-- [ ] F2.1 讀 Documents table 落點區(line 266-307)現有結構
-- [ ] F2.2 加「Profile」欄:badge(P1/P2/P4 variant)+ 信心度;低信心 `badge-warning` 黃旗;unprofiled muted「未分析」
-- [ ] F2.3 reuse `.badge` family + `badge-dot`;對齊現有 status 欄風格
+- [x] F2.1 讀 Documents table 落點區(line 266-307)現有結構
+- [x] F2.2 Chunker 欄後加「Profile」欄:`ProfileBadge` helper(PROFILE_LABELS 6 類縮短 label + 信心度 %);低信心 `badge-warning` 黃旗;unprofiled muted「未分析」
+- [x] F2.3 reuse `.badge`/`badge-muted`/`badge-warning`/`badge-dot`/`mono`/`muted`;對齊現有 status/chunker 欄風格
 
 ## F3 — L3 文件畫像 section(`ekp-page-doc-detail.jsx` `DocConfigTab` line 410)
 

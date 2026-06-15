@@ -24,5 +24,19 @@ H4 ✅(層 A)/ H7 ✅(author mockup,reuse design system)/ Karpathy ✅(reuse pri
 
 **Plan 落地**:W77 folder + plan.md(active)+ checklist.md(F1-F6)+ progress.md。
 
+**F1-F2 implement(Day 1)**:
+- **F1 mock data**(`ekp-data.jsx`):8 個 indexed doc 加 `profile` object(mirror W76 `DocProfileInfo`:
+  profile / confidence / fallback_applied / 13-signal)。signals 同 profiler rule 一致(P1_imgdense
+  img_density 0.169-0.188 ≥ 0.15;PDF img_density 0;P3 pptx img_density 0.904)。cover P1_imgdense×3 /
+  P1_text×2 / P2_prose / P3_slide_imgdense / 低信心黃旗(security 0.56 + fallback_applied)。indexing /
+  failed / queued docs 自然無 profile(L2「未分析」demo)。
+- **F2 L2 badge**(`ekp-page-kb.jsx` Documents table):Chunker 欄後加「Profile」欄 + `ProfileBadge` helper
+  (PROFILE_LABELS 6 類縮短中文 label + 信心度 %)。低信心 → `badge-warning` 黃旗 + title「建議人手確認」;
+  unprofiled → `badge-muted`「未分析」opacity 0.65。reuse 現有 badge/badge-dot/mono/muted primitives,
+  零 hardcode 顏色。
+
+**Checkpoint(Day 1)**:F1-F2 完成後 browser 驗 L2(早 feedback design 方向),再繼續 F3-F5。
+
 **Commits**:
-- (本 entry)docs(planning): W77 kickoff
+- `8432219` docs(planning): W77 kickoff
+- (本次)feat(design): W77 F1-F2 mock profile data + L2 文件列表 badge
