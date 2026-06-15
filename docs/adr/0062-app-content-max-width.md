@@ -1,8 +1,24 @@
 # ADR-0062: 全 app `.content` responsive 最大寬度 — 超寬螢幕內容居中限 1600px(padding-clamp)
 
 **Date**: 2026-06-15
-**Status**: Accepted
+**Status**: **Reverted**(同日 — 偏離 mockup,全站 `.content` 已改回原本撐滿)
 **Approver**: 用戶(2026-06-15 AskUserQuestion 揀「全 app 加最大寬度 + 居中」)
+
+> ## ⚠️ REVERTED(2026-06-15,同日)
+>
+> 本 ADR **走錯方向,已 revert**。用戶批准「全 app 加最大寬度 + 居中」時,我**沒有先對照 mockup**
+> 就實作。事後 git 證實 mockup canonical `.content`(`references/design-mockups/styles.css`,commit
+> `08b74af`)本來就是 `padding: 24px 28px 40px`(**無 max-width、撐滿貼邊**)。本 ADR 加的 1600px 居中
+> **直接偏離 mockup** → 用戶看到所有頁面居中、兩側空白、寬內容被擠掉,明確指出「這不是以前的效果,
+> 比較 mockup 就知道」。
+>
+> **根本教訓**:用戶連續三輪 UI 回饋,我每次都「從一句話推斷方向」就改,沒有第一步就打開 mockup 對照
+> (違反 H7 + Karpathy §1.1 think-before)。AskUserQuestion 的 preview 是我自己畫的 1600px 居中圖,
+> 用戶選的是「有 responsive 上限」的概念,不是「偏離 mockup 去居中」—— 我用自己的錯誤前提框住了選項。
+>
+> **處理**:`.content` 兩個 CSS 檔(canonical + copy)改回 mockup 原本撐滿(reverse drift,per §5.7 H7
+> 不需再 STOP+ask)。doc-detail 維持 ADR-0061 的貼邊撐滿(與全站一致 + 符合用戶第一次訴求)。下方原文
+> 保留作決策反覆的 institutional memory。
 
 ## Context
 

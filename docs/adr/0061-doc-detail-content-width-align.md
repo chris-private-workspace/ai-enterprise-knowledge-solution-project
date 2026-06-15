@@ -1,13 +1,14 @@
 # ADR-0061: Doc-detail 頁面寬度對齊全站 — `content content-wide`(1600px 置中)→ `content`(貼邊)
 
 **Date**: 2026-06-15
-**Status**: Accepted(方向 amended by ADR-0062)
+**Status**: Accepted
 **Approver**: 用戶(2026-06-15 AskUserQuestion 揀「改貼邊 + 同步 mockup」)
 
-> **Amended by ADR-0062**(同日):本 ADR 把 doc-detail 從 `content-wide`(1600px 上限)改成無上限
-> 貼邊,方向理解錯誤 —— 用戶隨後發現全站「貼邊撐滿」才是真問題。ADR-0062 給**全 app** `.content`
-> 加 responsive 最大寬度(1600px 居中)。doc-detail 仍用 `.content`(本 ADR 的 className 統一成立),
-> 改經全站上限自動居中 → 視覺回到 ~1600px 但全站一致。本 ADR 的「貼邊」意圖被 ADR-0062 取代。
+> **更新(同日 — ADR-0062 已 revert)**:本 ADR 把 doc-detail 由 `content-wide`(1600px 居中)改成純
+> `.content` 貼邊撐滿,符合用戶「doc-detail 縮中間、要貼邊」訴求 —— 這個決策**維持有效**。中途
+> ADR-0062 一度把**全 app** `.content` 改成 1600px 居中(我誤把用戶第二次回饋理解為「要居中」),
+> 用戶第三輪確認那偏離 mockup(mockup `.content` 本來就撐滿)→ **ADR-0062 已 revert**,全站 `.content`
+> 回 mockup 原本撐滿。最終態:**所有頁面(含 doc-detail)撐滿貼邊 = mockup 效果**。
 
 ## Context
 
