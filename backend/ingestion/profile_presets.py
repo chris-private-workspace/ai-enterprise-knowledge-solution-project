@@ -16,8 +16,13 @@ per-KB,preset 掂唔到。每個 `None` field = inherit 下一層 (per-KB → gl
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from api.schemas.doc_config import DocConfig
 from ingestion.profiler import DocProfile
+
+if TYPE_CHECKING:
+    from kb_management.preset_override_store import PresetOverrideStore
 
 # 每 profile 套嘅 per-doc 後處理 preset。None = 唔 routing (inherit)。
 PROFILE_PRESETS: dict[DocProfile, DocConfig | None] = {
@@ -94,10 +99,37 @@ PROFILE_PRESETS: dict[DocProfile, DocConfig | None] = {
 
 
 def preset_for(profile: DocProfile) -> DocConfig | None:
-    """Return a fresh copy of the auto-write preset for ``profile``, or ``None``.
+    """Return a fresh copy of the FACTORY auto-write preset for ``profile``, or ``None``.
 
     ``None`` means no routing (the doc inherits per-KB / global). A copy is returned
     so callers / the in-memory store never share the module-level preset instance.
+
+    This reads ONLY the hardcoded factory mapping. For the effective preset that
+    overlays the admin-edited global override (W82 / ADR-0063) use `resolve_preset`.
     """
     preset = PROFILE_PRESETS.get(profile)
     return preset.model_copy() if preset is not None else None
+
+
+async def resolve_preset(
+    profile: DocProfile, store: PresetOverrideStore
+) -> DocConfig | None:
+    """Return the EFFECTIVE preset for ``profile``: admin override else factory.
+
+    W82 / ADR-0063 — the global preset-override store (`PresetOverrideStore`) overlays
+    the hardcoded factory `PROFILE_PRESETS`. Resolution = ``override ?? factory``;
+    deleting an override restores the factory value (還原預設). A fresh copy is always
+    returned (same contract as `preset_for`) so callers / the in-memory store never
+    share an instance.
+
+    Production-preserve: with no override stored, this is bit-identical to
+    `preset_for(profile)` — so the ingest-route / manual-override / backfill call
+    sites behave unchanged until an admin edits the mapping.
+
+    ``None`` only when there is neither an override nor a factory preset
+    (``too_small`` / ``unknown``) → inherit per-KB / global.
+    """
+    override = await store.get(profile)
+    if override is not None:
+        return override.model_copy()
+    return preset_for(profile)

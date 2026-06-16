@@ -2,15 +2,15 @@
 
 > Atomic items per deliverable。每日 tick。Source of truth = `plan.md`。
 
-## F1 — Backend persist store + 解析
-- [ ] F1.1 新 `backend/kb_management/preset_override_store.py`(mirror `doc_profile_store.py`,global key)
-  - [ ] `PresetOverrideStore` Protocol(get / upsert / delete / list_all)
-  - [ ] `InMemoryPresetOverrideStore`
-  - [ ] `PostgresPresetOverrideStore`(lazy psycopg + `CREATE TABLE IF NOT EXISTS profile_preset_overrides`)
-  - [ ] `make_preset_override_store(settings)`(Postgres if `database_url` else in-memory)
-- [ ] F1.2 `profile_presets.py` 加 async `resolve_preset(profile, store)`(`store.get ?? preset_for`)
-- [ ] F1.3 unit test:InMemory CRUD + `resolve_preset` fallthrough(無 override == `preset_for` bit-identical / 有 override 用 override)
-- [ ] F1 gate:mypy strict + ruff clean
+## F1 — Backend persist store + 解析 ✅
+- [x] F1.1 新 `backend/kb_management/preset_override_store.py`(mirror `doc_profile_store.py`,global key)
+  - [x] `PresetOverrideStore` Protocol(get / upsert / delete / list_all)
+  - [x] `InMemoryPresetOverrideStore`
+  - [x] `PostgresPresetOverrideStore`(lazy psycopg + `CREATE TABLE IF NOT EXISTS profile_preset_overrides`)
+  - [x] `make_preset_override_store(settings)`(Postgres if `database_url` else in-memory)
+- [x] F1.2 `profile_presets.py` 加 async `resolve_preset(profile, store)`(`store.get ?? preset_for`)
+- [x] F1.3 unit test:InMemory CRUD + `resolve_preset` fallthrough(無 override == `preset_for` bit-identical / 有 override 用 override)→ `test_preset_override_store.py` 14 passed
+- [x] F1 gate:mypy strict(`Success: no issues found in 2 source files`)+ ruff(`All checks passed`)+ pytest 14 passed
 
 ## F2 — Backend write API + call-site migrate
 - [ ] F2.1 新 `backend/api/routes/profile_presets.py`(GET / PUT / DELETE)
