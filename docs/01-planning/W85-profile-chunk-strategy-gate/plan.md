@@ -1,6 +1,6 @@
 # W85 plan — profile→chunk_strategy ingest 路由 F0 實證 gate
 
-**Status**: active（kickoff 2026-06-16）
+**Status**: closed（2026-06-16 — F0 gate DEFER，缺口① 兩路實證否決）
 **Kickoff**: 2026-06-16
 **Phase 類型**: diagnostic-first（F0 純實證 gate，零 production code 改動；F1+ 完整框架 conditional on
 F0 PASS，屆時才開 H1 ADR）
@@ -114,3 +114,10 @@ F0 PASS 才開：ADR-0066（H1）+ ingest-time profile preset（profile→chunk_
   **scope 調整**:原 F0.2（self-retrievability recall）**取消**（路由已否決,recall 佐證無意義）;新增 **F0.3 差異化
   chunker 診斷**;原 F1（profile→strategy 路由框架）**取代**為「造差異化 chunker」（仍 conditional on F0.3 gate，
   屆時 H1 ADR-0066）。
+- 2026-06-16 **closeout — F0 gate DEFER**（用戶確認）。F0.3 dump 揭兩 candidate 都不需差異化 chunker:**P5 表單**
+  layout_aware 按 table row group 切已合理（每 chunk 一邏輯區塊,frag=10 是表單本質非損害）;**P1 圖密 SOP** top6 chunk
+  全 img=8 = W83 anchoring 失配,已被 W59-83 處理。**缺口① 兩路（F0.1 路由 / F0.3 造 chunker）皆實證否決** = 有價值負面
+  實證:現有通用 `layout_aware`（table + heading + image-grouped via doc_order）已足夠,profile-differentiated chunking
+  在 Tier 1 無明確增量,避免投入中等成本框架做幻影價值。F1 不開,記 `DEFERRED_REGISTER` **DD-13**。ADR-0066 **未用**（保留
+  下一個 available）。**vision 洞察**:用戶「不同文件不同處理流程」vision 在 ingest-chunking 層已被通用 chunker 隱性滿足,
+  非缺失。**無 production code 改動全程**（純 diagnostic script `w85_chunk_structure_compare.py` + `w85_chunk_dump.py`）。

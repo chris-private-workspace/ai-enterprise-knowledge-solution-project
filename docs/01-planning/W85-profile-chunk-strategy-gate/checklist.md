@@ -18,10 +18,10 @@
 - [x] F0.3.2 評估：**兩 candidate 都不需要差異化 chunker** — P5 表單 layout_aware 已合理切（table row group）/ P1 圖密
       已被 W59-83 呈現層吸收（image-recall + 錨定 + 分組 + cap）。根因:`layout_aware` 已相當通用（table+heading+
       image-grouped via doc_order），profile 差異化需求已被吸收或他層處理
-- [ ] F0.3 gate 判決：→ **defer**（缺口① 兩條路〔路由 F0.1 / 造 chunker F0.3〕都實證否決;有價值負面實證:現有
-      ingest 已足夠好，profile-differentiated chunking 在 Tier 1 無明確增量）→ 記 DD（待用戶確認）
-- [ ] F0 closeout：plan §7 changelog + progress retro + gate 判決 +（若 defer）DEFERRED_REGISTER 新 DD
+- [x] F0.3 gate 判決：→ **defer**（用戶 2026-06-16 確認）。缺口① 兩條路〔路由 F0.1 / 造 chunker F0.3〕都實證否決;
+      有價值負面實證:現有通用 layout_aware ingest 已足夠好，profile-differentiated chunking 在 Tier 1 無明確增量 → 記 DD-13
+- [x] F0 closeout：plan closed + §7 changelog + progress retro + DEFERRED_REGISTER DD-13 + memory
 
-## F1+ — 造差異化 chunker（conditional on F0.3 gate，rolling JIT，未 pre-create）
-- 🚧 F0.3 gate PASS 才開：ADR-0066（H1，造新 chunker class）+ profile→新 chunker 接駁 + test + re-index wiring +
-      （若涉 UI）L3/Settings 顯示。**禁止 F0.3 gate 前預寫**（rolling JIT R1）。
+## F1+ — 造差異化 chunker（DEFERRED via F0.3 gate）
+- 🚧 **DEFERRED（DD-13）** — F0 gate defer，缺口① 兩路實證否決。F1 不開。Close 條件見 DD-13（某 profile 真實切法
+      損害現有 chunker 無法吸收 + production 需求 + 清晰差異化切法 / 新本質不同 doc 類型如 xlsx table-heavy）。
