@@ -21,9 +21,9 @@
 - [x] F3 gate：scan reject 路徑警告 render PASS；console 僅 pre-existing `/notifications` 404 + backend 重啟 transient（CONNECTION_REFUSED/500）+ expected 422（guard），**零 frontend code error**；force OCR 路徑 by F1 backend test 覆蓋（browser 不跑足 OCR）
 - [x] F3 根因修正：首跑 browser 未 trigger guard → 查出 **running backend（13:53 啟動）早於 F1 commit `636699b`（17:24）3.5h + `reload=False` = stale code 無 guard**；殺 dual-process（pre-flight infra 全綠後）+ venv 重啟載入 F1 → 重驗 PASS；KB 無污染（doc count 6 不變）
 
-## F4 — closeout
-- [ ] F4.1 backend test + type-check/lint/build + browser 全綠
-- [ ] F4.2 plan closed + progress retro
-- [ ] F4.3 ADR-0065 README index
-- [ ] F4.4 DEFERRED_REGISTER DD-9 更新（收窄至只剩 OCR 慢 Tier 2）
-- [ ] F4.5 memory 更新（W84 段 + DD-9 收窄）
+## F4 — closeout ✅
+- [x] F4.1 backend test（70 passed）+ type-check 0/lint 零新/build 15/15 + browser reject 路徑 PASS — 全綠
+- [x] F4.2 plan closed（status → closed + §7 changelog closeout entry）+ progress retro
+- [x] F4.3 ADR-0065 README index（kickoff 已加 table row + narrative + next=`0066`，closeout 確認）
+- [x] F4.4 `DEFERRED_REGISTER` DD-9 收窄（line 14 + DD-9 row：同步 ingest hang 防護 close，只剩 OCR 慢 Tier 2）
+- [x] F4.5 memory 更新（W84 段 + DD-9 收窄 + stale backend reload=False 教訓）

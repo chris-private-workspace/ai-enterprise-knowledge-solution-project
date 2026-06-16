@@ -71,6 +71,19 @@ W83 收尾後用戶問「是否繼續推進層 C」→ 我建議 hold（無 prec
 - **F3 gate**：console 僅 pre-existing `/notifications` 404 + backend 重啟 transient（CONNECTION_REFUSED/500）
   + expected 422（guard），零 frontend code error。
 
-### 下一步
+### F4 closeout（完成 — Gate PASS）
 
-- F4 closeout：plan closed + retro + ADR-0065 README index + DEFERRED DD-9 收窄（只剩 OCR 慢 Tier 2）+ memory。
+| Hash | Subject | Checklist |
+|---|---|---|
+| F4 | plan closed + retro + DD-9 收窄 + memory | F4.1-F4.5 |
+
+- **F4.1 各層全綠**：F1 backend pytest **70 passed** + ruff + mypy（`636699b`）/ F2 type-check 0 + lint 零新 + build 15/15（`1791210`）/ F3 browser reject 路徑 PASS + born-digital production-preserve（`e153bf6`）。
+- **F4.3 ADR-0065 README index**：已在 kickoff 加（table row + narrative + next=`0066`），closeout 確認。
+- **F4.4 DD-9 收窄**：`DEFERRED_REGISTER` DD-9 由「OCR 慢 + ingest hang 防護」收窄至**只剩 OCR 慢本身**（Tier 2）；同步 ingest hang 防護缺口由 ADR-0065 guard close。
+- **F4.5 memory**：W84 段 + DD-9 收窄 + **stale backend 教訓**（reload=False 時 code commit 後須重啟才生效，否則 browser/API 驗用 stale code）。
+
+### Retro
+
+- **做得好**：診斷先行（curl sanity check 先確認 backend guard 422 才 browser，分兩層）；真檔 probe 驗 production-preserve（scan 7/7 / born-digital 3/3）取代假 mock；helper 復用 profiler probe 零行為改變。
+- **教訓**：**running backend `reload=False` + code commit 後未重啟 = stale code**。F1 pytest 70 passed 是獨立 `python -m pytest` 不經 running server，誤導以為 guard 已生效；browser 驗才暴露。**規則**：涉 backend 行為的 browser/API 驗證前，先確認 running backend 啟動時間 ≥ 最後 backend code commit（或重啟）。
+- **無 scope deviation**（R3）；architectural 決定有 ADR-0065（R5）；daily commit 對 progress（R2）。

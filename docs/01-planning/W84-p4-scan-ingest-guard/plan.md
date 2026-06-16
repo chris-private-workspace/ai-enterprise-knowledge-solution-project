@@ -1,6 +1,6 @@
 # W84 plan — P4 掃描件 ingest 預檢 guard + force override（ADR-0065）
 
-**Status**: active（kickoff 2026-06-16）
+**Status**: closed（2026-06-16 — Gate PASS,F1-F4 全綠）
 **Kickoff**: 2026-06-16
 **Phase 類型**: full-stack feature（backend ingest guard + frontend force UI；H1 ingest 流程 +
 H7 design-stage expansion upload 警告；ADR-0065 Accepted）
@@ -115,3 +115,10 @@ OCR 同步 hang request 8–9.5 分鐘。guard 防此 hang。用戶揀 guard 行
 - 2026-06-16 kickoff — plan active,F1-F4 scope locked;ADR-0065 Accepted（用戶揀做 P4 guard + 預檢警告 + force
   override）;落點 ground（`is_scan_pdf` 抽自 profiler probe / `_run_ingest_pipeline` parse 前插 guard /
   `force_scan` query 參數 / frontend `uploadDoc` + `banner-warning` primitive 復用）。
+- 2026-06-16 closeout — **Gate PASS,F1-F4 全綠**。F1 backend（`636699b`,pytest 70 passed + ruff + mypy）/
+  F2 frontend（`1791210`,type-check 0 + lint 零新 + build 15/15）/ F3 browser（`e153bf6`,reject 路徑 curl 422
+  2.22s + scan-confirm UI + 截圖 H7 視覺驗 PASS + born-digital 3/3 False production-preserve）。**無 scope deviation**
+  （F1-F4 按 §2 deliverable 完成,F3.2 用 probe 層 + route test 證明 production-preserve 而非 browser 真 ingest =
+  避免污染 KB 的 surgical 選擇,不算 scope 變更）。**F3 過程坑**:首跑 browser 未 trigger guard → 根因 = running
+  backend stale code（13:53 啟動早於 F1 commit 17:24 + `reload=False`）→ 重啟 backend 載入 F1 後 PASS。
+  DD-9 收窄（只剩 OCR 慢 Tier 2）。即將觸發 hard gate:Production launch ⏳ pending Track A IT cred（DD-6,未變）。
