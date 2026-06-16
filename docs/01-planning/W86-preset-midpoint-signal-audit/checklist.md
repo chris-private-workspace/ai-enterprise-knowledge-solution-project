@@ -18,5 +18,5 @@
 
 ## Closeout
 - [x] progress.md retro + 結論
-- [ ] 更新 `DEFERRED_REGISTER.md` DD-14 現況（audit done 部分 vs 仍 blocked 部分）
-- [ ] commit（待用戶確認）
+- [x] 更新 `DEFERRED_REGISTER.md` DD-14 現況（audit done 部分 vs 仍 blocked 部分;gitignored OneDrive 同步）
+- [x] commit `0867585`（branch `feat/dd14-preset-signal-audit`；W86 三文件 + audit script;DEFERRED_REGISTER gitignored 不進 commit）
