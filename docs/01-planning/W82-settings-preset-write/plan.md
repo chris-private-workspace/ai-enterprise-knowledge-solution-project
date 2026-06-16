@@ -1,6 +1,6 @@
 # W82 plan — Settings 全域 profile→preset 映射 write surface(缺口 B,ADR-0063)
 
-**Status**: active(2026-06-16 kickoff)
+**Status**: closed(2026-06-16,full PASS — F1 backend store + F2 write API/migrate + F3 frontend + F4 browser round-trip 全綠)
 **Kickoff**: 2026-06-16
 **Phase 類型**: full-stack feature(backend persist + write API + frontend wire;H1-adjacent config-routing
 write surface + H7 design-stage expansion edit-form;ADR-0063 Accepted)
@@ -126,3 +126,16 @@ W81 缺口分析坐實**缺口 B**:Settings →「文件分類規則」tab(W77 m
 - 2026-06-16 kickoff — plan active,F1-F5 scope locked;ADR-0063 Accepted(用戶揀 B 收窄版 / 編輯 UI 復用
   既有 form / guard 還原預設+確認);DD-11 記入 `DEFERRED_REGISTER`;落點 ground(store mirror
   `doc_profile_store.py` global + `preset_for`→`resolve_preset` 三 call site migrate + 復用既有 form primitive)。
+- 2026-06-16 F1(commit `ccc628b`)— `preset_override_store.py`(global key)+ `resolve_preset` + 14 test;
+  pytest/ruff/mypy 全綠;production-preserve(空 store == `preset_for` bit-identical)。
+- 2026-06-16 F2(commit `7977dca`)— `profile_presets.py` route GET/PUT/DELETE + server wire + 三 call site
+  migrate(`resolve_preset` 簽名改 `| None` graceful-degrade)+ 50 test;ruff/mypy clean(server.py E402 +
+  `_engine_or_503` no-any-return `git stash` 證 baseline pre-existing)。
+- 2026-06-16 F3(commit `46a1727`)— `profile-presets.ts` client + `settings-doc-profiling.tsx` fetch + 編輯
+  `Dialog`(視覺零發明)+ 還原預設 + 儲存確認 gate;threshold card verbatim 保留;type-check 0 + lint 零新 warning。
+- 2026-06-16 全服務重啟(用戶 trigger)— clean build exit 0(F3 gate build ✓ 確認,證實之前失敗純 dev/build race);
+  backend 載入 F2(`/profile-presets` 404→live)。
+- 2026-06-16 **F4 browser round-trip PASS**(playwright)— P2_prose 圖上限 12→99 儲存 → PUT persist
+  (overridden:True/99/answer_detail 保留,full-config 防退化)→ 還原預設 DELETE → 回 factory(12)+ 零污染;
+  threshold 維持 disabled;console 全 pre-existing `/notifications` 404。
+- 2026-06-16 closeout — plan closed **full PASS**,F1-F5 全 tick;DD-11 close;memory 更新。

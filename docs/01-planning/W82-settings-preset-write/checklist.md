@@ -28,17 +28,17 @@
 - [x] F3.5 threshold card 維持唯讀 / disabled 不變(verbatim 保留 + disabled title 更新指 W79/ADR-0058)
 - [x] F3 gate(code):type-check 0 + lint 零新 warning(唯一 = pre-existing `chat:1858`)+ build **compile + type 驗證通過**(clean-exit 受並行 `next dev` `.next` race 阻,重啟後 confirm)
 
-## F4 — Browser 驗(playwright)
-- [ ] F4.1 起 infra(`ekp-restart`)+ pre-flight health check
-- [ ] F4.2 Settings「文件分類規則」tab:編一個 profile 一個欄 → 儲存(confirm)→ `GET` 確認 persist
-- [ ] F4.3 「還原預設」(confirm)→ 確認回出廠
-- [ ] F4.4 threshold card 仍 disabled(scope 排除)
-- [ ] F4.5 驗完還原全部 override 免污染
-- [ ] F4 gate:edit→save→persist→還原 round-trip PASS
+## F4 — Browser 驗(playwright)✅
+- [x] F4.1 全服務重啟(backend venv dual-process + frontend wipe .next + clean build ✓)+ pre-flight(Langfuse 200 + Postgres 1 row;postgres/langfuse/azurite 保持)
+- [x] F4.2 Settings「文件分類規則」tab:表格 effective view(7 profile mockup order)→ 編 P2_prose 圖上限 12→99 → 儲存規則 → `GET /profile-presets` 確認 persist(overridden:True / 99 / answer_detail detailed 保留)
+- [x] F4.3 「還原預設」→ DELETE → 回 factory(overridden:False / 12)
+- [x] F4.4 threshold card 仍 disabled(scope 排除 ✓)
+- [x] F4.5 驗完零污染(overridden profiles: NONE)
+- [x] F4 gate:edit→save→persist→還原 round-trip **PASS**(編輯 Dialog 視覺零發明 + warning banner 儲存確認 gate;console 3 errors 全 pre-existing `/notifications` 404,我 component 零 error)
 
-## F5 — closeout
-- [ ] F5.1 全 gate 綠(backend test + type-check/lint/build + browser)
-- [ ] F5.2 plan closed + progress retro
-- [ ] F5.3 ADR-0063 README index 加 row + next NNNN → 0064
-- [ ] F5.4 DD-11 由「結構性」表移去「已 Close」表 + 記證據
-- [ ] F5.5 memory `project_per_kb_tunable_config_vision` 更新(W82 段)
+## F5 — closeout ✅
+- [x] F5.1 全 gate 綠(backend pytest 50 + type-check/lint/build ✓ + browser round-trip PASS)
+- [x] F5.2 plan closed + progress retro
+- [x] F5.3 ADR-0063 README index(kickoff 已加 row + next → 0064)
+- [x] F5.4 DD-11 由「結構性」表移去「已 Close」表 + 記證據
+- [x] F5.5 memory `project_per_kb_tunable_config_vision` 更新(W82 段)
