@@ -95,6 +95,30 @@ async function proxy(
           responseHeaders.set(k, v);
         }
       }
+      const status = upstreamRes.statusCode ?? 502;
+      // Null-body statuses (Fetch spec: 101/103/204/205/304) MUST be constructed
+      // with a `null` body. Passing a (non-null) ReadableStream throws TypeError
+      // *inside this response callback* — which calls neither resolve nor reject,
+      // so the proxy Promise never settles and the browser fetch hangs forever.
+      // DELETE /kb returns 204, so without this guard the Delete-KB button sticks
+      // on "Deleting…" with no response (W87 hard-delete bug).
+      if (
+        status === 101 ||
+        status === 103 ||
+        status === 204 ||
+        status === 205 ||
+        status === 304
+      ) {
+        upstreamRes.resume(); // drain so the keep-alive socket is released
+        resolve(
+          new Response(null, {
+            status,
+            statusText: upstreamRes.statusMessage ?? '',
+            headers: responseHeaders,
+          }),
+        );
+        return;
+      }
       const stream = new ReadableStream<Uint8Array>({
         start(controller) {
           upstreamRes.on('data', (chunk: Buffer) => controller.enqueue(chunk));
@@ -107,7 +131,7 @@ async function proxy(
       });
       resolve(
         new Response(stream, {
-          status: upstreamRes.statusCode ?? 502,
+          status,
           statusText: upstreamRes.statusMessage ?? '',
           headers: responseHeaders,
         }),
