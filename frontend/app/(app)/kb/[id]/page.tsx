@@ -62,6 +62,7 @@ import {
   type ConfigTestResult,
   type DraftRetrievalConfig,
 } from '@/lib/api/config-test';
+import { ApiError } from '@/lib/api-client';
 import { documentsApi, type ChunkSummary, type DocumentSummary } from '@/lib/api/documents';
 import { kbApi, type KbConfig, type KbImageItem, type KbStatus } from '@/lib/api/kb';
 import {
@@ -3097,6 +3098,7 @@ function ReindexCard({
 function DangerZone({ kb }: { kb: KbStatus }) {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const archiveMutation = useMutation({
     mutationFn: () => kbApi.archive(kb.kb_id),
     onSuccess: (updated) => {
@@ -3106,6 +3108,29 @@ function DangerZone({ kb }: { kb: KbStatus }) {
       router.push('/kb');
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : 'archive failed'),
+  });
+  // W87 — hard-delete: drops Postgres record + Azure index (DELETE /kb/{id}).
+  const deleteMutation = useMutation({
+    mutationFn: () => kbApi.delete(kb.kb_id),
+    onSuccess: () => {
+      setShowDeleteModal(false);
+      void queryClient.invalidateQueries({ queryKey: ['kb'] });
+      toast.success('KB deleted — record + Azure index dropped');
+      router.push('/kb');
+    },
+    onError: (e) => {
+      // 502 = storage record gone but the Azure index drop failed (lingers).
+      // Per kb.py the orphan index can be cleared via scripts/create_index.py.
+      if (e instanceof ApiError && e.status === 502) {
+        setShowDeleteModal(false);
+        toast.error(
+          'Record removed, but the Azure index drop failed — it may linger. ' +
+            'Clear it manually via scripts/create_index.py delete.',
+        );
+        return;
+      }
+      toast.error(e instanceof Error ? e.message : 'delete failed');
+    },
   });
 
   return (
@@ -3135,10 +3160,90 @@ function DangerZone({ kb }: { kb: KbStatus }) {
           {kb.archived ? ' Already archived' : ' Archive KB (read-only)'}
         </button>
         <div className="spacer" />
-        <button type="button" className="btn btn-destructive" disabled>
+        <button
+          type="button"
+          className="btn btn-destructive"
+          onClick={() => setShowDeleteModal(true)}
+          disabled={deleteMutation.isPending}
+        >
           <Trash2 size={14} /> Delete KB
         </button>
       </div>
+
+      {/* W87 — delete confirm modal (.modal-overlay + .modal per DESIGN_SYSTEM §4.5,
+          復用同頁 re-index confirm modal pattern — 視覺零發明). */}
+      {showDeleteModal && (
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowDeleteModal(false);
+          }}
+        >
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Delete this knowledge base?</h2>
+              <p className="modal-desc">
+                Permanently removes the KB record and drops its Azure AI Search index
+                <span style={{ fontFamily: 'var(--font-mono)' }}> ekp-kb-{kb.kb_id}-v1</span>.
+                Irreversible — re-create + re-index to restore.
+              </p>
+            </div>
+            <div className="modal-body">
+              <div className="banner banner-warning" style={{ marginBottom: 14 }}>
+                <AlertTriangle size={15} style={{ color: 'oklch(var(--warning))' }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 500 }}>This cannot be undone</div>
+                  <div className="muted text-xs">
+                    Screenshot blobs are retained (cleared separately). The Azure index
+                    slot is freed immediately.
+                  </div>
+                </div>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 14,
+                  fontSize: 12.5,
+                  color: 'oklch(var(--muted-foreground))',
+                  fontFamily: 'var(--font-mono)',
+                  padding: 12,
+                  background: 'oklch(var(--muted) / 0.4)',
+                  borderRadius: 'var(--radius-sm)',
+                }}
+              >
+                <div>
+                  <b style={{ color: 'oklch(var(--foreground))' }}>{kb.total_documents}</b> docs
+                </div>
+                <div>
+                  <b style={{ color: 'oklch(var(--foreground))' }}>
+                    {kb.total_chunks.toLocaleString()}
+                  </b>{' '}
+                  chunks
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleteMutation.isPending}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-destructive btn-sm"
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+              >
+                <Trash2 size={13} />{' '}
+                {deleteMutation.isPending ? 'Deleting…' : 'Delete permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

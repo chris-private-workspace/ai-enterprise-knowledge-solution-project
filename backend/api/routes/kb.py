@@ -159,13 +159,53 @@ async def get_kb(kb_id: str, service: KbServiceDep) -> KbStatus:
         ) from exc
 
 
+async def _cascade_delete_kb_data(kb_id: str, request: Request) -> None:
+    """W87 — drop per-doc config / profile / kb_acl rows for a deleted KB.
+
+    Reuses each store's existing ``list_for_kb`` + per-row ``delete`` (no bulk
+    delete method added — KB delete is a rare, non-hot path, so the extra
+    round-trips are immaterial). best-effort: an unwired (``None``) or erroring
+    store is logged + skipped so cleanup never blocks the KB record / index drop.
+    ``conversations`` + ``messages`` are intentionally NOT touched — chat history
+    outlives the KB it referenced.
+
+    Without this, deleting a KB left orphan config / profile / acl rows behind
+    (the root cause of the ``drive_user_manuals``-style orphan seen W87).
+    """
+    config_store = getattr(request.app.state, "doc_config_store", None)
+    if config_store is not None:
+        try:
+            for doc_id in await config_store.list_for_kb(kb_id):
+                await config_store.delete(kb_id, doc_id)
+        except Exception:  # noqa: BLE001 — best-effort cleanup, never blocks delete
+            _stdlib_logger.exception("cascade doc_config cleanup failed kb_id=%s", kb_id)
+
+    profile_store = getattr(request.app.state, "doc_profile_store", None)
+    if profile_store is not None:
+        try:
+            for doc_id in await profile_store.list_for_kb(kb_id):
+                await profile_store.delete(kb_id, doc_id)
+        except Exception:  # noqa: BLE001 — best-effort cleanup, never blocks delete
+            _stdlib_logger.exception("cascade doc_profile cleanup failed kb_id=%s", kb_id)
+
+    rbac = getattr(request.app.state, "rbac_backend", None)
+    if rbac is not None:
+        try:
+            for entry in await rbac.list_kb_acl(kb_id):
+                await rbac.remove_kb_acl(kb_id, entry.id)
+        except Exception:  # noqa: BLE001 — best-effort cleanup, never blocks delete
+            _stdlib_logger.exception("cascade kb_acl cleanup failed kb_id=%s", kb_id)
+
+
 @router.delete("/kb/{kb_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_kb(kb_id: str, service: KbServiceDep, request: Request) -> None:
-    """Delete KB + drop the per-KB Azure AI Search index (architecture.md §4.4 #7 + ADR-0018).
+    """Delete KB + per-KB Azure index + cascade per-doc config/profile/acl (§4.4 #7).
 
     CH-001 (2026-05-12) — closes the W16 F5.3 Decision B.1 deferral:
     1. `service.delete(kb_id)` — KB storage record (in-memory or Postgres per ADR-0023)
-    2. `populator.delete_index(kb_id)` — Azure AI Search index `ekp-kb-{kb_id}-v1`
+    2. `_cascade_delete_kb_data` — W87: drop per-doc config / profile / kb_acl rows
+       (best-effort, never blocks; avoids orphan config rows after KB delete)
+    3. `populator.delete_index(kb_id)` — Azure AI Search index `ekp-kb-{kb_id}-v1`
        (fail-soft on 404 — common for pre-CH-001 legacy KBs or partial-rollback
        orphans; warning logged but the response is still 204)
 
@@ -186,6 +226,11 @@ async def delete_kb(kb_id: str, service: KbServiceDep, request: Request) -> None
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+
+    # W87 — cascade-clear per-doc config / profile / kb_acl so a deleted KB leaves
+    # no orphan rows (root cause of the drive_user_manuals-style orphan). Runs
+    # before the index drop so a 502 there still leaves the attached data cleaned.
+    await _cascade_delete_kb_data(kb_id, request)
 
     populator = _get_populator(request)
     if populator is None:

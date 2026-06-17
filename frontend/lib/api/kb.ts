@@ -223,6 +223,12 @@ export const kbApi = {
   archive: (kbId: string): Promise<KbStatus> =>
     client.post<KbStatus>(`/kb/${kbId}/archive`, {}),
 
+  // W87 — hard-delete a KB: drops the Postgres record + Azure AI Search index
+  // (`DELETE /kb/{id}` → `populator.delete_index`, kb.py:162). 204 No Content.
+  // 502 surfaces when the storage record is gone but the Azure index drop failed
+  // (lingers) — the DangerZone onError handler explains the manual cleanup path.
+  delete: (kbId: string): Promise<void> => client.delete(`/kb/${kbId}`),
+
   // W46 F2 — real KB-level reindex (ADR-0043). Synchronous; returns a summary of
   // per-doc outcomes. 403 if the KB is archived; 503 if Azure deps unconfigured.
   reindex: (kbId: string): Promise<KbReindexSummary> =>
