@@ -143,6 +143,16 @@ class Settings(BaseSettings):
     # enter the synth prompt). Override via .env SYNTHESIZER_REQUEST_TIMEOUT_S.
     synthesizer_request_timeout_s: float = 120.0
 
+    # W43 config-test robustness — the RAGAs faithfulness judge + embed clients in
+    # eval/ragas_evaluator.py had NO timeout, so a dropped Azure connection (corp
+    # proxy R8 / rate-limit → CLOSE_WAIT half-open socket) hung the judge call
+    # forever. A hang is not an exception, so the per-call try/except couldn't
+    # degrade it → the whole config-test 試跑 wedged (CPU idle, frontend spins).
+    # This caps the judge/embed LLM calls so a stall RAISES (→ graceful degrade to
+    # None) instead of blocking. The judge (gpt-5.4-mini) finishes well under this;
+    # override via .env JUDGE_REQUEST_TIMEOUT_S.
+    judge_request_timeout_s: float = 60.0
+
     # CH-006 — synthesis answer detail level (global default; per-KB overridable via
     # KbConfig.answer_detail, resolved by EffectiveConfig). "concise" = W2 baseline
     # prompt_builder Rule 3 150-word cap (production preserve, zero behaviour change).

@@ -99,6 +99,9 @@ def make_ragas_evaluator(
         azure_endpoint=settings.azure_openai_endpoint,
         api_key=settings.azure_openai_api_key,
         api_version=settings.azure_openai_api_version,
+        # Cap the call so a dropped Azure connection raises instead of hanging
+        # forever (per-metric try/except degrades it to 0.0).
+        timeout=settings.judge_request_timeout_s,
     )
     patch_for_gpt5(judge_client)
     wrapped_llm = llm_factory(judge_deployment, client=judge_client)
@@ -107,6 +110,7 @@ def make_ragas_evaluator(
         azure_endpoint=settings.azure_openai_endpoint,
         api_key=settings.azure_openai_api_key,
         api_version=settings.azure_openai_api_version,
+        timeout=settings.judge_request_timeout_s,
     )
     wrapped_embed = RagasOpenAIEmbeddings(
         client=embed_client,
@@ -236,6 +240,10 @@ def make_faithfulness_evaluator(
         azure_endpoint=settings.azure_openai_endpoint,
         api_key=settings.azure_openai_api_key,
         api_version=settings.azure_openai_api_version,
+        # W43 config-test robustness — without this a dropped Azure connection
+        # hangs the judge call forever and wedges the whole 試跑 (the _eval
+        # try/except can't catch a hang). A timeout raises → degrade to None.
+        timeout=settings.judge_request_timeout_s,
     )
     patch_for_gpt5(judge_client)
     wrapped_llm = llm_factory(settings.azure_openai_deployment_llm_judge, client=judge_client)
