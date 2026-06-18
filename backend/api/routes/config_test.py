@@ -17,6 +17,7 @@ from collections.abc import Callable
 from dataclasses import asdict
 from typing import Annotated
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from api.routes.query import execute_query_pipeline
@@ -38,6 +39,7 @@ from storage.settings import Settings, get_settings
 FaithfulnessFn = Callable[[str, str, list[str]], float | None]
 
 router = APIRouter()
+logger = structlog.get_logger(__name__)
 
 KbServiceDep = Annotated[KBService, Depends(get_kb_service)]
 
@@ -88,6 +90,7 @@ async def _faithfulness_band(
     faithfulness_fn: FaithfulnessFn | None,
     query: str,
     per_run_qa: list[tuple[str, list[str]]],
+    timeout_s: float,
 ) -> MetricBand | None:
     """W49 (決策 7) — judge faithfulness on EVERY run's (answer, contexts) and
     aggregate into a band, so the quality axis exposes its run-to-run noise (a
@@ -100,13 +103,29 @@ async def _faithfulness_band(
     """
     if faithfulness_fn is None:
         return None
-    scores: list[float | None] = list(
-        await asyncio.gather(
-            *(
-                asyncio.to_thread(faithfulness_fn, query, answer, contexts)
-                for answer, contexts in per_run_qa
+
+    async def _judge_one(answer: str, contexts: list[str]) -> float | None:
+        # Hard backstop (W43 robustness) — the judge runs in a worker thread via
+        # asyncio.to_thread, and a client-level HTTP timeout does NOT cover a
+        # ragas/instructor INTERNAL async stall (a dropped Azure connection →
+        # CLOSE_WAIT wedged the whole 試跑 with the event loop idle). asyncio.wait_for
+        # caps it so a stalled judge degrades to None instead of hanging config-test.
+        # The orphaned worker thread is left to unwind on its own — acceptable for an
+        # infrequent tuning harness (vs. wedging the request forever).
+        try:
+            return await asyncio.wait_for(
+                asyncio.to_thread(faithfulness_fn, query, answer, contexts),
+                timeout=timeout_s,
             )
-        )
+        except TimeoutError:
+            logger.warning("faithfulness_judge_timeout", timeout_s=timeout_s)
+            return None
+        except Exception as exc:  # noqa: BLE001 — best-effort; never wedge config-test
+            logger.warning("faithfulness_judge_error", error=str(exc)[:200])
+            return None
+
+    scores: list[float | None] = list(
+        await asyncio.gather(*(_judge_one(answer, contexts) for answer, contexts in per_run_qa))
     )
     ok = [s for s in scores if s is not None]
     return _band(ok) if ok else None
@@ -164,7 +183,9 @@ async def _run_n(
         )
         for c in last_citations
     ]
-    faithfulness = await _faithfulness_band(faithfulness_fn, qreq.query, per_run_qa)
+    faithfulness = await _faithfulness_band(
+        faithfulness_fn, qreq.query, per_run_qa, settings.judge_request_timeout_s
+    )
     return ConfigRunSummary(
         runs=metrics,
         citation_count=_band([float(m.citation_count) for m in metrics]),
