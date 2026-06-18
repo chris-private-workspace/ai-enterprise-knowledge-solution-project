@@ -129,11 +129,18 @@ export default function KbNewPage() {
   // Functional setter prevents form.kb_id read → no infinite loop.
   useEffect(() => {
     if (!form.kb_id_auto || !form.name) return;
+    // Collapse ANY run of non-alphanumerics (spaces, dashes, underscores) to a
+    // single dash. The old [^a-z0-9_-] kept literal dashes, so "A - B" became
+    // "a---b" — a consecutive-dash kb_id that Azure Blob rejects (InvalidResourceName)
+    // for the ekp-kb-{kb_id}-screenshots / -sources containers, silently breaking
+    // image ingest + KB reindex (chunks still index because the AI Search index
+    // name is more lenient). Strip leading/trailing dashes AFTER the length clamp
+    // so a 40-char cut can't re-expose a trailing dash.
     const safe = form.name
       .toLowerCase()
-      .replace(/[^a-z0-9_-]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 40);
+      .replace(/[^a-z0-9]+/g, '-')
+      .slice(0, 40)
+      .replace(/^-+|-+$/g, '');
     setForm((f) => (f.kb_id === safe ? f : { ...f, kb_id: safe }));
   }, [form.name, form.kb_id_auto]);
 

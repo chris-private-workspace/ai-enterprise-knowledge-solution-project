@@ -1,9 +1,10 @@
 """KB Pydantic schemas (per architecture.md §4.5; W20 F4.1 — Multimodal Tier 1 fields per ADR-0028)."""
 
+import re
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class KbConfig(BaseModel):
@@ -128,18 +129,51 @@ class KbConfig(BaseModel):
     section_anchor_max_per_anchor: int | None = None
 
 
+# kb_id forms BOTH the AI Search index name (`ekp-kb-{kb_id}-v1`) AND the Azure
+# Blob container names (`ekp-kb-{kb_id}-screenshots` / `-sources`). Blob container
+# naming is the stricter of the two: lowercase alphanumerics separated by SINGLE
+# dashes only — no leading/trailing/consecutive dashes, no underscores. A kb_id
+# violating this (e.g. "a---b" from a "A - B" name) indexes chunks fine but 500s
+# (InvalidResourceName) at the first screenshot/source blob op during ingest or
+# reindex. Validated at create time so the failure is an actionable 422 up front.
+_KB_ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+# ADR-0018 legacy alias: kb_id="drive_user_manuals" maps to FIXED legacy container
+# names (ekp-kb-drive-screenshots), NOT the derived ekp-kb-{kb_id}-* pattern, so its
+# underscore is Blob-safe. The sole id exempt from _KB_ID_RE. Mirrors
+# storage.kb_naming._LEGACY_KB_ID.
+_LEGACY_KB_ID = "drive_user_manuals"
+
+
 class KbCreate(BaseModel):
     """POST /kb input (per architecture.md §4.4 #5).
 
-    `kb_id` is client-supplied; per §3.4 it forms the AI Search index name
-    `ekp-kb-{kb_id}-v{version}`, so callers must keep it index-name-safe
-    (lowercase, hyphen/underscore only).
+    `kb_id` is client-supplied; it forms the AI Search index name
+    `ekp-kb-{kb_id}-v1` AND the Azure Blob container names
+    `ekp-kb-{kb_id}-screenshots` / `-sources`. Must be Blob-container-safe:
+    lowercase a-z / 0-9 separated by single dashes (no leading, trailing, or
+    consecutive dashes, and no underscores).
     """
 
     kb_id: str
     name: str
     description: str = ""
     config: KbConfig = Field(default_factory=KbConfig)
+
+    @field_validator("kb_id")
+    @classmethod
+    def _validate_kb_id(cls, v: str) -> str:
+        if v == _LEGACY_KB_ID:
+            return v  # ADR-0018 legacy alias — fixed legacy containers, Blob-safe
+        if not 2 <= len(v) <= 40:
+            raise ValueError("kb_id must be 2-40 characters long")
+        if not _KB_ID_RE.fullmatch(v):
+            raise ValueError(
+                "kb_id must be lowercase a-z / 0-9 separated by single dashes "
+                "(no leading, trailing, or consecutive dashes, and no underscores) - "
+                "it becomes the Azure Blob container name ekp-kb-{kb_id}-screenshots"
+            )
+        return v
 
 
 class KbMetadataPatch(BaseModel):

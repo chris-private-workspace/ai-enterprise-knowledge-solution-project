@@ -644,7 +644,10 @@ async def test_post_kb_index_create_fail_rolls_back_returns_502(
 ) -> None:
     """AC19 — `create_index_for_kb` raises → 502 `index.create_failed` +
     `service.delete(kb_id)` rollback (verify via GET → 404 after the failed POST)."""
-    populator = _populator_mock(create_index_raises=ValueError("Azure rejected kb_id: uppercase"))
+    # kb_id is now Blob-safe-validated at the schema layer, so an invalid-name
+    # rejection can't reach the index step; this mock unconditionally raises to
+    # exercise the index-create-failure → rollback → 502 path with a valid kb_id.
+    populator = _populator_mock(create_index_raises=ValueError("Azure index create failed"))
 
     app = _build_app(
         kb_service=kb_service_empty, populator=populator, engine=None, include_kb_router=True,
@@ -652,12 +655,12 @@ async def test_post_kb_index_create_fail_rolls_back_returns_502(
     client = TestClient(app)
 
     resp = client.post("/kb", json={
-        "kb_id": "BadKbId", "name": "x", "description": "", "config": {},
+        "kb_id": "bad-kb-id", "name": "x", "description": "", "config": {},
     })
     assert resp.status_code == 502
     populator.create_index_for_kb.assert_awaited_once()
     # Storage record rolled back.
-    get_resp = client.get("/kb/BadKbId")
+    get_resp = client.get("/kb/bad-kb-id")
     assert get_resp.status_code == 404
 
 

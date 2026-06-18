@@ -127,7 +127,7 @@ async def test_in_memory_update_config_missing_raises() -> None:
 @pytest.mark.asyncio
 async def test_service_create_initializes_zero_counters() -> None:
     service = KBService(InMemoryKBBackend())
-    payload = KbCreate(kb_id="svc_kb", name="Svc KB", description="d")
+    payload = KbCreate(kb_id="svc-kb", name="Svc KB", description="d")
     result = await service.create(payload)
     assert result.total_documents == 0
     assert result.total_chunks == 0
@@ -157,6 +157,6 @@ async def test_service_update_config_propagates() -> None:
 @pytest.mark.asyncio
 async def test_service_delete_removes_from_list() -> None:
     service = KBService(InMemoryKBBackend())
-    await service.create(KbCreate(kb_id="del_me", name="x"))
-    await service.delete("del_me")
+    await service.create(KbCreate(kb_id="del-me", name="x"))
+    await service.delete("del-me")
     assert await service.list_all() == []
