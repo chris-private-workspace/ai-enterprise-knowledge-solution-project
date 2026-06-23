@@ -112,6 +112,9 @@ pnpm-debug.log*
 # committed evidence — do NOT ignore those.
 .playwright-mcp/
 
+# Browser MCP 手動驗證截圖(root level,如 ekp-login-mcp-verify.png)
+*-mcp-verify.png
+
 # Playwright E2E test artifacts (W15 D4 F4 baseline harness — frontend/tests/e2e/);
 # baseline screenshots under tests/e2e/*.spec.ts-snapshots/ ARE committed
 # (visual regression contract per W15 plan §F4.4) — do NOT ignore those.
