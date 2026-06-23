@@ -124,6 +124,7 @@ Multi-step task 要先講 plan:
 | 涉及 Dify reference | `references/REFERENCE_USAGE.md`(W1 Day 1 setup) | 嚴禁 copy-paste,只可 layout 借鑒 |
 | Stakeholder-facing 變動 | `docs/decision-form.md`(W1 ready) | 確認 22 條 OQ status(Q22 NEW W12 D1 per ADR-0014) |
 | **用戶操作 / 配置 / 調試疑問**(UI 點用、旋鈕做咩、出廠值、benchmark 對照、故障排查)| [`docs/08-user-guide/`](./docs/08-user-guide/README.md)(8 份,2026-06-12 W69-era 快照)| 答用戶操作問題 first stop,唔好憑記憶重新推導旋鈕值;**ADR 改 default 時必須同步其 `03-configuration-reference.md` + `06-benchmarks-and-metrics.md`**(維護規則喺其 README)|
+| **Enterprise 權限(RBAC)擴充工作** | [`docs/01-planning/enterprise-rbac/TRACKER.md`](./docs/01-planning/enterprise-rbac/TRACKER.md)(追蹤入口)+ `enterprise-rbac/FINDINGS.md`(單一事實來源)| 2026-06-23 啟動;W88 P0 `draft` 待 Chris 批准;P2+ 跨 Tier 邊界需 ADR-0066 + Chris approve(H1/H4) |
 | 評估 GraphRAG / multi-agent / multi-tenancy | **STOP** — 呢啲係 Tier 2,Tier 1 唔做 | See `docs/architecture.md` §11 trigger matrix |
 
 **Default behavior**:如果你唔確定一個 task 屬邊個 doc 範圍,**ask before guessing**。
@@ -495,7 +496,7 @@ references/DIFY_PINNED_COMMIT.txt
 | W16 | Beta deploy resume — Track A IT cred + 25% rollout activation + daily metric monitor + backend stub closure cascade | 🟡 **draft / partial**:F5 stub cascade DONE;F1-F4 仍 pending **Track A IT cred populate event + R-B1 closure** |
 | W17 | Beta hardening(parallel to W16)— Postgres persistent backing(ADR-0023)+ auth-transport hardening(ADR-0022)+ RAGAs 4-metric integration + ADR-0017 R8 mitigation pattern | ✅ closed 2026-05-10(Gate PASS;🚧 F1.5b + F3.5b R8/Azure-key-bound runtime smoke deferred per CO17) |
 | W18 | Unified application shell IA(per ADR-0024)— `<AppShell>` across all authenticated views + URL flatten(`/admin/*`→`/kb/*`)+ `/dashboard` real overview + `/settings` + `<GlobalSearch>` Cmd/Ctrl+K palette + V7 Landing removed | ✅ closed 2026-05-11(Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT) |
-| W19+ | _not pre-created_ — rolling JIT per §10 R1 | _kickoff post-W18 closeout decision;candidates = W16 F1-F4 if Track A IT cred lands / Tier 2 prep governance Q12 / Beta-launch readiness pass / local-dev seed-KB task_ |
+| W19+ | _not pre-created_ — rolling JIT per §10 R1 | _kickoff post-W18 closeout decision;candidates = W16 F1-F4 if Track A IT cred lands / Tier 2 prep governance Q12 / Beta-launch readiness pass / local-dev seed-KB task / **Enterprise RBAC track(2026-06-23 啟動,W88 P0 `draft` 待批准,入口 `docs/01-planning/enterprise-rbac/TRACKER.md`)**_ |
 
 如果 Claude Code session 邊個 week 唔清楚,**ask user "What week / day are we in?"** 之後再做 default focus 對應。Hard gates:Gate 1 ✅ / Gate 2 PARTIAL ✅ / Gate 3 ✅ / Tier 1 UI sprint cycle FINAL ✅ / **Production launch gate ⏳ pending Track A IT cred**。
 
