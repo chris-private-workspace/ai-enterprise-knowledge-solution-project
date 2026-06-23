@@ -12,14 +12,33 @@
 ### F1 環境基準實測(2026-06-24)
 - **HEAD vs disk rbac schema = 一致(乾淨四級)**:`git show HEAD:backend/api/schemas/rbac.py` 同 disk 都係 `RoleKey = Literal["admin","editor","user","power"]`。**根因「disk stale 三級」已自愈** —— OneDrive 同步追上 HEAD(對比 FINDINGS §3 基準日 2026-06-23 disk 仍 stale)。
 - **backend `/health` = ok**(全 components 綠);進程 PID 12104+46164 啟動 2026-06-23 2:28 PM。
-- **待確認(carry-over)**:running backend in-memory 是否仍跑舊碼(啟動於 6/23,需實測 `/auth/me` 睇有無 viewer / role_source 幻欄位 → 若有則重啟)。
+- **running backend 確認唔 stale**:啟動 6/23 2:28 PM **晚過**最後 backend commit `854f9a5`(6/18);實打 `/auth/me`(mock dev-token)回乾淨 `{role:"admin", is_mock:true}`,**無 role_source / viewer 幻欄位**;backend code 全域 grep `role_source`/`is_admin_hint`/`default_viewer` = 0 match。→ FINDINGS「running backend 回幻欄位」根因**已隨 disk 自愈消失**(嗰啲欄位嚟自 6/23 被污染嘅 disk 版,今已乾淨)。
+- **DB `users` 表查清**:得 1 行 `admin@example.com` / role=`user` / verified=`f`(首位且唯一用戶)。
+
+### F2 根因定位(2026-06-24)
+- `users_repo.register()`(L80-99)**從未有 first-user-admin bootstrap** —— 建 `UserRecord` 唔設 role,用 DB default `'user'`。所以首位用戶 `admin@example.com` 係 `user` 而非 `admin`。FINDINGS「bootstrap 未生效」更準確 = **從未實作**。
+- 連帶:`admin@example.com` verified=`f`(未驗證 → 登入撞 403,解釋 FINDINGS「登入失敗」)。
+
+### F1 判決
+- ✅ **環境三層一致(自愈)**:HEAD = disk = running backend 全乾淨四級,running backend 唔 stale。
+- ❌ **既有債真實**:首位用戶 role + verified 待理順(移交 F2)。
 
 ### Decisions
 - P0 status draft → **active**(用戶批准)。
-- plan acceptance criteria 對齊最新實測(disk 已自愈)。
+- plan acceptance criteria 對齊最新實測(disk + backend code 已自愈)。
+- F1 環境基準 = 通過(自愈);帳號角色理順併入 F2 一齊做。
 
 ### Commits
-- (待 commit)docs(planning): rebuild W88 P0 phase artifacts + fix broken refs
+- d5c2006 docs(planning): rebuild W88 P0 phase artifacts + flip active
 
-### Carry-over → Day 2
-- F1 未完:running backend `/auth/me` 實測 + 帳號角色理順(F1 後兩項 checklist)。
+### F2 實作(2026-06-24)
+- **用戶拍板方案 1**:加 bootstrap + 一次性升權既有帳號。
+- **`users_repo.register()`** 加 first-user bootstrap:`role = "admin" if not _store.list_users() else "user"`。
+- **新增 `users_repo.ensure_admin_bootstrap()`**:self-healing reconcile —— 無 admin 時把最早註冊用戶升 admin + `mark_verified`,經 repo layer(`set_user_role`/`mark_verified`)不裸改 DB(H5);idempotent;P1 Entra app-role 假設已標 NOTE。
+- **`server.py` lifespan wire**(L154 RBAC seed 後):startup 呼叫 `ensure_admin_bootstrap()` + structlog log promotion;`import structlog` 加 `# noqa: E402`(server.py 既有 truststore E402 pattern,count 回 30 不增 debt)。
+- **測試**:`test_auth_self_register.py` 加 5 個(首用戶→admin / 次用戶→user / 無 admin 升+verify / 有 admin no-op / 空 store no-op)。
+- **驗證**:self-register 58 passed;廣測試(auth/users/rbac/acl/group)**224 passed / 8 skipped / 0 failed**,零 regression;`users_repo.py` ruff clean,`server.py` 回 30(既有 baseline)。
+
+### Carry-over → F2 端到端
+- ⏳ **重啟 backend**(reload=False,`ensure_admin_bootstrap` 要重啟先跑)→ 驗 `admin@example.com` 升 admin + verified=t + `/auth/me` 回 admin。重啟 heavy(50-120s)+ 多 session 風險,待用戶確認時機。
+- F2 code + 單元測試已 commit;端到端驗證後 F2 正式收尾。

@@ -13,6 +13,7 @@ truststore.inject_into_ssl()
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import structlog  # noqa: E402 — truststore.inject() (above) must precede ssl imports
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -152,6 +153,21 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     rbac_backend = make_rbac_backend(settings)
     await rbac_backend.seed_defaults()
     app.state.rbac_backend = rbac_backend
+
+    # W88 P0 F2 — self-healing first-admin bootstrap (ADR-0027 follow-up).
+    # Promotes the earliest self-register user to admin when the workspace has no
+    # admin yet (heals accounts created before the register-time bootstrap
+    # landed). Idempotent — a no-op once any admin exists; goes through the repo
+    # layer (no raw SQL per H5).
+    from api.auth import users_repo as _users_repo
+
+    _promoted_admin = _users_repo.ensure_admin_bootstrap()
+    if _promoted_admin is not None:
+        structlog.get_logger(__name__).info(
+            "admin_bootstrap_promoted",
+            oid=_promoted_admin.oid,
+            email=_promoted_admin.email,
+        )
 
     if settings.azure_openai_api_key and settings.azure_search_admin_key:
         embedder = AzureOpenAIEmbedder(

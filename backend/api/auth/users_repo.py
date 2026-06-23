@@ -41,6 +41,7 @@ __all__ = [
     "SessionRecord",
     "UserRecord",
     "create_session",
+    "ensure_admin_bootstrap",
     "find_by_email",
     "find_by_oid",
     "invite_user",
@@ -84,11 +85,17 @@ def register(*, email: str, password: str, display_name: str) -> UserRecord:
     normalized_email = email.strip().lower()
     if _store.get_user_by_email(normalized_email) is not None:
         raise ValueError(f"email_already_exists: {normalized_email}")
+    # W88 P0 F2 — first-user bootstrap: the very first registered account owns
+    # the workspace (role=admin); everyone after defaults to 'user' (least
+    # privilege). Idempotent — once any user exists this never re-grants. Accounts
+    # created *before* this landed are healed by ensure_admin_bootstrap() at startup.
+    role = "admin" if not _store.list_users() else "user"
     record = UserRecord(
         oid=generate_user_oid(),
         email=normalized_email,
         display_name=display_name.strip(),
         password_hash=hash_password(password),
+        role=role,
         verified=False,
         verification_code=generate_verification_code(),
         verification_code_expires_at=datetime.now(UTC)
@@ -97,6 +104,33 @@ def register(*, email: str, password: str, display_name: str) -> UserRecord:
     )
     _store.add_user(record)
     return record
+
+
+def ensure_admin_bootstrap() -> UserRecord | None:
+    """W88 P0 F2 — self-healing first-admin bootstrap (idempotent).
+
+    Guarantees the workspace always has a reachable admin owner. When no user
+    holds the 'admin' role yet — e.g. accounts created before the register-time
+    first-user bootstrap landed — promote the earliest-registered user to admin
+    and mark them verified (an owner must be able to sign in). A no-op the moment
+    any admin exists, so it is safe to call on every startup.
+
+    Goes through the repo layer (`set_user_role` / `mark_verified`), never raw
+    SQL (per H5 — no bare DB mutation). Returns the promoted user, or None when
+    nothing changed (empty store, or an admin already present).
+
+    NOTE (P1): assumes a self-register-only world (Tier 1 mock SSO). Once a real
+    Entra app-role grants admin, ADR-0066 (target architecture) revisits whether
+    earliest-self-register-user is still the right owner heuristic.
+    """
+    users = _store.list_users()  # newest-first
+    if not users or any(u.role == "admin" for u in users):
+        return None
+    earliest = users[-1]
+    promoted = set_user_role(earliest.oid, "admin")
+    if promoted is not None and not promoted.verified:
+        promoted = mark_verified(promoted.oid)
+    return promoted
 
 
 def regenerate_verification_code(oid: str) -> UserRecord | None:

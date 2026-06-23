@@ -4,16 +4,17 @@
 > 未完項**不可刪**(per CLAUDE.md §10 sacred rule),只 `→ [x]` 或標 🚧 + 理由。
 
 ## F1 環境基準確認 + 帳號角色理順
-- [ ] `git show HEAD:backend/api/schemas/rbac.py` vs disk vs running backend 三層比對
-- [ ] running backend `/auth/me` 實測(確認有無 viewer / role_source 幻欄位 → 若有則重啟)
-- [ ] `admin@example.com` DB role + 解析角色對齊正確值
-- [ ] 三層實測截錄入 progress
+- [x] `git show HEAD:backend/api/schemas/rbac.py` vs disk vs running backend 三層比對 → 全一致乾淨四級(自愈)
+- [x] running backend `/auth/me` 實測 → 回乾淨 `{role:admin,is_mock:true}`,無幻欄位,唔 stale
+- [ ] `admin@example.com` DB role + 解析角色對齊正確值 → 現狀查清(role=user / verified=f);理順動作併入 F2
+- [x] 三層實測截錄入 progress
 
 ## F2 首位用戶自動管理員 bootstrap
-- [ ] 定位 bootstrap 邏輯(首位註冊 → admin)
-- [ ] 修正令空 DB 第一個用戶 role=admin
-- [ ] DB role 值域對齊 RoleKey 四級
-- [ ] 單元測試覆蓋
+- [x] 定位 bootstrap 邏輯 → `register()` 從未有,確認係「未實作」非「未生效」
+- [x] 修正令空 DB 第一個用戶 role=admin → `register()` first-user bootstrap + `ensure_admin_bootstrap()` self-heal
+- [x] DB role 值域對齊 RoleKey 四級 → bootstrap 只寫 admin/user,既有 admin@example.com(user)四級內
+- [x] 單元測試覆蓋 → 5 個新測試,廣測 224 passed 零 regression
+- [ ] 端到端:重啟 backend 驗 `admin@example.com` 升 admin + verified(⏳ 待重啟)
 
 ## F3 前端硬編 badge → 讀真角色
 - [ ] 定位前端硬編 "Workspace Admin"

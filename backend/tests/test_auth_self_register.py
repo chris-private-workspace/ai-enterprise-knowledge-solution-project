@@ -195,6 +195,64 @@ def test_register_creates_user_and_verification_code() -> None:
     assert record.password_hash != _VALID_PASSWORD
 
 
+# --- W88 P0 F2 — first-admin bootstrap (register-time + self-healing) --------
+
+
+def test_register_first_user_becomes_admin() -> None:
+    """W88 P0 F2 — first-user bootstrap: the very first account owns the workspace."""
+    users_repo.reset_repo()
+    first = users_repo.register(
+        email="owner@example.com", password=_VALID_PASSWORD, display_name=_VALID_DISPLAY
+    )
+    assert first.role == "admin"
+
+
+def test_register_second_user_is_plain_user() -> None:
+    """W88 P0 F2 — everyone after the first defaults to least-privilege 'user'."""
+    users_repo.reset_repo()
+    users_repo.register(
+        email="owner@example.com", password=_VALID_PASSWORD, display_name=_VALID_DISPLAY
+    )
+    second = users_repo.register(
+        email="member@example.com", password=_VALID_PASSWORD, display_name="Bob"
+    )
+    assert second.role == "user"
+
+
+def test_ensure_admin_bootstrap_promotes_and_verifies_when_no_admin() -> None:
+    """W88 P0 F2 — heals a pre-bootstrap workspace (no admin) by promoting the
+    earliest user + marking them verified so the owner can sign in."""
+    users_repo.reset_repo()
+    legacy = users_repo.register(
+        email="legacy@example.com", password=_VALID_PASSWORD, display_name="Legacy"
+    )
+    # Simulate an account created before the register-time bootstrap landed.
+    users_repo.set_user_role(legacy.oid, "user")
+    assert all(u.role != "admin" for u in users_repo.list_users())
+
+    promoted = users_repo.ensure_admin_bootstrap()
+    assert promoted is not None
+    assert promoted.oid == legacy.oid
+    assert promoted.role == "admin"
+    assert promoted.verified is True
+
+
+def test_ensure_admin_bootstrap_noop_when_admin_exists() -> None:
+    """W88 P0 F2 — idempotent: a no-op once any admin is present."""
+    users_repo.reset_repo()
+    # First user is already admin via the register-time bootstrap above.
+    users_repo.register(
+        email="owner@example.com", password=_VALID_PASSWORD, display_name=_VALID_DISPLAY
+    )
+    assert users_repo.ensure_admin_bootstrap() is None
+
+
+def test_ensure_admin_bootstrap_noop_on_empty_store() -> None:
+    """W88 P0 F2 — nothing to promote when there are no users."""
+    users_repo.reset_repo()
+    assert users_repo.ensure_admin_bootstrap() is None
+
+
 def test_register_normalises_and_rejects_dup() -> None:
     users_repo.reset_repo()
     users_repo.register(email="ALICE@example.com", password=_VALID_PASSWORD, display_name="A")
