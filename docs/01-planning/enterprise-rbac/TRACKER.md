@@ -12,7 +12,7 @@
 | 階段 | 內容 | 狀態 | 備註 |
 |---|---|---|---|
 | 規劃 | 路線圖 + P0 計劃 + 報告 + 紀錄 + 文件整合 | ✅ 完成 | 已 commit + push |
-| **P0** | 基礎校正 + W24c 收尾 | ⏸️ **待批准** | 計劃 draft,等 Chris flip active |
+| **P0** | 基礎校正 + W24c 收尾 | 🟡 **進行中** | 2026-06-24 開工;F1 環境基準實測中 |
 | P1 | 威脅模型 + 目標架構 + ADR-0066 | 🔲 未開始 | 依賴 P0 |
 | P2 | 檢索層文件級存取控制 | 🔲 未開始 | 依賴 P1;可能係上線先決 |
 | P3 | 文件/資料夾級細粒度授權 | 🔲 未開始 | 依賴 P2 |
@@ -37,8 +37,8 @@
 - [x] commit + push
 
 ### P0 — 基礎校正 + W24c 收尾(⏸️ 待批准 → 細項見 [`../W88-rbac-p0-foundation/checklist.md`](../W88-rbac-p0-foundation/checklist.md))
-- [ ] **批准開工**(Chris flip W88 draft → active)← 當前阻塞點
-- [ ] F1 基準確認(disk / HEAD / running backend 一致)+ 帳號 role 理順
+- [x] **批准開工**(2026-06-24 用戶批准 flip active)
+- [ ] F1 基準確認(🟡 進行中:HEAD = disk 乾淨四級**已自愈**;running backend `/auth/me` + 帳號角色待實測)
 - [ ] F2 修首位用戶自動管理員(bootstrap)+ role 值一致性
 - [ ] F3 前端硬編「Workspace Admin」badge → 讀真 role
 - [ ] F4 `/users` 寫操作接通(改 role / 邀請 / 停用)
@@ -89,7 +89,7 @@
 
 ## 四、待決事項(需管理層 / Chris 拍板)
 
-- [ ] **D1** 批准 P0 開工(flip W88 active)
+- [x] **D1** 批准 P0 開工 → ✅ 2026-06-24 用戶批准 flip active
 - [ ] **D2** 策略排序:先推 Tier 1 上線 vs P0+P2 安全層併入上線準備(AI 建議後者)
 - [ ] **D3** P1 之後階段是否納入正式排期
 - [x] **D4** 規劃文件 push → ✅ 已 push 2026-06-23
@@ -117,6 +117,7 @@
 |---|---|---|
 | 2026-06-23 | 建立 TRACKER | 初版 |
 | 2026-06-23 | 方案 A 整合:抽 `FINDINGS.md` 單一來源、狀態總覽去重引用、文件索引更新為 enterprise-rbac/ 新結構 | 文件整合 |
+| 2026-06-24 | P0 flip active(用戶批准)+ 重建 W88 三件套(OneDrive 吞文件後)+ 修 broken reference;F1 環境基準實測(disk `rbac.py` 已自愈追上 HEAD) | P0 開工 |
 
 ---
 
