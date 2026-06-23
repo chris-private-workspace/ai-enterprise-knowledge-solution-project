@@ -104,6 +104,7 @@
 | [`ROADMAP.md`](./ROADMAP.md) | **策略路線** P0–P6 + Tier 邊界 + 次序 |
 | [`REPORT.md`](./REPORT.md) | **對上匯報** 快照 v2 |
 | [`RECORD.md`](./RECORD.md) | **調查紀錄** archive(歷程 / 糾正 / 決定) |
+| [`COLLABORATION-SOP.md`](./COLLABORATION-SOP.md) | **協作 SOP**(開工收工 / 溝通 / 護欄 / 決策把關 / 環境應對) |
 | `TRACKER.md`(本檔) | **持續追蹤入口** |
 | [`../W88-rbac-p0-foundation/`](../W88-rbac-p0-foundation/) | **P0 phase 執行**(plan / checklist / progress) |
 | `../../adr/0027-users-tier-1-5-rbac.md` | W24c RBAC 架構決策(已實作) |
