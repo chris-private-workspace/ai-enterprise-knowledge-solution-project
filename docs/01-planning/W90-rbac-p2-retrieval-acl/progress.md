@@ -54,12 +54,37 @@
 - **連帶發現 P0/P2.0 遺留 auth 缺口**(targeted run 未 catch,全套先暴露):`test_multi_kb_routing`(P2.0 /query auth)+ `test_doc_profile_backfill`(P0 F5 backfill `require_kb_acl`)嘅 `_build_app` 補 admin auth override。**非 P2.2 引入,但同批修復**。
 - **驗證**:全套 **1547 passed**(原 1530 + 新 17)/ 25 skip / 0 fail + ruff clean。
 
-### 下一步 → P2.2b(🔴 north-star §15 硬閘,待執行)
-- 即時重建 drive-images-1(schema PUT + W46 reindex stamp)+ eval 驗 W43-85 不退 + 真端到端 trimming live smoke。
-- **動檢索主路徑前先 surface eval 基準等用戶拍板**(需 running backend + Azure)。
+## Day 1 cont — 2026-06-24(P2.2b 重建 + eval + live trimming,north-star §15 PASS)
+
+### 用戶 2 決策(AskUserQuestion)
+- **即時重建 drive-images-1** + **現在 push** `5fca451`(已 push,`9284403..5fca451`)。
+
+### 執行前 blocker 全解(無需 restart,零撞 session)
+- pre-flight 全綠(Langfuse 200 / backend 200 全 component ok / Postgres 1 row)。
+- mock auth dev-token = **role admin** → `assert_kb_access` 過(無 403)+ `principals_for_user(admin)=None` → filter trivial bypass → eval 測 rebuild 效果(filter 正確性 + 非 admin trimming 已由測試證)。
+- **stale backend 洞察**:running backend 係 P2.1(9284403),但 filter 對 drive-images-1 證實 no-op(無 grant + fail-open),故 P1 backend eval-after-rebuild 足夠驗 north-star §15,無需 restart 到 P2.2。
+
+### 重建序列(全成功)
+1. `scripts/put_index_schema.py --kb-id drive-images-1`:複用 `create_index_for_kb` PUT additive 加 2 欄位(既有 doc 保留,reindex 前該欄位 null)。**坑**:Windows console cp1252 唔食 `→`(改 ASCII + `PYTHONIOENCODING=utf-8`)。
+2. `POST /kb/drive-images-1/reindex`(202):6 docs / 369 chunks / **0 fail / 0 skip**,stamp `allowed_principals=[]`。
+
+### eval 比對(north-star §15)
+| 指標 | before | after | |
+|---|---|---|---|
+| mean image-recall | 1.000 | **1.000** | **完全保留** ✅ |
+| mean image-precision | 0.988 | 0.954 | -0.034 |
+- **recall 全 query 1.00 = 全圖召回(ADR-0054 成功定義)零退化**。precision delta = re-ingest 多抓 1-7 張 section 圖(Q004/Q005/Q006/Q043),**良性(多圖非少圖,recall 無損),源自 re-ingest 非 filter**(eval admin bypass 證 filter 完全唔參與檢索)。**用戶判決 PASS**。
+
+### live trimming smoke(Azure 真 drop 驗證)
+- `scripts/acl_trimming_live_smoke.py`(self-cleaning):upload 合成 restrictive chunk `allowed_principals=['alice-oid']` → alice(列入)見=**1** / bob(未列入)**被 Azure 剔除=0** / bob fail-open 見 369 空-ACL chunk 全放行 → 刪除合成 chunk。**PASS** —— Azure server-side `any()`/`search.in` 真 drop + fail-open 雙驗。**坑**:Azure document key 唔可 leading underscore(`__x__` → 400 InvalidName)。
+
+### P2.2 完整收束
+- P2.0(query 守衛)+ P2.1(索引 schema+stamp)+ P2.2a(filter+11 層 threading)+ P2.2c(端到端 wiring fixture)+ P2.2b(重建+eval+live drop)**全部 ✅**。north-star §15 PASS。檢索層文件級 security trimming 上線就緒(DG4 Tier 1 上線先決達成)。
+- **下一步 P2.3**:classification clearance(internal/restricted 比對 + restricted 文件流程,DG1)。
 
 ### Commits
 - (kickoff)docs(planning): kickoff W90 P2 phase artifacts
 - feat(api): P2.0 query endpoint KB-level guard
 - feat(api): P2.1 index ACL schema + ingestion stamp
-- (本 entry)feat(retrieval): P2.2a retrieval-layer ACL filter + threading + P2.2c trimming fixture
+- feat(retrieval): P2.2a retrieval-layer ACL filter + threading + P2.2c trimming fixture
+- (本 entry)chore(ops): P2.2b rebuild ops scripts + eval reports(north-star §15 PASS)

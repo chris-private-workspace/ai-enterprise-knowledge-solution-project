@@ -26,10 +26,10 @@
 - [x] BC 驗證:`user_principals=None` → filter byte-identical 無 ACL clause(既有 test/工具/V4 不受影響)
 ### P2.2c 端到端 trimming wiring(✅ 完成,真 Azure drop 留 P2.2b live)
 - [x] `test_query_route_acl_trimming.py`(3):granted user principal 到達 search filter / 兩 user 各自 filter 無 cross-leakage / admin 無 ACL clause(route → rbac grant → search filter 端到端 wiring)
-### P2.2b 重建索引 + eval(🔴 north-star §15 硬閘,待執行)
-- [ ] 即時重建 drive-images-1 索引(schema PUT 加 2 欄位 + W46 reindex re-ingest stamp,用戶拍板「即時重建」)
-- [ ] **eval 驗 W43-85 問答品質 + 圖文還原不退(north-star §15 硬閘)** — fail-open + drive-images-1 無 grant → 預期 bit-identical(證 filter no-op);任何退化 = STOP
-- [ ] 真端到端 trimming live smoke(有 grant 真 chunk:有權見、無權被 Azure 剔除)
+### P2.2b 重建索引 + eval(✅ 完成,north-star §15 PASS 用戶判決 2026-06-24)
+- [x] 即時重建 drive-images-1 索引:`scripts/put_index_schema.py` schema PUT(additive 加 2 欄位,既有 doc 保留)→ `POST /kb/drive-images-1/reindex`(6 docs / 369 chunks / **0 fail**,stamp `allowed_principals=[]` + `classification=internal`)
+- [x] **eval 驗圖文還原不退(north-star §15)**:before recall **1.000**/prec 0.988 → after recall **1.000(完全保留)**/prec 0.954;**recall = 全圖召回(ADR-0054 成功定義)零退化**;precision -0.034 = re-ingest 多抓 1-7 張 section 圖(良性,多圖非少圖,**非 filter 退化** —— eval admin bypass 證 filter no-op)。**用戶判決 PASS**
+- [x] 真端到端 trimming live smoke:`scripts/acl_trimming_live_smoke.py`(self-cleaning 合成 restrictive chunk)→ alice(列入)見=1 / bob(未列入)**被 Azure 剔除=0** / bob fail-open 見 369 空-ACL chunk 全放行 → **Azure server-side 真 drop 驗證 PASS**
 
 ## P2.3 classification clearance(DG1)
 - [ ] `classification` clearance 比對(internal/restricted)
