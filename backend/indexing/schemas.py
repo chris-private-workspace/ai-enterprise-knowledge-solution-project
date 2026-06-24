@@ -89,6 +89,21 @@ class ChunkRecord(BaseModel):
     tags: list[str] = Field(default_factory=list)
     low_value_flag: bool = False
     enabled: bool = True
+    # ADR-0066 / W90 P2.1 — enterprise retrieval-layer document ACL (5.1 KB
+    # inheritance). The principals (user oid + group key) allowed to RETRIEVE this
+    # chunk; stamped at ingest from the KB's kb_acl grants (resolve_kb_principals).
+    # Empty [] = fail-open transition: a chunk indexed before the P2.2 one-time
+    # rebuild — OR a KB with no ACL grant — carries no principals, and the P2.2
+    # retrieval filter treats empty as "public" so existing KBs keep working until
+    # the rebuild stamps every chunk (production-preserve, plan §6 2026-06-24).
+    # Serialized into the index via to_search_doc (model_dump auto-includes it);
+    # the schema.json field is filterable so Azure AI Search runs
+    # `allowed_principals/any(...)` security trimming (P2.2).
+    allowed_principals: list[str] = Field(default_factory=list)
+    # ADR-0066 / W90 P2.1 — DG1 2-level classification (internal / restricted).
+    # Default "internal" for every existing + new chunk until restricted docs are
+    # tagged (P2.3); the P2.2 filter gates restricted chunks by user clearance.
+    classification: str = "internal"
     source_url: str = ""
     ingested_at: datetime
     embedding: list[float] = Field(..., min_length=1)

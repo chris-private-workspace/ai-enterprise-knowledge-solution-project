@@ -136,7 +136,18 @@ class IngestionOrchestrator:
         doc_id: str,
         source_url: str = "",
         kb_config: KbConfig | None = None,
+        allowed_principals: list[str] | None = None,
+        classification: str = "internal",
     ) -> IngestionResult:
+        # ADR-0066 / W90 P2.1 — enterprise retrieval-layer ACL stamp. The caller
+        # (_run_ingest_pipeline) resolves the KB's principals from kb_acl (5.1 KB
+        # inheritance) and passes them here; every emitted ChunkRecord carries the
+        # same list (chunk inherits doc/KB ACL — F2 §1). None → [] (fail-open
+        # transition: a backend-less ingest stamps no principals, the P2.2 filter
+        # treats empty as public). Orchestrator never touches the RBAC backend
+        # itself — concerns stay separated (Karpathy §1.3).
+        chunk_principals = list(allowed_principals or [])
+
         # 1. Parse — sync but CPU-bound; chunker also sync.
         result: ParserResult = self._parser.parse(source)
         if result.parse_failed:
@@ -315,6 +326,10 @@ class IngestionOrchestrator:
                     tags=[],  # W2 baseline: no tag enrichment; W3+ may add domain tags
                     low_value_flag=spec.low_value_flag,
                     enabled=True,
+                    # ADR-0066 / W90 P2.1 — stamp the KB-inherited ACL (per-chunk
+                    # copy so chunks never share a mutable list reference).
+                    allowed_principals=list(chunk_principals),
+                    classification=classification,
                     source_url=source_url,
                     ingested_at=ingested_at,
                     embedding=embeddings[idx].vector,

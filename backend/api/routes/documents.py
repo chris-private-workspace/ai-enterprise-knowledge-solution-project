@@ -41,7 +41,7 @@ import structlog
 from azure.core.exceptions import ResourceNotFoundError
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, status
 
-from api.middleware.acl import require_kb_acl
+from api.middleware.acl import require_kb_acl, resolve_kb_principals
 from api.schemas.doc_profile import DocProfileInfo, ProfileOverrideRequest
 from api.schemas.kb import FailureRecord, KbConfig
 from api.schemas.listing import (
@@ -68,6 +68,7 @@ from kb_management.doc_profile_store import DocProfileStore
 from kb_management.preset_override_store import PresetOverrideStore
 from retrieval.retrieval_engine import RetrievalEngine
 from storage.kb_naming import kb_id_to_screenshot_container
+from storage.rbac_storage import RbacBackend
 from storage.settings import get_settings
 
 logger = structlog.get_logger(__name__)
@@ -116,6 +117,11 @@ class _IngestionDeps:
     # W82 / ADR-0063 層 A 段③ 缺口 B — global preset-override store. None when unwired →
     # `_route_profile_preset` resolves the factory preset (production-preserve).
     preset_override_store: PresetOverrideStore | None = None
+    # ADR-0066 / W90 P2.1 — RBAC backend for retrieval-layer ACL stamping. None
+    # when unwired (some tests, or a deploy before the RBAC backend lands) →
+    # `resolve_kb_principals` returns [] → chunks stamp no principals (fail-open
+    # transition, the P2.2 filter treats empty as public). production-preserve.
+    rbac_backend: RbacBackend | None = None
 
 
 def _engine_or_503(request: Request) -> RetrievalEngine:
@@ -169,6 +175,9 @@ def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
     doc_profile_store = getattr(request.app.state, "doc_profile_store", None)
     # W82 / ADR-0063 層 A 段③ 缺口 B — global preset-override store for effective routing.
     preset_override_store = getattr(request.app.state, "preset_override_store", None)
+    # ADR-0066 / W90 P2.1 — RBAC backend for retrieval-layer ACL stamping (optional;
+    # None → resolve_kb_principals returns [] = fail-open transition).
+    rbac_backend = getattr(request.app.state, "rbac_backend", None)
     if embedder is None or populator is None or chunker is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -185,6 +194,7 @@ def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
         doc_config_store=doc_config_store,
         doc_profile_store=doc_profile_store,
         preset_override_store=preset_override_store,
+        rbac_backend=rbac_backend,
     )
 
 
@@ -805,12 +815,19 @@ async def _run_ingest_pipeline(
                 embedder=deps.embedder,
                 uploader=uploader,
             )
+            # ADR-0066 / W90 P2.1 — resolve the KB's principals (5.1 KB inheritance)
+            # so every emitted chunk carries the retrieval-layer ACL. fail-open: a
+            # backend-less ingest resolves to [] → the P2.2 filter treats empty as
+            # public (production-preserve). classification stays "internal" until
+            # restricted docs are tagged (P2.3).
+            allowed_principals = await resolve_kb_principals(deps.rbac_backend, kb_id)
             result = await orchestrator.ingest(
                 source=tmp_path,
                 kb_id=kb_id,
                 doc_id=doc_id,
                 source_url=f"upload://{filename}",
                 kb_config=kb_config,
+                allowed_principals=allowed_principals,
             )
 
         now = datetime.now(UTC)

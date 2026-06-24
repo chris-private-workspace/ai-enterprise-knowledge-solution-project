@@ -32,12 +32,15 @@ a blanket gate.
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends, HTTPException, Request, status
 
 from api.auth.dependency import get_current_user
 from api.auth.models import AuthenticatedUser
+
+if TYPE_CHECKING:
+    from storage.rbac_storage import RbacBackend
 
 
 def require_role(*allowed: str) -> Callable[..., AuthenticatedUser]:
@@ -119,3 +122,28 @@ async def assert_kb_access(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"This action requires '{min_role}' access to this KB.",
         )
+
+
+async def resolve_kb_principals(
+    rbac_backend: RbacBackend | None,
+    kb_id: str,
+) -> list[str]:
+    """The principals (user oid + group key) granted access to a KB — the
+    `allowed_principals` stamped onto every chunk at ingest (ADR-0066 5.1 KB
+    inheritance, W90 P2.1).
+
+    Returns every `kb_acl` grant's `principal_id` regardless of access role: a
+    `query` / `edit` / `manage` grant all let the principal RETRIEVE the KB's
+    chunks, so all are admitted to the P2.2 retrieval-layer filter (the role rank
+    only gates WRITES, via `require_kb_acl` / `assert_kb_access`).
+
+    `rbac_backend is None` → `[]` (fail-open transition, plan §6 2026-06-24): a
+    backend-less ingest (some tests, or a deploy before the RBAC backend is wired)
+    stamps no principals, and the P2.2 filter treats an empty `allowed_principals`
+    as public. This keeps ingest working without a hard RBAC dependency — the
+    one-time P2.2 rebuild re-stamps every chunk once the backend is live.
+    """
+    if rbac_backend is None:
+        return []
+    entries = await rbac_backend.list_kb_acl(kb_id)
+    return [entry.principal_id for entry in entries]

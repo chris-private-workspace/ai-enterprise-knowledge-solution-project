@@ -147,6 +147,26 @@ def test_w70_search_doc_carries_chunk_text_marked() -> None:
     assert _record(idx=1).to_search_doc()["chunk_text_marked"] == ""
 
 
+def test_p21_chunk_record_acl_defaults_fail_open() -> None:
+    """ADR-0066 / W90 P2.1 — a record stamped without ACL is fail-open: empty
+    allowed_principals (the P2.2 filter treats empty as public) + internal
+    classification. This is what a pre-rebuild / backend-less chunk carries."""
+    rec = _record(idx=0)
+    assert rec.allowed_principals == []
+    assert rec.classification == "internal"
+
+
+def test_p21_search_doc_carries_acl_fields() -> None:
+    """ADR-0066 / W90 P2.1 — allowed_principals + classification ride to_search_doc
+    via model_dump (no rename), so Azure AI Search can filter on them (P2.2)."""
+    rec = _record(idx=0).model_copy(
+        update={"allowed_principals": ["user-a", "grp-eng"], "classification": "restricted"}
+    )
+    doc = rec.to_search_doc()
+    assert doc["allowed_principals"] == ["user-a", "grp-eng"]
+    assert doc["classification"] == "restricted"
+
+
 @pytest.mark.asyncio
 async def test_upload_partial_failure_counts_correctly() -> None:
     recs = [_record(idx=i) for i in range(3)]

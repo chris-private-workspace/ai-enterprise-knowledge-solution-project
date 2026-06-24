@@ -19,6 +19,8 @@
     {"name": "tags", "type": "Collection(Edm.String)", "filterable": true, "facetable": true, "retrievable": true, "searchable": false, "sortable": false},
     {"name": "low_value_flag", "type": "Edm.Boolean", "filterable": true, "retrievable": true, "facetable": false, "searchable": false, "sortable": false},
     {"name": "enabled", "type": "Edm.Boolean", "filterable": true, "retrievable": true, "facetable": false, "searchable": false, "sortable": false},
+    {"name": "allowed_principals", "type": "Collection(Edm.String)", "filterable": true, "retrievable": true, "searchable": false, "sortable": false, "facetable": false},
+    {"name": "classification", "type": "Edm.String", "filterable": true, "facetable": true, "retrievable": true, "searchable": false, "sortable": false},
     {"name": "source_url", "type": "Edm.String", "retrievable": true, "searchable": false, "filterable": false, "sortable": false, "facetable": false},
     {"name": "ingested_at", "type": "Edm.DateTimeOffset", "filterable": true, "sortable": true, "retrievable": true, "facetable": false},
     {

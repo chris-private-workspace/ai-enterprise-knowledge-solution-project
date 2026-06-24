@@ -20,9 +20,25 @@
 - **測試**:`test_query_route_acl.py` 4(403×2 query+stream / 401×2);`test_acl_middleware` 加 4 `assert_kb_access` 單元(admin pass / 無 grant 403 / grant pass / backend None 503);4 受影響 query 整合 wire admin(per_kb / overlay 加 `get_current_user` override;observe / smoke user 加 `role=admin`)+ signature 斷言加 `current_user`(驗證透過 @observe_async chain 暴露)。
 - **驗證**:67 passed + signature fix;ruff clean。
 
-### 下一步 → P2.1
-- P2.1 索引 schema 加 `allowed_principals` + `classification` + ingestion stamp(5.1 KB 繼承);**production-preserve 拍板**(現有無 ACL chunk → fail-open 過渡 vs fail-closed 安全)。
+### P2.1 索引 schema + ingestion stamp(2026-06-24 ✅ 完成)
+- **production-preserve 拍板:過渡期 fail-open**(plan §6 changelog)。理由:P2.1 只 stamp 新 ingest,P2.2 先重建現有索引;過渡期所有現有 chunk 未 stamp,fail-closed 會即刻擋光現有 KB 全部 chunk → W43-85 圖文還原 + 問答品質爆,撞 north-star §15。fail-open 係唯一唔破壞 north-star 嘅選擇;穩態(P2.2 重建後)所有 chunk 都 stamp → fail-open 與 fail-closed 收斂等價,洩漏面僅限過渡窗。
+- **6 處 code(資料層 → stamp 層 → wire 層)**:
+  1. `ChunkRecord`(`indexing/schemas.py`)加 `allowed_principals: list[str] = []` + `classification: str = "internal"`(fail-open default;`to_search_doc` 經 model_dump 自動帶)。
+  2. `schema.json` 加 `allowed_principals: Collection(Edm.String)`(filterable)+ `classification: Edm.String`(filterable, facetable)。
+  3. `acl.py` 加 `resolve_kb_principals(rbac_backend, kb_id)`(rbac None → `[]` fail-soft;讀 `list_kb_acl` 全 grant principal — query/edit/manage 都可讀,role rank 只 gate 寫)。
+  4. `orchestrator.ingest()` 加 `allowed_principals` + `classification` 2 param → stamp 每 chunk(per-chunk list copy 不共享);orchestrator 零 rbac 依賴(關注點分離,Karpathy §1.3)。
+  5. `documents.py`:`_IngestionDeps` 加 `rbac_backend` optional DI field + `_ingestion_deps_or_503` getattr(對齊既有 doc_config_store optional pattern)。
+  6. `_run_ingest_pipeline` 經 `deps.rbac_backend` resolve principals → 傳落 `orchestrator.ingest`(3 caller upload/reindex/doc-reindex 全經此統一入口,零改 caller)。
+- **stamp 真實生效**:server.py lifespan L153-155 已 wire `app.state.rbac_backend`(P2.0 F6b live smoke 驗過)→ production `_ingestion_deps_or_503` getattr 拿到真 backend。
+- **測試**(7 新):`test_populate`(ChunkRecord ACL default + to_search_doc 帶 2 欄位)/ `test_orchestrator`(stamp 每 chunk + list 不共享 + BC fail-open default)/ `test_acl_middleware`(resolve None→[] / 空 KB→[] / 全 grant + 跨 KB 不洩漏)。
+- **驗證**:71 passed(orchestrator/populate/acl/kb_reindex/query_route_acl)+ 67 passed(documents_route/contextual/ch009/doc_profile caller BC)+ ruff clean + mypy(acl/orchestrator 自身 0 error,17 全係既有 api/auth + ingestion/parsers transitive debt)。
+
+### 下一步 → P2.2(🔴 高風險)
+- 檢索 filter 注入 `allowed_principals/any(p: search.in(p, '{principals}', ','))`(`hybrid.py`)+ 重建現有索引一次(W46 機制)。
+- **north-star §15 硬閘**:必須 eval 驗 W43-85 圖文還原 + 問答品質不退,任何退化 = STOP。
+- 動檢索主路徑前先 surface eval 基準 + 重建索引風險,等用戶拍板。
 
 ### Commits
 - (kickoff)docs(planning): kickoff W90 P2 phase artifacts
-- (本 entry)feat(api): P2.0 query endpoint KB-level guard
+- feat(api): P2.0 query endpoint KB-level guard
+- (本 entry)feat(api): P2.1 index ACL schema + ingestion stamp

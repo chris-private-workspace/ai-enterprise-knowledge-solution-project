@@ -376,6 +376,58 @@ async def test_ingest_concurrent_callable_via_gather() -> None:
     assert results[1].chunks[0].doc_id == "b"
 
 
+# ── ADR-0066 / W90 P2.1 — retrieval-layer ACL stamp ───────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_ingest_stamps_allowed_principals_on_every_chunk() -> None:
+    """The caller-resolved KB principals stamp onto every emitted chunk (chunk
+    inherits the KB ACL, F2 §1), and each chunk gets its OWN list copy so a later
+    mutation of one chunk's list can't bleed into the others."""
+    pr = _parser_result()
+    chunks = [_spec(i, f"S{i}") for i in range(3)]
+    orch = IngestionOrchestrator(
+        parser=_FakeParser(pr),
+        chunker=_FakeChunker(chunks),
+        embedder=_FakeEmbedder(),
+        uploader=None,
+    )
+
+    result = await orch.ingest(
+        Path("x.docx"),
+        kb_id="kb",
+        doc_id="d",
+        allowed_principals=["user-a", "grp-eng"],
+        classification="restricted",
+    )
+
+    assert all(c.allowed_principals == ["user-a", "grp-eng"] for c in result.chunks)
+    assert all(c.classification == "restricted" for c in result.chunks)
+    # Each chunk owns its list — mutating one must not bleed into siblings.
+    result.chunks[0].allowed_principals.append("leak")
+    assert result.chunks[1].allowed_principals == ["user-a", "grp-eng"]
+
+
+@pytest.mark.asyncio
+async def test_ingest_acl_defaults_fail_open() -> None:
+    """Omitted ACL args = fail-open transition: empty allowed_principals (the P2.2
+    filter treats empty as public) + internal classification. This is the BC path
+    for callers that pass no ACL (the existing suite + scripts)."""
+    pr = _parser_result()
+    chunks = [_spec(0, "S1")]
+    orch = IngestionOrchestrator(
+        parser=_FakeParser(pr),
+        chunker=_FakeChunker(chunks),
+        embedder=_FakeEmbedder(),
+        uploader=None,
+    )
+
+    result = await orch.ingest(Path("x.docx"), kb_id="kb", doc_id="d")
+
+    assert result.chunks[0].allowed_principals == []
+    assert result.chunks[0].classification == "internal"
+
+
 # ─── W70 / ADR-0055 inline image markers — sha8 rewrite pass ────────
 
 

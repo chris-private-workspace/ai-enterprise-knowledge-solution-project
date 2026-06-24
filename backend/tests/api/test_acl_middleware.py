@@ -19,7 +19,12 @@ from fastapi.testclient import TestClient
 from api.auth.mock_msal import authenticate_mock
 from api.auth.models import AuthenticatedUser
 from api.auth.msal_provider import _role_from_claims
-from api.middleware.acl import assert_kb_access, require_kb_acl, require_role
+from api.middleware.acl import (
+    assert_kb_access,
+    require_kb_acl,
+    require_role,
+    resolve_kb_principals,
+)
 from storage.rbac_storage import InMemoryRbacBackend
 from storage.settings import Settings, get_settings
 
@@ -231,3 +236,43 @@ def test_assert_kb_access_503_when_backend_unwired() -> None:
     with pytest.raises(HTTPException) as exc:
         asyncio.run(assert_kb_access(_req(None), "kb-1", _user("editor"), "query"))
     assert exc.value.status_code == 503
+
+
+# ---- W90 P2.1 — resolve_kb_principals (retrieval-layer ACL stamp source) ----
+
+
+def test_resolve_kb_principals_none_backend_is_fail_open() -> None:
+    # No RBAC backend wired → [] (fail-open transition; the P2.2 filter treats an
+    # empty allowed_principals as public). Lets a backend-less ingest proceed.
+    assert asyncio.run(resolve_kb_principals(None, "kb-1")) == []
+
+
+def test_resolve_kb_principals_empty_kb_returns_empty() -> None:
+    assert asyncio.run(resolve_kb_principals(InMemoryRbacBackend(), "kb-1")) == []
+
+
+def test_resolve_kb_principals_returns_all_grant_principals() -> None:
+    # Every grant (query / edit / manage; user OR group) admits the principal to
+    # the retrieval filter — role rank only gates writes, not reads. A grant on a
+    # DIFFERENT KB must not leak into kb-1's principals.
+    backend = InMemoryRbacBackend()
+    asyncio.run(
+        backend.add_kb_acl(
+            kb_id="kb-1", principal_type="user", principal_id="oid-reader",
+            access_role="query", granted_by="admin",
+        )
+    )
+    asyncio.run(
+        backend.add_kb_acl(
+            kb_id="kb-1", principal_type="group", principal_id="grp-eng",
+            access_role="manage", granted_by="admin",
+        )
+    )
+    asyncio.run(
+        backend.add_kb_acl(
+            kb_id="kb-2", principal_type="user", principal_id="oid-other",
+            access_role="edit", granted_by="admin",
+        )
+    )
+    principals = asyncio.run(resolve_kb_principals(backend, "kb-1"))
+    assert sorted(principals) == ["grp-eng", "oid-reader"]
