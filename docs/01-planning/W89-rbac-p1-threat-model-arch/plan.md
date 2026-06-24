@@ -42,6 +42,13 @@ P0 令地基活起來(登入 / 角色 / 寫操作受守衛)。但企業核心仍
 
 > DG1-DG3 可用 default 推進 F1/F2 技術分析(標 default 假設 + commit note);DG4/DG5 = Chris 硬拍板,P2 開工前必須 resolve。
 
+> **DG resolution(用戶 2026-06-24 拍板 DG1/DG2/DG4)**:
+> - **DG1 = 2 級 internal / restricted** → 索引加 1 個 `classification` 欄位(restricted 留將來敏感文件,Drive 現狀全 internal)。
+> - **DG2 = 單租戶 Ricoh internal** → 純 Tier 1,索引**無** tenant 隔離維度(唔撞 H4)。
+> - **DG4 = P2 檢索層 = Tier 1 上線先決** → confused deputy 洩漏風險定為上線阻塞;P0+P2 併入上線準備(非 Tier 2 後續)。
+> - **F2 索引 ACL 方向確定**:文件級 ACL(principal + access_role)+ `classification` 欄位,單租戶,Azure AI Search `filter` 落地。
+> - DG3(合規)用 default(無特定合規);**DG5 ADR-0066 Accept 仍待 Chris**(H1+H4 硬閘,DG4 方向用戶代定但正式 Tier 邊界拍板隨 ADR Accept)。
+
 ## §4 Risks
 
 - 🔴 **Tier 邊界誤判**(active):P2 檢索層若判 Tier 2 → Tier 1 無法安全上線;若判 Tier 1 先決 → 範圍擴大。**DG4 必須 Chris 拍板,AI 唔自行定**(H1 + H4)。

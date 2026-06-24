@@ -19,9 +19,18 @@
 - **DG4 Tier 邊界拍板**(P2 = Tier 1 上線先決 vs Tier 2)+ **DG5 ADR-0066 Accept** → Chris 硬拍板,P2 開工前必須 resolve。
 - AI 自主範圍 = F1 威脅模型技術分析 + F2 目標架構技術選項 + F3 草擬 ADR-0066(Proposed);**Tier 邊界 + ADR Accept 唔自行定**(H1+H4)。
 
+### DG resolution(用戶 2026-06-24 拍板 DG1/DG2/DG4)
+- **DG1 = 2 級 internal / restricted**(索引加 1 個 `classification` 欄位)。
+- **DG2 = 單租戶 Ricoh internal**(純 Tier 1,索引無 tenant 維度,唔撞 H4)。
+- **DG4 = P2 檢索層 = Tier 1 上線先決**(confused deputy 洩漏 = 上線阻塞)。
+- → **F2 索引 ACL 方向確定**:文件級 ACL(principal + access_role)+ `classification` 欄位,單租戶,Azure AI Search `filter`。
+- DG3 用 default(無特定合規);**DG5 ADR-0066 Accept 仍待 Chris**(H1+H4)。
+
 ### 下一步
-- F1 威脅模型技術分析開工(攻擊面 / confused deputy / 檢索層洩漏路徑,基於 codebase + FINDINGS §4)。
-- DG1-DG3 用 default 假設推進 + 標 commit note;DG4/DG5 留 Chris。
+- F1 威脅模型技術分析(攻擊面 / confused deputy / 檢索層洩漏路徑)— 讀 retrieval/query path 確認檢索層 ACL 現狀(現只 KB 層,文件/chunk 層缺口),基於 codebase + FINDINGS §4。
+- F2 目標授權模型(基於 DG1/DG2 確定方向:文件級 ACL + classification 欄位 + 索引結構選項)。
+- F3 草擬 ADR-0066(Proposed)→ DG5 Chris Accept。
 
 ### Commits
-- (本 entry)docs(planning): kickoff W89 P1 phase artifacts
+- (kickoff)docs(planning): kickoff W89 P1 phase artifacts(284e9f0)
+- (本 entry)docs(planning): record P1 DG1/DG2/DG4 resolution
