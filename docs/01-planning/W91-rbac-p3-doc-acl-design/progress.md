@@ -37,9 +37,16 @@
 - README summary log 加 0067 Proposed + next NNNN → 0068。
 - **Status: Proposed** —— 待用戶以 decision owner 身份 **Accept**(H1+H4 硬閘,次序鐵律 5)→ P3-impl 解鎖。Accept 前唔開任何 implementation。
 
-### 待續(本 phase)
-- **decision owner Accept ADR-0067**(用戶拍板)→ 更新 Status Proposed→Accepted → P3-impl(P3a doc_acl 表+API+restamp / P3b group 展開)另期 kickoff。
+### ADR-0067 Accept(用戶 2026-06-24,decision owner)+ Phase Gate ✅
+- 用戶拍板 **Accept** → ADR Status Proposed→Accepted(`Approver: Chris 2026-06-24`)+ README summary 更新 + Status 標 Accepted。
+- **Phase Gate 通過**:F1+F2+F3 完成 + ADR-0067 Accepted + 零 production code(純設計 phase)。次序鐵律 5 satisfied → **P3-impl 解鎖**。
+- 依 **DG-P3-C(Tier 1.5)**:設計拍板定案,但 P3-impl **唔即刻 kickoff**,等真實 doc-level 需求 driver(某 KB 確實要分文件權限)先落。
+
+### W91 收尾
+- **設計 phase 完整收束**:P3 文件級 ACL override(5.2)+ 群組繼承(P4)目標架構拍板;ADR-0067 Accepted。enterprise RBAC track:P0(地基)→ P1(P2 威脅模型 + ADR-0066)→ P2(檢索層 KB+classification trimming,上線就緒)→ **P3 設計拍板(本期)**。
+- 下一期候選:**P3-impl**(P3a doc_acl 表+API+restamp / P3b group 展開,等 doc-level driver)/ 或其他軌道(Track A IT cred / 上線準備 / 新 use case)。
 
 ### Commits
 - `f7758d1` docs(planning): W91 P3 kickoff + F1 威脅模型 + F2 目標架構
-- (本 entry)docs(adr): ADR-0067 文件級 ACL override + 群組繼承(Proposed)
+- `967cc55` docs(adr): ADR-0067 文件級 ACL override + 群組繼承(Proposed)
+- (本 entry)docs(adr): ADR-0067 Accept(Proposed→Accepted）+ Phase Gate 通過

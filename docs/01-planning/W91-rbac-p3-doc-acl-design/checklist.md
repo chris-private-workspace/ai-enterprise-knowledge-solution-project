@@ -18,9 +18,9 @@
 ## F3 ADR-0067 草擬 + Accept
 - [x] `docs/adr/0067-document-level-acl-override-and-group-inheritance.md` 撰寫(Context / Decision / Alternatives / Consequences / References)→ **Status: Proposed** + README summary log 加 0067 + next NNNN → 0068
 - [x] DG-P3-A/B/C resolution 寫入 ADR Decision(用戶 2026-06-24 AskUserQuestion 拍板:replace / 手動 admin group / Tier 1.5 post-launch)
-- [ ] 🚧 decision owner review → **Accept**(H1+H4 硬閘)→ 更新 ADR Status Proposed→Accepted + README — **待用戶以 decision owner 身份 Accept**(次序鐵律 5,P3-impl 解鎖前置)
+- [x] decision owner review → **Accept**(用戶 2026-06-24 以 decision owner 身份 Accept)→ ADR Status Proposed→Accepted + README summary 更新(次序鐵律 5 satisfied,P3-impl 解鎖)
 
-## Phase Gate(收尾)
-- [ ] F1+F2+F3 完成 + ADR-0067 Accepted
-- [ ] P3-impl 次序鐵律 5 satisfied(ADR Accept)→ 可 kickoff P3 implementation
-- [ ] **不寫任何 production code**(設計 phase 純文檔驗證)
+## Phase Gate(收尾)— ✅ 通過
+- [x] F1+F2+F3 完成 + **ADR-0067 Accepted**(用戶 2026-06-24)
+- [x] P3-impl 次序鐵律 5 satisfied(ADR Accept)→ 可 kickoff P3 implementation(依 DG-P3-C Tier 1.5,等真實 doc-level driver)
+- [x] **零 production code**(設計 phase 純文檔,retrieval/schema/表/`principals_for_user` 一律未動)

@@ -1,10 +1,10 @@
 # ADR-0067: Document-Level ACL Override + Group Inheritance(文件級存取覆寫 + 群組繼承架構)
 
 **Date**: 2026-06-24
-**Status**: Proposed
-**Approver**: Chris(decision owner;Accept 需 H1 + H4 硬閘 — 同 ADR-0066 一樣可由用戶 session 行使 decision owner 拍板)
+**Status**: Accepted
+**Approver**: Chris(2026-06-24 — 用戶 session 行使 decision owner 拍板 Accept;DG-P3-A/B/C resolved → P3 implementation 解鎖,H1 + H4)
 
-> Enterprise RBAC track P3 產出。在 ADR-0066(P2,檢索層文件級 ACL,5.1 KB 繼承)之上設計 **5.2 文件級 `doc_acl` override** + **P4 群組繼承**。**Proposed → Accept 後解鎖 P3 implementation**(ROADMAP 次序鐵律 5)。
+> Enterprise RBAC track P3 產出。在 ADR-0066(P2,檢索層文件級 ACL,5.1 KB 繼承)之上設計 **5.2 文件級 `doc_acl` override** + **P4 群組繼承**。**Accepted 2026-06-24 → P3 implementation 解鎖**(ROADMAP 次序鐵律 5);依 DG-P3-C(Tier 1.5)implementation 等真實 doc-level 需求 driver 先 kickoff,非即刻。
 > 技術基礎:[`../01-planning/W91-rbac-p3-doc-acl-design/threat-model-p3.md`](../01-planning/W91-rbac-p3-doc-acl-design/threat-model-p3.md)(F1 G6/G7)+ [`target-architecture-p3.md`](../01-planning/W91-rbac-p3-doc-acl-design/target-architecture-p3.md)(F2)。
 
 ## Context
