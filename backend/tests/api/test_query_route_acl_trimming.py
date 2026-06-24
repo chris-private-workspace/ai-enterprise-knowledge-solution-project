@@ -57,10 +57,11 @@ def _user(oid: str, role: str = "user") -> AuthenticatedUser:
 
 
 async def _run_query_capture(
-    user: AuthenticatedUser, *, grant_oid: str | None = None
+    user: AuthenticatedUser, *, grant_oid: str | None = None, member_of: str | None = None
 ) -> tuple[object, list[dict]]:
-    """Run /query as `user` (granted query on kb-1 if grant_oid set) with the Azure
-    HTTP layer mocked; return (response, [captured search payloads])."""
+    """Run /query as `user` (granted query on kb-1 if grant_oid set; added to group
+    `member_of` if set) with the Azure HTTP layer mocked; return (response, [captured
+    search payloads])."""
     captured: list[dict] = []
 
     with patch("retrieval.hybrid.httpx.AsyncClient") as MockClient:
@@ -85,6 +86,8 @@ async def _run_query_capture(
                     kb_id="kb-1", principal_type="user", principal_id=grant_oid,
                     access_role="query", granted_by="admin",
                 )
+            if member_of is not None:
+                await backend.add_group_member(member_of, user.oid)
             app.state.rbac_backend = backend
             app.dependency_overrides[get_current_user] = lambda: user
             app.include_router(query_route.router)
@@ -123,6 +126,22 @@ async def test_two_users_get_distinct_trimming_filters_no_leakage() -> None:
     # Cross-check: alice's filter must NOT carry bob's principal (no subject leakage).
     assert "oid-bob" not in f_a
     assert "oid-alice" not in f_b
+
+
+@pytest.mark.asyncio
+async def test_group_member_principal_folds_into_search_filter() -> None:
+    # W93 P3b (G7) — a non-admin who has KB access (direct grant, passes the KB guard)
+    # AND belongs to grp-eng gets BOTH their oid AND the group key in the search filter,
+    # so a chunk stamped with the granted group (e.g. via doc_acl) matches. This is the
+    # primary P3b use case: group refines doc visibility within a KB the user can access.
+    # (KB-LEVEL group access — get_kb_access resolving groups — is a documented follow-up.)
+    resp, captured = await _run_query_capture(
+        _user("oid-bob"), grant_oid="oid-bob", member_of="grp-eng"
+    )
+    assert resp.status_code == 200
+    filter_str = captured[0]["filter"]
+    assert "oid-bob" in filter_str  # own oid (KB guard passed via direct grant)
+    assert "grp-eng" in filter_str  # group key folded in (P3b expansion)
 
 
 @pytest.mark.asyncio

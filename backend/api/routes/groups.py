@@ -23,7 +23,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from api.auth import entra_graph
 from api.middleware.acl import require_role
-from api.schemas.rbac import GroupListResponse, GroupSyncResult
+from api.schemas.rbac import (
+    GroupListResponse,
+    GroupMemberAddRequest,
+    GroupMemberListResponse,
+    GroupSyncResult,
+)
 from storage.rbac_storage import RbacBackend
 from storage.settings import Settings, get_settings
 
@@ -86,3 +91,40 @@ async def sync_from_entra(
         synced_count=len(entra_groups),
         detail=f"Synced {len(entra_groups)} group(s) from Entra ID.",
     )
+
+
+# --- P3b group-member management (W93 per ADR-0067 §Decision 3, G7) -----------
+# Manual admin membership (DG-P3-B): the seam that makes a `principal_type="group"`
+# grant actually reach members — `principals_for_user` folds these into a user's
+# retrieval-ACL principals. Adding/removing a member is query-side only (chunks store
+# the group KEY, not member oids) — no index re-stamp.
+
+
+@router.get("/{group_key}/members", response_model=GroupMemberListResponse)
+async def list_group_members(group_key: str, request: Request) -> GroupMemberListResponse:
+    """Every membership of a group."""
+    backend = _get_rbac_backend(request)
+    members = await backend.list_group_members(group_key)
+    return GroupMemberListResponse(members=members, total=len(members))
+
+
+@router.post("/{group_key}/members", status_code=status.HTTP_204_NO_CONTENT)
+async def add_group_member(
+    group_key: str, body: GroupMemberAddRequest, request: Request
+) -> None:
+    """Add a user to a group (idempotent — re-add is a no-op, 204 either way)."""
+    backend = _get_rbac_backend(request)
+    await backend.add_group_member(group_key, body.user_oid)
+
+
+@router.delete(
+    "/{group_key}/members/{user_oid}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def remove_group_member(group_key: str, user_oid: str, request: Request) -> None:
+    """Remove a user from a group; 404 if the membership doesn't exist."""
+    backend = _get_rbac_backend(request)
+    removed = await backend.remove_group_member(group_key, user_oid)
+    if not removed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="group_member_not_found"
+        )

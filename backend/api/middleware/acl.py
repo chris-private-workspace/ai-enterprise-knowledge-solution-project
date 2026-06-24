@@ -172,16 +172,25 @@ async def resolve_doc_principals(
     return await resolve_kb_principals(rbac_backend, kb_id)
 
 
-def principals_for_user(user: AuthenticatedUser) -> list[str] | None:
-    """The principal list to trim retrieval by (ADR-0066 / W90 P2.2), or None for
-    an unfiltered (admin) search.
+async def principals_for_user(
+    rbac_backend: RbacBackend | None, user: AuthenticatedUser
+) -> list[str] | None:
+    """The principal list to trim retrieval by (ADR-0066 P2.2 + ADR-0067 P3b), or None
+    for an unfiltered (admin) search.
 
     Workspace admins bypass the retrieval-layer ACL filter (None) — they see every
-    chunk, mirroring `assert_kb_access` where admin passes unconditionally
-    (ADR-0027). Every other user is trimmed to chunks whose `allowed_principals`
-    include their oid. Group principals fold in once P4 group-member sync lands;
-    today the list is just the oid (threat-model F1 — P4 deferred).
+    chunk, mirroring `assert_kb_access` where admin passes unconditionally (ADR-0027).
+    Every other user is trimmed to chunks whose `allowed_principals` include their oid
+    OR one of their groups (W93 P3b group inheritance, G7): we fold in the group keys
+    the user belongs to (`list_groups_for_user`), so a chunk stamped with a granted
+    GROUP key matches. `rbac_backend is None` (unwired / some tests) → just `[oid]`,
+    byte-identical to the P2 behaviour (graceful degrade). Group membership is resolved
+    HERE at query time — chunks store the group KEY, so a membership change never
+    re-stamps the index.
     """
     if user.role == "admin":
         return None
-    return [user.oid]
+    principals = [user.oid]
+    if rbac_backend is not None:
+        principals.extend(await rbac_backend.list_groups_for_user(user.oid))
+    return principals

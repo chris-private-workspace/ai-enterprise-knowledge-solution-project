@@ -249,15 +249,18 @@ async def query(
         store=_doc_config_store(request),
         kb_id=payload.kb_id,
     )
+    # W90 P2.2 (ADR-0066) + W93 P3b (ADR-0067) — retrieval-layer ACL trimming. admin →
+    # None (sees all, mirroring the KB-level assert_kb_access bypass); others → [oid] ∪
+    # group keys (P3b group inheritance, resolved query-side from rbac_backend).
+    rbac_backend = getattr(request.app.state, "rbac_backend", None)
+    user_principals = await principals_for_user(rbac_backend, current_user)
     return await execute_query_pipeline(
         payload,
         request,
         effective,
         settings,
         doc_overlay=overlay,
-        # W90 P2.2 (ADR-0066) — retrieval-layer ACL trimming. admin → None (sees
-        # all, mirroring the KB-level assert_kb_access bypass); others → [oid].
-        user_principals=principals_for_user(current_user),
+        user_principals=user_principals,
     )
 
 
@@ -563,8 +566,10 @@ async def query_stream(
     """
     # W90 P2.0 (ADR-0066 G1) — KB-level query authorization (kb_id in body).
     await assert_kb_access(request, payload.kb_id, current_user, "query")
-    # W90 P2.2 (ADR-0066) — retrieval-layer ACL trimming (admin → None bypass).
-    user_principals = principals_for_user(current_user)
+    # W90 P2.2 (ADR-0066) + W93 P3b (ADR-0067) — retrieval-layer ACL trimming (admin →
+    # None bypass; others → [oid] ∪ group keys, resolved query-side).
+    rbac_backend = getattr(request.app.state, "rbac_backend", None)
+    user_principals = await principals_for_user(rbac_backend, current_user)
     engine = _engine_or_503(request)
     synthesizer: Synthesizer | None = getattr(request.app.state, "synthesizer", None)
     if synthesizer is None:

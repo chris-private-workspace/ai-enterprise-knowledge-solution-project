@@ -24,6 +24,7 @@ from typing import Protocol, runtime_checkable
 
 from api.schemas.rbac import (
     Group,
+    GroupMember,
     KbAclEntry,
     KbAclRole,
     KbPrincipalType,
@@ -203,6 +204,24 @@ class RbacBackend(Protocol):
         stamps `source='entra'` + `synced_at=now`. F6 (sync-from-entra)."""
         ...
 
+    # P3b GROUP-MEMBER METHODS (W93 per ADR-0067 §Decision 3, G7).
+    async def add_group_member(self, group_key: str, user_oid: str) -> None:
+        """Add a user to a group (idempotent — re-add keeps the original added_at)."""
+        ...
+
+    async def remove_group_member(self, group_key: str, user_oid: str) -> bool:
+        """Remove a user from a group; ``True`` if the membership existed."""
+        ...
+
+    async def list_group_members(self, group_key: str) -> list[GroupMember]:
+        """Every membership of a group (for the admin members list)."""
+        ...
+
+    async def list_groups_for_user(self, user_oid: str) -> list[str]:
+        """The group keys a user belongs to — the P3b retrieval-ACL expansion seam
+        (`principals_for_user` folds these into the user's principal list)."""
+        ...
+
     async def list_kb_acl(self, kb_id: str) -> list[KbAclEntry]:
         """Explicit per-KB ACL grants for one KB. F8 (per-KB ACL)."""
         ...
@@ -253,6 +272,8 @@ class InMemoryRbacBackend:
         self._roles: dict[str, Role] = {}
         self._role_permissions: list[RolePermission] = []
         self._groups: dict[str, Group] = {}
+        # P3b — group_key -> {user_oid: added_at}. Carries added_at for the members list.
+        self._group_members: dict[str, dict[str, datetime]] = {}
         self._kb_acl: list[KbAclEntry] = []
         self._next_acl_id: int = 1
 
@@ -260,6 +281,7 @@ class InMemoryRbacBackend:
         self._roles.clear()
         self._role_permissions.clear()
         self._groups.clear()
+        self._group_members.clear()
         self._kb_acl.clear()
         self._next_acl_id = 1
 
@@ -284,7 +306,14 @@ class InMemoryRbacBackend:
         return [rp for rp in self._role_permissions if rp.role_key == role_key]
 
     async def list_groups(self) -> list[Group]:
-        return sorted(self._groups.values(), key=lambda g: g.name)
+        # P3b — recompute member_count from _group_members (no longer hardcoded 0).
+        return sorted(
+            (
+                g.model_copy(update={"member_count": len(self._group_members.get(g.group_key, {}))})
+                for g in self._groups.values()
+            ),
+            key=lambda g: g.name,
+        )
 
     async def upsert_entra_group(
         self, *, object_id: str, name: str, description: str | None
@@ -298,6 +327,30 @@ class InMemoryRbacBackend:
             synced_at=datetime.now(UTC),
             member_count=0,
         )
+
+    async def add_group_member(self, group_key: str, user_oid: str) -> None:
+        # Idempotent: setdefault keeps the original added_at on re-add (mirrors the
+        # Postgres ON CONFLICT DO NOTHING).
+        self._group_members.setdefault(group_key, {}).setdefault(user_oid, datetime.now(UTC))
+
+    async def remove_group_member(self, group_key: str, user_oid: str) -> bool:
+        members = self._group_members.get(group_key)
+        if members is None or user_oid not in members:
+            return False
+        del members[user_oid]
+        if not members:  # drop the empty group bucket
+            del self._group_members[group_key]
+        return True
+
+    async def list_group_members(self, group_key: str) -> list[GroupMember]:
+        members = self._group_members.get(group_key, {})
+        return [
+            GroupMember(group_key=group_key, user_oid=oid, added_at=ts)
+            for oid, ts in members.items()
+        ]
+
+    async def list_groups_for_user(self, user_oid: str) -> list[str]:
+        return [gk for gk, members in self._group_members.items() if user_oid in members]
 
     async def list_kb_acl(self, kb_id: str) -> list[KbAclEntry]:
         return [e for e in self._kb_acl if e.kb_id == kb_id]

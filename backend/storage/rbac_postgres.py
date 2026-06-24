@@ -36,6 +36,7 @@ from psycopg.rows import dict_row
 
 from api.schemas.rbac import (
     Group,
+    GroupMember,
     GroupSource,
     KbAclEntry,
     KbAclRole,
@@ -157,7 +158,7 @@ class PostgresRbacBackend:
     def __init__(self, dsn: str) -> None:
         self._dsn = dsn
 
-    async def _ensure_schema(self, conn: psycopg.AsyncConnection) -> None:
+    async def _ensure_schema(self, conn: psycopg.AsyncConnection[Any]) -> None:
         async with conn.cursor() as cur:
             await cur.execute(_CREATE_TABLES)
             await cur.execute(_ALTER_GROUPS)
@@ -291,6 +292,61 @@ class PostgresRbacBackend:
                     "synced_at = EXCLUDED.synced_at",
                     (object_id, name, description, object_id),
                 )
+
+    # P3b GROUP-MEMBER METHODS (W93 per ADR-0067 §Decision 3, G7).
+    async def add_group_member(self, group_key: str, user_oid: str) -> None:
+        async with await psycopg.AsyncConnection.connect(
+            self._dsn, row_factory=dict_row
+        ) as conn:
+            await self._ensure_schema(conn)
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "INSERT INTO group_members (group_key, user_oid) VALUES (%s, %s) "
+                    "ON CONFLICT (group_key, user_oid) DO NOTHING",
+                    (group_key, user_oid),
+                )
+
+    async def remove_group_member(self, group_key: str, user_oid: str) -> bool:
+        async with await psycopg.AsyncConnection.connect(
+            self._dsn, row_factory=dict_row
+        ) as conn:
+            await self._ensure_schema(conn)
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "DELETE FROM group_members WHERE group_key = %s AND user_oid = %s",
+                    (group_key, user_oid),
+                )
+                return cur.rowcount > 0
+
+    async def list_group_members(self, group_key: str) -> list[GroupMember]:
+        async with await psycopg.AsyncConnection.connect(
+            self._dsn, row_factory=dict_row
+        ) as conn:
+            await self._ensure_schema(conn)
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "SELECT group_key, user_oid, added_at FROM group_members "
+                    "WHERE group_key = %s ORDER BY added_at",
+                    (group_key,),
+                )
+                rows = await cur.fetchall()
+        return [
+            GroupMember(group_key=r["group_key"], user_oid=r["user_oid"], added_at=r["added_at"])
+            for r in rows
+        ]
+
+    async def list_groups_for_user(self, user_oid: str) -> list[str]:
+        async with await psycopg.AsyncConnection.connect(
+            self._dsn, row_factory=dict_row
+        ) as conn:
+            await self._ensure_schema(conn)
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "SELECT group_key FROM group_members WHERE user_oid = %s ORDER BY group_key",
+                    (user_oid,),
+                )
+                rows = await cur.fetchall()
+        return [r["group_key"] for r in rows]
 
     async def list_kb_acl(self, kb_id: str) -> list[KbAclEntry]:
         async with await psycopg.AsyncConnection.connect(

@@ -126,6 +126,30 @@ class GroupSyncResult(BaseModel):
     detail: str
 
 
+# --- P3b group membership schema (W93 per ADR-0067 §Decision 3, G7) ----------
+
+
+class GroupMember(BaseModel):
+    """One group membership — mirrors a `group_members` table row."""
+
+    group_key: str
+    user_oid: str
+    added_at: datetime
+
+
+class GroupMemberListResponse(BaseModel):
+    """`GET /groups/{group_key}/members` payload."""
+
+    members: list[GroupMember]
+    total: int
+
+
+class GroupMemberAddRequest(BaseModel):
+    """`POST /groups/{group_key}/members` body — add a user to the group."""
+
+    user_oid: str
+
+
 # --- F8 per-KB ACL schema (W24c F8 per ADR-0027 §Decision kb_acl) -----------
 
 # Per-KB access role — ranked manage > edit > query (see acl.require_kb_acl).

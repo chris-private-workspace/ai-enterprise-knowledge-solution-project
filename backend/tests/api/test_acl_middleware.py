@@ -283,12 +283,31 @@ def test_resolve_kb_principals_returns_all_grant_principals() -> None:
 
 
 def test_principals_for_user_admin_bypasses_acl_with_none() -> None:
-    # admin → None: the retrieval ACL filter is skipped entirely (sees all),
-    # mirroring assert_kb_access where admin passes unconditionally.
-    assert principals_for_user(_user("admin")) is None
+    # admin → None regardless of groups: the retrieval ACL filter is skipped entirely.
+    assert asyncio.run(principals_for_user(InMemoryRbacBackend(), _user("admin"))) is None
+    assert asyncio.run(principals_for_user(None, _user("admin"))) is None
 
 
-def test_principals_for_user_non_admin_is_oid_list() -> None:
-    # editor / user → [oid]: trimmed to chunks whose allowed_principals include it.
-    assert principals_for_user(_user("editor")) == ["oid-1"]
-    assert principals_for_user(_user("user")) == ["oid-1"]
+def test_principals_for_user_non_admin_is_oid_list_when_no_groups() -> None:
+    # editor / user with no group membership → [oid] (P2 BC, byte-identical).
+    backend = InMemoryRbacBackend()
+    assert asyncio.run(principals_for_user(backend, _user("editor"))) == ["oid-1"]
+    assert asyncio.run(principals_for_user(backend, _user("user"))) == ["oid-1"]
+
+
+def test_principals_for_user_folds_in_group_keys() -> None:
+    # P3b (W93 / ADR-0067 G7) — a non-admin's principals include their group keys, so a
+    # chunk stamped with a granted GROUP key matches.
+    backend = InMemoryRbacBackend()
+    asyncio.run(backend.add_group_member("grp-eng", "oid-1"))
+    asyncio.run(backend.add_group_member("grp-all", "oid-1"))
+    asyncio.run(backend.add_group_member("grp-other", "oid-2"))  # different user
+    principals = asyncio.run(principals_for_user(backend, _user("user")))
+    assert principals is not None
+    assert principals[0] == "oid-1"
+    assert set(principals[1:]) == {"grp-eng", "grp-all"}  # not grp-other
+
+
+def test_principals_for_user_rbac_none_degrades_to_oid() -> None:
+    # rbac_backend None (unwired) → just [oid], byte-identical to P2 (graceful degrade).
+    assert asyncio.run(principals_for_user(None, _user("user"))) == ["oid-1"]
