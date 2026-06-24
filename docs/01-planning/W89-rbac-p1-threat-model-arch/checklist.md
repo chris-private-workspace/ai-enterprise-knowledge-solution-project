@@ -20,7 +20,7 @@
 - [x] 撰寫 `docs/adr/0066-enterprise-retrieval-layer-document-acl.md`(Context / Decision / Alternatives / Consequences / References,**Status: Proposed**)
 - [x] 更新 `docs/adr/README.md` index(0066 Proposed + next → 0067)
 - [x] **DG4 Tier 邊界**(P2 = Tier 1 上線先決)→ 用戶 2026-06-24 代定方向(正式 Tier 邊界拍板隨 DG5 ADR Accept)
-- [ ] 🚧 **DG5 ADR-0066 Accept**(Chris approve,H1 + H4 硬閘)→ Status: Accepted。**待 Chris**:P2+ implementation 喺 Accept 前不可開工(次序鐵律 5)
+- [x] **DG5 ADR-0066 Accept**(用戶 2026-06-24 行使 decision owner 拍板 Accept)→ Status: **Accepted**;P2 implementation 解鎖(次序鐵律 5 satisfied)
 
 ## Phase Gate(收尾)
 - [x] F1-F3 文檔完成 + decision gate 狀態明確(DG1/DG2/DG4 用戶定,DG3 default,DG5 待 Chris)

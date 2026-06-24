@@ -49,9 +49,14 @@
 - F1 威脅模型 + F2 目標架構 + F3 ADR-0066(Proposed)全完成。DG1/DG2/DG4 用戶定,DG3 default,**DG5 ADR Accept 待 Chris**。
 - **P2 kickoff 前置條件 = DG5 ADR-0066 Accept(Chris)**。Accept 後 P2.0(query 守衛快補)→ P2.1(schema+stamp)→ P2.2(filter+重建索引)→ P2.3(classification)。
 
-### 下一步
-- **待 Chris review + Accept ADR-0066**(DG5)。Accept 後 kickoff P2(檢索層文件級 ACL implementation)。
-- 期間可選:G1 query 端點 KB 層守衛快補(P2.0,獨立於文件級工程)。
+### ADR-0066 Accepted(2026-06-24,用戶 decision owner 拍板)→ P1 完全完成
+- **DG5 resolved**:用戶 2026-06-24 session 行使 decision owner 拍板 Accept ADR-0066(Status Proposed→**Accepted**)。
+- **次序鐵律 5 satisfied → P2 implementation 解鎖**;M2 達成(ADR-0066 Accepted)。
+- P0+P1 共 15 commits push 到 `origin/main`(Chris GitHub review 入口齊備)。
+
+### 下一步 → W90 P2 kickoff
+- kickoff W90 P2(檢索層文件級 ACL implementation):**P2.0 query 守衛 → P2.1 schema+stamp → P2.2 filter+重建索引 → P2.3 classification**。
+- P2.0 先做(最低風險:`/query`+`/query/stream` 補 `require_kb_acl("query")`,類似 P0 F5 opt-in 守衛,非新架構)。
 
 ### Commits
 - (kickoff)docs(planning): kickoff W89 P1 phase artifacts(`284e9f0`)

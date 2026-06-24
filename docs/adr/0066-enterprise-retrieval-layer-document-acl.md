@@ -1,10 +1,10 @@
 # ADR-0066: Enterprise Retrieval-Layer Document ACL(檢索層文件級存取控制架構)
 
 **Date**: 2026-06-24
-**Status**: Proposed
-**Approver**: Chris(pending — DG5,H1 + H4 硬閘)
+**Status**: Accepted
+**Approver**: Chris(2026-06-24 — 用戶 session 行使 decision owner 拍板 Accept;DG5 resolved,H1 + H4)
 
-> Enterprise RBAC track P1 產出。整體目標授權架構拍板。**Proposed** 待 Chris Accept;**P2+ 任何 implementation 喺本 ADR Accepted 之前不可開工**(ROADMAP §3 次序鐵律 5)。
+> Enterprise RBAC track P1 產出。整體目標授權架構拍板。**Accepted 2026-06-24**(DG5 resolved)→ **P2 implementation 解鎖**(ROADMAP §3 次序鐵律 5 satisfied)。W90 P2 = 檢索層文件級 ACL implementation(P2.0 query 守衛 → P2.1 schema+stamp → P2.2 filter+重建索引 → P2.3 classification)。
 > 技術基礎:[`../01-planning/W89-rbac-p1-threat-model-arch/threat-model.md`](../01-planning/W89-rbac-p1-threat-model-arch/threat-model.md)(F1)+ [`target-architecture.md`](../01-planning/W89-rbac-p1-threat-model-arch/target-architecture.md)(F2)。
 
 ## Context
