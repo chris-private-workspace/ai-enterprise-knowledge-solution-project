@@ -26,11 +26,18 @@
 - → **F2 索引 ACL 方向確定**:文件級 ACL(principal + access_role)+ `classification` 欄位,單租戶,Azure AI Search `filter`。
 - DG3 用 default(無特定合規);**DG5 ADR-0066 Accept 仍待 Chris**(H1+H4)。
 
+### F1 威脅模型 + 需求(2026-06-24 ✅ 完成)→ `threat-model.md`
+- Explore agent 調查檢索/查詢/合成路徑 ACL 現狀 → **5 缺口確認**(file:line):
+  - **G1 query 端點無授權守衛**(`query.py:203-218`、`:530-534` 連 KB 層 `require_kb_acl` 都無)= 獨立 P0-style 缺口,可快補
+  - G2 檢索層無文件 filter(`hybrid.py:354-355` 只 `kb_id`)/ G3 索引 schema 無 ACL 欄位(`schema.json`)/ G4 合成層無授權過濾(`synthesizer.py:127-235`,confused deputy 成立)/ G5 KB 層 ACL 存在但 query 未用
+- 攻擊情景(員工/經理分層)+ 需求表(DG-derived)+ P2 設計含義(索引加 `allowed_principals` + `classification`,檢索 filter 注入,單租戶簡化)。
+- **結論**:檢索層文件級安全完全未實現;G1 即時可補,G2-G4 = P2 主體(索引重建,次序鐵律 1)。
+
 ### 下一步
-- F1 威脅模型技術分析(攻擊面 / confused deputy / 檢索層洩漏路徑)— 讀 retrieval/query path 確認檢索層 ACL 現狀(現只 KB 層,文件/chunk 層缺口),基於 codebase + FINDINGS §4。
-- F2 目標授權模型(基於 DG1/DG2 確定方向:文件級 ACL + classification 欄位 + 索引結構選項)。
+- F2 目標授權模型:設計索引 ACL 結構(`allowed_principals` + `classification`)+ 檢索 filter 機制 + 文件 ACL 來源(KB 繼承 vs 文件級表)+ 多選項 trade-off(次序鐵律 1 核心)。
 - F3 草擬 ADR-0066(Proposed)→ DG5 Chris Accept。
 
 ### Commits
-- (kickoff)docs(planning): kickoff W89 P1 phase artifacts(284e9f0)
-- (本 entry)docs(planning): record P1 DG1/DG2/DG4 resolution
+- (kickoff)docs(planning): kickoff W89 P1 phase artifacts(`284e9f0`)
+- docs(planning): record P1 DG1/DG2/DG4 resolution(`2d3138b`)
+- (本 entry)docs(planning): W89 P1 F1 threat model

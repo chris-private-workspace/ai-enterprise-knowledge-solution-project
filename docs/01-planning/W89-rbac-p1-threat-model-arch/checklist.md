@@ -3,11 +3,11 @@
 > 對應 [`plan.md`](./plan.md) §2 F1-F3 + §3 Decision Gates。完成 → `[x]` + progress Day-N 記錄。
 > 未完項**不可刪**(per CLAUDE.md §10 sacred rule),只 `→ [x]` 或標 🚧 + 理由。
 
-## F1 威脅模型 + 需求
-- [ ] 攻擊面分析(認證 / 授權 / 檢索 / 注入 / 越權路徑)
-- [ ] confused deputy 分析(LLM 喺檢索階段撈無權內容 → 摘要洩漏)
-- [ ] 檢索層洩漏路徑(現 KB 層守衛 vs 文件/chunk 層缺口,對標 FINDINGS §4)
-- [ ] 需求收集 + DG1-DG3 default 假設(資料分類 / 用戶類型 / 合規 / 租戶數)
+## F1 威脅模型 + 需求 → [`threat-model.md`](./threat-model.md)
+- [x] 攻擊面分析(6 面,query 端點 + 檢索層 + 合成層 = 🔴 最關鍵)
+- [x] confused deputy 分析(LLM 檢索階段撈無權內容 → 摘要洩漏,§3)
+- [x] 檢索層洩漏路徑(5 缺口 G1-G5 + file:line 證據;**G1 query 端點連 KB 層守衛都無** = 獨立 P0-style 缺口可快補,G2-G4 文件級 = P2 主體)
+- [x] 需求收集 + DG1-DG3(§6 需求表;DG1/DG2 用戶定,DG3 default)
 
 ## F2 目標授權模型
 - [ ] 資源層級設計(KB → 資料夾 → 文件 → chunk 授權維度)
