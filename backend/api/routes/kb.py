@@ -11,6 +11,19 @@ Azure AI Search index (closes ADR-0018 Phase 3 upload-side):
 - Per-KB Azurite blob screenshot container (`ekp-kb-{kb_id}-screenshots` per
   ADR-0005) stays deferred — R12 Azurite signature mismatch unresolved + W16+
   Track A cloud Blob switch (CH-001 spec §6.6).
+
+W88 P0 F5 (2026-06-24) — RBAC guards now gate every KB *write* endpoint (the
+opt-in per-endpoint application acl.py docstring + W24c plan §4 R-W24c-3 left
+for "as each endpoint lands"). `min_role` mirrors the canonical workspace
+permission matrix (`storage/rbac_storage.py` Knowledge bases area):
+  - kb.delete / kb.manage_access (admin-only)  → require_kb_acl("manage")
+  - kb.edit_config / kb.trigger_reindex (admin+editor) → require_kb_acl("edit")
+  - kb.create (admin+editor, no kb_id in path)  → require_role("admin","editor")
+`require_kb_acl` admits workspace admins unconditionally + delegates per-KB to
+an explicit grant (ADR-0027); `POST /kb` can't use it (the new KB has no ACL
+yet + kb_id is in the body, not the path), so it gates by workspace role.
+Read endpoints (GET /kb, GET /kb/{kb_id}) stay ungated — retrieval-layer /
+list trimming is P2 (FINDINGS §security trimming), out of P0 scope.
 """
 
 import logging
@@ -20,6 +33,7 @@ import httpx
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from api.middleware.acl import require_kb_acl, require_role
 from api.schemas.kb import KbConfig, KbCreate, KbMetadataPatch, KbStatus
 from indexing.populate import IndexPopulator
 from kb_management import KBAlreadyExistsError, KBNotFoundError, KBService, get_kb_service
@@ -87,7 +101,12 @@ async def list_kbs(service: KbServiceDep) -> list[KbStatus]:
     return await service.list_all()
 
 
-@router.post("/kb", response_model=KbStatus, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/kb",
+    response_model=KbStatus,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_role("admin", "editor"))],
+)
 async def create_kb(payload: KbCreate, service: KbServiceDep, request: Request) -> KbStatus:
     """Create KB + provision the per-KB Azure AI Search index (architecture.md §4.4 #5 + ADR-0018).
 
@@ -197,7 +216,11 @@ async def _cascade_delete_kb_data(kb_id: str, request: Request) -> None:
             _stdlib_logger.exception("cascade kb_acl cleanup failed kb_id=%s", kb_id)
 
 
-@router.delete("/kb/{kb_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/kb/{kb_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_kb_acl("manage"))],
+)
 async def delete_kb(kb_id: str, service: KbServiceDep, request: Request) -> None:
     """Delete KB + per-KB Azure index + cascade per-doc config/profile/acl (§4.4 #7).
 
@@ -260,7 +283,11 @@ async def delete_kb(kb_id: str, service: KbServiceDep, request: Request) -> None
         ) from exc
 
 
-@router.patch("/kb/{kb_id}/settings", response_model=KbConfig)
+@router.patch(
+    "/kb/{kb_id}/settings",
+    response_model=KbConfig,
+    dependencies=[Depends(require_kb_acl("edit"))],
+)
 async def update_kb_settings(
     kb_id: str, config: KbConfig, service: KbServiceDep, request: Request
 ) -> KbConfig:
@@ -291,7 +318,11 @@ async def update_kb_settings(
     return updated.config
 
 
-@router.post("/kb/{kb_id}/reindex", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/kb/{kb_id}/reindex",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_kb_acl("edit"))],
+)
 async def reindex_kb(kb_id: str, request: Request, service: KbServiceDep) -> dict[str, object]:
     """W46 / ADR-0043 — real KB-level reindex of every document in the KB.
 
@@ -328,7 +359,11 @@ async def reindex_kb(kb_id: str, request: Request, service: KbServiceDep) -> dic
     return await run_kb_reindex(kb_id=kb_id, request=request, service=service)
 
 
-@router.post("/kb/{kb_id}/profiles/backfill", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/kb/{kb_id}/profiles/backfill",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_kb_acl("edit"))],
+)
 async def backfill_kb_profiles(
     kb_id: str, request: Request, service: KbServiceDep
 ) -> dict[str, object]:
@@ -361,7 +396,11 @@ async def backfill_kb_profiles(
     return await run_kb_profile_backfill(kb_id=kb_id, request=request, service=service)
 
 
-@router.patch("/kb/{kb_id}", response_model=KbStatus)
+@router.patch(
+    "/kb/{kb_id}",
+    response_model=KbStatus,
+    dependencies=[Depends(require_kb_acl("edit"))],
+)
 async def update_kb_metadata(
     kb_id: str,
     patch: KbMetadataPatch,
@@ -387,7 +426,11 @@ async def update_kb_metadata(
         ) from exc
 
 
-@router.post("/kb/{kb_id}/archive", response_model=KbStatus)
+@router.post(
+    "/kb/{kb_id}/archive",
+    response_model=KbStatus,
+    dependencies=[Depends(require_kb_acl("manage"))],
+)
 async def archive_kb(kb_id: str, service: KbServiceDep) -> KbStatus:
     """W20 F5.1 — soft-archive a KB per ADR-0025 (`/kb/[id]` Settings → Danger zone).
 

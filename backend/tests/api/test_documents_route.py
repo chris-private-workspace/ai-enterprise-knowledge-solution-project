@@ -28,6 +28,8 @@ from azure.core.exceptions import ResourceNotFoundError
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api.auth.dependency import get_current_user
+from api.auth.models import AuthenticatedUser
 from api.error_handlers import register_error_handlers
 from api.routes import documents as documents_routes
 from api.routes import kb as kb_routes
@@ -167,6 +169,13 @@ def _build_app(
     if with_error_handlers:
         register_error_handlers(app)
     app.dependency_overrides[get_kb_service] = lambda: kb_service
+    # W88 P0 F5 — POST /kb is now require_role("admin","editor")-guarded + DELETE
+    # /kb require_kb_acl("manage")-guarded (only reached when include_kb_router).
+    # Override auth with a workspace admin; document-upload routes stay ungated so
+    # the override is a harmless no-op for the bulk of these tests.
+    app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
+        oid="test-admin", tid="test-tid", preferred_username="admin@test.local", role="admin"
+    )
 
     # Embedder + chunker exist only to satisfy `_ingestion_deps_or_503`;they are
     # never called when `IngestionOrchestrator` is monkeypatched.

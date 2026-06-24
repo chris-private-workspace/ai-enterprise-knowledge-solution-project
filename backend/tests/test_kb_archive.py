@@ -14,6 +14,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api.auth.dependency import get_current_user
+from api.auth.models import AuthenticatedUser
 from api.routes import kb as kb_routes
 from api.schemas.kb import KbConfig, KbCreate
 from kb_management import KBService, get_kb_service
@@ -24,6 +26,12 @@ def _build_app(kb_service: KBService) -> FastAPI:
     app = FastAPI()
     app.include_router(kb_routes.router)
     app.dependency_overrides[get_kb_service] = lambda: kb_service
+    # W88 P0 F5 — archive is now require_kb_acl("manage")-guarded; override the
+    # auth dependency with a workspace admin (admins pass require_kb_acl before
+    # the rbac_backend is read, so no backend wiring needed here).
+    app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
+        oid="test-admin", tid="test-tid", preferred_username="admin@test.local", role="admin"
+    )
     return app
 
 
