@@ -41,7 +41,11 @@ import structlog
 from azure.core.exceptions import ResourceNotFoundError
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, status
 
-from api.middleware.acl import require_kb_acl, require_role, resolve_kb_principals
+from api.middleware.acl import (
+    require_kb_acl,
+    require_role,
+    resolve_doc_principals,
+)
 from api.schemas.doc_classification import (
     ClassificationUpdateRequest,
     DocClassificationInfo,
@@ -67,6 +71,7 @@ from ingestion.profiler import DocProfile, DocumentProfiler, ProfileResult, is_s
 from ingestion.screenshots.uploader import ScreenshotUploader, download_screenshot
 from ingestion.source_store import download_source_document, upload_source_document
 from kb_management import KBNotFoundError, KBService, get_kb_service
+from kb_management.doc_acl_store import DocAclStore
 from kb_management.doc_classification_store import DocClassificationStore
 from kb_management.doc_config_store import DocConfigStore
 from kb_management.doc_profile_store import DocProfileStore
@@ -131,6 +136,10 @@ class _IngestionDeps:
     # stamps the default `internal` (a restricted tag won't survive re-ingest until
     # the store is wired); the admin tag endpoint 503s without it. production-preserve.
     doc_classification_store: DocClassificationStore | None = None
+    # ADR-0067 / W92 P3a — per-doc ACL override store. None when unwired → ingest
+    # resolves principals from KB inheritance only (resolve_doc_principals falls back),
+    # byte-identical to P2 (production-preserve / BC).
+    doc_acl_store: DocAclStore | None = None
 
 
 def _engine_or_503(request: Request) -> RetrievalEngine:
@@ -199,6 +208,8 @@ def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
     # ADR-0066 / W90 P2.3 — per-doc classification store (optional; None → ingest stamps
     # default internal, tag endpoint 503s).
     doc_classification_store = getattr(request.app.state, "doc_classification_store", None)
+    # ADR-0067 / W92 P3a — per-doc ACL override store (optional; None → KB inheritance BC).
+    doc_acl_store = getattr(request.app.state, "doc_acl_store", None)
     if embedder is None or populator is None or chunker is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -217,6 +228,7 @@ def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
         preset_override_store=preset_override_store,
         rbac_backend=rbac_backend,
         doc_classification_store=doc_classification_store,
+        doc_acl_store=doc_acl_store,
     )
 
 
@@ -901,11 +913,14 @@ async def _run_ingest_pipeline(
                 embedder=deps.embedder,
                 uploader=uploader,
             )
-            # ADR-0066 / W90 P2.1 — resolve the KB's principals (5.1 KB inheritance)
-            # so every emitted chunk carries the retrieval-layer ACL. fail-open: a
-            # backend-less ingest resolves to [] → the P2.2 filter treats empty as
-            # public (production-preserve).
-            allowed_principals = await resolve_kb_principals(deps.rbac_backend, kb_id)
+            # ADR-0067 / W92 P3a — resolve the doc's principals with replace semantics:
+            # a doc with doc_acl rows is authoritative (5.2 override); otherwise it
+            # inherits the KB ACL (5.1, P2 behaviour). doc_acl_store unwired → KB
+            # inheritance, byte-identical to P2 (production-preserve / BC). fail-open: a
+            # backend-less ingest resolves to [] → the P2.2 filter treats empty as public.
+            allowed_principals = await resolve_doc_principals(
+                deps.doc_acl_store, deps.rbac_backend, kb_id, doc_id
+            )
             # ADR-0066 / W90 P2.3 — preserve a doc's restricted tag across re-ingest /
             # reindex / backfill: read the persisted classification (admin-set via the
             # tag endpoint) and re-stamp it. No row → default "internal". Without the

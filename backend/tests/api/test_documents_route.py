@@ -37,8 +37,10 @@ from api.schemas.kb import KbConfig, KbCreate
 from ingestion.orchestrator import FailureRecord as IngFailureRecord
 from ingestion.orchestrator import IngestionResult
 from kb_management import KBService, get_kb_service
+from kb_management.doc_acl_store import InMemoryDocAclStore
 from kb_management.doc_classification_store import InMemoryDocClassificationStore
 from kb_management.storage import InMemoryKBBackend
+from storage.rbac_storage import InMemoryRbacBackend
 
 # --------------------------------------------------------------------------- #
 # Fixtures / builders
@@ -284,6 +286,64 @@ async def test_reingest_preserves_persisted_restricted_classification(
     assert resp.status_code == 202, resp.text
     # The persisted restricted tag rode into orchestrator.ingest → re-stamped on chunks.
     assert ingest_mock.await_args.kwargs["classification"] == "restricted"
+
+
+@pytest.mark.asyncio
+async def test_ingest_doc_acl_override_replaces_kb_inheritance(
+    kb_service_with_drive: KBService, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ADR-0067 / W92 P3a replace semantics — a doc with doc_acl rows stamps ITS
+    principals (not the KB's). `_run_ingest_pipeline` resolves via resolve_doc_principals."""
+    ingest_mock = _patch_orchestrator(monkeypatch)
+    populator = _populator_mock(upload_result=_FakeUploadResult(succeeded=12))
+    engine = _engine_mock(list_docs=[])
+
+    app = _build_app(kb_service=kb_service_with_drive, populator=populator, engine=engine)
+    # KB grants kb-user; the doc has its own doc_acl [doc-user] → replace.
+    rbac = InMemoryRbacBackend()
+    await rbac.add_kb_acl(
+        kb_id="drive_user_manuals", principal_type="user",
+        principal_id="kb-user", access_role="query", granted_by="admin",
+    )
+    acl_store = InMemoryDocAclStore()
+    await acl_store.add(
+        kb_id="drive_user_manuals", doc_id="vendor-manual", principal_type="user",
+        principal_id="doc-user", access_role="query", granted_by="admin",
+    )
+    app.state.rbac_backend = rbac
+    app.state.doc_acl_store = acl_store
+
+    resp = TestClient(app).post(
+        "/kb/drive_user_manuals/documents", files=_docx_files("vendor-manual.docx")
+    )
+    assert resp.status_code == 202, resp.text
+    # doc_acl override wins (replace) — NOT the KB's [kb-user].
+    assert ingest_mock.await_args.kwargs["allowed_principals"] == ["doc-user"]
+
+
+@pytest.mark.asyncio
+async def test_ingest_without_doc_acl_inherits_kb(
+    kb_service_with_drive: KBService, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """BC — a doc with no doc_acl rows inherits the KB ACL (P2 5.1 behaviour)."""
+    ingest_mock = _patch_orchestrator(monkeypatch)
+    populator = _populator_mock(upload_result=_FakeUploadResult(succeeded=12))
+    engine = _engine_mock(list_docs=[])
+
+    app = _build_app(kb_service=kb_service_with_drive, populator=populator, engine=engine)
+    rbac = InMemoryRbacBackend()
+    await rbac.add_kb_acl(
+        kb_id="drive_user_manuals", principal_type="user",
+        principal_id="kb-user", access_role="query", granted_by="admin",
+    )
+    app.state.rbac_backend = rbac
+    app.state.doc_acl_store = InMemoryDocAclStore()  # empty → inherit KB
+
+    resp = TestClient(app).post(
+        "/kb/drive_user_manuals/documents", files=_docx_files("vendor-manual.docx")
+    )
+    assert resp.status_code == 202, resp.text
+    assert ingest_mock.await_args.kwargs["allowed_principals"] == ["kb-user"]
 
 
 @pytest.mark.asyncio

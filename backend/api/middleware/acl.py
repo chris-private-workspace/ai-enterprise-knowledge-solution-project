@@ -40,6 +40,7 @@ from api.auth.dependency import get_current_user
 from api.auth.models import AuthenticatedUser
 
 if TYPE_CHECKING:
+    from kb_management.doc_acl_store import DocAclStore
     from storage.rbac_storage import RbacBackend
 
 
@@ -147,6 +148,28 @@ async def resolve_kb_principals(
         return []
     entries = await rbac_backend.list_kb_acl(kb_id)
     return [entry.principal_id for entry in entries]
+
+
+async def resolve_doc_principals(
+    doc_acl_store: DocAclStore | None,
+    rbac_backend: RbacBackend | None,
+    kb_id: str,
+    doc_id: str,
+) -> list[str]:
+    """The `allowed_principals` to stamp onto a DOCUMENT's chunks (ADR-0067 G6, W92 P3a).
+
+    ADR-0067 **replace** semantics (DG-P3-A): a doc with ANY `doc_acl` row is
+    authoritative for its own access — those rows' principals are returned and the
+    doc no longer inherits the KB ACL. A doc with NO rows inherits the KB
+    (`resolve_kb_principals`, the P2 5.1 behaviour). `doc_acl_store is None` (unwired,
+    or some tests) → KB inheritance too — so an ingest without the doc-ACL store wired
+    is byte-identical to P2 (production-preserve / BC).
+    """
+    if doc_acl_store is not None:
+        entries = await doc_acl_store.list_for_doc(kb_id, doc_id)
+        if entries:
+            return [entry.principal_id for entry in entries]
+    return await resolve_kb_principals(rbac_backend, kb_id)
 
 
 def principals_for_user(user: AuthenticatedUser) -> list[str] | None:

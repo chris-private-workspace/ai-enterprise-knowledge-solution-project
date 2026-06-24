@@ -31,6 +31,8 @@ AuditAction = Literal[
     # (kb_acl CRUD endpoint) — F7 adds the Literal only.
     "kb.access.granted",
     "kb.config.changed",
+    # W92 P3a — doc_acl CRUD (per ADR-0067 G6 document-level ACL override).
+    "doc.access.granted",
 ]
 
 

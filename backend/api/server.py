@@ -29,6 +29,7 @@ from api.routes import (
     config_test,
     conversations,
     debug,
+    doc_acl,
     doc_config,
     documents,
     feedback,
@@ -58,6 +59,7 @@ from generation.synthesizer import Synthesizer
 from indexing.populate import IndexPopulator  # noqa: E402 — truststore-after-imports
 from ingestion.chunker.layout_aware import LayoutAwareChunker  # noqa: E402
 from ingestion.embedding.azure_openai_embedder import AzureOpenAIEmbedder
+from kb_management.doc_acl_store import make_doc_acl_store  # noqa: E402
 from kb_management.doc_classification_store import (  # noqa: E402
     make_doc_classification_store,
 )
@@ -141,6 +143,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # restricted tag across re-ingest; written by the admin tag endpoint (which also
     # merge-restamps the live index).
     app.state.doc_classification_store = make_doc_classification_store(settings)
+
+    # ADR-0067 / W92 P3a — per-document ACL override store. Postgres table
+    # `document_acls` when DATABASE_URL is set, else in-memory (mirrors the
+    # doc_classification_store pattern). Read by `_run_ingest_pipeline` via
+    # `resolve_doc_principals` (replace semantics: doc rows override KB inheritance);
+    # written by the `/kb/{kb_id}/docs/{doc_id}/acl` admin endpoints (which also
+    # re-stamp the live index).
+    app.state.doc_acl_store = make_doc_acl_store(settings)
 
     # W24-wave-c1 F1 + F2 — Key Vault provider + admin provider config backend.
     # Both factories pick lazy-imported production impls only when their env
@@ -407,6 +417,9 @@ app.include_router(groups.router)
 # W24c F8 — /kb/{id}/acl per-KB ACL per ADR-0027. Router self-gated by
 # require_kb_acl("manage") — no _auth (the guard chains get_current_user).
 app.include_router(kb_acl.router)
+# W92 P3a — /kb/{id}/docs/{docId}/acl per-doc ACL override per ADR-0067. Same
+# self-gated require_kb_acl("manage") pattern as kb_acl.
+app.include_router(doc_acl.router)
 
 
 # ── Server launcher (BUG-008) ──────────────────────────────────────────────
