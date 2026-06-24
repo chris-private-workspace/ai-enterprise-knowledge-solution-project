@@ -98,9 +98,28 @@
 - **ruff clean**(kb.py + acl.py + 全測試改動)。
 - **端到端 live smoke**:pytest 209 已充分覆蓋守衛行為(admin pass / 非 admin 擋 / grant 階級);running backend 加守衛需重啟先 pick up(per `project_stale_backend_no_reload`,reload=False)→ **live 重啟 smoke surface 給用戶決定**(重啟屬大動作 + pytest 已證,不自行重啟)。
 
-### 待決(surface 給用戶)
-1. **documents.py 4 寫端點守衛**:相鄰同類缺口(文件級上傳/刪除/reindex/profile 無 ACL)。plan F5 字面=「KB 端點」(kb.py),按 R3 不自行擴範圍 → 建議納入 P0 F5 補完(`require_kb_acl("edit")` 直接適用 + test_documents_route 已 wire admin override 低成本)或留 P1,等用戶一句話定。
-2. **端到端 live smoke**:是否重啟 backend 做 live 驗證(pytest 已充分,重啟是大動作)。
+### F5b documents.py 守衛 + F6b live smoke(2026-06-24 ✅ 完成,2 待決均 resolve)
+**用戶 2026-06-24 拍板**:① documents 守衛 = 納入 P0 補完 ② live smoke = 而家重啟做。
 
-### Carry-over
-- 上述兩待決 + TRACKER/FINDINGS 基準更新(closeout 同步)。
+**F5b — documents.py 4 寫端點補守衛**(commit `a333884`):
+- `PUT .../docs/{id}/profile` + `POST .../documents` + `DELETE .../documents/{id}` + `POST .../documents/{id}/reindex` 全加 `require_kb_acl("edit")`(文件級內容操作,對齊 kb.edit_config / kb.trigger_reindex matrix lane;admin 無條件過)。GET listing / outline / image-proxy 不守衛(P2)。
+- 測試:`test_kb_route_acl.py` 加 4 個 documents-403 + 1 grant-clears-guard;`test_doc_profile_override.py` `_build_app` wire admin override(PUT profile 守衛)。74 pass;ruff clean。
+
+**F6b — 端到端 live smoke**(用戶選重啟):
+- 重啟 backend:殺 dual-process(parent 49392 venv / child 27628 system python = port owner)→ port 8000 釋放 → venv python 啟新 → READY ~56s(/health 200)。**虛驚一場**:殺後一個背景任務 failed exit 127 = 被殺嘅 F2 backend(27628)原始背景任務,**非另一 session 衝突**(per `project_multi_session_restart_collision` 先停手查清楚再續)。
+- live smoke 7 case(用 `__smoke_nonexistent__` kb_id 避副作用):
+
+  | case | 結果 | 判定 |
+  |---|---|---|
+  | POST archive 無 header | 401 | 寫端點守衛 active ✓ |
+  | POST archive admin token | 404 | admin 過守衛(KB 不存在,非 403)✓ |
+  | POST /kb 無 header | 401 | create `require_role` active ✓ |
+  | DELETE documents 無 header | 401 | documents 守衛 active ✓ |
+  | DELETE documents admin token | 404 | admin 過 documents 守衛 ✓ |
+  | GET /kb 無 header | 401 | `server.py` router-level auth(既有,非 F5)|
+  | GET /kb admin token | 200 | 讀端點對 authenticated 放行,無 per-KB 要求 ✓ |
+
+- **結論**:F5/F5b 守衛喺 running server **live 生效**;讀寫分層正確(讀=router-level `get_current_user` 既有 / 寫=`require_kb_acl` + `require_role` 新);admin(前端 mock auth)過守衛 → **前端操作零 regression**。
+
+### P0 完全完成(F1-F6 + F5b + F6b)
+M1「地基活」+ 寫操作受守衛達成;2 個 surface 待決均 resolve。**下一步 = P1 威脅模型 + ADR-0066**(rolling JIT,本期收尾才建)。

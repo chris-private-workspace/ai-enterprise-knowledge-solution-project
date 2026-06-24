@@ -32,10 +32,11 @@
 - [x] 盤點 KB 寫端點守衛覆蓋 → kb.py 9 端點(7 寫 + 2 讀)全無守衛;documents.py 4 寫端點亦無守衛(相鄰缺口,surface 留決)
 - [x] 補缺口 → kb.py 7 寫端點加守衛:create=require_role("admin","editor");delete/archive=require_kb_acl("manage");settings/reindex/backfill/metadata=require_kb_acl("edit")(映射依 rbac_storage permission matrix)
 - [x] 無權帳號被擋(測試) → 新 test_kb_route_acl.py 18 測試(403/401/admin pass/grant pass)+ 4 受影響整合測試 wire admin override 零 regression
+- [x] **F5b documents.py 4 寫端點補守衛**(用戶 2026-06-24 選 P0-extend)→ upload/delete/reindex/profile-override 加 `require_kb_acl("edit")`;test_kb_route_acl 加 4 documents-403 + grant-clears-guard;test_doc_profile_override wire admin;74 pass(commit `a333884`)
 
 ## F6 Phase Gate + 端到端驗證
 - [x] G1–G5 逐項驗 → G1 環境一致(F1)/ G2 bootstrap+測試(F2)/ G3 badge+H7(F3)/ G4 /users 寫操作(F4)/ G5 KB 守衛+測試(F5)全綠
 - [x] RBAC / auth pytest 全綠(≥ 160)→ **209 passed / 8 skipped / 0 failed**
-- [ ] 🚧 端到端 live smoke 走通 → **deferred**:pytest 209 已充分覆蓋守衛行為(admin pass / 非 admin 擋 / grant 階級);running backend 加守衛需重啟 pick up(reload=False),重啟屬大動作 → surface 給用戶決定是否做 live 重啟 smoke(target:用戶確認後或 P1 kickoff)
+- [x] 端到端 live smoke 走通 → **F6b 完成**(用戶 2026-06-24 選重啟):重啟 backend(殺 dual-process 49392/27628 → READY ~56s,新進程含 F5/F5b 守衛)→ live smoke 6+1 case 全符:寫端點無 header **401**(守衛 active)/ admin token **過守衛**(404 KB 不存在,非 403)/ 讀端點帶 token **200**(authenticated 放行,無 per-KB 要求);守衛 running server live 生效確認
 - [x] ruff clean → kb.py + acl.py + 全測試改動 All checks passed
 - [x] P0 closeout + 更新 TRACKER + FINDINGS 基準

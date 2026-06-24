@@ -12,7 +12,7 @@
 | 階段 | 內容 | 狀態 | 備註 |
 |---|---|---|---|
 | 規劃 | 路線圖 + P0 計劃 + 報告 + 紀錄 + 文件整合 | ✅ 完成 | 已 commit + push |
-| **P0** | 基礎校正 + W24c 收尾 | ✅ **核心完成** | 2026-06-24 F1-F6 全綠(209 pytest);2 項 surface 待決(documents 守衛 / live smoke) |
+| **P0** | 基礎校正 + W24c 收尾 | ✅ **完成** | 2026-06-24 F1-F6 + F5b + F6b 全綠(209 pytest + live smoke);2 待決均 resolve |
 | P1 | 威脅模型 + 目標架構 + ADR-0066 | 🔲 未開始 | 依賴 P0 |
 | P2 | 檢索層文件級存取控制 | 🔲 未開始 | 依賴 P1;可能係上線先決 |
 | P3 | 文件/資料夾級細粒度授權 | 🔲 未開始 | 依賴 P2 |
@@ -43,9 +43,11 @@
 - [x] F3 前端硬編「Workspace Admin」badge → 讀真 role — `useRole()` + 複用 `RoleBadge`(commit `b4cfceb`);playwright 兩處驗
 - [x] F4 `/users` 寫操作接通(改 role / 邀請 / 停用)— InviteDialog/RowActionMenu/SuspendDialog 接 `usersApi`(commit `7ff7588`);①讀 ②設計 ③mockup ④前端對齊 + H7 verify
 - [x] F5 KB endpoints 補接 `require_kb_acl` — kb.py 7 寫端點守衛(映射 permission matrix)+ 18 新測試 + 4 整合測試 wire admin;209 RBAC/auth pytest 全綠
-- [x] F6 Phase Gate 驗證 — G1-G6 綠(209 passed / 8 skipped)+ ruff + mypy;🚧 端到端 live smoke deferred(pytest 已充分,重啟大動作 surface)
+- [x] **F5b** documents.py 4 寫端點補 `require_kb_acl("edit")`(用戶選 P0-extend,commit `a333884`,74 pass)
+- [x] F6 Phase Gate 驗證 — G1-G6 綠(209 passed / 8 skipped)+ ruff + mypy
+- [x] **F6b** 端到端 live smoke(用戶選重啟,重啟 backend READY ~56s + 7 case 驗守衛 live 生效)
 - [x] P0 closeout + 更新本 TRACKER + `FINDINGS.md` 基準
-- **待決(surface)**:① documents.py 4 寫端點守衛(相鄰缺口,納 P0 補完 vs 留 P1)② 端到端 live smoke 是否重啟 backend 做
+- **2 待決均 resolve(2026-06-24)**:① documents.py 守衛已補(F5b)② live smoke 已做(F6b)
 
 ### P1 — 威脅模型 + 目標架構 + ADR-0066(🔲 未開始)
 - [ ] 威脅模型 + 需求(資料分類 / 用戶類型 / 合規 / 租戶數)
@@ -120,6 +122,7 @@
 | 2026-06-23 | 方案 A 整合:抽 `FINDINGS.md` 單一來源、狀態總覽去重引用、文件索引更新為 enterprise-rbac/ 新結構 | 文件整合 |
 | 2026-06-24 | P0 flip active(用戶批准)+ 重建 W88 三件套(OneDrive 吞文件後)+ 修 broken reference;F1 環境基準實測(disk `rbac.py` 已自愈追上 HEAD) | P0 開工 |
 | 2026-06-24 | **P0 F1-F6 核心完成** — F5 KB 寫端點補 RBAC 守衛(映射 permission matrix)+ F6 Phase Gate(209 RBAC/auth pytest 全綠 + ruff + mypy)+ closeout;M1 達成。2 待決 surface(documents 守衛擴充 / 端到端 live smoke) | P0 核心完成 |
+| 2026-06-24 | **P0 完全完成** — F5b documents.py 4 寫端點補 `require_kb_acl("edit")`(commit `a333884`)+ F6b 重啟 backend 端到端 live smoke(7 case 驗守衛 live 生效);2 待決均 resolve | P0 完成 |
 
 ---
 
