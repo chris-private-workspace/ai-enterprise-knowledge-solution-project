@@ -203,6 +203,38 @@ async def test_synthesize_threads_coverage_into_system_prompt() -> None:
     assert "COVERAGE" in captured["messages"][0]["content"]
 
 
+# --------------------------------------------------------------------------- #
+# T6 — per-query override wiring (F4 A/B lever): QueryRequest -> PerQueryOverrides
+# --------------------------------------------------------------------------- #
+
+
+def test_query_request_synthesis_overrides_default_none() -> None:
+    # chat path sends neither → production-preserve (inherit per-KB / global).
+    from api.routes.query import _per_query_from_payload
+    from api.schemas.query import QueryRequest
+
+    pq = _per_query_from_payload(QueryRequest(query="q", kb_id="x"))
+    assert pq.answer_detail is None
+    assert pq.enable_complete_coverage is None
+
+
+def test_query_request_synthesis_overrides_flow_to_effective_config() -> None:
+    # the A/B harness arm B sets both → effective config resolves to detailed + ON.
+    from api.routes.query import _per_query_from_payload
+    from api.schemas.query import QueryRequest
+
+    pq = _per_query_from_payload(
+        QueryRequest(
+            query="q", kb_id="x", answer_detail="detailed", enable_complete_coverage=True
+        )
+    )
+    assert pq.answer_detail == "detailed"
+    assert pq.enable_complete_coverage is True
+    eff = resolve_effective_config(_settings(), kb_config=None, per_query=pq)
+    assert eff.answer_detail == "detailed"
+    assert eff.enable_complete_coverage is True
+
+
 @pytest.mark.asyncio
 async def test_synthesize_coverage_off_no_rule() -> None:
     captured: dict = {}
