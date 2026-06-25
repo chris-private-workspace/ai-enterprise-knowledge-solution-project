@@ -19,8 +19,8 @@
 - [x] re-stamp / 索引影響確認:**零**(P5 不動 retrieval,north-star §15 by construction no-op)
 
 ## F3 ADR-0068 草擬 + Accept
-- [ ] `docs/adr/0068-admin-tiering-and-access-governance.md` 撰寫(Context / Decision / Alternatives / Consequences / References)→ **Status: Proposed** + README index 加 0068 + next NNNN → 0069
-- [ ] DG-P5-A/B/C/D resolution 寫入 ADR Decision(用戶 AskUserQuestion 拍板)
+- [x] `docs/adr/0068-admin-tiering-and-access-governance.md` 撰寫(Context / Decision / Alternatives / Consequences / References)→ **Status: Proposed** + README narrative 加 0068 + next NNNN → 0069
+- [x] DG-P5-A/B/C/D resolution 寫入 ADR Decision(用戶 2026-06-25 AskUserQuestion 拍板:DG-P5-A 加 role / B1 只加 auditor / C2 報告+覆核標記 / D Tier 1.5 暫不 implement)
 - [ ] decision owner review → **Accept**(用戶以 decision owner 身份)→ ADR Status Proposed→Accepted + README 更新(次序鐵律 5 satisfied,P5-impl 解鎖)
 
 ## Phase Gate(收尾)

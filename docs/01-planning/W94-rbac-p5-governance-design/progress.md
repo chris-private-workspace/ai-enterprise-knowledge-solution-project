@@ -27,9 +27,15 @@
 - **F1** `threat-model-p5.md`:G8 職責分立(`admin` 單層全權 = 被監察者兼監察者,情景 A 監察盲點 + B 過度授權)+ G9 存取覆核(權限永久有效無 recert,情景 C privilege creep + D 離職遺留)+ 企業 SoD/access-review 對標差距表 + Explore「Tier 2 上線先決」誤判更正(上線安全先決已 P2 達成,P5 = post-launch Tier 1.5)。
 - **F2** `target-architecture-p5.md`:① auditor role(DG-P5-A 推薦 A 加 `RoleKey` 第 5 值 + matrix 唯讀 column + 新 `cfg.view_access_review` + guard 復用 `require_role`)+ 分層 push-back(DG-P5-B 推薦 B1 只加 auditor;owner=`kb_acl.manage` 已近似 / super-admin=無真實 driver speculative,留後期)② access-review report(`GET /admin/access-review` 建喺既有 store)+ re-certify(DG-P5-C 推薦 C2 報告 + `access_reviews` 標記 + audit action `access.reviewed`,無 workflow)。影響評估:零索引零檢索、additive、現有 4 role byte-identical。
 
+### F3 ADR-0068 Proposed(✅ 2026-06-25)
+- 用戶 AskUserQuestion 拍板三 DG 全推薦:**DG-P5-A 加 `RoleKey` 第 5 值** / **DG-P5-B 只加 auditor**(super-admin/owner push-back 成立留後期)/ **DG-P5-C 報告 + 覆核標記**(無 workflow);DG-P5-D = Tier 1.5 暫不 implement(用戶先前揀)。
+- 寫 `docs/adr/0068-admin-tiering-and-access-governance.md` **Status: Proposed**(Context / Decision 6 點 / Alternatives / Consequences / References)+ README narrative 加 0068 entry + next NNNN → 0069。
+- DG resolution 全寫入 ADR Decision。**剩 decision owner Accept**(等用戶以 decision owner 身份拍板,同 ADR-0066/0067 模式)。
+
 ### 待續(本 phase)
-- F3:AskUserQuestion 問 DG-P5-A/B/C/D → 寫 ADR-0068 Proposed(含 DG resolution)→ decision owner Accept → 更新 TRACKER + retro。**Accept = 拍板設計,≠ implement**(implementation = P5-impl,用戶另批)。
+- decision owner Accept ADR-0068 → Proposed→Accepted + README 更新 + 更新 `enterprise-rbac/TRACKER.md`(P5 + M5)+ Phase Gate + retro。**Accept = 拍板設計,≠ implement**(implementation = P5-impl,用戶另批)。
 
 ### Commits
 - (kickoff)`eb72f02` docs(planning): kickoff W94 P5 governance-design phase artifacts
-- (本 entry)docs(planning): W94 P5 F1 威脅模型 + F2 目標架構(G8/G9 + auditor + access-review,含分層 push-back)
+- (F1+F2)`a05a08f` docs(planning): W94 P5 F1 威脅模型 + F2 目標架構
+- (本 entry)docs(adr): ADR-0068 admin tiering + access governance(Proposed)
