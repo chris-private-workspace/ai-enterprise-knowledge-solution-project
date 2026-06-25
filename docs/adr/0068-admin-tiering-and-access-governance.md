@@ -1,8 +1,8 @@
 # ADR-0068: Admin Tiering + Access Governance — Auditor Role + Access Review(管理權分級 + 存取治理 — 稽核員角色 + 存取覆核)
 
 **Date**: 2026-06-25
-**Status**: Proposed
-**Approver**: (pending — decision owner)
+**Status**: Accepted
+**Approver**: Chris(2026-06-25 — 用戶 session 行使 decision owner 拍板 Accept;DG-P5-A/B/C/D resolved → P5 implementation 解鎖,H1 + H4;依 DG-P5-D 暫不 implement,等用戶另批)
 
 > Enterprise RBAC track P5 產出。在 ADR-0027(W24c RBAC,4 role + permission matrix + audit log)之上加 **職責分立**(auditor 唯讀稽核角色)+ **存取覆核**(access review report + re-certify)。範圍由用戶 2026-06-25 拍板 = 核心 + 存取覆核;JIT / break-glass / 自動回收延後 Tier 2。
 > 技術基礎:[`../01-planning/W94-rbac-p5-governance-design/threat-model-p5.md`](../01-planning/W94-rbac-p5-governance-design/threat-model-p5.md)(F1 G8/G9)+ [`target-architecture-p5.md`](../01-planning/W94-rbac-p5-governance-design/target-architecture-p5.md)(F2)。
