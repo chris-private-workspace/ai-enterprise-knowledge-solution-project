@@ -1,7 +1,7 @@
 # Enterprise RBAC — 項目工作追蹤清單(TRACKER)
 
 > **用途**:呢個獨立項目嘅**跨階段持續追蹤入口**。每次有進展 → 勾選對應項 + 更新狀態 + 補變更日誌。
-> **最後更新**:2026-06-23 ・ **Owner**:Chris(技術 Lead)
+> **最後更新**:2026-06-25 ・ **Owner**:Chris(技術 Lead)
 > **狀態圖例**:🔲 未開始 ・ 🟡 進行中 ・ ✅ 完成 ・ ⏸️ 待批准 ・ 🚫 阻塞 ・ ⏭️ 延後
 > **現狀 / 實測 / 缺口詳情**:見 [`FINDINGS.md`](./FINDINGS.md)(本檔只追蹤狀態,事實不複製)
 
@@ -14,14 +14,14 @@
 | 規劃 | 路線圖 + P0 計劃 + 報告 + 紀錄 + 文件整合 | ✅ 完成 | 已 commit + push |
 | **P0** | 基礎校正 + W24c 收尾 | ✅ **完成** | 2026-06-24 F1-F6 + F5b + F6b 全綠(209 pytest + live smoke);2 待決均 resolve |
 | **P1** | 威脅模型 + 目標架構 + ADR-0066 | ✅ **完成** | 2026-06-24 F1-F3 + ADR-0066 **Accepted**(用戶 decision owner 拍板);M2 達成 |
-| **P2** | 檢索層文件級存取控制 | 🟡 **進行中** | 2026-06-24 kickoff(W90,ADR-0066 解鎖);P2.0-P2.3 分段 |
-| P3 | 文件/資料夾級細粒度授權 | 🔲 未開始 | 依賴 P2 |
-| P4 | 群組存取(成員 + 繼承) | 🔲 未開始 | 真實同步隨 SSO 延後 |
-| P5 | 管理權分級 + 存取治理 | 🔲 未開始 | 依賴 P3 |
+| **P2** | 檢索層文件級存取控制 | ✅ **完成** | 2026-06-24 P2.0-P2.3 全完成(W90,檢索層 KB + classification trimming 上線就緒,DG4 達成;commit `5fca451`/`0d4fb20`)|
+| **P3** | 文件/資料夾級細粒度授權 | ✅ **完成** | 2026-06-24 W92 P3a doc_acl override(G6,commit `041813b`)|
+| **P4** | 群組存取(成員 + 繼承) | ✅ **完成** | 2026-06-24 W93 P3b group 繼承(G7,commit `433ab74`,併入 P3-impl;真 SCIM 同步仍 Tier 2 延後)|
+| **P5** | 管理權分級 + 存取治理 | 🟡 **設計完成** | 2026-06-25 W94 設計 + **ADR-0068 Accepted**(auditor role + access review,範圍核心 + 存取覆核);implementation 待用戶另批(Tier 1.5)|
 | P6(選) | 屬性式權限 / 政策引擎 | ⏭️ 延後 | 規模化才需 |
 | SSO/SCIM | 真實 SSO + 自動供應 | ⏭️ 延後 | 用戶決定後加 |
 
-**整體定調(2026-06-24 更新)**:規劃完成;**P0 核心完成 — 地基已活**(首位管理員 bootstrap 生效 / 角色正確解析 / `/users` + KB 寫操作可用且受 RBAC 守衛,209 pytest 為證)。企業核心(檢索層安全 / 群組 / SSO)仍 0%,待 P1 拍板。**下一步:用戶決 2 待決 + P1 威脅模型 + ADR-0066。**
+**整體定調(2026-06-25 更新)**:**P0-P4 全完成 + P5 設計拍板**。安全核心已就緒 —— 檢索層文件級 security trimming(P2)+ 文件級 doc_acl override(P3 / G6)+ 群組繼承(P4 / G7)上線就緒,**Tier 1 上線安全先決(DG4)達成**。P5 治理層(auditor 職責分立 + 存取覆核)設計拍板(ADR-0068 Accepted),依 Tier 1.5 **暫不 implement**。**剩餘:P5-impl(等用戶另批)/ P6 + SSO/SCIM(Tier 2 延後)/ Production launch 待 Track A IT cred。**
 
 ---
 
@@ -71,9 +71,10 @@
 - [ ] 群組成員模型 + 繼承解析
 - [ ] 手動 / 匯入成員
 
-### P5 — 管理權分級 + 治理(🔲 未開始)
-- [ ] 角色分立(超管 / 管理 / 稽核員 / 擁有者)
-- [ ] 存取覆核 + 生命週期(JIT / 回收 / break-glass)
+### P5 — 管理權分級 + 治理(🟡 設計完成 — W94 + ADR-0068 Accepted 2026-06-25;impl 待用戶另批)
+- [x] **設計 + ADR-0068 Accepted**(W94:F1 威脅模型 G8 職責分立 / G9 存取覆核 + F2 目標架構 + ADR)
+- [ ] 角色分立(超管 / 管理 / 稽核員 / 擁有者)→ **設計收窄:只加 auditor 唯讀稽核**(super-admin/owner push-back 成立留後期,per DG-P5-B);P5-impl 等用戶另批
+- [ ] 存取覆核 + 生命週期(JIT / 回收 / break-glass)→ **設計收窄:access-review report + re-certify 標記**(JIT/回收/break-glass 延後 Tier 2,per DG-P5-C/D);P5-impl 等用戶另批
 
 ### P6(選)/ SSO(⏭️ 延後)
 - [ ] P6 評估角色是否爆炸 → 決定政策引擎
@@ -85,9 +86,9 @@
 
 - [x] **M1** P0 核心完成 — 地基活(登入正常 / 角色正確 / 寫操作可用且受守衛)✅ 2026-06-24(live smoke + documents 守衛 2 項 surface 待決)
 - [x] **M2** ADR-0066 Accepted — 目標架構 + Tier scope 拍板 ✅ 2026-06-24(用戶 decision owner 拍板)
-- [ ] **M3** P2 完成 — 檢索層文件級安全(企業安全先決達成)
-- [ ] **M4** 細粒度授權 + 群組(P3+P4)可用
-- [ ] **M5** 治理層(P5)可用 — 達企業級營運水平
+- [x] **M3** P2 完成 — 檢索層文件級安全(企業安全先決達成)✅ 2026-06-24(P2.0-P2.3,DG4 達成)
+- [x] **M4** 細粒度授權 + 群組(P3+P4)可用 ✅ 2026-06-24(P3a doc_acl G6 + P3b group G7)
+- [ ] **M5** 治理層(P5)可用 — 達企業級營運水平(設計 ADR-0068 Accepted 2026-06-25;**impl 待用戶另批**)
 
 ---
 
@@ -126,6 +127,7 @@
 | 2026-06-24 | **P0 完全完成** — F5b documents.py 4 寫端點補 `require_kb_acl("edit")`(commit `a333884`)+ F6b 重啟 backend 端到端 live smoke(7 case 驗守衛 live 生效);2 待決均 resolve | P0 完成 |
 | 2026-06-24 | **P1 核心完成** — kickoff(`284e9f0`)+ DG1/DG2/DG4 resolution(`2d3138b`)+ F1 威脅模型(`294080f`)+ F2 目標架構(`fc704a0`)+ F3 **ADR-0066 Proposed**;DG5 Accept 待 Chris(P2 前置,次序鐵律 5) | P1 核心完成 |
 | 2026-06-24 | **P1 完全完成 + P2 解鎖** — 用戶 decision owner 拍板 **Accept ADR-0066**(Proposed→Accepted),DG5 resolved + M2 達成;P0+P1 15 commits push origin/main;**W90 P2 kickoff**(檢索層文件級 ACL,P2.0-P2.3) | P1 完成 / P2 開工 |
+| 2026-06-25 | **P2-P4 完成 sync + P5 設計拍板** — TRACKER stale 更新(P2.0-P2.3 / P3a G6 / P3b G7 全完成,M3 + M4 達成);W94 P5 設計 phase + **ADR-0068 Accepted**(auditor role 職責分立 + access review,範圍核心 + 存取覆核,JIT/break-glass 延後 Tier 2);P5-impl 待用戶另批(Tier 1.5) | P5 設計完成 |
 
 ---
 
