@@ -13,12 +13,13 @@
 - [x] nearest 行為測試:多錨點 spread / 單錨點 nearest≡last 等價 / cap per-anchor 互動（4 新測試）
 - [x] pytest（67 passed)+ ruff（clean)+ mypy --strict（clean,`--explicit-package-bases`）
 
-## F2 — wire knob 經 pipeline 兩個注入點
+## F2 — wire knob 經 pipeline 兩個注入點 ✅(2026-06-26)
 
-- [ ] `/query`(query.py inject 呼叫處)帶 `nearest=eff.section_anchor_nearest`
-- [ ] `/query/stream`(`answer_post_process` callback)帶同一 knob
-- [ ] off bit-identical route 測試(兩 path,knob OFF → 輸出同 pre-W98）
-- [ ] try/except graceful 保留(注入失敗 → 原 answer)
+- [x] `/query`(query.py:529)帶 `nearest=effective.section_anchor_nearest`
+- [x] `/query/stream`(`_inject_stream_answer` callback,query.py:714)帶同一 knob
+- [x] off bit-identical 覆蓋:effective_config 四層 resolve 測試(5 個,default False)+ 既有 route 測試全過(70 passed,default 行為不變)+ F1 function byte-identical(W75 既有 pattern:無獨立 route inject 測試,靠 effective_config + function 層)
+- [x] try/except graceful 保留(未碰;注入失敗 → 原 answer)
+- _note_:mypy query.py 既有 81-error baseline(line 82/203/723/767 pre-existing,非本改動;529/714 唔在 list)→ §1.3 surgical 唔掂無關 error
 
 ## F3 — cap 互動 + drive-images-1 config 決定
 

@@ -526,6 +526,7 @@ async def execute_query_pipeline(
                 answer_text,
                 citations,
                 max_per_anchor=effective.section_anchor_max_per_anchor,
+                nearest=effective.section_anchor_nearest,  # W98 / ADR-0056 段②d leaf 級
             )
         except Exception as exc:  # noqa: BLE001 — graceful degradation
             logger.warning(
@@ -710,6 +711,7 @@ async def query_stream(
                 answer,
                 citations,
                 max_per_anchor=effective.section_anchor_max_per_anchor,
+                nearest=effective.section_anchor_nearest,  # W98 / ADR-0056 段②d leaf 級
             )
         except Exception as exc:  # noqa: BLE001 — graceful degradation
             logger.warning(
