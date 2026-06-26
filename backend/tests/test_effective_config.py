@@ -523,3 +523,48 @@ def test_w75_anchor_cap_per_query_wins_over_all_layers() -> None:
     pq = PerQueryOverrides(section_anchor_max_per_anchor=3)
     eff = resolve_effective_config(s, kb_config=kb, doc_config=dc, per_query=pq)
     assert eff.section_anchor_max_per_anchor == 3
+
+
+# --------------------------------------------------------------------------- #
+# W98 / ADR-0056 段②d leaf 級 — section_anchor_nearest four-layer resolution
+# --------------------------------------------------------------------------- #
+
+
+def test_w98_nearest_global_default_false_inherited() -> None:
+    """Zero-regression: global default False; kb_config=None / all-None resolve False
+    (chapter-last, pre-W98 behaviour)."""
+    s = _settings()
+    assert s.section_anchor_nearest is False
+    assert resolve_effective_config(s, kb_config=None).section_anchor_nearest is False
+    assert resolve_effective_config(s, kb_config=KbConfig()).section_anchor_nearest is False
+
+
+def test_w98_nearest_per_kb_on_overrides_global() -> None:
+    s = _settings()
+    kb = KbConfig(section_anchor_nearest=True)
+    assert resolve_effective_config(s, kb_config=kb).section_anchor_nearest is True
+
+
+def test_w98_nearest_per_doc_overrides_per_kb() -> None:
+    s = _settings()
+    kb = KbConfig(section_anchor_nearest=True)
+    dc = DocConfig(section_anchor_nearest=False)
+    eff = resolve_effective_config(s, kb_config=kb, doc_config=dc)
+    assert eff.section_anchor_nearest is False
+
+
+def test_w98_nearest_per_query_wins_over_all_layers() -> None:
+    s = _settings()
+    kb = KbConfig(section_anchor_nearest=False)
+    dc = DocConfig(section_anchor_nearest=False)
+    pq = PerQueryOverrides(section_anchor_nearest=True)
+    eff = resolve_effective_config(s, kb_config=kb, doc_config=dc, per_query=pq)
+    assert eff.section_anchor_nearest is True
+
+
+def test_w98_nearest_legacy_kb_config_dict_parses_none() -> None:
+    """A persisted pre-W98 config dict without the key reconstructs with None ->
+    inherits global False (chapter-last)."""
+    kb = KbConfig.model_validate({"default_top_k": 50})
+    assert kb.section_anchor_nearest is None
+    assert resolve_effective_config(_settings(), kb_config=kb).section_anchor_nearest is False

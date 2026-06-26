@@ -33,7 +33,13 @@
 - **驗證**:`67 passed`（test_section_anchor_markers + test_effective_config + test_doc_profile_override + test_profile_routing)+ ruff clean + mypy --strict clean(`--explicit-package-bases`，項目無 mypy config)。
 - **零行為改動**:default OFF → production 與 pre-W98 bit-identical(H1 production-preserve 達成)。
 
-**Next**:F2（wire knob 經 effective_config → `/query` + `/query/stream` 兩注入點,off bit-identical route 測試）。**未開 —— 等用戶指示繼續定 pause**。
+**F2 落地**:
+- 兩個注入點各加 `nearest=effective.section_anchor_nearest`：`/query`（query.py:529)+ `/query/stream` `_inject_stream_answer` callback（query.py:714)。try/except graceful 未碰。
+- 測試:`test_effective_config.py` 加 5 個 `section_anchor_nearest` 四層 resolve 測試（global default False / per-KB / per-DOC / per-query wins / legacy dict None）。**70 passed**（effective_config + query_per_kb_config + query_doc_config_overlay + section_anchor_markers)+ ruff clean。
+- **off bit-identical**:default resolve False（測試）+ 既有 route 測試全過（行為不變）+ F1 function byte-identical（mirror W75 既有 pattern:無獨立 route inject 測試）。
+- **mypy note**:query.py 既有 81-error baseline（line 82/203/723/767 等 pre-existing tech debt,項目無 mypy config / route 檔無 clean --strict baseline)；我加嘅 529/714 唔在 error list = 本改動 type-clean。§1.3 surgical 唔掂無關 error。
+
+**Next**:F3（cap 互動 + drive-images-1 config 決定 —— diag harness 量 nearest × cap∈{0,5,higher}）。**等用戶指示繼續定 pause**。
 
 **Carry-over / 待決**:
 - F1 knob 設計 = bool `section_anchor_nearest`（vs mode enum）—— 採 bool（Karpathy §1.2 simplicity）。
