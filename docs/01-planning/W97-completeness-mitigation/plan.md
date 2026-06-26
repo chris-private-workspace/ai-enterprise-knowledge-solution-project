@@ -3,7 +3,7 @@
 | 項目 | 值 |
 |---|---|
 | Phase | W97-completeness-mitigation(source-fidelity §15 北極星線 · 接 W96 gate + DD-16) |
-| Status | **active**(2026-06-25 ADR-0069 已 Accept → 轉 active,per §5.1 H1 + §10 R1) |
+| Status | **closed — NEGATIVE / REVERTED**(2026-06-26;F1-F4 實作 + 兩輪 A/B 反證 → code revert,保留 ADR-0069 + plan/progress 記錄,per ADR-0069 §Outcome) |
 | Tier | Tier 1(改 synthesizer prompt 策略,gated default OFF) |
 | 依賴 | **ADR-0069(Proposed → 待 Accept)**・ W96 完整度 gate(`4bca795`)+ DD-15 hardening(`2102eed`) |
 | 錨點 | **ADR-0069**・ CLAUDE.md §15・`docs/09-analysis/text_image_fidelity_recall_analysis_20260620.md` §5.3・`source_fidelity_recall_external_research_20260625.md` 方向 A |
@@ -31,6 +31,8 @@
 - **G-W97**:F1-F3 knob OFF byte-identical(production-preserve)+ F4 **A/B 完整度 delta 清楚正向**(變體 nugget 還原,大過 gate 解析度)+ faithfulness 唔崩 + 無 timeout regression + ADR-0069 Accepted。
 - A/B 若 delta < ±0.15(gate 解唔到)→ 先做 DD-15 殘餘 fixed-answer 模式(temperature=0 量準)再判,**唔可以**憑感覺話「prompt 有效」(研究反證「prompt 消除位置偏置」0-3)。
 
+> **G-W97 判決 = 未通過(NEGATIVE,2026-06-26)**:F1-F3 production-preserve 達成(knob OFF byte-identical)+ F4.5 無 timeout(全 run 零 ERROR)。但 **F4 完整度 delta 未達**:iter-1 mean delta 0.000(C005 反退 −0.17),iter-2 精修後 mean delta −0.031(C005 反退仍 −0.16,targets 縮入噪聲)。fixed-answer 精準路 blocked on `gpt-5.5`(H2,拒 temp≠1)。乙類 gap 實證 stochastic 非 systematic → prompt 無從穩定修。**決定 revert code,保留記錄**(詳見 ADR-0069 §Outcome)。
+
 ## §4 Risks
 
 - 🔴 **length-bias + synth-timeout(DD-7)**:更長答案 → faithfulness length-bias + 撞 120s `synthesizer_request_timeout_s`(ADR-0053)。F4 必驗 mega-procedure(如 GL post-journal)唔 timeout + faithfulness 唔崩。
@@ -51,3 +53,4 @@
 |---|---|---|
 | 2026-06-25 | Phase draft kickoff — DD-16 解鎖(W96 gate 對大 delta 可信)。ADR-0069 Proposed。F1-F5 分段;gated default OFF + W96 gate A/B 驗。**待 ADR Accept 轉 active** | 草案 |
 | 2026-06-25 | **ADR-0069 Accept(decision owner 拍板)→ plan draft→active**。H1 解鎖,F1 開工。checklist + progress 補齊 | Accept |
+| 2026-06-26 | **F1-F4 實作 + 兩輪 W96-gate A/B 反證 → phase closed NEGATIVE,code REVERT**。iter-1 mean delta 0.000 / iter-2 −0.031;C005 反退可重現(−0.17/−0.16);乙類 gap stochastic;fixed-answer blocked on `gpt-5.5`。保留 ADR-0069 §Outcome + plan/progress 記錄;DD-16 close。用戶 decision owner 揀「revert + 保留 ADR 記錄」 | Revert |
