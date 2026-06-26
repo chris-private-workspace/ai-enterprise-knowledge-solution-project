@@ -1,10 +1,11 @@
 # ADR-0069: Coverage-oriented synthesis — 條件式變體 / 替代分支完整還原(乙類緩解)
 
 **Date**: 2026-06-25
-**Status**: Accepted(2026-06-25 由 decision owner 拍板,Proposed → Accepted)
+**Status**: Accepted(2026-06-25 拍板)→ **實作 + W96-gate A/B 反證 → code 已 revert(2026-06-26);knob 未採用**(見 §Outcome)
 **Approver**: Chris(技術 Lead)
 
 > **本 ADR 已 Accept**(2026-06-25)→ W97 implementation 解鎖(per CLAUDE.md §5.1 H1 + §6 + §10 R1)。觸 H1:改 synthesizer(architecture.md §3 RAG core)合成行為,gated default OFF(production-preserve)。
+> **2026-06-26 更新**:knob + rule 已實作並用 W96 gate A/B 驗證,**結果反證**(見 §Outcome)→ 按「驗收靠 A/B、唔憑感覺」紀律,**code revert**(保留本 ADR + W97 plan/progress 作完整實驗記錄)。本 ADR 由「決定要試 + 點驗」轉為「試過 + 點解唔得」嘅檔案。
 
 ## Context
 
@@ -43,6 +44,21 @@
   - 風險變**過度 extractive**(逐句抄)→ 規則要保「分支標題 + 步驟」結構化,非全文照搬;A/B 同時睇 faithfulness 唔崩。
   - gate 只解大 delta;若 prompt 只得細效果(< ±0.15),需先做 DD-15 殘餘 fixed-answer 模式先量得準。
 - **Neutral**:default OFF;config 多一個 knob(四層 resolve per ADR-0040);concise mode 下 no-op。
+
+## Outcome(2026-06-26 — 實作 + 兩輪 A/B + REVERT)
+
+knob + `_COVERAGE_RULE` + per-query A/B lever 全部實作(commits `fd45db5` / `34a1475` / `89c25ee`),用 W96 gate paired A/B(`scripts/run_completeness_ab.py`,固定 nugget)驗收。結論 = **乙類 prompt 緩解唔 work,code revert**。
+
+**Iter-1**(5 query,K=3,coverage OFF vs ON,`reports/completeness_w96_coverage_ab.yaml`):
+- mean A=0.806 / mean B=0.806 / **mean delta = 0.000**;勝負 2:2:1;殘餘 std 0.152。
+- 兩個乙類 target 改善(C001 +0.08 / C003 +0.15)但非乙類查詢反退(C002 −0.07 / **C005 −0.17**)→ 淨零。「有變體幫到、冇變體拖累」。
+
+**Iter-2**(精修 rule:只 enumerate 真實存在變體 + 禁 pad / 禁杜撰;C001/C003 target + C005 control,K=15,`reports/completeness_w97_variant_ab.yaml`):
+- mean A=0.828 / mean B=0.797 / **mean delta = −0.031**(輕微負);殘餘 std 0.212。
+- **C005 反退冇修好**(−0.16,≈ iter-1 −0.17;約為 per-query mean-std 3 倍 = 真實反退)→ 精修假設**反證**。
+- Targets 縮到噪聲內(C001 +0.05 / C003 +0.01);C003 OFF 由 iter-1 0.64 跳到 0.88(同 config)→ 揭示**乙類 gap 本身 stochastic 非 systematic**,prompt 無從穩定修。
+
+**根本結論**:coverage-oriented synthesis prompt(原版 + 精修)= null-to-negative,有**可重現下行**(no-variant 查詢反退)、**無可靠上行**。精準量度路徑(fixed-answer temp=0)**blocked on `gpt-5.5`**(H2 鎖,reasoning 模型拒 temp≠1)。研究反證「prompt 消除位置偏置」(0-3)應驗。**決定**(用戶 decision owner 2026-06-26):**revert 全部 W97 code**(prompt rule + knob + per-query wire,commit 見下),保留本 ADR + W97 plan/progress 作「試過點解唔得」記錄。**Default flip 永不發生**(本 ADR 無 production 行為改動殘留)。乙類緩解後續若再試,方向應離開 prompt(e.g. 退而接受 stochasticity、或非 synthesis 層手段),非重提本 prompt rule。
 
 ## References
 

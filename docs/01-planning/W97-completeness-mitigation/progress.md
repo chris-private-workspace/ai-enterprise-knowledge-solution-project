@@ -30,6 +30,20 @@
 - **驗證**:新 `test_complete_coverage_w97.py` 16 測試 + 既有 affected(answer_detail / effective_config / inline_image_markers)= **75 passed**。ruff clean(import 排序 auto-fix)。mypy:`effective_config` / `prompt_builder` 自身 clean;`synthesizer.py` 嘅 `create()` overload error 喺 **HEAD pre-W97 已有 3 個**(grep 確認),W97 零新 error。
 - production-preserve:全部 OFF path byte-identical;default OFF → 未跑 A/B 前 production 行為不變。
 
-### 下一步
+### F4 A/B 驗證 → NEGATIVE,phase REVERT
 
-- **F4 A/B 驗證**(W96 gate,需 backend 重啟 + live LLM run):knob OFF(A)vs ON(B)paired delta + faithfulness + timeout(DD-7)。**待 commit F1-F3 + 用戶確認跑 F4**。
+承 F1-F3(commits `fd45db5` + `34a1475` per-query lever)。重啟 backend(stale，per `project_stale_backend_no_reload`)+ semantic ranker off。
+
+**Iter-1**(5 query,K=3,`reports/completeness_w96_coverage_ab.yaml`):mean A=0.806 / B=0.806 / **delta 0.000**;C001 +0.08 / C002 −0.07 / C003 +0.15 / C004 0.00 / **C005 −0.17**;勝負 2:2:1。乙類 target 改善但 no-variant 反退,淨零。
+
+**Iter-2 精修**(commit `89c25ee` — `_COVERAGE_RULE` 只 enumerate 真實變體 + 禁 pad/杜撰;C001/C003 target + C005 control,K=15,`reports/completeness_w97_variant_ab.yaml`):mean A=0.828 / B=0.797 / **delta −0.031**;**C005 反退冇修好 −0.16**;targets 入噪聲(C001 +0.05 / C003 +0.01);C003 OFF 由 0.64 跳 0.88(同 config)。
+
+**判決**:G-W97 未通過。乙類 prompt 緩解(原版 + 精修)= null-to-negative + 可重現下行 + 無可靠上行;乙類 gap 實證 **stochastic 非 systematic**;fixed-answer 精準路 blocked on `gpt-5.5`(H2 拒 temp≠1)。
+
+**REVERT**(用戶 decision owner 揀選項 2):還原 8 backend 檔到 pre-W97 + 刪 `test_complete_coverage_w97.py` + 兩個 w97-variant eval-set;保留 ADR-0069(§Outcome)+ 本 plan/progress 作「試過點解唔得」記錄。3 個實驗 commit(`fd45db5`/`34a1475`/`89c25ee`)留喺 history。
+
+### 教訓
+
+- 乙類 over-summarisation 唔係穩定可 prompt-fix 嘅系統性缺陷;per-answer 高 stochasticity(W96/DD-15 已證)令「gap」本身浮動,prompt 規則對 variant-heavy 案有細幫助但對 no-variant 案有對等拖累 → 淨零。
+- W96 gate 方法本身 valid(成功量到 intervention 無效 + 捉到 C005 反退);失敗嘅係被測 intervention,唔係尺。
+- 後續若再碰乙類:方向應離開 synthesis prompt(接受 stochasticity / 非 prompt 手段),勿重提本 rule。
