@@ -27,13 +27,13 @@
 - [x] 揀 drive-images-1 推薦 config = **nearest + cap8**（用戶 2026-06-27 拍板;置 218/235 vs 現 79、trailing 156→17、clump 最壞 38→12）
 - [x] cap 惡化可接受性已決:nearest 每 cap 壓倒 last;§15 角度 trailing（還原失敗)比 clump（密但近步驟)更傷 → 用戶取 §15 優先 + clump 受控（cap8 最壞 12）
 
-## F4 — production A/B + browser 肉眼
+## F4 — production A/B + browser 肉眼 ✅(2026-06-27)
 
-- [ ] 重啟 backend pick up code(確認啟動時間 ≥ 最後 commit;reload=False stale）
-- [ ] image-recall A/B(`run_image_recall`)— knob ON 唔回退(≈1.0)
-- [ ] marker order-consistency(`check_marker_order`)— 唔回退(local_swap 0)
-- [ ] clump 量化(diag harness running-backend 或 offline apply)— 確認降
-- [ ] browser 肉眼高圖密 query(Q001/Q036)— 圖分散到步驟、末尾堆唔回歸、無新 clump regression(W75 DD-1 教訓)
+- [x] 重啟 backend pick up code(2026-06-27 重啟,ready ~120s,啟動 > F1/F2 commits;dual-process 兩個一齊停先起,env `HYBRID_USE_SEMANTIC_RANKER=false`）
+- [x] image-recall 不回退(`scripts/diag_leaf_anchor_live.py`:citation image checksum **set 三條全相同** 65/65/38 → inject 唔郁 citations,recall 結構上不受影響,強過 run_image_recall）
+- [x] marker order-consistency:**結構論證**（nearest 按 doc_order 最近錨點 + 組內 doc_order 排序 → 更 order-consistent,vs last 掉去章節最後製造 swap）+ offline 覆蓋;**full empirical `check_marker_order` run 按用戶同意 deferred**（非 silent skip）
+- [x] clump 量化(offline cap-sweep + live)— nearest+cap8 clump 受控（offline 最壞 12,live 7-9）;trade = placement↑（非 clump↓）
+- [x] browser 肉眼(Q001 live,nearest+cap8)— **用戶 §15 verdict 達標(2026-06-27)**:圖交織入步驟(figures 56/57/59 + Confirm step 截圖)、W75「39 連續圖」病態消失、按 section 組織。誠實 caveat:section-grouped grid 殘留 = 可錨率 < 100%(乙類-bound,已收口),nearest 唔強錨錯 section
 
 ## F5 — doc-sync + ADR amendment + close
 

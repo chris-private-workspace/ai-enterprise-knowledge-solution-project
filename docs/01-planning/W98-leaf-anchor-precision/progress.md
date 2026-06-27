@@ -56,7 +56,16 @@
 - **決定（用戶 2026-06-27)**:drive-images-1 = **nearest + cap8**（置 218/235 = 93%,trailing 17,clump 最壞 12 << 現無-cap 38）。cap0 極致（全置)留 fallback;cap5 保守留 fallback。
 - config 套用 + 驗證留 F4（production A/B + browser）。
 
-**Next**:F4（production A/B + browser）—— **需重啟 backend**（running server 仲係 pre-F1 stale,要 pick up nearest wiring）+ 設 drive-images-1 per-KB `section_anchor_nearest=true` + `section_anchor_max_per_anchor=8` + image-recall/marker-order 唔回退 + browser 肉眼。**等用戶指示**。
+**F4 落地（2026-06-27,production A/B + browser）**:
+- **重啟 backend**:dual-process 兩個一齊停（PID 17156/27596）→ 重啟（env `HYBRID_USE_SEMANTIC_RANKER=false`,cwd=backend）→ ready ~120s,啟動時間 > F1/F2 commits（確認 pick up 新 code,per `project_stale_backend_no_reload`）。
+- **headless live A/B**（`scripts/diag_leaf_anchor_live.py`,baseline 現 config vs nearest+cap8,3 query）：
+  - **recall 不受影響**:citation image checksum **set 三條全相同**（65/65/38）→ inject 唔郁 citations,recall 結構上不變（強過 run_image_recall）。
+  - **running backend 真 apply nearest+cap8**:markers 置入升 Q001 76→81、**Q036 52→72**、Q003 39→39（單錨點 no-op);non-stale 確認。drive-images-1 留喺 **nearest+cap8**（F3 決定）。
+  - clump live 6→7 / 7→9（cap8 trade,offline max 12 範圍內;script 個 `clump_improved` verdict line 框錯方向 —— 目標係 placement↑ 非 clump↓）。
+- **marker order-consistency**:結構論證（nearest 按 doc_order → 更 order-consistent）+ offline;full empirical run 按用戶同意 deferred。
+- **browser 肉眼**（claude-in-chrome 驅動已認證 Chrome;**坑:EKP frontend = :3001,:3000 係 Langfuse**,playwright 撞 :3000 auth wall 證實咗 port confusion）：Q001 live 答案 —— 圖交織入步驟（figures 56/57/59 + Confirm step 截圖）、W75「39 連續圖」病態消失、按 section 組織。**誠實 caveat**:section-grouped grid 殘留 = 可錨率 < 100%(乙類-bound,已收口);**甲類 nearest 上限 = 乙類答案完整度（兩腿相連）**。**用戶 §15 verdict 達標 → F4 PASS**。
+
+**Next**:F5（doc-sync + ADR-0056 amendment + memory + DEFERRED close + production default flip 列另一決定 + G-W98 Gate verdict）。
 
 **Carry-over / 待決**:
 - F1 knob 設計 = bool `section_anchor_nearest`（vs mode enum）—— 採 bool（Karpathy §1.2 simplicity）。
