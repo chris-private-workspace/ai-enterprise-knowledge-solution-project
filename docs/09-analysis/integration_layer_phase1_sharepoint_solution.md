@@ -8,7 +8,7 @@
 
 > **本檔性質**:呢份係**你帶去公司真實環境執行嗰份方案書** —— 由前置條件、認證、interface、SharePoint 連接、權限映射、撤權、到公司執行 checklist。技術決定全部 ground 喺上述 ADR + 兩份 deep-research(對抗式查證,20 confirmed / 5 killed)。**唔喺 local repo 假裝 implement**(SharePoint / Microsoft Graph 要真 tenant + `Sites.Selected` per-site grant,本機造唔到)。
 >
-> **寫作進度**:§0–§2 已寫;**§3–§10 + 附錄待續**(逐節寫,見 progress tracker §2 大綱)。
+> **寫作進度**:**§0–§10 + 附錄 全部完成**(2026-06-29)。下一步 = 按 §10 R1 考慮開階段 1 implementation phase(先 plan 三件套)。逐節 commit 記錄見 progress tracker。
 
 ---
 
@@ -482,4 +482,123 @@ allowed_principals/any(p: search.in(p, '<用戶 principal set>'))
 
 ---
 
-> **§9–§10 + 附錄 待續**。下一塊:§9 範圍邊界 + 未答缺口(階段 1 唔做乜 + 4 缺口承接)+ §10 公司執行 checklist(runbook)+ 附錄(Graph endpoints / scopes / 來源)。大綱見 progress tracker `integration_layer_phase1_sharepoint_solution_PROGRESS.md` §2。
+## §9 範圍邊界 + 未答缺口
+
+### 9.1 階段 1 明確**唔做**(守 H4 Tier 邊界)
+
+| 唔做 | 留邊個階段 | 原因 |
+|---|---|---|
+| auto-sync(delta / 排程 / webhook 撤權)| 階段 3(Tier 2)| H4 明確 Tier 2;delta 對 library 層唔可靠(§6.2)|
+| 多 provider(Google Drive / Box / Confluence)| 階段 2(Tier 2)| 範圍控制;interface 已 Tier 2-friendly,唔使重構 |
+| turnkey SharePoint indexer | 永不 | 繞過 Docling 核心(§2.3)|
+| preview Entra-native token-trim(`permissionFilterOption`)| 待 GA(缺口①)| 無 SLA(kill list #1)|
+| server-side 自動 group 展開 | push-model 自己展(§5.3)| GA 路徑要自己展 |
+
+> **🔴 Tier 邊界風險**:統一框架好易滑入 Tier 2 —— 要嚴守「階段 1 只落抽象 interface + **一個** SharePoint connector + 按需手動匯入」,唔好順手做多來源 / auto-sync。
+
+### 9.2 未答缺口(承 deep-research §7,階段 1 plan / 後階段補)
+
+| # | 缺口 | 何時解 |
+|---|---|---|
+| ① | **GA 時間線** — Entra-native token-trim 幾時 GA | 寫階段 1 plan 前重核;主路線押 GA 字串比對(現有做法),唔等 preview |
+| ② | **chunk-level ACL 傳播** — 每 chunk 重複 `allowed_principals`?膨脹 + 效能 | 階段 1 implementation plan(§5.6)|
+| ③ | **library 層撤權補機制** — 排程 re-ingest 頻率 vs 成本 + 實測延遲 | 階段 1 plan(手動)/ 階段 3(自動)|
+| ④ | **分階段策略業界實證** — 「先手動後自動」common pattern? | 階段 2 前 focused research(需要時先做)|
+
+### 9.3 階段 1 implementation plan 要落實嘅決定
+
+- `SourceConnector` 正式型別簽名(本藍圖係概念草案)
+- Anyone-link default 政策(drop / public / 拒索引,§5.4)
+- credential 儲存方式(配置 / Key Vault,§1.4)
+- chunk-ACL 傳播做法(§5.6 缺口②)
+- 防爆量超額策略(§5.5)
+- Graph 存取 dep(`httpx` managed-REST vs `msgraph-sdk`)+ R8 mitigation(H2,§2.5)
+
+---
+
+## §10 公司執行 checklist(runbook)
+
+> **你帶去公司真實環境逐步做嘅清單。** 階段 A / B 一次性;C 起每次匯入。
+
+### 階段 A — IT / tenant 前置(一次性)
+
+- [ ] **A1** 確認目標 SharePoint site / document library(要匯入邊啲)
+- [ ] **A2** Entra app registration:建 app → 攞 `tenant_id` / `client_id` → 建 client secret 或 certificate(生產建議 cert)
+- [ ] **A3** 授權 + admin consent:`Sites.Selected`(application)+ `GroupMember.Read.All`(application)→ Entra admin consent
+- [ ] **A4** **per-site grant**(每個目標 site):`POST /sites/{site-id}/permissions` 授該 app `read` 角色(§1.3 — consent ≠ 有權,缺呢步即拒)
+- [ ] **A5** credential 安全儲存(階段 1 `.env` gitignored / Beta+ Azure Key Vault;絕不 commit,H5)
+- [ ] **A6** 確認 query-time delegated / OBO 認證可用(重用 EKP Entra ID)
+
+### 階段 B — EKP 側準備
+
+- [ ] **B1** 確認 index 有 `allowed_principals` 欄 + query-time GA 字串比對 filter(**RBAC track ADR-0066 P2** — 非 connector 工作)
+- [ ] **B2** 落 **C17 connector**(階段 1 implementation phase;先 plan 三件套 per §10 R1)
+- [ ] **B3** ingestion 入口接受 connector-sourced 文件 + 帶 `allowed_principals`(薄銜接,核心零改動)
+
+### 階段 C — 首次匯入(按需)
+
+- [ ] **C1** `connect`(app-only token)
+- [ ] **C2** `browse` → 揀 site / library / folder
+- [ ] **C3** `list_documents` → `fetch_document` → ingest(Docling)→ stamp `allowed_principals`
+- [ ] **C4** 睇 **per-doc summary**(成功 / 失敗 / 原因)
+
+### 階段 D — 驗證(north-star + 安全)
+
+- [ ] **D1** **圖文還原度不退**(north-star §15)—— connector-sourced 文件行同一 Docling pipeline,應同人手上傳一致(對 W43–85 baseline)
+- [ ] **D2** **security trimming 正確** —— 有權用戶查到 / 冇權用戶查唔到(用唔同 group 用戶測)
+- [ ] **D3** **撤權測試** —— user 出 group → query-time 即時唔見(§6.1 a);文件 ACL 變 → re-import 後更新(§6.1 b)
+- [ ] **D4** **per-doc 失敗** —— 一份壞文件唔影響其他(§8.1)
+
+### 階段 E — 維運
+
+- [ ] **E1** 撤權延遲產品上明示為**有界延遲**(唔承諾即時)
+- [ ] **E2** re-import 頻率(階段 1 人手;自動排程 = 階段 3)
+- [ ] **E3** 健康監控掛 C07(匯入狀態 / Graph 錯誤率 / 限流 / token 健康)
+
+---
+
+## 附錄
+
+### A. Microsoft Graph endpoints 一覽(階段 1)
+
+| 用途 | endpoint(概念)|
+|---|---|
+| per-site grant | `POST /sites/{site-id}/permissions`(授 app read 角色)|
+| 搵 site | `GET /sites?search=` / `GET /sites/{hostname}:/{site-path}` |
+| 列 library | `GET /sites/{site-id}/drives` |
+| 列 folder / 檔 | `GET /drives/{drive-id}/root/children` / `.../items/{item-id}/children` |
+| 下載內容 | `GET /drives/{drive-id}/items/{item-id}/content` |
+| 抽 ACL | `GET /drives/{drive-id}/items/{item-id}/permissions` |
+| 展 nested group | `GET /groups/{group-id}/transitiveMembers` |
+| delta(**唔實作**)| `GET /drives/{drive-id}/root/delta` |
+
+> 分頁全部用 `@odata.nextLink` continuation。
+
+### B. 認證 scopes
+
+| 用途 | 模式 | 最小權限 |
+|---|---|---|
+| ingestion(拉文件 + 抽 ACL + 展 group)| application | `Sites.Selected` + `GroupMember.Read.All` |
+| per-site 授權 | — | site `read` 角色 |
+| query-time trimming | delegated / OBO | per-user token |
+
+### C. 來源(官方優先)
+
+完整來源分層(20 confirmed claims)見 deep-research doc `sharepoint_connector_permission_mapping_external_research_20260628.md` §附錄。關鍵官方 Microsoft Learn anchor:
+
+- Document-Level Access Control / Index ACL & RBAC push API / Query-time enforcement / Security filters(Azure AI Search)
+- `Sites.Selected` permissions overview / `transitiveMembers` / Shareable links(Anyone / Specific people / Org)/ `driveItem: delta`(Microsoft Graph)
+- External groups for connectors(Microsoft Graph)
+
+### D. 配套文件
+
+- ADR-0070(Accepted)— 決策 + scope decisions
+- `unified_integration_layer_architecture_20260628.md` — 設計骨架(7 正交關注點)
+- `sharepoint_connector_permission_mapping_external_research_20260628.md` — 權限實證 + kill list
+- COMPONENT_CATALOG.md **C17** — component 登記
+- `docs/01-planning/enterprise-rbac/` — RBAC track(`allowed_principals` 地基)
+- 進度 tracker `integration_layer_phase1_sharepoint_solution_PROGRESS.md`
+
+---
+
+**藍圖正文 §0–§10 + 附錄 完**(2026-06-29)。下一步:按 §10 R1 考慮開階段 1 implementation phase(`SourceConnector` interface + SharePoint connector),先 plan 三件套。
