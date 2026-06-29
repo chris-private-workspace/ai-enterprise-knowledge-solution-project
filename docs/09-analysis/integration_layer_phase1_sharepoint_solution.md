@@ -384,4 +384,102 @@ GET /drives/{drive-id}/items/{item-id}/permissions
 
 ---
 
-> **§7–§10 + 附錄 待續**。下一塊:§7 與 EKP 核心銜接(push chunks + `allowed_principals` 入 Azure AI Search;query-time GA 字串比對 filter;ingestion 核心零改動)+ §8 錯誤模型 + 生命週期。大綱見 progress tracker `integration_layer_phase1_sharepoint_solution_PROGRESS.md` §2。
+## §7 與 EKP 核心銜接
+
+> 設計鐵律落地點:connector sit **upstream**,交標準化文件落 EKP ingestion,**核心零改動**。
+
+### 7.1 銜接全圖(component 對應)
+
+```
+C17 SourceConnector(SharePoint)
+   │  fetch_document → temp file       get_principals → allowed_principals(group 級)
+   ▼
+EKP 既有 ingestion 入口(C08 POST /kb/{kb_id}/documents,現食 multipart)
+   ▼
+C01 Ingestion(Docling parsing / chunking / 圖文還原 / per-doc profile / per-KB config)── 零改動
+   ▼
+C03 Indexing(chunk + allowed_principals 寫入 Azure AI Search index)
+   ▼
+C04 Retrieval ← query-time GA 字串比對 security filter(用戶 principal set)
+   ▲
+C16 Users Service(allowed_principals 收斂 + query-time principal 解析)── RBAC track
+```
+
+### 7.2 ingestion 交接(零改動鐵律)
+
+- connector `fetch_document`(§4.5)stream 落 temp → 交 **EKP 既有 multipart ingestion 入口**(C08 `POST /kb/{kb_id}/documents`,per CH-001)。
+- 之後 **Docling pipeline 全程不變**:layout-aware parsing / chunking / 圖文還原(image recall / inline markers / section anchoring)/ per-doc profile / per-KB 可調配置 —— **無論文件由上傳定 SharePoint 嚟都一樣**。
+- **零改動範圍**(明確):§3.3 / §3.5 + ADR-0041 / 0054 / 0056 等 ingestion 核心一律唔郁。
+
+### 7.3 `allowed_principals` 注入(push-model,ingest 時)
+
+- `get_principals`(§5)輸出 group 級 principal set → **ingest 時 stamp 落每個 chunk 嘅 `allowed_principals` 欄** → push 入 Azure AI Search index。
+- 用 **GA 字串比對**(`allowed_principals` 字串集),**唔開** `permissionFilterOption=enabled`(preview Entra-native token-trim,無 SLA,kill list #1)。
+- index schema 嘅 `allowed_principals` 欄 + stamp 邏輯 = **RBAC track(ADR-0066/0067,P2)提供**;connector 只負責**填內容**。整合層同 RBAC track 係同一條路兩段。
+
+### 7.4 query-time security trimming(檢索時)
+
+用戶 query → 取用戶 principal set(user GUID + token group membership,§2.2)→ Azure AI Search 加 GA filter:
+
+```
+allowed_principals/any(p: search.in(p, '<用戶 principal set>'))
+```
+
+只返回命中嘅 chunk。**呢段邏輯 RBAC track 已鋪(C04 / C16),全 provider 共用、只寫一次。**
+
+### 7.5 混合來源 KB
+
+- 一個 KB 可有**混合來源**(人手上傳 + SharePoint 匯入)。
+- 上傳文件 → `allowed_principals` 跟 KB 層 / RBAC 既有規則;SharePoint 文件 → `allowed_principals` 跟來源文件級 ACL(§5)。
+- 兩者收斂同一欄,query-time 同一 filter 處理。
+
+### 7.6 EKP 側要加 / 改嘅(minimal)
+
+| 項 | 屬邊 | 狀態 |
+|---|---|---|
+| index `allowed_principals` 欄 + ingest-time stamp | RBAC track ADR-0066 P2 | RBAC track 進行(非 connector 工作)|
+| query-time GA 字串比對 filter(C04)| RBAC track ADR-0066 P2 | 同上 |
+| ingestion 入口接受 connector-sourced 文件 + 帶 `allowed_principals` | C01 / C08 薄銜接 | 階段 1 plan(薄 adapter,核心零改動)|
+| **C17 connector 本身** | 階段 1 新 code | 階段 1 plan |
+
+→ connector 落地**唔需要改 ingestion 核心**;EKP 側嘅 ACL 欄 / filter 係 RBAC track 已規劃嘅嘢。
+
+---
+
+## §8 錯誤模型 + 生命週期
+
+### 8.1 錯誤分層(fatal vs per-doc)
+
+| 層 | 例 | 行為 |
+|---|---|---|
+| **Fatal**(停 batch)| connect / auth 失敗、token refresh 持續失敗、per-site 無權(§1.3 未 grant)| 整個匯入 job 停 + 明確 actionable 錯誤(邊步缺)|
+| **Per-doc**(skip + 記,⑦)| 單一 driveItem fetch / parse / permission 抽取失敗 | **唔 abort batch** → 記 per-doc 失敗,繼續下一份 |
+
+### 8.2 per-doc 失敗報告(⑦,對齊 ADR-0043)
+
+- framework orchestrator 收集每份文件 `{doc_id, name, status: success|failed, error?}`。
+- 匯入完成後畀用戶睇 **per-doc summary**(邊啲成功 / 邊啲失敗 / 原因),**唔係 all-or-nothing**。
+- 對齊 EKP 既有 reindex per-doc summary pattern(ADR-0043)。
+
+### 8.3 生命週期
+
+| 階段 | 行為 |
+|---|---|
+| **初次匯入(full)**| `browse` → 用戶揀範圍 → `list_documents` → per-doc `fetch` + ingest + `allowed_principals` stamp → per-doc summary |
+| **按需 re-import**| 用 `eTag` / `cTag` 比對只 re-ingest changed 文件(§4.4);**ACL 變要重抽 `permissions`**(§6.3);同一 doc = replace-in-place(對齊 CH-001 reindex Decision A)|
+| **撤權**| membership 變 = query-time 即時(§6.1 a);文件 ACL 變 = re-import 更新(§6.1 b)|
+| **credential**| `ConnectionHandle` token refresh(⑥);secret / cert 輪替(§1.4)|
+
+### 8.4 健康監控(掛 C07 Observability)
+
+- 匯入 job 狀態 / per-doc 成功率 / Graph API 錯誤率 + 限流(429)/ token 健康 / 防爆量 warning(§5.5)。
+- 掛 EKP 既有 observability(C07 Langfuse / structlog),唔另起一套。
+
+### 8.5 idempotency + 安全
+
+- re-import 同一文件 = replace-in-place(唔重複建 chunk)。
+- 全程守 H5:credential 絕不 log / commit;temp file 抓完即清(§4.5)。
+
+---
+
+> **§9–§10 + 附錄 待續**。下一塊:§9 範圍邊界 + 未答缺口(階段 1 唔做乜 + 4 缺口承接)+ §10 公司執行 checklist(runbook)+ 附錄(Graph endpoints / scopes / 來源)。大綱見 progress tracker `integration_layer_phase1_sharepoint_solution_PROGRESS.md` §2。
