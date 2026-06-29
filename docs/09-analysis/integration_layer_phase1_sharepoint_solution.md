@@ -145,4 +145,141 @@ Microsoft Graph 存取(`azure-identity` + `httpx` managed-REST,傾向 over `msgr
 
 ---
 
-> **§3–§10 + 附錄 待續**。下一塊:§3 `SourceConnector` interface + capability model(5 點修正 interface)+ §4 SharePoint connector 實作。大綱見 progress tracker `integration_layer_phase1_sharepoint_solution_PROGRESS.md` §2。
+## §3 `SourceConnector` interface + capability model
+
+> provider-agnostic 抽象;SharePoint(§4)只係第一個實作。跟 EKP backend convention(Protocol + async,參考 `ConversationStore` / `KBStorageBackend`)。**呢個係概念草案,正式型別簽名喺階段 1 implementation plan 落實**(本方案書唔喺定方向階段寫 code)。
+
+### 3.1 capability model — framework 唔可以假設所有 provider 一樣
+
+```python
+class ConnectorCapabilities:
+    auth_kind: Literal["oauth", "app_registration", "api_key"]
+    supports_browse: bool       # 可唔可以列容器樹
+    supports_acl: bool          # 有冇文件級權限可抽
+    supports_delta: bool        # 有冇可靠增量同步
+    acl_granularity: Literal["none", "kb", "document"]
+```
+
+UI + lifecycle **讀 `capabilities` 決定行為**(退化規則見 §3.4)—— 一次寫嘅框架,接新 provider 唔使改 framework,只係宣告唔同 capability。
+
+### 3.2 `SourceConnector` Protocol(含 5 點修正 ①–⑤)
+
+```python
+class SourceConnector(Protocol):
+    capabilities: ConnectorCapabilities
+
+    async def connect(self, credentials) -> ConnectionHandle: ...
+    async def browse(self, handle, container_id=None) -> AsyncIterator[SourceContainer]: ...        # ②
+    async def list_documents(self, handle, container_id) -> AsyncIterator[SourceDocumentRef]: ...   # ②③
+    async def fetch_document(self, handle, doc_ref) -> SourceDocument: ...                           # ④
+    async def get_principals(self, handle, doc_ref) -> list[Principal]: ...                          # ①
+    async def delta(self, handle, container_id, token) -> DeltaResult: ...                           # ⑤(保留唔實作)
+```
+
+| method | 做咩 | 修正 |
+|---|---|---|
+| `connect` | 認證 → 攞 handle | ⑥ handle 封裝 token refresh |
+| `browse` | 列可連容器(site / library / folder 樹)| ② 分頁 `AsyncIterator` |
+| `list_documents` | 列容器內文件 | ②③ 分頁 + ref 帶 change-detection |
+| `fetch_document` | 抓單一文件內容 | ④ stream / temp path |
+| `get_principals` | 抽文件級權限 | ① 展平到 group 級(詳見 §5)|
+| `delta` | 增量同步 | ⑤ 保留唔實作(capability-gate)|
+
+### 3.3 五點修正(per DG-INT-3)+ ⑥⑦(入階段 1 plan,唔改 interface)
+
+- **①** `get_principals` 展平到 **group 級非 user 級**(零 re-ingest;同 ADR-0067 一致)
+- **②** `browse` / `list_documents` 分頁 `AsyncIterator`(大 library 上萬文件唔可以一次 `list[...]`)
+- **③** `SourceDocumentRef` 帶 `etag` / `version` / `last_modified` / `size`
+- **④** `fetch_document` stream / temp path(大掃描件唔好全 bytes-in-memory)
+- **⑤** `delta` 保留但唔實作(`supports_delta=false`)
+- **⑥** `ConnectionHandle` token refresh(§2.4)
+- **⑦** per-doc 錯誤模型(單一文件失敗唔 abort batch,§8)
+
+### 3.4 capability 退化規則(framework 共用)
+
+| capability | 退化行為 |
+|---|---|
+| `supports_delta=false` | 隱藏「自動同步」,只提供排程 full re-ingest |
+| `acl_granularity="none"` | 退化到 KB 層權限(該來源全部文件 = KB 嘅 ACL)|
+| `acl_granularity="document"` | 行文件級 security trimming(填 `allowed_principals`)|
+| `supports_browse=false` | UI 要用戶手填 container id(無樹狀瀏覽)|
+
+### 3.5 資料模型(概念草案)
+
+| 型別 | 欄位(概念)|
+|---|---|
+| `SourceContainer` | `id` / `name` / `type`(site/library/folder)/ `parent` |
+| `SourceDocumentRef` | `id` / `name` / `path` / `etag` / `version` / `last_modified` / `size`(③)|
+| `SourceDocument` | `ref` + `content`(stream / temp path)+ `metadata` + `allowed_principals`(④)|
+| `Principal` | `kind`(user / group)+ `entra_guid`(① group 級)|
+| `ConnectionHandle` | 認證 context + token refresh(⑥)|
+| `DeltaResult` | `changes` + `new_token` + `resync_required`(⑤,保留)|
+
+---
+
+## §4 SharePoint connector 實作(Microsoft Graph)
+
+> 把抽象 interface(§3)映射到 SharePoint via Microsoft Graph。階段 1 **唯一** concrete connector。`get_principals` 嘅權限映射深度(`transitiveMembers` / Anyone-link / 防爆量)喺 §5。
+
+### 4.1 SharePoint capability 宣告
+
+```python
+ConnectorCapabilities(
+    auth_kind="app_registration",   # Entra Sites.Selected
+    supports_browse=True,
+    supports_acl=True,
+    supports_delta=False,           # 階段 1 唔實作(delta 對 library 層唔可靠,§6)
+    acl_granularity="document",
+)
+```
+
+### 4.2 `connect` — app-only token
+
+- client credentials flow(`tenant_id` / `client_id` / secret|cert,§1.2)→ app-only token(application `Sites.Selected`)。
+- `ConnectionHandle` 內部封裝 token refresh(⑥):長 ingestion run token 過期自動續。
+- 存取機制:`azure-identity` + `httpx` managed-REST(傾向 over `msgraph-sdk`,H2 — §2.5;階段 1 plan 確認 + R8 mitigation)。
+
+### 4.3 `browse` — 列 site / library / folder(② 分頁)
+
+| 層 | Graph endpoint(概念)|
+|---|---|
+| 搵 site | `GET /sites?search=` / `GET /sites/{hostname}:/{site-path}` |
+| 列 library(drive)| `GET /sites/{site-id}/drives` |
+| 列 folder / 檔 | `GET /drives/{drive-id}/root/children` / `GET /drives/{drive-id}/items/{item-id}/children` |
+
+分頁:Graph 用 `@odata.nextLink` continuation → connector 包成 `AsyncIterator[SourceContainer]`,逐頁 yield(唔一次過 load,防爆 memory + 超 Graph 分頁上限)。
+
+### 4.4 `list_documents` — 列 driveItem(②③)
+
+- `GET /drives/{drive-id}/items/{item-id}/children`(或 `/root/children`),`@odata.nextLink` 分頁。
+- 每個 driveItem 映射成 `SourceDocumentRef`,**change-detection 欄位取 Graph 原生**:`eTag` / `cTag`(③)、`lastModifiedDateTime`、`size`。
+- re-import 時用 ref 嘅 `eTag`/`cTag` 比對,只 re-ingest changed 文件慳成本。
+
+### 4.5 `fetch_document` — 下載 stream(④)
+
+- `GET /drives/{drive-id}/items/{item-id}/content` → **stream 落 temp file**(唔好全 bytes-in-memory,大掃描件頂唔順)。
+- 把 temp file path 交俾 **EKP 既有 ingestion 入口**(現食 multipart upload)→ Docling pipeline 接手(**核心零改動**,§7)。
+- 抓完即清 temp(per-doc lifecycle)。
+
+### 4.6 `get_principals` — 抽文件級 ACL(① + 深度在 §5)
+
+- `GET /drives/{drive-id}/items/{item-id}/permissions` → 抽 `grantedToIdentitiesV2`(user.id)+ group。
+- 正規化 Entra GUID + 用 `GET /groups/{group-id}/transitiveMembers` 展 nested group **到 group 級**(① — 唔展到 member user)。
+- Anyone-link / 特殊 principal / 防爆量(< 2,049 / file)→ **詳見 §5**。
+
+### 4.7 `delta` — 保留唔實作(⑤)
+
+- `supports_delta=False`;`GET /drives/{drive-id}/root/delta` **階段 1 唔接**(delta 對 library / folder 層權限變更唔可靠,會 `resyncRequired`,§6)。
+- interface 保留 method + capability-gate,將來階段 3 加 auto-sync 唔使改 Protocol。
+
+### 4.8 錯誤模型(⑦,詳見 §8)
+
+- 單一 driveItem fetch / permission 抽取失敗 → 記 per-doc 失敗,**唔 abort 成個 batch**;framework orchestrator 收集成功 / 失敗報告(同 ADR-0043 reindex per-doc summary pattern 一致)。
+
+### 4.9 per-site grant(呼應 §1.3)
+
+- 匯入前 IT 要對每個目標 site 做 per-site grant(`POST /sites/{site-id}/permissions` 授 app `read` 角色);connector `connect` 只攞 token,**唔自動授權**(least-privilege 由 IT 控)。
+
+---
+
+> **§5–§10 + 附錄 待續**。下一塊:§5 權限映射(ACL → `allowed_principals` 深度:`transitiveMembers` 展 group 級 / Anyone-link 特殊處理 / 防爆量)+ §6 撤權 / stale permission。大綱見 progress tracker `integration_layer_phase1_sharepoint_solution_PROGRESS.md` §2。
