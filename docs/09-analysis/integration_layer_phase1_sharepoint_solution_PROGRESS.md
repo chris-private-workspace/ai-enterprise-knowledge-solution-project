@@ -20,9 +20,12 @@
 | BACKLOG B-01 改誠實 | ✅ 已 commit | `884b149` |
 | **進度 tracker(本檔)** | ✅ 已 commit | `0a06798` |
 | **WIP memory** `project_adr0070_integration_phase1_wip.md` | ✅ 已建立 | `.claude/.../memory/`(非 git-tracked,經 OneDrive 同步) |
-| **方案藍圖** `integration_layer_phase1_sharepoint_solution.md` | ✅ **§0–10 + 附錄 全部完成** | `26c5e74`→本 commit(grep 11 節 + 附錄)|
+| **方案藍圖** `integration_layer_phase1_sharepoint_solution.md` | ✅ **§0–10 + 附錄 全部完成** | `26c5e74`→`14f3719`(grep 11 節 + 附錄)|
+| **UI 設計 mockup**(SharePoint 匯入 4 surface + foundation + index)| ✅ **land 落 `references/design-mockups/integration-import/`** | `70e42df`(8 檔;雙擊 `index.html` 直接開,link canonical `../styles.css`;design-stage,H7 源頭)|
 
-**下一塊**:藍圖正文 §0–10 + 附錄 **已齊**。按 §10 R1 考慮開**階段 1 implementation phase**(`SourceConnector` interface + SharePoint connector,先 plan 三件套 `plan.md` / `checklist.md` / `progress.md`)—— 等用戶決定幾時 kickoff(屬落 code 階段,phase folder = `W{NN}-integration-sharepoint-phase1/` rolling JIT)。藍圖係**你帶去公司真實環境執行**嗰份(reframe,見 §1 D4),**唔喺 local repo 假裝 implement**(SharePoint / Graph 要真 tenant + `Sites.Selected` grant,本機造唔到)。
+**下一塊**:藍圖正文 + UI mockup **已齊**。按 §10 R1 考慮開**階段 1 implementation phase**(`SourceConnector` interface + SharePoint connector,先 plan 三件套 `plan.md` / `checklist.md` / `progress.md`)—— 等用戶決定幾時 kickoff(屬落 code 階段,phase folder = `W{NN}-integration-sharepoint-phase1/` rolling JIT)。**UI 部分**:design-stage mockup 已備(解咗早前 flagged 嘅 H7 UI gap),impl 時前端按 H7 100% 重現 `integration-import/` 4 個 surface。藍圖係**你帶去公司真實環境執行**嗰份(reframe,見 §1 D4),**唔喺 local repo 假裝 implement**(SharePoint / Graph 要真 tenant + `Sites.Selected` grant,本機造唔到)。
+
+**UI 設計來歷注意**:用 claude design(`DesignSync`)植入 EKP design system 後設計;但該 design-system project 喺用戶互動 claude.ai 登入**唔可見**(`/design-login` 獨立授權 context,API `list_projects`/`list_files` 證實有檔但瀏覽器睇唔到)→ 改為 land 落本地 canonical。教訓:claude design design-system project ≠ 用戶 prototype project(`EKP Platform.html` 嗰個 `/p/` regular project,API 404 掂唔到);要畀用戶睇得到嘅交付,land 落本地 `references/design-mockups/` 最穩。
 
 ---
 
@@ -122,4 +125,6 @@
 | 2026-06-29 | `45142f3` | 藍圖 §3(interface + capability model + 5 點修正 + 退化規則)+ §4(SharePoint connector 實作:browse / list 分頁 / fetch stream / get_principals / delta-gate / per-site grant)|
 | 2026-06-29 | `d50f738` | 藍圖 §5(權限映射:transitiveMembers 展 group 級 / 特殊 principal / 防爆量 / chunk-ACL 缺口)+ §6(撤權:membership 變即時 vs 文件 ACL 變需 re-ingest / delta 反證 / 有界延遲)|
 | 2026-06-29 | `b100945` | 藍圖 §7(與 EKP 核心銜接:component 全圖 / 零改動鐵律 / allowed_principals 注入 / query-time filter / 混合來源)+ §8(錯誤模型 fatal vs per-doc / 生命週期 / 健康監控 / idempotency)|
-| 2026-06-29 | (本 commit) | 藍圖 §9(範圍邊界 + 4 缺口 + plan 要落實決定)+ §10(公司執行 checklist 階段 A–E)+ 附錄(Graph endpoints / scopes / 來源 / 配套)+ 頂部進度標完成 → **藍圖正文 §0–10 + 附錄齊** |
+| 2026-06-29 | `14f3719` | 藍圖 §9(範圍邊界 + 4 缺口 + plan 要落實決定)+ §10(公司執行 checklist 階段 A–E)+ 附錄(Graph endpoints / scopes / 來源 / 配套)+ 頂部進度標完成 → **藍圖正文 §0–10 + 附錄齊** |
+| 2026-06-30 | `70e42df` | **UI 設計 mockup land** 落 `references/design-mockups/integration-import/`(4 surface + tokens + primitives + index + README,8 檔);用 claude design 植入 EKP design system 後設計,因 design-system project 用戶睇唔到改 land 本地 canonical(H7 源頭,雙擊 index.html 直接開)|
+| 2026-06-30 | (本 commit) | 同步 B-01 進度:本 tracker §0 加 UI mockup 行 + UI 設計來歷注意 + changelog;BACKLOG B-01 更新(per R7)|

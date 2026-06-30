@@ -30,7 +30,7 @@
 
 | ID | 任務 | 狀態 | 前置 / 下一步 | 來源 |
 |---|---|---|---|---|
-| **B-01** | 統一整合層階段 1 — SharePoint 按需匯入(`SourceConnector` interface + `Sites.Selected` 認證 + `allowed_principals` 權限收斂 + nested group 展平 + token refresh + per-doc 錯誤模型;Tier 1.5) | `進行中` | ① EKP spec amendment ✅ landed(architecture.md §3.3/§4.1 inline-tag + COMPONENT_CATALOG C17 v1.1)2026-06-29;② ✅ 方案藍圖 §0–10 + 附錄 + progress tracker 完成(`docs/09-analysis/integration_layer_phase1_sharepoint_solution.md`,交付公司真實環境執行);③ **待**:按 §10 R1 開階段 1 implementation phase(`SourceConnector` + SharePoint connector,plan 三件套)— 等用戶 kickoff | ADR-0070(Accepted 2026-06-28)/ `docs/09-analysis/` deep-research ×2 + C17 + 藍圖 |
+| **B-01** | 統一整合層階段 1 — SharePoint 按需匯入(`SourceConnector` interface + `Sites.Selected` 認證 + `allowed_principals` 權限收斂 + nested group 展平 + token refresh + per-doc 錯誤模型;Tier 1.5) | `進行中` | ① EKP spec amendment ✅ landed(architecture.md §3.3/§4.1 inline-tag + COMPONENT_CATALOG C17 v1.1)2026-06-29;② ✅ 方案藍圖 §0–10 + 附錄 + progress tracker 完成(`docs/09-analysis/integration_layer_phase1_sharepoint_solution.md`,交付公司真實環境執行);③ ✅ UI design-stage mockup land(`references/design-mockups/integration-import/` 4 surface + foundation,`70e42df`,H7 源頭,雙擊 index.html 開);④ **待**:按 §10 R1 開階段 1 implementation phase(`SourceConnector` + SharePoint connector,plan 三件套)— 等用戶 kickoff | ADR-0070(Accepted 2026-06-28)/ `docs/09-analysis/` deep-research ×2 + C17 + 藍圖 + `integration-import/` mockup |
 
 ---
 
