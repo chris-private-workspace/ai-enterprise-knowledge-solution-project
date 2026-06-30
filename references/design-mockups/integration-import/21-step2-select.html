@@ -1,0 +1,127 @@
+<!-- @dsCard group="Integration — SharePoint import" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SharePoint import — Step 2 Select</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  .ic { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+  .icon svg { width: 16px; height: 16px; display: block; }
+  .stepper { display: flex; padding: 18px 24px; align-items: center; gap: 12px; }
+  .step-node { display: flex; align-items: center; gap: 12px; }
+  .step-circle { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); font-weight: 600; font-size: 12px; flex-shrink: 0; }
+  .step-circle.done, .step-circle.current { background: oklch(var(--primary)); color: oklch(var(--primary-foreground)); }
+  .step-circle.current { border: 2px solid oklch(var(--accent)); }
+  .step-circle.upcoming { background: oklch(var(--muted)); color: oklch(var(--muted-foreground)); }
+  .step-circle svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .step-label { font-size: 13.5px; font-weight: 500; }
+  .step-label.current { font-weight: 600; }
+  .step-div { flex: 1; height: 1px; background: oklch(var(--border)); }
+  .step-div.done { background: oklch(var(--foreground)); }
+  /* tree */
+  .tree { display: flex; flex-direction: column; gap: 1px; }
+  .tree-row { display: flex; align-items: center; gap: 7px; padding: 5px 8px; border-radius: var(--radius-sm); font-size: 13px; cursor: default; color: oklch(var(--foreground)); }
+  .tree-row:hover { background: oklch(var(--muted)); }
+  .tree-row[data-active="true"] { background: oklch(var(--muted)); font-weight: 500; }
+  .tree-row.indent { margin-left: 18px; }
+  .tree-row .ic { color: oklch(var(--muted-foreground)); }
+  .pick-table input[type=checkbox] { accent-color: oklch(var(--primary)); width: 14px; height: 14px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div class="brand-mark">EK</div><div class="brand-name">EKP</div><span class="brand-tag">TIER 1</span></div>
+    <nav class="nav">
+      <div class="nav-section-label">Workspace</div>
+      <a class="nav-item"><span class="icon"><svg class="ic" viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg></span> Dashboard</a>
+      <a class="nav-item"><span class="icon"><svg class="ic" viewBox="0 0 16 16"><path d="M2 4h12v7H6l-3 2.5V11H2z" stroke-linejoin="round"/></svg></span> Chat</a>
+      <a class="nav-item" data-active="true"><span class="icon"><svg class="ic" viewBox="0 0 16 16"><ellipse cx="8" cy="4" rx="5.5" ry="2"/><path d="M2.5 4v8c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2V4"/></svg></span> Knowledge <span class="nav-tail">6</span></a>
+      <div class="nav-section-label">Tools</div>
+      <a class="nav-item"><span class="icon"><svg class="ic" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M5.5 8.5l2 2 3.5-4"/></svg></span> Eval</a>
+      <a class="nav-item"><span class="icon"><svg class="ic" viewBox="0 0 16 16"><path d="M2 9h3l2-5 3 9 2-4h2"/></svg></span> Traces</a>
+      <a class="nav-item"><span class="icon"><svg class="ic" viewBox="0 0 16 16"><circle cx="8" cy="5.5" r="2.5"/><path d="M3 13c0-2.5 2.2-4 5-4s5 1.5 5 4"/></svg></span> Users</a>
+      <a class="nav-item"><span class="icon"><svg class="ic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M14.5 8h-2M3.5 8h-2"/></svg></span> Settings</a>
+    </nav>
+    <div class="sidebar-footer"><div class="user-chip"><div class="avatar">CL</div><div class="user-chip-info"><b>Chris Lai</b><span>Admin</span></div></div></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="breadcrumbs"><span>Knowledge</span> <span class="sep">/</span> <b>Import from SharePoint</b></div>
+      <div class="topbar-search"><span>Search pages, KBs…</span><span class="kbd">&#8984;K</span></div>
+      <div class="topbar-actions"><button class="btn btn-ghost btn-icon btn-sm" aria-label="Notifications"><svg class="ic" viewBox="0 0 16 16"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5zM6.5 13a1.5 1.5 0 003 0"/></svg></button><span class="topbar-divider"></span><div class="avatar avatar-sm">CL</div></div>
+    </header>
+
+    <div class="content">
+      <div class="content-narrow">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><button class="btn btn-ghost btn-xs btn-ghost-muted">&#8249; Knowledge</button></div>
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Import from SharePoint</h1>
+            <p class="page-subtitle">Browse the site you connected, then pick documents to import.</p>
+          </div>
+        </div>
+
+        <!-- Stepper: step 2 Select current; step 1 done -->
+        <div class="card" style="margin-bottom:16px;overflow:visible">
+          <div class="stepper">
+            <div class="step-node"><div class="step-circle done"><svg viewBox="0 0 16 16"><path d="M3 8l3.5 3.5L13 5"/></svg></div><div><div class="step-label">Connect</div><div class="text-xs muted">SharePoint</div></div></div>
+            <div class="step-div done"></div>
+            <div class="step-node"><div class="step-circle current">2</div><div><div class="step-label current">Select</div><div class="text-xs muted">Sites &amp; files</div></div></div>
+            <div class="step-div"></div>
+            <div class="step-node"><div class="step-circle upcoming">3</div><div><div class="step-label">Import</div><div class="text-xs muted">Push to KB</div></div></div>
+            <div class="step-div"></div>
+            <div class="step-node"><div class="step-circle upcoming">4</div><div><div class="step-label">Done</div><div class="text-xs muted">Summary</div></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Select documents</h3>
+            <div class="card-desc" style="font-size:12.5px;color:oklch(var(--muted-foreground))">contoso.sharepoint.com / sites / manuals</div>
+          </div>
+          <div class="card-body card-body-tight">
+            <div style="display:grid;grid-template-columns:230px 1fr">
+              <!-- tree pane -->
+              <div style="padding:14px 12px;border-right:1px solid oklch(var(--border))">
+                <div class="nav-section-label" style="padding:0 4px 8px">Libraries</div>
+                <div class="tree">
+                  <div class="tree-row"><svg class="ic" viewBox="0 0 16 16"><path d="M2 4.5h5l1.5 1.5H14V12H2z"/></svg> Documents</div>
+                  <div class="tree-row indent"><svg class="ic" viewBox="0 0 16 16"><path d="M2 4.5h5l1.5 1.5H14V12H2z"/></svg> Installation</div>
+                  <div class="tree-row indent" data-active="true"><svg class="ic" viewBox="0 0 16 16"><path d="M2 4.5h5l1.5 1.5H14V12H2z"/></svg> Maintenance</div>
+                  <div class="tree-row indent"><svg class="ic" viewBox="0 0 16 16"><path d="M2 4.5h5l1.5 1.5H14V12H2z"/></svg> Troubleshooting</div>
+                  <div class="tree-row"><svg class="ic" viewBox="0 0 16 16"><path d="M2 4.5h5l1.5 1.5H14V12H2z"/></svg> SOP Images</div>
+                </div>
+              </div>
+              <!-- document table -->
+              <div class="pick-table">
+                <div class="table-wrap">
+                  <table class="table">
+                    <thead><tr><th style="width:34px"><input type="checkbox" checked></th><th>Document</th><th>Type</th><th class="col-num">Modified</th><th class="col-num">Size</th></tr></thead>
+                    <tbody>
+                      <tr><td><input type="checkbox" checked></td><td>Installation Guide.docx</td><td><span class="badge badge-muted">DOCX</span></td><td class="col-num">2026-06-12</td><td class="col-num">1.2 MB</td></tr>
+                      <tr><td><input type="checkbox" checked></td><td>Maintenance Manual.pdf</td><td><span class="badge badge-muted">PDF</span></td><td class="col-num">2026-06-09</td><td class="col-num">4.8 MB</td></tr>
+                      <tr><td><input type="checkbox" checked></td><td>Quarterly Checklist.docx</td><td><span class="badge badge-muted">DOCX</span></td><td class="col-num">2026-05-30</td><td class="col-num">320 KB</td></tr>
+                      <tr><td><input type="checkbox"></td><td>Archive 2024.pdf</td><td><span class="badge badge-muted">PDF</span></td><td class="col-num">2025-01-04</td><td class="col-num">22 MB</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <button class="btn btn-ghost btn-sm">&#8249; Back</button>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span class="text-xs muted" style="font-size:12px;color:oklch(var(--muted-foreground))">3 documents selected</span>
+              <button class="btn btn-primary btn-sm">Import 3 documents &rarr;</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

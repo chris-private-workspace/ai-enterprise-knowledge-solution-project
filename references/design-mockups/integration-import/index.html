@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>EKP — SharePoint import (design-stage proposal)</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { background: oklch(var(--background)); color: oklch(var(--foreground)); font-family: var(--font-sans); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 40px 28px; }
+  .link-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid oklch(var(--border)); border-radius: var(--radius-sm); text-decoration: none; color: inherit; transition: background var(--duration-fast); }
+  .link-card:hover { background: oklch(var(--muted) / 0.5); }
+  .link-card .num { width: 28px; height: 28px; border-radius: 50%; background: oklch(var(--primary)); color: oklch(var(--primary-foreground)); display: grid; place-items: center; font-family: var(--font-mono); font-weight: 600; font-size: 12px; flex-shrink: 0; }
+  .link-card .t { font-size: 14px; font-weight: 500; }
+  .link-card .d { font-size: 12px; color: oklch(var(--muted-foreground)); }
+  .link-card .arrow { margin-left: auto; color: oklch(var(--muted-foreground)); }
+  .grid { display: grid; gap: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-header" style="margin-bottom:8px">
+    <div>
+      <h1 class="page-title">SharePoint import — UI design proposal</h1>
+      <p class="page-subtitle">統一整合層階段 1（Tier 1.5）· per ADR-0070 · built on the EKP design system (<span class="mono" style="font-family:var(--font-mono)">../styles.css</span>).</p>
+    </div>
+    <span class="badge badge-accent">DESIGN-STAGE</span>
+  </div>
+
+  <div class="banner banner-info" style="margin:16px 0 24px">
+    <div style="flex:1;font-size:12.5px;line-height:1.55">These are <b>design-stage mockups</b> for the SharePoint on-demand import flow. Open any surface below in a browser. Implementation must reproduce these per H7 once 階段 1 kicks off.</div>
+  </div>
+
+  <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:oklch(var(--muted-foreground));margin:0 0 12px">Import wizard — 4 surfaces</h3>
+  <div class="grid" style="margin-bottom:28px">
+    <a class="link-card" href="20-step1-connect.html"><span class="num">1</span><span><span class="t">Connect</span><br><span class="d">SharePoint site + Sites.Selected prerequisite + credential</span></span><span class="arrow">&rarr;</span></a>
+    <a class="link-card" href="21-step2-select.html"><span class="num">2</span><span><span class="t">Select</span><br><span class="d">Site → library → folder tree + document picker</span></span><span class="arrow">&rarr;</span></a>
+    <a class="link-card" href="22-step3-import.html"><span class="num">3</span><span><span class="t">Import</span><br><span class="d">Progress + per-doc live status (a failure doesn't stop the batch)</span></span><span class="arrow">&rarr;</span></a>
+    <a class="link-card" href="23-step4-summary.html"><span class="num">4</span><span><span class="t">Done</span><br><span class="d">Per-doc summary (READY / FAILED) + retry</span></span><span class="arrow">&rarr;</span></a>
+  </div>
+
+  <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:oklch(var(--muted-foreground));margin:0 0 12px">Design-system reference</h3>
+  <div class="grid">
+    <a class="link-card" href="00-tokens.html"><span class="num" style="background:oklch(var(--muted));color:oklch(var(--muted-foreground))">T</span><span><span class="t">Tokens</span><br><span class="d">Colours / type / radius (accent coral = Tier 2 only)</span></span><span class="arrow">&rarr;</span></a>
+    <a class="link-card" href="01-primitives.html"><span class="num" style="background:oklch(var(--muted));color:oklch(var(--muted-foreground))">P</span><span><span class="t">Primitives</span><br><span class="d">btn / card / field / badge / table / progress / status-dot …</span></span><span class="arrow">&rarr;</span></a>
+  </div>
+</div>
+</body>
+</html>
