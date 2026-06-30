@@ -44,9 +44,15 @@
 - credential 仍 server-side(`_new_connector` 由 .env / Key Vault,H5);#2 credential 唯讀屬前端 F5。
 - 驗:pytest **24 passed**(既有 + 新端點 happy / RBAC user 403 / 個別 ref path / both-empty 422 / invalid URL 422)/ ruff clean / `mypy --strict`(integration package + route module module-mode)clean。
 
+### F2-F4 完成(2026-06-30)
+- F2 sidebar nav + breadcrumb + 2 route 骨架 / F3 API client `integrationApi`(`resolveSite` / `browse` / `listDocuments` / `importSelected`,對齊 F1 schema)/ F4 landing H7 重現 `10-integrations-landing.html`(SharePoint connector card +「Import documents →」+ disabled「connect another source」affordance;inline-style const 對齊 mockup `conn-card` verbatim 值,跟 `kb/new` stepper inline-style pattern)。
+- F4 連接狀態靜態「Not connected」(D4 — live 探測需真 tenant);`integrationApi` F5/F6 wizard 先消費。
+- 驗:tsc + eslint clean。**H7 browser visual smoke 留 phase 末 / 用戶**(同 BUG-038 pattern — W87 OneDrive dev server 首編 ~135s + Fast Refresh 唔可靠)。
+
 ### Commits
 - `docs(adr):` ADR-0071 Accepted + landing mockup(`d84cbf8`)
 - `docs(planning):` W101 plan 三件套(`babccd8`)
 - `feat(integration):` F1 backend browse/list 端點 + import 個別 ref(`9f2818e`)
-- `feat(frontend):` F2 Integrations sidebar nav + breadcrumb + 2 route 骨架(本 commit)
-- (F3+ 隨 impl)
+- `feat(frontend):` F2 sidebar nav + breadcrumb + route 骨架(`d5dcfc7`)
+- `feat(frontend):` F3 API client + F4 landing H7 重現(本 commit)
+- (F5+ 隨 impl)

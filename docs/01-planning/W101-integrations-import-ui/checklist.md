@@ -23,19 +23,19 @@
 - [x] F2.6 `tsc` + `eslint` clean
 
 ## F3 — API client + types
-- [ ] F3.1 `lib/api/integration.ts` `new ApiClient()` + `integrationApi` object
-- [ ] F3.2 `resolveSite(siteUrl)` → `SourceContainer`(POST `/integration/sharepoint/resolve-site`)
-- [ ] F3.3 `browse(containerId?)` → `SourceContainer[]`(GET `/integration/sharepoint/browse`)
-- [ ] F3.4 `listDocuments(containerId)` → `SourceDocumentRef[]`(GET `/integration/sharepoint/documents`)
-- [ ] F3.5 `importSelected(kbId, refs)` → `ImportSummary`(POST `/integration/sharepoint/import`)
-- [ ] F3.6 TS types 鏡像 backend schema;URL 無 trailing slash;`tsc` clean
+- [x] F3.1 `lib/api/integration.ts` `new ApiClient()` + `integrationApi` object
+- [x] F3.2 `resolveSite(siteUrl)` → `SourceContainer`(POST `/integration/sharepoint/resolve-site`)
+- [x] F3.3 `browse(containerId?)` → `SourceContainer[]`(GET `/integration/sharepoint/browse`)
+- [x] F3.4 `listDocuments(containerId)` → `SourceDocumentRef[]`(GET `/integration/sharepoint/documents`)
+- [x] F3.5 `importSelected(kbId, refs)` → `ImportSummary`(POST `/integration/sharepoint/import`)
+- [x] F3.6 TS types 鏡像 backend schema;URL 無 trailing slash;`tsc` clean
 
 ## F4 — Integrations landing(H7 重現 `10-integrations-landing.html`)
-- [ ] F4.1 page-header(title「Integrations」+ subtitle)+ banner-info(pipeline/allowed_principals 說明)
-- [ ] F4.2 SharePoint connector card(chain-link logo + 名 + desc + 狀態 badge +「Import documents →」link 去 wizard)
-- [ ] F4.3 disabled「connect another source」affordance card(Tier 2 badge,opacity .6)
-- [ ] F4.4 design-system class(`.content`/`.content-narrow`/`.page-header`/`.card`/`.badge`/`.btn`)+ 連接狀態(可選:call resolveSite 探測或靜態「Not connected」)
-- [ ] F4.5 **H7 fidelity check**:逐 section 對齊 mockup(layout/spacing/typography/color token/interaction/responsive)
+- [x] F4.1 page-header(title「Integrations」+ subtitle)+ banner-info(pipeline/allowed_principals 說明)
+- [x] F4.2 SharePoint connector card(chain-link logo + 名 + desc + 狀態 badge +「Import documents →」link 去 wizard)
+- [x] F4.3 disabled「connect another source」affordance card(Tier 2 badge,opacity .6)
+- [x] F4.4 design-system class(`.content`/`.content-narrow`/`.page-header`/`.card`/`.badge`/`.btn`)+ 連接狀態(可選:call resolveSite 探測或靜態「Not connected」)
+- [x] F4.5 **H7 fidelity check**:逐 section 對齊 mockup(layout/spacing/typography/color token/interaction/responsive)
 
 ## F5 — Wizard Step 1 Connect + Step 2 Select(H7 重現 `20`+`21`)
 - [ ] F5.1 inline stepper(4 step,28px circle DESIGN_SYSTEM §4.2,done/current/upcoming 態)+ `useState` step state
