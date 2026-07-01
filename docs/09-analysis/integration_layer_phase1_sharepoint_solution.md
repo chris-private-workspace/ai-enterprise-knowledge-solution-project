@@ -519,6 +519,8 @@ allowed_principals/any(p: search.in(p, '<用戶 principal set>'))
 ## §10 公司執行 checklist(runbook)
 
 > **你帶去公司真實環境逐步做嘅清單。** 階段 A / B 一次性;C 起每次匯入。
+>
+> **可執行展開版**(確切 `.env` key / curl 連通冒煙 / UI wizard 走查 / 故障對照表 / 撤權測試)見 [`integration_layer_phase1_live_verification_runbook.md`](./integration_layer_phase1_live_verification_runbook.md) —— 真 tenant 到手後拎住做。
 
 ### 階段 A — IT / tenant 前置(一次性)
 
