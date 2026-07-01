@@ -61,10 +61,10 @@ def _clean_settings_cache() -> Iterator[None]:
 # --------------------------------------------------------------------------- #
 
 
-def test_default_providers_returns_nine_entries() -> None:
-    """Seed must contain exactly the 9 providers spec'd in ADR-0026 + admin schemas."""
+def test_default_providers_returns_ten_entries() -> None:
+    """Seed must contain exactly the 10 providers spec'd in ADR-0026 + ADR-0072 (sharepoint)."""
     providers = default_providers()
-    assert len(providers) == 9
+    assert len(providers) == 10
     ids = {p.provider_id for p in providers}
     assert ids == {
         "azure_openai",
@@ -76,6 +76,7 @@ def test_default_providers_returns_nine_entries() -> None:
         "acs_email",
         "key_vault",
         "structlog",
+        "sharepoint",
     }
 
 
@@ -91,6 +92,7 @@ def test_default_providers_categories_match_spec() -> None:
     assert by_id["structlog"].category == "observability"
     assert by_id["acs_email"].category == "identity"
     assert by_id["key_vault"].category == "identity"
+    assert by_id["sharepoint"].category == "integration"
 
 
 def test_default_azure_openai_has_four_deployments() -> None:
@@ -102,10 +104,10 @@ def test_default_azure_openai_has_four_deployments() -> None:
 
 
 @pytest.mark.asyncio
-async def test_in_memory_backend_seeds_nine_on_construct() -> None:
+async def test_in_memory_backend_seeds_ten_on_construct() -> None:
     backend = InMemoryAdminProviderBackend()
     configs = await backend.list_all()
-    assert len(configs) == 9
+    assert len(configs) == 10
 
 
 @pytest.mark.asyncio
@@ -128,13 +130,13 @@ async def test_in_memory_backend_update_persists_in_process() -> None:
 # --------------------------------------------------------------------------- #
 
 
-def test_list_connections_returns_nine_summaries() -> None:
+def test_list_connections_returns_ten_summaries() -> None:
     app = _build_app(backend=InMemoryAdminProviderBackend(), key_vault=EnvVarProvider())
     client = TestClient(app)
     response = client.get("/admin/connections")
     assert response.status_code == 200
     body = response.json()
-    assert len(body) == 9
+    assert len(body) == 10
     assert {row["provider_id"] for row in body} == {
         "azure_openai",
         "cohere",
@@ -145,6 +147,7 @@ def test_list_connections_returns_nine_summaries() -> None:
         "acs_email",
         "key_vault",
         "structlog",
+        "sharepoint",
     }
 
 

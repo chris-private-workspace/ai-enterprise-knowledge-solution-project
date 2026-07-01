@@ -26,7 +26,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { CheckCircle2, Loader2, PlugZap } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { useForm } from 'react-hook-form';
 
 import { ApiKeyInput } from '@/components/ui/api-key-input';
@@ -50,6 +56,7 @@ const CATEGORY_ORDER: ProviderCategory[] = [
   'storage',
   'observability',
   'identity',
+  'integration',
 ];
 
 const CATEGORY_LABEL: Record<ProviderCategory, string> = {
@@ -58,6 +65,7 @@ const CATEGORY_LABEL: Record<ProviderCategory, string> = {
   storage: 'Search & Storage',
   observability: 'Observability',
   identity: 'Identity & Email',
+  integration: 'Source Integrations',
 };
 
 export function SettingsConnections() {
@@ -280,6 +288,13 @@ function ProviderRow({ summary }: { summary: ProviderSummary }) {
         </div>
       ) : (
         <>
+          {/* SharePoint (integration) — managed connection config (ADR-0072):
+              tenant / client-id settings + user-supplied secret (set-secret). Other
+              providers keep the generic endpoint/region form + rotate-secret. */}
+          {detail.provider_id === 'sharepoint' ? (
+            <SharePointConfig detail={detail} setDetail={setDetail} />
+          ) : (
+          <>
           {/* Inline edit form — endpoint / region / display name. */}
           <form onSubmit={onSubmit} style={{ marginBottom: 14 }}>
             <div
@@ -404,6 +419,8 @@ function ProviderRow({ summary }: { summary: ProviderSummary }) {
               <DeploymentsTable deployments={detail.deployments} />
             </div>
           ) : null}
+          </>
+          )}
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -427,5 +444,172 @@ function ProviderRow({ summary }: { summary: ProviderSummary }) {
         </>
       )}
     </ServiceCard>
+  );
+}
+
+// ============================================================================
+// SharePointConfig — managed connection config for the `integration` provider
+// (ADR-0072): tenant / client-id (non-secret settings, PATCH) + a user-supplied
+// client secret written to Key Vault (set-secret, never echoed). The per-site
+// Sites.Selected grant remains an IT action (surfaced in the banner).
+// ============================================================================
+
+function SharePointConfig({
+  detail,
+  setDetail,
+}: {
+  detail: ProviderConfig;
+  setDetail: Dispatch<SetStateAction<ProviderConfig | null>>;
+}) {
+  const [tenantId, setTenantId] = useState(detail.settings.tenant_id ?? '');
+  const [clientId, setClientId] = useState(detail.settings.client_id ?? '');
+  const [secret, setSecret] = useState('');
+
+  const patchSettings = useMutation({
+    mutationFn: () =>
+      adminApi.updateConnection(detail.provider_id, {
+        settings: {
+          tenant_id: tenantId.trim(),
+          client_id: clientId.trim(),
+          credential_type: detail.settings.credential_type ?? 'client_secret',
+        },
+      }),
+    onSuccess: (updated) => setDetail(updated),
+  });
+
+  const setSecretMutation = useMutation({
+    mutationFn: () => adminApi.setSecret(detail.provider_id, secret),
+    onSuccess: (result) => {
+      setSecret('');
+      setDetail((d) =>
+        d ? { ...d, secret_masked_preview: result.secret_masked_preview } : d,
+      );
+    },
+  });
+
+  const dirty =
+    tenantId !== (detail.settings.tenant_id ?? '') ||
+    clientId !== (detail.settings.client_id ?? '');
+  const idBase = detail.provider_id;
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div className="banner banner-info" style={{ marginBottom: 12 }}>
+        <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.55 }}>
+          Configure the Entra app used to import from SharePoint. IT must also grant
+          the app <b>Sites.Selected (read)</b> on each target site — that per-site
+          grant stays an IT action. Unset fields fall back to{' '}
+          <span className="mono">.env</span>.
+        </div>
+      </div>
+
+      {/* Non-secret settings — tenant / client-id (PATCH settings). */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 12,
+          marginBottom: 10,
+        }}
+      >
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label className="label" htmlFor={`sp-tenant-${idBase}`}>
+            Tenant ID
+          </label>
+          <input
+            id={`sp-tenant-${idBase}`}
+            className="input mono"
+            style={{ fontSize: 12 }}
+            placeholder="00000000-0000-0000-0000-000000000000"
+            value={tenantId}
+            onChange={(e) => setTenantId(e.target.value)}
+          />
+        </div>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label className="label" htmlFor={`sp-client-${idBase}`}>
+            App (client) ID
+          </label>
+          <input
+            id={`sp-client-${idBase}`}
+            className="input mono"
+            style={{ fontSize: 12 }}
+            placeholder="11111111-1111-1111-1111-111111111111"
+            value={clientId}
+            onChange={(e) => setClientId(e.target.value)}
+          />
+        </div>
+      </div>
+      <div
+        style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}
+      >
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          disabled={!dirty || patchSettings.isPending}
+          onClick={() => patchSettings.mutate()}
+        >
+          {patchSettings.isPending ? (
+            <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+          ) : null}{' '}
+          Save tenant / client
+        </button>
+        {patchSettings.isError ? (
+          <span
+            className="text-xs"
+            style={{ color: 'oklch(var(--destructive))' }}
+          >
+            {patchSettings.error?.message ?? 'Update failed'}
+          </span>
+        ) : null}
+      </div>
+
+      {/* Client secret — user-supplied, written to Key Vault (set-secret, H5). */}
+      <div className="field" style={{ marginBottom: 0 }}>
+        <label className="label">
+          Client secret ·{' '}
+          <span className="mono text-xs">{detail.secret_kv_ref}</span>
+          {detail.secret_masked_preview ? (
+            <span className="text-xs muted">
+              {' '}
+              · stored {detail.secret_masked_preview}
+            </span>
+          ) : null}
+        </label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            className="input mono"
+            type="password"
+            autoComplete="off"
+            style={{ fontSize: 12, flex: 1 }}
+            placeholder={
+              detail.secret_masked_preview
+                ? 'Enter a new secret to replace…'
+                : 'Paste the Azure-issued client secret…'
+            }
+            value={secret}
+            onChange={(e) => setSecret(e.target.value)}
+          />
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            disabled={!secret || setSecretMutation.isPending}
+            onClick={() => setSecretMutation.mutate()}
+          >
+            {setSecretMutation.isPending ? (
+              <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+            ) : null}{' '}
+            Store secret
+          </button>
+        </div>
+        <div className="hint">
+          Written straight to Key Vault — never shown, logged, or committed (H5).
+        </div>
+        {setSecretMutation.isError ? (
+          <div className="hint" style={{ color: 'oklch(var(--destructive))' }}>
+            {setSecretMutation.error?.message ?? 'Failed to store secret'}
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }

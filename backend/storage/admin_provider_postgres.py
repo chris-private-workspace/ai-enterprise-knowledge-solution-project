@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS {_TABLE} (
     endpoint_url             TEXT,
     region                   TEXT,
     deployments              JSONB NOT NULL DEFAULT '[]'::jsonb,
+    settings                 JSONB NOT NULL DEFAULT '{{}}'::jsonb,
     secret_kv_ref            TEXT,
     secret_masked_preview    TEXT,
     last_test_at             TIMESTAMPTZ,
@@ -60,7 +61,7 @@ CREATE TABLE IF NOT EXISTS {_TABLE} (
 
 _COLS = (
     "provider_id, category, display_name, endpoint_url, region, "
-    "deployments, secret_kv_ref, secret_masked_preview, "
+    "deployments, settings, secret_kv_ref, secret_masked_preview, "
     "last_test_at, last_test_status, last_test_detail, "
     "last_rotated_at, created_at, updated_at"
 )
@@ -74,6 +75,7 @@ def _row_to_config(row: dict) -> ProviderConfig:
         endpoint_url=row["endpoint_url"],
         region=row["region"],
         deployments=[ProviderDeployment(**d) for d in row["deployments"]],
+        settings=row["settings"],
         secret_kv_ref=row["secret_kv_ref"],
         secret_masked_preview=row["secret_masked_preview"],
         last_test_at=row["last_test_at"],
@@ -93,6 +95,7 @@ def _config_params(cfg: ProviderConfig) -> tuple:
         cfg.endpoint_url,
         cfg.region,
         Jsonb([d.model_dump(mode="json") for d in cfg.deployments]),
+        Jsonb(cfg.settings),
         cfg.secret_kv_ref,
         cfg.secret_masked_preview,
         cfg.last_test_at,
@@ -113,13 +116,19 @@ class PostgresAdminProviderBackend:
     async def _ensure_schema_and_seed(self, conn: psycopg.AsyncConnection) -> None:
         async with conn.cursor() as cur:
             await cur.execute(_CREATE_TABLE)
+            # ADR-0072 — additive `settings` column for pre-W102 tables. Idempotent,
+            # no separate migration step (mirrors the deployments-column shape).
+            await cur.execute(
+                f"ALTER TABLE {_TABLE} ADD COLUMN IF NOT EXISTS "
+                f"settings JSONB NOT NULL DEFAULT '{{}}'::jsonb"
+            )
             # Idempotent seed — only inserts rows missing by provider_id PK.
             await cur.execute(f"SELECT provider_id FROM {_TABLE}")
             existing = {r[0] for r in await cur.fetchall()}
             for cfg in default_providers():
                 if cfg.provider_id in existing:
                     continue
-                placeholders = ",".join(["%s"] * 14)
+                placeholders = ",".join(["%s"] * 15)
                 await cur.execute(
                     f"INSERT INTO {_TABLE} ({_COLS}) VALUES ({placeholders})",
                     _config_params(cfg),
@@ -148,6 +157,9 @@ class PostgresAdminProviderBackend:
     async def update(self, provider_id: str, patch: ProviderPatch) -> ProviderConfig:
         # Build SET clause from set fields only; leaves untouched columns alone.
         patch_dict = {k: v for k, v in patch.model_dump(exclude_unset=True).items() if v is not None}
+        # settings is a dict → wrap for JSONB binding (ADR-0072); other fields are scalars.
+        if "settings" in patch_dict:
+            patch_dict["settings"] = Jsonb(patch_dict["settings"])
         if not patch_dict:
             # No-op PATCH still returns the current row (idempotent endpoint contract).
             return await self.get(provider_id)

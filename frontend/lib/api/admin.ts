@@ -24,7 +24,8 @@ export type ProviderCategory =
   | 'retrieval'
   | 'storage'
   | 'observability'
-  | 'identity';
+  | 'identity'
+  | 'integration'; // ADR-0072 — SharePoint source connector
 
 export type TestStatus = 'ok' | 'degraded' | 'error' | 'not_tested';
 
@@ -44,6 +45,9 @@ export interface ProviderConfig {
   endpoint_url: string | null;
   region: string | null;
   deployments: ProviderDeployment[];
+  // Provider-specific non-secret config (ADR-0072) — e.g. SharePoint
+  // { tenant_id, client_id, credential_type }. Secrets never live here.
+  settings: Record<string, string>;
   secret_kv_ref: string | null;
   secret_masked_preview: string | null;
   last_test_at: string | null;
@@ -66,6 +70,7 @@ export interface ProviderPatch {
   endpoint_url?: string | null;
   region?: string | null;
   display_name?: string | null;
+  settings?: Record<string, string> | null; // ADR-0072 — full-replacement on PATCH
 }
 
 export interface TestConnectionResult {
@@ -78,6 +83,14 @@ export interface RotateSecretResult {
   provider_id: string;
   last_rotated_at: string;
   secret_masked_preview: string;
+}
+
+// ADR-0072 — set-secret stores a USER-supplied secret (SharePoint client secret)
+// in Key Vault. Response is metadata only — never the raw value (H5).
+export interface SetSecretResult {
+  provider_id: string;
+  secret_masked_preview: string;
+  updated_at: string;
 }
 
 // ---------- F3 — /admin/identity/* shared types ------------------------------
@@ -208,6 +221,7 @@ export type AuditAction =
   | 'connection_patch'
   | 'connection_test'
   | 'connection_rotate_secret'
+  | 'connection_set_secret'
   | 'identity_patch'
   | 'api_keys_alert_threshold_patch'
   // W24c — RBAC user-management + kb.* actions (mirrors the backend
@@ -257,6 +271,9 @@ export const adminApi = {
     client.post(`/admin/connections/${providerId}/test`, {}),
   rotateSecret: (providerId: string): Promise<RotateSecretResult> =>
     client.post(`/admin/connections/${providerId}/rotate-secret`, {}),
+  // ADR-0072 — store a user-supplied secret (SharePoint client secret) in Key Vault.
+  setSecret: (providerId: string, value: string): Promise<SetSecretResult> =>
+    client.post(`/admin/connections/${providerId}/set-secret`, { value }),
 
   // F3 — identity
   getIdentity: (): Promise<IdentityConfig> => client.get('/admin/identity'),

@@ -62,7 +62,9 @@
 
 ---
 
-## §2 EKP 側配置(填 `.env` + 重啟)
+## §2 EKP 側配置(UI 配置 或 `.env` + 重啟)
+
+> **W102 / ADR-0072 更新**:credential 現可經 **UI 配置** —— Settings → Connections → **SharePoint** 卡:填 tenant / client-id(Save)+ 貼 client secret(Store secret,寫入 Key Vault、masked、絕不回傳/log,H5)。來源優先序 **managed connection > `.env` fallback**:UI 已配置就用 UI;未配置就讀下面 `.env`(零回歸)。生產建議 UI + Key Vault;dev 可續用 `.env`。**per-site `Sites.Selected` grant 仍係 IT 動作**(§1.1 第 3 步),UI 配置唔改變呢點。UI 路免重啟(即時生效);`.env` 路仍需重啟(§2.2)。
 
 ### 2.1 填 4 個環境變數(逐字,對應 `backend/storage/settings.py`)
 

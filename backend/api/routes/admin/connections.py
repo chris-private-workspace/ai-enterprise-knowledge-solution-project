@@ -32,6 +32,8 @@ from api.schemas.admin import (
     ProviderPatch,
     ProviderSummary,
     RotateSecretResult,
+    SetSecretRequest,
+    SetSecretResult,
     TestConnectionResult,
     TestStatus,
 )
@@ -154,6 +156,31 @@ def _probe_structlog(cfg: ProviderConfig) -> TestConnectionResult:
     )
 
 
+def _probe_sharepoint(cfg: ProviderConfig) -> TestConnectionResult:
+    """SharePoint config-state probe (ADR-0072, Wave A). tenant_id / client_id live
+    in settings; the secret is set iff a masked preview exists. Real Graph
+    resolve-site verification is the wizard's Test connection (Wave B+ here)."""
+    tenant = cfg.settings.get("tenant_id", "")
+    client = cfg.settings.get("client_id", "")
+    if not tenant or not client:
+        return TestConnectionResult(
+            status="not_tested",
+            latency_ms=0,
+            detail="tenant_id / client_id not configured (.env fallback may still apply)",
+        )
+    if not cfg.secret_masked_preview:
+        return TestConnectionResult(
+            status="degraded",
+            latency_ms=0,
+            detail="tenant / client set; client secret not stored — use set-secret",
+        )
+    return TestConnectionResult(
+        status="ok",
+        latency_ms=0,
+        detail="config OK (tenant / client / secret set; Wave B+ adds Graph resolve-site ping)",
+    )
+
+
 def _run_probe(
     cfg: ProviderConfig, settings: Settings
 ) -> TestConnectionResult:
@@ -177,6 +204,8 @@ def _run_probe(
         result = _probe_key_vault(cfg, settings)
     elif cfg.provider_id == "structlog":
         result = _probe_structlog(cfg)
+    elif cfg.provider_id == "sharepoint":
+        result = _probe_sharepoint(cfg)
     else:
         result = TestConnectionResult(
             status="error",
@@ -312,4 +341,55 @@ async def rotate_secret(provider_id: str, request: Request) -> RotateSecretResul
         provider_id=provider_id,
         last_rotated_at=rotated_at,
         secret_masked_preview=masked,
+    )
+
+
+@router.post("/{provider_id}/set-secret", response_model=SetSecretResult)
+async def set_secret(
+    provider_id: str, body: SetSecretRequest, request: Request
+) -> SetSecretResult:
+    """Store a USER-supplied secret in Key Vault (ADR-0072).
+
+    Unlike `rotate-secret` (which mints a value server-side), `set-secret` stores a
+    value the admin provides — e.g. the SharePoint client secret Azure AD issued,
+    which the app cannot generate. **H5**: `body.value` is written straight to Key
+    Vault and is NEVER logged, returned, or persisted in plaintext; only the masked
+    preview is recorded + returned. Errors deliberately omit the value + suppress
+    the exception chain so no secret leaks via a traceback.
+    """
+    backend = _get_backend(request)
+    kv = _get_key_vault(request)
+    try:
+        cfg = await backend.get(provider_id)
+    except ProviderNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    if cfg.secret_kv_ref is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"provider {provider_id!r} has no secret slot (secret_kv_ref unset)",
+        )
+    try:
+        await kv.set_secret(cfg.secret_kv_ref, body.value)
+    except Exception as e:  # noqa: BLE001 — H5: never surface the value; drop the chain
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"failed to store secret for {provider_id!r} in Key Vault ({type(e).__name__})",
+        ) from None
+    updated_at = datetime.now(timezone.utc)
+    masked = _mask_secret(body.value)
+    await backend.update_rotation_timestamp(
+        provider_id, rotated_at=updated_at, secret_masked_preview=masked
+    )
+    audit = _get_audit_log(request)
+    if audit is not None:
+        await audit.append(
+            actor=None,
+            action="connection_set_secret",
+            resource=f"admin_provider_configs/{provider_id}",
+            payload={"kv_ref": cfg.secret_kv_ref, "masked_preview": masked},  # never the value (H5)
+        )
+    return SetSecretResult(
+        provider_id=provider_id,
+        secret_masked_preview=masked,
+        updated_at=updated_at,
     )

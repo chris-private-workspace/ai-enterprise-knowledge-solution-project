@@ -41,6 +41,8 @@ from integration.models import SourceContainer, SourceDocumentRef
 from integration.sharepoint.connector import SharePointConnector
 from integration.sharepoint.graph_client import SharePointCredentials
 from kb_management import KBService
+from storage.admin_provider_storage import ProviderNotFoundError
+from storage.key_vault import SecretNotFoundError
 from storage.settings import Settings, get_settings
 
 logger = structlog.get_logger(__name__)
@@ -120,29 +122,73 @@ class ImportSummaryOut(BaseModel):
     results: list[DocImportResultOut]
 
 
-def _sharepoint_credentials_or_503(settings: Settings) -> SharePointCredentials:
-    has_auth = bool(settings.sharepoint_client_secret or settings.sharepoint_certificate_path)
-    if not (settings.sharepoint_tenant_id and settings.sharepoint_client_id and has_auth):
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "SharePoint integration not configured — set SHAREPOINT_TENANT_ID / "
-                "SHAREPOINT_CLIENT_ID / SHAREPOINT_CLIENT_SECRET (or "
-                "SHAREPOINT_CERTIFICATE_PATH) in .env (H5: never commit)."
-            ),
+async def _managed_sharepoint_credentials(request: Request) -> SharePointCredentials | None:
+    """Read the SharePoint managed connection (admin provider config + Key Vault,
+    ADR-0072). Returns None when the admin backend / Key Vault aren't wired, the
+    provider row is unconfigured (tenant / client / secret not all set), or the
+    secret isn't stored yet — in every such case the caller falls back to `.env`."""
+    backend = getattr(request.app.state, "admin_provider_backend", None)
+    kv = getattr(request.app.state, "key_vault_provider", None)
+    if backend is None or kv is None:
+        return None
+    try:
+        cfg = await backend.get("sharepoint")
+    except ProviderNotFoundError:
+        return None
+    tenant_id = cfg.settings.get("tenant_id", "")
+    client_id = cfg.settings.get("client_id", "")
+    if not tenant_id or not client_id or not cfg.secret_kv_ref:
+        return None
+    try:
+        secret = await kv.get_secret(cfg.secret_kv_ref)
+    except SecretNotFoundError:
+        return None  # secret not set via UI yet → fall back to .env
+    if not secret:
+        return None
+    # credential_type governs whether the stored value is a client secret or a cert
+    # path (cert-file upload is a follow-up, plan D-4 — path/reference only for now).
+    if cfg.settings.get("credential_type") == "certificate":
+        return SharePointCredentials(
+            tenant_id=tenant_id, client_id=client_id, certificate_path=secret
         )
     return SharePointCredentials(
-        tenant_id=settings.sharepoint_tenant_id,
-        client_id=settings.sharepoint_client_id,
-        client_secret=settings.sharepoint_client_secret or None,
-        certificate_path=settings.sharepoint_certificate_path or None,
+        tenant_id=tenant_id, client_id=client_id, client_secret=secret
     )
 
 
-def _new_connector(settings: Settings) -> SharePointConnector:
+async def _sharepoint_credentials_or_503(
+    request: Request, settings: Settings
+) -> SharePointCredentials:
+    """Resolve SharePoint credentials — managed connection first (admin UI + Key
+    Vault, ADR-0072), else `.env` fallback (W100, zero regression). 503 if neither
+    is configured. Credentials never come from the request body (H5)."""
+    managed = await _managed_sharepoint_credentials(request)
+    if managed is not None:
+        return managed
+    has_auth = bool(settings.sharepoint_client_secret or settings.sharepoint_certificate_path)
+    if settings.sharepoint_tenant_id and settings.sharepoint_client_id and has_auth:
+        return SharePointCredentials(
+            tenant_id=settings.sharepoint_tenant_id,
+            client_id=settings.sharepoint_client_id,
+            client_secret=settings.sharepoint_client_secret or None,
+            certificate_path=settings.sharepoint_certificate_path or None,
+        )
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=(
+            "SharePoint integration not configured — set it up in Settings → "
+            "Connections (managed connection + Key Vault, ADR-0072), or set "
+            "SHAREPOINT_TENANT_ID / SHAREPOINT_CLIENT_ID / SHAREPOINT_CLIENT_SECRET "
+            "(or SHAREPOINT_CERTIFICATE_PATH) in .env (H5: never commit)."
+        ),
+    )
+
+
+async def _new_connector(request: Request, settings: Settings) -> SharePointConnector:
     """Build a SharePoint connector from server-side config (H5 — credentials live in
-    .env / Key Vault, never the request body). 503 if unconfigured."""
-    creds = _sharepoint_credentials_or_503(settings)
+    the managed connection / Key Vault / .env, never the request body). 503 if
+    unconfigured."""
+    creds = await _sharepoint_credentials_or_503(request, settings)
     return SharePointConnector(creds, anyone_policy=settings.sharepoint_anyone_policy)
 
 
@@ -260,6 +306,7 @@ def _to_out(summary: ImportSummary) -> ImportSummaryOut:
 @router.post("/resolve-site", response_model=SourceContainerOut)
 async def resolve_site(
     body: ResolveSiteRequest,
+    request: Request,
     actor: Annotated[AuthenticatedUser, Depends(require_role("admin", "editor"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> SourceContainerOut:
@@ -267,7 +314,7 @@ async def resolve_site(
     + step 2 tree root). Connect / auth / 403-no-grant failures surface as 5xx (fatal,
     §8.1)."""
     hostname, site_path = _parse_site_url(body.site_url)
-    connector = _new_connector(settings)
+    connector = await _new_connector(request, settings)
     handle = await connector.connect()
     try:
         container = await connector.resolve_site(handle, hostname, site_path)
@@ -279,13 +326,14 @@ async def resolve_site(
 
 @router.get("/browse", response_model=BrowseResponse)
 async def browse(
+    request: Request,
     actor: Annotated[AuthenticatedUser, Depends(require_role("admin", "editor"))],
     settings: Annotated[Settings, Depends(get_settings)],
     container_id: Annotated[str | None, Query()] = None,
 ) -> BrowseResponse:
     """List child containers (site → library → folder) for the step-2 tree (②).
     `container_id` omitted = top level (sites)."""
-    connector = _new_connector(settings)
+    connector = await _new_connector(request, settings)
     handle = await connector.connect()
     try:
         containers = await _collect_capped(connector.browse(handle, container_id))
@@ -297,12 +345,13 @@ async def browse(
 
 @router.get("/documents", response_model=DocumentsResponse)
 async def list_documents(
+    request: Request,
     actor: Annotated[AuthenticatedUser, Depends(require_role("admin", "editor"))],
     settings: Annotated[Settings, Depends(get_settings)],
     container_id: Annotated[str, Query()],
 ) -> DocumentsResponse:
     """List file documents in a drive / folder for the step-2 picker (②③)."""
-    connector = _new_connector(settings)
+    connector = await _new_connector(request, settings)
     handle = await connector.connect()
     try:
         refs = await _collect_capped(connector.list_documents(handle, container_id))
@@ -335,7 +384,7 @@ async def import_sharepoint(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="provide container_ids (container-level) or documents (individual files)",
         )
-    connector = _new_connector(settings)
+    connector = await _new_connector(request, settings)
     ingest = make_pipeline_ingest(deps, service)
     handle = await connector.connect()
     try:

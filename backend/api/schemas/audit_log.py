@@ -18,6 +18,7 @@ AuditAction = Literal[
     "connection_patch",
     "connection_test",
     "connection_rotate_secret",
+    "connection_set_secret",  # ADR-0072 — user-supplied secret → Key Vault
     # F3 admin_identity_config
     "identity_patch",
     # F4 admin_api_keys
