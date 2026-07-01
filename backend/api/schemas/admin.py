@@ -27,7 +27,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-ProviderCategory = Literal["llm", "retrieval", "storage", "observability", "identity"]
+ProviderCategory = Literal[
+    "llm", "retrieval", "storage", "observability", "identity", "integration"
+]
 TestStatus = Literal["ok", "degraded", "error", "not_tested"]
 
 
@@ -59,6 +61,14 @@ class ProviderConfig(BaseModel):
     endpoint_url: str | None = None
     region: str | None = None
     deployments: list[ProviderDeployment] = Field(default_factory=list)
+    settings: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "Provider-specific NON-secret config, e.g. SharePoint tenant_id / "
+            "client_id / credential_type (ADR-0072). Secrets never live here — "
+            "use secret_kv_ref + the set-secret / rotate-secret endpoints."
+        ),
+    )
     secret_kv_ref: str | None = Field(
         default=None,
         description="Name of the secret in the configured Key Vault (NOT the value).",
@@ -91,6 +101,9 @@ class ProviderPatch(BaseModel):
     endpoint_url: str | None = None
     region: str | None = None
     display_name: str | None = None
+    # Provider-specific non-secret config (ADR-0072) — full-replacement on PATCH
+    # (e.g. SharePoint {tenant_id, client_id, credential_type}). Secrets never here.
+    settings: dict[str, str] | None = None
     # deployments + secret_kv_ref deliberately omitted — Wave B+ may expose
     # deployment edits (currently they mirror Azure portal config), and secret
     # rotation is server-side only (no client-side value PATCH).
@@ -120,3 +133,24 @@ class RotateSecretResult(BaseModel):
     provider_id: str
     last_rotated_at: datetime
     secret_masked_preview: str
+
+
+class SetSecretRequest(BaseModel):
+    """`POST /admin/connections/{id}/set-secret` body (ADR-0072).
+
+    A USER-supplied secret (e.g. the Azure-issued SharePoint client secret, which
+    the app can't `rotate_secret`-generate). Distinct from rotate: rotate mints a
+    value server-side; set stores a value the admin provides. The value is written
+    straight to Key Vault and is NEVER logged / returned / persisted in plaintext
+    (H5) — only its masked preview surfaces.
+    """
+
+    value: str = Field(..., min_length=1, description="The secret value (write-only; masked on read).")
+
+
+class SetSecretResult(BaseModel):
+    """`set-secret` response — metadata only, never the raw value (H5)."""
+
+    provider_id: str
+    secret_masked_preview: str
+    updated_at: datetime

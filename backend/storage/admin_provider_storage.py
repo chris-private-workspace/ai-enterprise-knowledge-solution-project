@@ -1,4 +1,7 @@
-"""Admin provider config storage — Protocol + InMemory impl + 9-provider seed.
+"""Admin provider config storage — Protocol + InMemory impl + provider seed.
+
+W102 / ADR-0072 added `sharepoint` (category `integration`) as the 10th provider,
+carrying non-secret config (tenant_id / client_id) in the generic `settings` dict.
 
 W24-wave-c1 F2 per ADR-0026 Option B. Mirrors the `kb_management.storage`
 Protocol + lazy-import shape (ADR-0023):
@@ -176,6 +179,22 @@ def default_providers() -> list[ProviderConfig]:
             endpoint_url=None,
             region=None,
             secret_kv_ref=None,
+            secret_masked_preview=None,
+            created_at=now,
+            updated_at=now,
+        ),
+        # ADR-0072 — SharePoint source integration (managed connection). tenant_id /
+        # client_id / credential_type are admin-set via UI (PATCH settings); the
+        # client secret / cert lives in Key Vault under secret_kv_ref (set-secret).
+        # Empty settings = "not configured" → integration route falls back to .env.
+        ProviderConfig(
+            provider_id="sharepoint",
+            category="integration",
+            display_name="SharePoint (Sites.Selected import)",
+            endpoint_url=None,
+            region=None,
+            settings={"tenant_id": "", "client_id": "", "credential_type": "client_secret"},
+            secret_kv_ref="ekp-sharepoint-client-secret",
             secret_masked_preview=None,
             created_at=now,
             updated_at=now,
