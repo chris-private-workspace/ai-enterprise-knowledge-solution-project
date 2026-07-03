@@ -208,6 +208,14 @@ export default function ChatPage() {
   const [citationMode] = useState<CitationMode>('sidebar');
   const [historyCollapsed, setHistoryCollapsed] = useState(false);
   const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
+  // CH-019 — header toggles wired (were mockup-visual-only since W22 F4):
+  // per-query CRAG (rides QueryRequest.enable_crag, backend default True),
+  // display-layer image visibility (images stay fetched — flipping back on
+  // re-shows without re-querying), and focus mode (collapse both side panels).
+  // Session-only; none persisted.
+  const [cragEnabled, setCragEnabled] = useState(true);
+  const [showImages, setShowImages] = useState(true);
+  const [focusMode, setFocusMode] = useState(false);
   const [kbId, setKbId] = useState<string>('');
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -425,7 +433,9 @@ export default function ChatPage() {
     let finalContent = '';
     try {
       const stream: AsyncIterable<SseEvent> = streamQuery(
-        { query: trimmed, kb_id: kbId },
+        // CH-019 — per-query CRAG toggle (header switch); backend gates the L2
+        // self-correction loop on this flag (query.py, schema default True).
+        { query: trimmed, kb_id: kbId, enable_crag: cragEnabled },
         ac.signal,
       );
       for await (const evt of stream) {
@@ -545,6 +555,21 @@ export default function ChatPage() {
           onToggleHistory={toggleHistory}
           sourcesCollapsed={sourcesCollapsed}
           onToggleSources={toggleSources}
+          cragEnabled={cragEnabled}
+          onToggleCrag={() => setCragEnabled((v) => !v)}
+          showImages={showImages}
+          onToggleImages={() => setShowImages((v) => !v)}
+          focusMode={focusMode}
+          onToggleFocus={() =>
+            // CH-019 — focus on collapses BOTH panels; off re-opens both (simple
+            // semantics per spec §2③ — no per-panel memory of the prior state).
+            setFocusMode((f) => {
+              const next = !f;
+              setHistoryCollapsed(next);
+              setSourcesCollapsed(next);
+              return next;
+            })
+          }
         />
 
         <ChatThread
@@ -552,6 +577,7 @@ export default function ChatPage() {
           citationMode={citationMode}
           kbId={kbId || activeKb?.kb_id || ''}
           maxImagesPerAnswer={activeKb?.config?.max_images_per_answer ?? null}
+          showImages={showImages}
           onOpenScreenshot={(citation, image) => setModalImage({ citation, image })}
         />
 
@@ -919,6 +945,12 @@ function ChatHeader({
   onToggleHistory,
   sourcesCollapsed,
   onToggleSources,
+  cragEnabled,
+  onToggleCrag,
+  showImages,
+  onToggleImages,
+  focusMode,
+  onToggleFocus,
 }: {
   kbs: KbStatus[];
   activeKb: KbStatus | undefined;
@@ -928,6 +960,13 @@ function ChatHeader({
   onToggleHistory: () => void;
   sourcesCollapsed: boolean;
   onToggleSources: () => void;
+  // CH-019 — the three header toggles, wired (were mockup-visual-only).
+  cragEnabled: boolean;
+  onToggleCrag: () => void;
+  showImages: boolean;
+  onToggleImages: () => void;
+  focusMode: boolean;
+  onToggleFocus: () => void;
 }) {
   // CH-018 — the selector lists only ACTIVE (non-archived) KBs; archived KBs are
   // soft-deleted and shouldn't be a pickable target for new questions (same
@@ -993,18 +1032,48 @@ function ChatHeader({
       </div>
       <div className="spacer" />
       <div className="row">
+        {/* CH-019 — interactive switches (settings-doc-profiling pattern:
+            role="switch" + data-on + tabIndex). Visual output identical to the
+            mockup's data-on styling — only behaviour added. */}
         <span className="muted text-xs">CRAG</span>
-        <span className="switch" data-on="true" />
+        <span
+          className="switch"
+          data-on={cragEnabled}
+          role="switch"
+          aria-checked={cragEnabled}
+          aria-label="CRAG L2 self-correction"
+          tabIndex={0}
+          onClick={onToggleCrag}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') onToggleCrag();
+          }}
+        />
         <span className="muted text-xs" style={{ marginLeft: 12 }}>
           Show images
         </span>
-        <span className="switch" data-on="true" />
+        <span
+          className="switch"
+          data-on={showImages}
+          role="switch"
+          aria-checked={showImages}
+          aria-label="Show images in answers"
+          tabIndex={0}
+          onClick={onToggleImages}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') onToggleImages();
+          }}
+        />
       </div>
       <div className="row" style={{ marginLeft: 4 }}>
         <button
           type="button"
           className="btn btn-ghost btn-icon btn-sm"
-          title="Focus mode (hide all panels)"
+          title={focusMode ? 'Exit focus mode (restore panels)' : 'Focus mode (hide all panels)'}
+          onClick={onToggleFocus}
+          style={{
+            // Active highlight mirrors the BookOpen sources toggle below.
+            background: focusMode ? 'oklch(var(--muted))' : 'transparent',
+          }}
         >
           <Eye size={14} />
         </button>
@@ -1035,12 +1104,14 @@ function ChatThread({
   citationMode,
   kbId,
   maxImagesPerAnswer,
+  showImages,
   onOpenScreenshot,
 }: {
   messages: Message[];
   citationMode: CitationMode;
   kbId: string;
   maxImagesPerAnswer: number | null;
+  showImages: boolean;
   onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
 }) {
   const threadRef = useRef<HTMLDivElement | null>(null);
@@ -1066,6 +1137,7 @@ function ChatThread({
               citationMode={citationMode}
               kbId={kbId}
               maxImagesPerAnswer={maxImagesPerAnswer}
+              showImages={showImages}
               onOpenScreenshot={onOpenScreenshot}
             />
           ))
@@ -1126,12 +1198,14 @@ function MessageRow({
   citationMode,
   kbId,
   maxImagesPerAnswer,
+  showImages,
   onOpenScreenshot,
 }: {
   message: Message;
   citationMode: CitationMode;
   kbId: string;
   maxImagesPerAnswer: number | null;
+  showImages: boolean;
   onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
 }) {
   if (message.role === 'user') {
@@ -1181,10 +1255,18 @@ function MessageRow({
   // no markers (knob off) the plan anchors nothing → strip path + full pile, so
   // a marker-less answer renders bit-identical to pre-W71. (Plain const, not a
   // hook — the user-role branch above already returned.)
-  const imagePlan = message.isStreaming ? null : planAnchoredImages(message.content, cappedImages);
-  const trailingImages: PlacedImage[] = imagePlan
-    ? imagePlan.trailing
-    : cappedImages.map((entry, i) => ({ entry, figureIdx: i + 1 }));
+  // CH-019 — "Show images" off hides at the DISPLAY layer only: plan nothing
+  // (AnswerBodyMarkdown gets no inlineImages → its existing marker-strip path)
+  // and empty the trailing pile (0 gallery groups). Images stay fetched, so
+  // flipping back on re-renders them without re-querying. Sources panel /
+  // citation thumbnails are out of scope (spec §2②, most-conservative reading).
+  const imagePlan =
+    message.isStreaming || !showImages ? null : planAnchoredImages(message.content, cappedImages);
+  const trailingImages: PlacedImage[] = !showImages
+    ? []
+    : imagePlan
+      ? imagePlan.trailing
+      : cappedImages.map((entry, i) => ({ entry, figureIdx: i + 1 }));
 
   return (
     <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
