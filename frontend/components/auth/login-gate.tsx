@@ -25,10 +25,11 @@
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 
-import { authMode, useAuthStatus } from '@/lib/providers/auth-provider';
+import { authMode, useAuthHydrated, useAuthStatus } from '@/lib/providers/auth-provider';
 
 export function LoginGate({ children }: { children: React.ReactNode }) {
   const status = useAuthStatus();
+  const hydrated = useAuthHydrated();
 
   // Mock dev mode auto-signs-in → never gate. Authenticated → pass through.
   if (authMode === 'mock' || status === 'authenticated') {
@@ -38,10 +39,10 @@ export function LoginGate({ children }: { children: React.ReactNode }) {
   // Still resolving identity (cookie hydration via GET /auth/me, or MSAL init).
   // The user may well be signed in — show a neutral spinner WITHOUT the sign-in
   // CTA so we never flash "Sign in to continue" at an already-authenticated user
-  // (BUG-038). The sign-in link only belongs in the definitively-unauthenticated
-  // (idle / error) state below — this matches the docstring's "splash while
-  // loading, splash + sign-in link when unauthenticated" intent.
-  if (status === 'loading') {
+  // (BUG-038). BUG-039: the store STARTS at `idle` before the hydration effect
+  // runs, so `!hydrated` gets the same neutral spinner — the CTA below is only
+  // for the post-hydration, definitively-unauthenticated states.
+  if (!hydrated || status === 'loading') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden="true" />

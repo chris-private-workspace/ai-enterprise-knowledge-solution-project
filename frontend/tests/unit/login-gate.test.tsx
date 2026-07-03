@@ -13,21 +13,44 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { useAuthStatusMock } = vi.hoisted(() => ({ useAuthStatusMock: vi.fn() }));
+const { useAuthStatusMock, useAuthHydratedMock } = vi.hoisted(() => ({
+  useAuthStatusMock: vi.fn(),
+  useAuthHydratedMock: vi.fn(),
+}));
 
 // authMode must NOT be 'mock' — mock mode passes through without ever gating.
 vi.mock('@/lib/providers/auth-provider', () => ({
   authMode: 'cookie',
   useAuthStatus: useAuthStatusMock,
+  useAuthHydrated: useAuthHydratedMock,
 }));
 
 import { LoginGate } from '@/components/auth/login-gate';
 
 const CTA = 'Sign in to continue';
 
-describe('<LoginGate> splash states (BUG-038)', () => {
+describe('<LoginGate> splash states (BUG-038 / BUG-039)', () => {
   beforeEach(() => {
     useAuthStatusMock.mockReset();
+    useAuthHydratedMock.mockReset();
+    // Default: hydration attempt complete — individual tests override for the
+    // BUG-039 pre-hydration case.
+    useAuthHydratedMock.mockReturnValue(true);
+  });
+
+  it('pre-hydration idle (first paint): spinner WITHOUT the CTA (BUG-039 regression)', () => {
+    // The store STARTS at idle before the hydration effect runs — the gate must
+    // NOT read that as "definitively unauthenticated" and flash the CTA.
+    useAuthStatusMock.mockReturnValue('idle');
+    useAuthHydratedMock.mockReturnValue(false);
+    render(
+      <LoginGate>
+        <div>protected</div>
+      </LoginGate>,
+    );
+    expect(screen.queryByText(CTA)).not.toBeInTheDocument();
+    expect(document.querySelector('svg.animate-spin')).toBeInTheDocument();
+    expect(screen.queryByText('protected')).not.toBeInTheDocument();
   });
 
   it('loading: shows a spinner WITHOUT the sign-in CTA (BUG-038 regression)', () => {
@@ -45,7 +68,7 @@ describe('<LoginGate> splash states (BUG-038)', () => {
     expect(screen.queryByText('protected')).not.toBeInTheDocument();
   });
 
-  it('idle (401 — definitively unauthenticated): shows the sign-in CTA', () => {
+  it('hydrated idle (401 — definitively unauthenticated): shows the sign-in CTA', () => {
     useAuthStatusMock.mockReturnValue('idle');
     render(
       <LoginGate>

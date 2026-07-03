@@ -138,7 +138,13 @@ export function UserMenu() {
           <div className="hr" />
           <button
             type="button"
-            onClick={() => void signOut().then(() => router.push('/login'))}
+            onClick={() => {
+              // BUG-039 — navigate FIRST so the (app) gate unmounts before the
+              // store lands on idle; signOut (status: loading while in flight)
+              // proceeds in parallel and clears the session cookie.
+              router.push('/login');
+              void signOut();
+            }}
             className="nav-item"
             style={{
               padding: '7px 10px',

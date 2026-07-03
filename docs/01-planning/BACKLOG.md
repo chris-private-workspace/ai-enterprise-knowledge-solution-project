@@ -22,7 +22,7 @@
 
 | ID | 任務 | 狀態 | 下一步 / 阻塞 | 來源 |
 |---|---|---|---|---|
-| **BUG-038** | login-gate loading 期間顯示多餘「Sign in to continue」CTA — fix 範圍 A(`status === 'loading'` → 純 spinner,唔出 CTA) | `完成` | fix landed(`login-gate.tsx:44-50`,git diff 核實)+ 驗證全綠(`tsc`/`eslint` exit 0 + `vitest` **4/4 pass**);manual browser smoke **deferred**(W87 OneDrive:next dev 首編 ~135s + Fast Refresh 唔可靠,見 B-05);**待用戶自行 commit** 後即可移除本行 | `docs/03-implementation/bugs/BUG-038-login-gate-loading-shows-signin-cta/` |
+| **BUG-039** | login-gate 初始 idle 第一幀 + 登出過渡閃「Sign in to continue」CTA(BUG-038 範圍 A 剔出 scope 嘅殘餘,用戶 2026-07-03 實測證實) | `完成` | 範圍 B fix landed(用戶 approve):auth-provider `hydrated` flag + gate 只喺確定未登入出 CTA + signOut hold loading + 登出先 navigate;vitest **8/8** + tsc/eslint exit 0;manual smoke 留用戶按需;**待 commit** | `docs/03-implementation/bugs/BUG-039-login-gate-idle-flash-signin-cta/` |
 
 ---
 
