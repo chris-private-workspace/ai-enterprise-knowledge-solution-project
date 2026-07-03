@@ -18,6 +18,11 @@ import { initMsal, getMsalUser } from '@/lib/auth/msal_provider';
 type AuthState = {
   user: AuthenticatedUser | null;
   status: 'idle' | 'loading' | 'authenticated' | 'error';
+  // BUG-039 — `idle` is ambiguous: the store STARTS at idle before the hydration
+  // effect has even run, and lands back at idle after a definitive 401 / sign-out.
+  // `hydrated` disambiguates: false until the first identity resolution attempt
+  // completes, so the login-gate never flashes the sign-in CTA on first paint.
+  hydrated: boolean;
   error: string | null;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -27,28 +32,34 @@ type AuthState = {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   status: 'idle',
+  hydrated: false,
   error: null,
 
   signIn: async () => {
     set({ status: 'loading', error: null });
     try {
       const user = await login();
-      set({ user, status: 'authenticated', error: null });
+      set({ user, status: 'authenticated', hydrated: true, error: null });
     } catch (e) {
       set({
         status: 'error',
+        hydrated: true,
         error: e instanceof Error ? e.message : String(e),
       });
     }
   },
 
   signOut: async () => {
+    // BUG-039 — hold `loading` while the logout request is in flight so the
+    // login-gate shows the neutral spinner (not the sign-in CTA) during the
+    // sign-out → /login navigation window.
+    set({ status: 'loading', error: null });
     await logout();
     set({ user: null, status: 'idle', error: null });
   },
 
   setUserFromCache: (user: AuthenticatedUser) =>
-    set({ user, status: 'authenticated', error: null }),
+    set({ user, status: 'authenticated', hydrated: true, error: null }),
 }));
 
 // Refresh slightly before Microsoft default 1-hour expiry so the cached
@@ -85,7 +96,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const user = await login();
             setUserFromCache(user);
           } catch {
-            useAuthStore.setState({ user: null, status: 'idle', error: null });
+            // Definitively unauthenticated (401) — hydration attempt is complete.
+            useAuthStore.setState({
+              user: null,
+              status: 'idle',
+              hydrated: true,
+              error: null,
+            });
           }
         })();
       }
@@ -105,7 +122,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const user = getMsalUser();
           setUserFromCache(user);
         } catch {
-          // Not authenticated yet — UserMenu shows sign-in CTA.
+          // Not authenticated yet — UserMenu shows sign-in CTA. The restore
+          // attempt is complete either way (BUG-039).
+          useAuthStore.setState({ hydrated: true });
         }
       } catch (e) {
         if (!cancelled) {
@@ -113,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // error state so ErrorBoundary can pick it up downstream.
           useAuthStore.setState({
             status: 'error',
+            hydrated: true,
             error: e instanceof Error ? e.message : String(e),
           });
         }
@@ -146,6 +166,12 @@ export function useCurrentUser(): AuthenticatedUser | null {
 
 export function useAuthStatus(): AuthState['status'] {
   return useAuthStore((s) => s.status);
+}
+
+/** BUG-039 — true once the first identity-resolution attempt has completed.
+ * The login-gate treats `!hydrated` like `loading` (neutral spinner, no CTA). */
+export function useAuthHydrated(): boolean {
+  return useAuthStore((s) => s.hydrated);
 }
 
 export { authMode, getCurrentUser };
