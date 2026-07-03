@@ -386,12 +386,7 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
       >
         EKP
       </Link>
-      {!collapsed && (
-        <>
-          <span className="brand-name">Knowledge Platform</span>
-          <span className="brand-tag">BETA</span>
-        </>
-      )}
+      {!collapsed && <span className="brand-name">Knowledge Platform</span>}
     </div>
   );
 }

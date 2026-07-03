@@ -239,12 +239,7 @@ function Sidebar({ route, onNavigate, collapsed }) {
     <aside className="sidebar">
       <div className="sidebar-brand">
         <div className="brand-mark">EKP</div>
-        {!collapsed && (
-          <>
-            <div className="brand-name">Knowledge Platform</div>
-            <span className="brand-tag">BETA</span>
-          </>
-        )}
+        {!collapsed && <div className="brand-name">Knowledge Platform</div>}
       </div>
 
       {!collapsed && (
