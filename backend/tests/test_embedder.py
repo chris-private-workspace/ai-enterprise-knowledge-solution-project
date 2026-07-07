@@ -185,3 +185,76 @@ async def test_embedder_implements_embedder_protocol() -> None:
         )
         assert isinstance(embedder, Embedder)
         await embedder.aclose()
+
+
+# ---------- BUG-042 sub-batch (input-array cap) -----------------------------
+
+
+@pytest.mark.asyncio
+async def test_embed_batch_subbatches_when_over_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    """BUG-042 — a doc with more chunks than the Azure input-array cap is split
+    into multiple API calls; vectors returned in input order with count
+    preserved (no single over-cap call that would 400 and abort the ingest)."""
+    monkeypatch.setattr("ingestion.embedding.azure_openai_embedder._MAX_INPUTS_PER_CALL", 2)
+
+    async def _create(**kwargs: object) -> MagicMock:
+        # echo one vector per input; vector[0] encodes the text index (t3 → 3.0)
+        # so the assembled order can be verified across sub-batches.
+        texts = kwargs["input"]
+        assert isinstance(texts, list)
+        vecs = [[float(t[1:])] * 1024 for t in texts]
+        return _mock_response(vecs, total_tokens=len(texts) * 10)
+
+    with patch("ingestion.embedding.azure_openai_embedder.AsyncAzureOpenAI") as MockClient:
+        instance = MockClient.return_value
+        instance.embeddings.create = AsyncMock(side_effect=_create)
+        instance.close = AsyncMock()
+
+        async with AzureOpenAIEmbedder(
+            endpoint="https://x.openai.azure.com",
+            api_key="k",
+            api_version="v",
+            deployment="text-embedding-3-large",
+            dimensions=1024,
+        ) as embedder:
+            results = await embedder.embed_batch([f"t{i}" for i in range(5)])
+
+    # 5 inputs / cap 2 → 3 calls (2 + 2 + 1)
+    assert instance.embeddings.create.await_count == 3
+    # count + order preserved across the reassembled sub-batches
+    assert len(results) == 5
+    assert [r.vector[0] for r in results] == [0.0, 1.0, 2.0, 3.0, 4.0]
+
+
+@pytest.mark.asyncio
+async def test_embed_batch_at_cap_is_single_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    """BUG-042 boundary — exactly cap inputs stays a single call (no needless
+    split); cap+1 splits into two. Docs within the cap keep the single-call,
+    bit-identical path (production-preserve)."""
+    monkeypatch.setattr("ingestion.embedding.azure_openai_embedder._MAX_INPUTS_PER_CALL", 3)
+    vec = [0.0] * 1024
+
+    async def _create(**kwargs: object) -> MagicMock:
+        texts = kwargs["input"]
+        assert isinstance(texts, list)
+        return _mock_response([vec] * len(texts), total_tokens=len(texts))
+
+    with patch("ingestion.embedding.azure_openai_embedder.AsyncAzureOpenAI") as MockClient:
+        instance = MockClient.return_value
+        instance.embeddings.create = AsyncMock(side_effect=_create)
+        instance.close = AsyncMock()
+
+        async with AzureOpenAIEmbedder(
+            endpoint="https://x.openai.azure.com",
+            api_key="k",
+            api_version="v",
+            deployment="d",
+        ) as embedder:
+            at_cap = await embedder.embed_batch(["a", "b", "c"])  # == cap → 1 call
+            assert instance.embeddings.create.await_count == 1
+            assert len(at_cap) == 3
+
+            over_cap = await embedder.embed_batch(["a", "b", "c", "d"])  # cap+1 → +2 calls
+
+    assert instance.embeddings.create.await_count == 3  # 1 (at-cap) + 2 (4-input split: 3 + 1)
+    assert len(over_cap) == 4
