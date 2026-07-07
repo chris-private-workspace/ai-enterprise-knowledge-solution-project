@@ -83,7 +83,12 @@ def _chunk(chunk_index: int, section_leaf: str, image_checksums: list[str]) -> d
 def _engine(doc_chunks: list[dict]) -> MagicMock:
     engine = MagicMock()
 
-    async def _list(kb_id: str, doc_id: str, top: int = 1000) -> list[dict]:
+    async def _list(
+        kb_id: str,
+        doc_id: str,
+        top: int = 1000,
+        user_principals: list[str] | None = None,
+    ) -> list[dict]:
         return doc_chunks
 
     engine.list_chunks = AsyncMock(side_effect=_list)
@@ -227,3 +232,18 @@ async def test_fetch_exception_returns_original() -> None:
     engine.list_chunks = AsyncMock(side_effect=RuntimeError("azure down"))
     out = await pin_chapter_overview_images(citations, "kb-1", engine)
     assert out == citations  # graceful degradation
+
+
+@pytest.mark.asyncio
+async def test_pin_forwards_user_principals_to_list_chunks() -> None:
+    """BUG-041 — pin_chapter_overview_images must thread user_principals into the
+    overview-chunk fetch so the query is ACL-trimmed (same confused-deputy fix as
+    attach_neighbour_images). Regression guard for the overview-image path."""
+    citations = [_citation("c1", 27, "3.1.3 System Instruction for each step")]
+    engine = _engine([_chunk(24, "3.1.1 Overview", ["ov-flow"])])
+
+    await pin_chapter_overview_images(citations, "kb-1", engine, user_principals=["group:eng"])
+
+    assert engine.list_chunks.await_count >= 1
+    for call in engine.list_chunks.await_args_list:
+        assert call.kwargs.get("user_principals") == ["group:eng"]

@@ -97,7 +97,12 @@ def _mock_engine(per_doc_chunks: dict[str, list[dict]]) -> MagicMock:
     returns the per-doc list."""
     engine = MagicMock()
 
-    async def _list(kb_id: str, doc_id: str, top: int = 1000) -> list[dict]:
+    async def _list(
+        kb_id: str,
+        doc_id: str,
+        top: int = 1000,
+        user_principals: list[str] | None = None,
+    ) -> list[dict]:
         return per_doc_chunks.get(doc_id, [])
 
     engine.list_chunks = AsyncMock(side_effect=_list)
@@ -307,7 +312,12 @@ async def test_attach_doc_fetch_failure_falls_back_gracefully() -> None:
     cit_a = _citation(chunk_id="ch-A", doc_id="doc-A", chunk_index=5)
     cit_b = _citation(chunk_id="ch-B", doc_id="doc-B", chunk_index=5)
 
-    async def _list(kb_id: str, doc_id: str, top: int = 1000) -> list[dict]:
+    async def _list(
+        kb_id: str,
+        doc_id: str,
+        top: int = 1000,
+        user_principals: list[str] | None = None,
+    ) -> list[dict]:
         if doc_id == "doc-A":
             raise RuntimeError("Azure Search timeout")
         return [_doc_chunk_dict(6, images=[_img_dict("b-img")])]
@@ -359,6 +369,95 @@ async def test_attach_respects_neighbour_window_setting() -> None:
     )
     checksums = [img.checksum_sha256 for img in result[0].embedded_images]
     assert checksums == ["within-window"]
+
+
+# ---------- BUG-041 ACL trim (user_principals threading) --------------------
+
+
+@pytest.mark.asyncio
+async def test_attach_forwards_user_principals_to_list_chunks() -> None:
+    """BUG-041 — attach must thread user_principals into every engine.list_chunks
+    fetch so the neighbour-chunk query is ACL-trimmed (confused-deputy fix).
+    Regression guard: dropping the arg silently loses ACL filtering on the
+    neighbour-image path."""
+    engine = _mock_engine({"doc-A": [_doc_chunk_dict(6, images=[_img_dict("nb")])]})
+    cit = _citation(chunk_id="c1", doc_id="doc-A", chunk_index=5)
+
+    await attach_neighbour_images(
+        [cit], kb_id="kb1", engine=engine, user_principals=["group:eng", "user:alice"]
+    )
+
+    assert engine.list_chunks.await_count >= 1
+    for call in engine.list_chunks.await_args_list:
+        assert call.kwargs.get("user_principals") == ["group:eng", "user:alice"]
+
+
+@pytest.mark.asyncio
+async def test_attach_admin_forwards_none_principals() -> None:
+    """BUG-041 — admin (user_principals=None, the default) forwards None so
+    list_chunks applies no ACL filter → admin sees all neighbour images (no
+    regression vs pre-fix behaviour)."""
+    engine = _mock_engine({"doc-A": [_doc_chunk_dict(6, images=[_img_dict("nb")])]})
+    cit = _citation(chunk_id="c1", doc_id="doc-A", chunk_index=5)
+
+    await attach_neighbour_images([cit], kb_id="kb1", engine=engine)
+
+    assert engine.list_chunks.await_count >= 1
+    for call in engine.list_chunks.await_args_list:
+        assert call.kwargs.get("user_principals") is None
+
+
+@pytest.mark.asyncio
+async def test_attach_respects_acl_trimmed_engine() -> None:
+    """BUG-041 — end-to-end intent: when the engine ACL-trims restricted chunks
+    (as Azure Search does via _build_acl_filter on allowed_principals), attach
+    surfaces only images from chunks the caller's principals can see. Mock engine
+    simulates the trim by principal set; the restricted neighbour image must not
+    leak to a non-privileged user, and must appear for a privileged one."""
+    public_img = _img_dict("public-img")
+    restricted_img = _img_dict("restricted-img")
+
+    def _chunks_for(principals: list[str] | None) -> list[dict]:
+        # admin (None) or a matching principal sees both neighbour chunks; else
+        # the restricted chunk is trimmed (mirrors allowed_principals/any()).
+        if principals is None or "group:eng" in principals:
+            return [
+                _doc_chunk_dict(4, images=[public_img], chunk_id="pub"),
+                _doc_chunk_dict(6, images=[restricted_img], chunk_id="restricted"),
+            ]
+        return [_doc_chunk_dict(4, images=[public_img], chunk_id="pub")]
+
+    engine = MagicMock()
+
+    async def _list(
+        kb_id: str,
+        doc_id: str,
+        top: int = 1000,
+        user_principals: list[str] | None = None,
+    ) -> list[dict]:
+        return _chunks_for(user_principals)
+
+    engine.list_chunks = AsyncMock(side_effect=_list)
+
+    # non-privileged user → restricted neighbour trimmed by engine → only public
+    trimmed = await attach_neighbour_images(
+        [_citation(chunk_id="c1", doc_id="doc-A", chunk_index=5)],
+        kb_id="kb1",
+        engine=engine,
+        user_principals=["group:sales"],
+    )
+    got = {img.checksum_sha256 for img in trimmed[0].embedded_images}
+    assert got == {"public-img"}, "restricted neighbour image leaked past ACL trim"
+
+    # privileged user → sees both neighbour images
+    full = await attach_neighbour_images(
+        [_citation(chunk_id="c1", doc_id="doc-A", chunk_index=5)],
+        kb_id="kb1",
+        engine=engine,
+        user_principals=["group:eng"],
+    )
+    got_full = {img.checksum_sha256 for img in full[0].embedded_images}
+    assert got_full == {"public-img", "restricted-img"}
 
 
 # ---------- BUG-027 section-aware mode (section_path_prefix_depth > 0) -------

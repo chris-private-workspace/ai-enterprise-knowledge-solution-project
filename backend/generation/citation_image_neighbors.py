@@ -50,6 +50,7 @@ async def attach_neighbour_images(
     max_aux_per_citation: int = 2,
     neighbour_window: int = 3,
     section_path_prefix_depth: int = 0,
+    user_principals: list[str] | None = None,
 ) -> list[Citation]:
     """For each citation, attach embedded_images from neighbour chunks in the
     same document (matched by chunk_index ±neighbour_window range).
@@ -60,6 +61,13 @@ async def attach_neighbour_images(
     images preserved + appended with up to `max_aux_per_citation` distinct
     neighbour images, deduped against the citation's own images by
     `checksum_sha256`.
+
+    BUG-041 — `user_principals` threads ACL security trimming into the neighbour
+    chunk fetch, matching the other four retrieval surfaces (search / context
+    expander / parent-doc / citation expansion). Without it the neighbour-image
+    path is a confused-deputy leak: a user hitting a visible chunk could pull
+    images off adjacent chunks that document-level ACL would trim. admin
+    (`user_principals=None`) = no filter (ADR-0066 G4 intent).
 
     Per F5 D1 acceptance criteria + ADR-0034 §Implementation Mapping.
     """
@@ -73,8 +81,9 @@ async def attach_neighbour_images(
         return citations
 
     # Parallel fetch chunk lists (independent IO-bound Azure Search calls).
+    # BUG-041 — thread user_principals so the neighbour fetch is ACL-trimmed.
     fetched_chunks = await asyncio.gather(
-        *(engine.list_chunks(kb_id, did) for did in doc_ids),
+        *(engine.list_chunks(kb_id, did, user_principals=user_principals) for did in doc_ids),
         return_exceptions=True,
     )
 
@@ -322,6 +331,7 @@ async def pin_chapter_overview_images(
     *,
     chapter_prefix_depth: int = 1,
     overview_section_keyword: str = "overview",
+    user_principals: list[str] | None = None,
 ) -> list[Citation]:
     """CH-010 / ADR-0047 — pin the dominant chapter's §X.1 "Overview" figures to the
     FRONT of the lead citation's ``embedded_images``.
@@ -341,6 +351,10 @@ async def pin_chapter_overview_images(
     list; the original is returned unchanged on no dominant chapter / no overview
     chunk / fetch error (graceful degradation per ADR-0034 §Consequences). Pure
     aside from the single ``engine.list_chunks`` fetch.
+
+    BUG-041 — `user_principals` threads ACL security trimming into the overview
+    chunk fetch (same confused-deputy fix as ``attach_neighbour_images``). admin
+    (``user_principals=None``) = no filter.
     """
     if not citations:
         return citations
@@ -360,7 +374,8 @@ async def pin_chapter_overview_images(
         return citations
 
     try:
-        doc_chunks = await engine.list_chunks(kb_id, lead.doc_id)
+        # BUG-041 — thread user_principals so the overview fetch is ACL-trimmed.
+        doc_chunks = await engine.list_chunks(kb_id, lead.doc_id, user_principals=user_principals)
     except Exception as exc:  # noqa: BLE001 — graceful degradation; keep original citations
         logger.warning(
             "chapter_overview_pin_fetch_failed",
