@@ -489,6 +489,7 @@ async def execute_query_pipeline(
                 max_aux_per_citation=effective.citation_neighbour_max_aux_images,
                 neighbour_window=effective.citation_neighbour_window,
                 section_path_prefix_depth=(effective.citation_neighbour_section_path_prefix_depth),
+                user_principals=user_principals,  # BUG-041 — ACL trim (neighbour images)
             )
         except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0034 §Consequences
             logger.warning(
@@ -506,6 +507,7 @@ async def execute_query_pipeline(
                 citations,
                 kb_id=payload.kb_id,
                 engine=engine,
+                user_principals=user_principals,  # BUG-041 — ACL trim (overview images)
             )
         except Exception as exc:  # noqa: BLE001 — graceful degradation
             logger.warning(
@@ -675,6 +677,7 @@ async def query_stream(
                     section_path_prefix_depth=(
                         effective.citation_neighbour_section_path_prefix_depth
                     ),
+                    user_principals=user_principals,  # BUG-041 — ACL trim (neighbour images)
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
@@ -690,6 +693,7 @@ async def query_stream(
                     augmented,
                     kb_id=payload.kb_id,
                     engine=engine,
+                    user_principals=user_principals,  # BUG-041 — ACL trim (overview images)
                 )
             except Exception as exc:  # noqa: BLE001 — graceful degradation
                 logger.warning(
