@@ -29,6 +29,12 @@ from ingestion.embedding.base import EmbeddingResult
 
 logger = structlog.get_logger(__name__)
 
+# BUG-042 — Azure OpenAI embeddings 一個 request 嘅 input-array 上限係 2048 items
+# (text-embedding-3-large;每個 input 另有 8191 token 上限,而 EKP layout-aware
+# chunk ~2000 char 遠低於此,故只需按 array size 切分)。超過就分批,否則超大文件
+# (chunk 數 > 上限)一次過送會撞 400 → 整份文件 abort(前面 parse/chunk/screenshot 白做)。
+_MAX_INPUTS_PER_CALL = 2048
+
 
 class AzureOpenAIEmbedder:
     """Async embedder using Azure OpenAI text-embedding-3-large + MRL truncate."""
@@ -82,6 +88,23 @@ class AzureOpenAIEmbedder:
     async def embed_batch(self, texts: list[str]) -> list[EmbeddingResult]:
         if not texts:
             return []
+        # BUG-042 — sub-batch by the Azure input-array cap so a very large doc
+        # doesn't blow the per-request limit and abort the whole ingest. A doc
+        # within the cap takes the single-call path (bit-identical output + one
+        # "embedding_call" log line — production-preserve).
+        if len(texts) <= _MAX_INPUTS_PER_CALL:
+            return await self._embed_one_call(texts)
+
+        results: list[EmbeddingResult] = []
+        for start in range(0, len(texts), _MAX_INPUTS_PER_CALL):
+            sub = texts[start : start + _MAX_INPUTS_PER_CALL]
+            results.extend(await self._embed_one_call(sub))
+        return results
+
+    async def _embed_one_call(self, texts: list[str]) -> list[EmbeddingResult]:
+        """Embed one sub-batch that fits the Azure input-array cap in a single
+        API call. Preserves input order; pro-rates the batch-aggregate token
+        count across inputs (Azure bills per batch, not per input)."""
         start = time.perf_counter()
         vectors, total_tokens = await self._embed_raw(texts)
         latency_ms = int((time.perf_counter() - start) * 1000)
@@ -100,7 +123,4 @@ class AzureOpenAIEmbedder:
             deployment=self.deployment,
         )
 
-        return [
-            EmbeddingResult(vector=vec, input_tokens=per_input_tokens)
-            for vec in vectors
-        ]
+        return [EmbeddingResult(vector=vec, input_tokens=per_input_tokens) for vec in vectors]
