@@ -20,7 +20,7 @@
 > | 六 ⭐ | Rolling Phase Planning 紀律(§10 R1–R5) | 開新 phase / multi-day work |
 > | 七 | Task Type Classification | 分類 FEAT/CHANGE/FIX 時 |
 > | 八 | 當前進度自查(git 指令) | 每 session(或用 `/ekp-session-start` 代替) |
-> | 九 | 22 條 OQ 狀態 | 決策依賴 OQ 時 |
+> | 九 | 23 條 OQ 狀態 | 決策依賴 OQ 時 |
 > | 十 | Sprint Awareness timeline | 要 phase 史時(注:此段易 stale,以 git log / active phase folder 為準) |
 > | 十一 | 常駐 Open Items / Carry-overs | phase kickoff / closeout |
 > | 十二 | 常駐 milestones | 要里程碑史時 |
@@ -229,12 +229,12 @@ ls docs/10-development-log/01-daily/ | tail -3
 
 ---
 
-## 第九部分:22 條 OQ 狀態(W15 D5 closeout snapshot — 2026-05-09)
+## 第九部分:23 條 OQ 狀態(W15 D5 closeout snapshot — 2026-05-09;2026-07-13 加 Q23 Multi-language promote,2026-07-14 Resolved 雙半 approve per ADR-0075 / B-25)
 
 > **每次 phase 結束按需要 sync 此節,但唔係必更新**;權威 source = `docs/decision-form.md §4 Decision Status Dashboard`
-> **Note**:OQ 總數由 21 → 22 — Q22(Email Verification Service vendor)NEW W12 D1 per ADR-0014 hybrid auth model architecture v5.1 → v6 amendment
+> **Note**:OQ 總數由 21 → 22 — Q22(Email Verification Service vendor)NEW W12 D1 per ADR-0014 hybrid auth model architecture v5.1 → v6 amendment;**22 → 23 — Q23(Multi-language en/zh Tier 2→Tier 1 promote)NEW 2026-07-13 → Resolved 2026-07-14**(雙半 approve per ADR-0075 Accepted + decision-form Q23;implement 待 i18n phase plan §10 R1)
 
-### ✅ Resolved(17 條)
+### ✅ Resolved(18 條)
 - **Q1**(format ratio,2026-04-30)
 - **Q2**(source access,2026-04-30)
 - **Q3**(Azure AI Search S1 + eastus2 + index `ekp-kb-drive-v1`,2026-05-02)
@@ -252,6 +252,7 @@ ls docs/10-development-log/01-daily/ | tail -3
 - **Q19**(embedding dim = 1024d MRL truncate baseline,2026-05-05 W2 D3)
 - **Q21**(Reranker final pick = Cohere v4.0-pro;W6 D1 LIVE Azure 2-way reaffirm via faith Δ -11.76pp + rel Δ -9.81pp WORSE;ADR-0012 formal record,2026-05-05)
 - **Q22**(Email Verification Service vendor — default **Azure Communication Services** activated per ADR-0014 hybrid auth;Tier 2 reconsideration trigger if Beta cohort scale > 100/day OR feature gap surface;W12 D1 evening,2026-05-09)
+- **Q23**(Multi-language en/zh Tier 2→Tier 1 promote — **approved 雙半 2026-07-14** per ADR-0075 Accepted + decision-form Q23;用戶 as Stakeholder scope + Chris 架構;APAC driver = 內部+外部 both;scope 限 UI chrome 雙語 en/zh 非 RAG content/JP;**implement 待 i18n multi-day phase plan §10 R1**,Tier 邊界 amendment〔architecture.md §11 + CLAUDE.md §5.4 H4〕為 phase 首 deliverable)
 
 ### 🔴 Open(5 條)— 影響將來 phase
 - **Q6** Real query collection owner → W16+ Beta cohort real query log collection trigger(non-blocking until W16+ rollout active)

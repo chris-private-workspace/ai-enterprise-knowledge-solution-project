@@ -123,7 +123,7 @@ Multi-step task 要先講 plan:
 | Chunking 邏輯 | `docs/architecture.md` §3.3 + §3.5 | layout-aware,not character-based |
 | 寫 eval / test | `docs/eval-methodology.md` + `docs/eval-set-v0.yaml`(W1 ready) | RAGAs + 30–50 條 ground truth |
 | 涉及 Dify reference | `references/REFERENCE_USAGE.md`(W1 Day 1 setup) | 嚴禁 copy-paste,只可 layout 借鑒 |
-| Stakeholder-facing 變動 | `docs/decision-form.md`(W1 ready) | 確認 22 條 OQ status(Q22 NEW W12 D1 per ADR-0014) |
+| Stakeholder-facing 變動 | `docs/decision-form.md`(W1 ready) | 確認 23 條 OQ status(Q22 NEW W12 D1 per ADR-0014;Q23 Resolved 2026-07-14 Multi-language promote approved per ADR-0075/B-25,implement 待 phase plan) |
 | **用戶操作 / 配置 / 調試疑問**(UI 點用、旋鈕做咩、出廠值、benchmark 對照、故障排查)| [`docs/08-user-guide/`](./docs/08-user-guide/README.md)(8 份,2026-06-12 W69-era 快照)| 答用戶操作問題 first stop,唔好憑記憶重新推導旋鈕值;**ADR 改 default 時必須同步其 `03-configuration-reference.md` + `06-benchmarks-and-metrics.md`**(維護規則喺其 README)|
 | **Enterprise 權限(RBAC)擴充工作** | [`docs/01-planning/enterprise-rbac/TRACKER.md`](./docs/01-planning/enterprise-rbac/TRACKER.md)(追蹤入口)+ `enterprise-rbac/FINDINGS.md`(單一事實來源)| 2026-06-23 啟動,**做到 W95**:P0 地基 → P2 檢索層文件 ACL → P3 文件級+群組繼承(ADR-0066/0067 Accepted)→ P5 治理設計(ADR-0068 Accepted,**impl 2026-06-25 暫緩等審計 driver,Tier 1.5**);跨 Tier 邊界需 ADR + Chris approve(H1/H4) |
 | 評估 GraphRAG / multi-agent / multi-tenancy | **STOP** — 呢啲係 Tier 2,Tier 1 唔做 | See `docs/architecture.md` §11 trigger matrix |
@@ -485,13 +485,13 @@ references/DIFY_PINNED_COMMIT.txt
 
 ## 8. Open Questions(影響 Claude Code 決策)
 
-呢 **22 條 OQ**(`docs/architecture.md` §10、`docs/decision-form.md`;Q22 NEW per ADR-0014 hybrid auth W12 D1 — Email Verification Service vendor = ACS)嘅 status 影響你嘅 default behavior:
+呢 **23 條 OQ**(`docs/architecture.md` §10、`docs/decision-form.md`;Q22 NEW per ADR-0014 hybrid auth W12 D1 — Email Verification Service vendor = ACS;Q23 Resolved 2026-07-14 per ADR-0075/B-25 — Multi-language en/zh Tier 2→Tier 1 promote approved 雙半,implement 待 i18n phase plan)嘅 status 影響你嘅 default behavior:
 
 - 任何 OQ status = **「Open」** → 用 spec 入面標明嘅 default value 繼續做,但**喺 commit message 標**:`Note: depends on OQ-Q<N> default`
 - 任何 OQ status = **「Resolved」** → 直接用 resolved value,唔需要 note
 - 任何 OQ status = **「Blocked」** → STOP 對應 work item,ask user
 
-**最 critical 嘅 W1 必 resolve OQ**:Q1(format ratio)、Q2(document source access)、Q3(Azure AI Search resource)、Q4(GPT-5.5 deployment)、Q13(ground truth labeler)。其他 OQ 用 default 繼續。**當前 snapshot**(per session-start.md §9):17 Resolved + 5 Open(Q6/Q8/Q15/Q16/Q20 全部 non-blocking,default value 繼續)。
+**最 critical 嘅 W1 必 resolve OQ**:Q1(format ratio)、Q2(document source access)、Q3(Azure AI Search resource)、Q4(GPT-5.5 deployment)、Q13(ground truth labeler)。其他 OQ 用 default 繼續。**當前 snapshot**(per session-start.md §9):18 Resolved + 5 Open(Q6/Q8/Q15/Q16/Q20 non-blocking default value 繼續;Q23 Resolved 2026-07-14 — Multi-language promote approved 雙半,implement 待 i18n phase plan §10 R1)。
 
 ---
 
@@ -548,7 +548,7 @@ references/DIFY_PINNED_COMMIT.txt
 
 每個 Claude session 開始(在 §0 quick identity check 之後),AI **必須順序執行以下 6 步**,先 reply 用戶第一句訊息:
 
-1. 讀 `docs/12-ai-assistant/01-prompts/01-session-start.md`(SITUATION EKP — **13 components C01–C13** / **22 OQ snapshot** / 紀律 9 項 / 權威排序 7-tier / **W1–W18 timeline + W19+ rolling JIT**)
+1. 讀 `docs/12-ai-assistant/01-prompts/01-session-start.md`(SITUATION EKP — **13 components C01–C13** / **23 OQ snapshot** / 紀律 9 項 / 權威排序 7-tier / **W1–W18 timeline + W19+ rolling JIT**)
 2. 讀 active phase 嘅 `plan.md`(知 scope + acceptance criteria)
 3. 讀 active phase 嘅 `checklist.md`(知 next un-checked item;active phase = `git status` + 最新 W{NN}-{name} folder)
 4. 讀 active phase 嘅 `progress.md` 最近 3 個 Day-N entries(知 context + blockers + carry-overs)
@@ -560,7 +560,7 @@ references/DIFY_PINNED_COMMIT.txt
    - 若 endpoint 唔 reachable → surface 至 user before destructive ops(per CLAUDE.md "Executing actions with care" + destructive 操作 explicit instruction)
 6. 唔清楚 / item acceptance criteria 模糊 → ask user(per §13 When in Doubt)
 
-**Compact 後嘅特殊處理**:`/compact` 觸發後 context 重組,AI **必須 re-read 步驟 1–4**。原因:compact summary 對 active session work(commits / tests / files)retain ~95%,但對 standing instructions(§3 **13 components** / §9 **22 OQ snapshot** / §13 紀律 9 項 / 權威排序 7-tier)retention 只有 ~60%,容易令 AI 答出 generic correct 但缺 EKP-specific structure 嘅 reply。Re-read 後唔需主動 summarize(用戶問先講),但要確保下一個 reply 對齊 SITUATION + active phase。
+**Compact 後嘅特殊處理**:`/compact` 觸發後 context 重組,AI **必須 re-read 步驟 1–4**。原因:compact summary 對 active session work(commits / tests / files)retain ~95%,但對 standing instructions(§3 **13 components** / §9 **23 OQ snapshot** / §13 紀律 9 項 / 權威排序 7-tier)retention 只有 ~60%,容易令 AI 答出 generic correct 但缺 EKP-specific structure 嘅 reply。Re-read 後唔需主動 summarize(用戶問先講),但要確保下一個 reply 對齊 SITUATION + active phase。
 
 ### 10.4 Phase Folder Naming
 
@@ -702,6 +702,7 @@ EKP Tier 1 — Strict Mode
 ---
 
 **End of CLAUDE.md**
+**Version 2.5 — 2026-07-13 OQ count 22→23 同步(Q23 NEW)**(用戶要求同步 — decision-form 加咗 Q23〔Multi-language en/zh Tier 2→Tier 1 promote scope decision,Open,per ADR-0075 / B-25〕之後,CLAUDE.md 內所有「22 OQ」引用同步為 23)。具體變動:§2 routing「22 條 OQ」→ 23 + Q23 note / §8 開頭「22 條 OQ」→ 23 + Q23 note / §8 snapshot「17 Resolved + 5 Open」→「17 Resolved + 6 Open〔Q23 NEW〕」/ §10.3 AI Session Start Protocol +「Compact 後特殊處理」兩處「22 OQ snapshot」→「23 OQ snapshot」(CLAUDE.md 共 5 處正文改動)。**Why**:Q23 是 post-W101 新增 scope decision(non-critical,promote 前 Multi-language 維持 Tier 2 defer,唔阻 Tier 1),但 OQ 總數變咗,standing-instruction count 唔同步會令後續 session 讀到 stale 數字。Q23 於 2026-07-14 → **Resolved**(用戶 as Stakeholder scope + Chris 架構雙 approve promote,APAC driver = 內部+外部 both;ADR-0075 → Accepted;§8 snapshot 更新 18 Resolved / 5 Open;**implement 待 i18n multi-day phase plan §10 R1**,Tier 邊界 amendment〔architecture.md §11 Multi-language 移出 Tier 2 + CLAUDE.md §5.4 H4〕留 phase 首 deliverable — **§5.4 H4 list 本 version 未動**)。連帶 `docs/decision-form.md`(Q23 Decision/Status Resolved + §4 dashboard + 2026-07-14 snapshot)+ `session-start.md §9`(22→23 + Q23 移 Resolved section)同步。歷史 changelog(Version 1.4「21→22 OQ」)**不改**,保 audit trail。
 **Version 2.4 — 2026-07-10 工具使用強制紀律(bash 讀檔/搜尋一律改 Read/Grep/Glob)**(用戶 merge 事件後 explicit 要求——大量 bash `echo`/`cat`/`grep` 拼裝 + `{ }` group 重定向造成輸出污染,險 commit 損壞內容)。具體變動:§5 Hard Constraints 與 §6 之間新增獨立 top-level section「🚫 工具使用強制紀律」(3 條絕對禁止:bash 讀檔/搜尋 → Read/Grep/Glob;`echo` 拼裝 / `{ }` group 重定向 → 單一命令 `cmd > file` 再 Read;靠 stdout 判斷 → 寫檔後 Read;bash 唯一正當用途 = 無專用工具替代的 CLI + 單一命令重定向)+ Appendix A Quick Reference Card 加一行。**優先級 binding-strict = §5 H1-H7 + §11 中文紀律級別**;用戶原文「§反捏造紀律」reference 因 EKP 無該 section 而 adapt 為 EKP 對應級別。**Why**:工具輸出污染會破壞檔案 / 訊息結構,同 design drift / 中文違反同屬 broken-workflow signal。
 **Version 2.3 — 2026-07-04 document-skills 文件生成能力 routing**(用戶裝咗 Anthropic 官方 `document-skills` plugin + 配齊本機工具鏈,要沉澱畀後續 AI session 識用)。具體變動:§2 Document Routing 加一 row「生成 pptx / docx / xlsx / pdf 文件」→ 透過 Skill tool 用 `document-skills:*`,細節指向 memory `project_document_skills_toolchain`。**Why**:文件生成係通用 dev 能力(**非 EKP 產品 vendor,唔入 §5.2 H2**),但本機有 Windows 專屬配置坑(User PATH 生效要重開 session / 公司 MITM SSL 代理擋大 binary + winget 憑證 / scripted conversion 用 `soffice.com` 非 `soffice.exe`)+ 引擎機制(pptx=`pptxgenjs` / docx=`docx-js` / xlsx 靠 LibreOffice 重算)後續 AI 需知先用得順,故 routing 入 CLAUDE.md + 詳情入 memory。
 **Version 2.2 — 2026-06-28 中央 backlog dashboard + R7 同步 binding rule**(用戶指出項目無統一 pending 工作記錄 / next-candidate 機制 + 無進度同步易混亂 → 兩輪 AskUserQuestion 揀「新建 BACKLOG.md」+「同步寫入 §10 binding rule」)。具體變動:新建 [`docs/01-planning/BACKLOG.md`](./docs/01-planning/BACKLOG.md)(中央 dashboard — A-F 六類 + 狀態 lifecycle + 維護規則,由 2026-06-28 全項目 pending 盤點固化做 v0)+ §10.2 加 **R7**(pending / next-candidate 識別 + 進度變動必須同步 BACKLOG,4 觸發點,index 層唔複製細節,no silent drift)+ §2 Document Routing 首位加 backlog entry + §10.5 Reference 加 BACKLOG link。**Why**:現有機制碎片化(`DEFERRED_REGISTER.md` 只收 recurring debt / `adr/README.md` 記決定 / 各 track 自己 TRACKER / §9 一句話 candidates),無單一 pending 入口 + 無防 stale 同步機制(盤點時抓到 `enterprise-rbac/TRACKER.md` checkbox + `adr/README.md` index ADR-0045/0046 兩處 stale 為證)。

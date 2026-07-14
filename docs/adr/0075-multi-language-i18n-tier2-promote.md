@@ -1,10 +1,10 @@
 # ADR-0075: Multi-language(en/zh)i18n — Tier 2 → Tier 1 Promote(評估)
 
 **Date**: 2026-07-13
-**Status**: Proposed
+**Status**: Accepted(2026-07-14 — 用戶 as Stakeholder scope + Chris 架構雙 approve;APAC driver = 內部 + 外部 both,per decision-form Q23 Resolved)
 **Approver**: Chris(技術 Lead)— 架構(H1/H2);**+ Stakeholder**(scope/business via `decision-form.md`)— Tier 邊界(H4)
 
-> **本 ADR 係 promote 評估,唔係已定案。** Multi-language 原為 Tier 2(architecture.md §11);把佢 promote 入 Tier 1 同時觸 **H4**(Tier 邊界)+ **H1**(i18n 架構)+ **H2**(新 dependency)。依 CLAUDE.md §5.4 H4,任何 Tier 2 feature 落 Tier 1 必須 STOP + ADR + approve。故本文攤開 driver / 方案 / 成本 / gate,**Status 保持 Proposed 直到 Chris(架構)+ Stakeholder(scope,via decision-form)雙 approve 先可實作**。B-25(BACKLOG)對應。
+> **本 ADR 係 promote 評估,唔係已定案。** Multi-language 原為 Tier 2(architecture.md §11);把佢 promote 入 Tier 1 同時觸 **H4**(Tier 邊界)+ **H1**(i18n 架構)+ **H2**(新 dependency)。依 CLAUDE.md §5.4 H4,任何 Tier 2 feature 落 Tier 1 必須 STOP + ADR + approve。故本文攤開 driver / 方案 / 成本 / gate。**2026-07-14 → Accepted**(用戶 as Stakeholder scope + Chris 架構雙 approve;APAC driver = 內部 + 外部 both,per decision-form Q23 Resolved)。**下一步 = 開 i18n multi-day phase plan(§10 R1),implement code 前需 plan committed**;architecture.md §11 + CLAUDE.md §5.4 H4 的 Tier 邊界 amendment(Multi-language en/zh 移出 Tier 2)為 phase 首個 deliverable。B-25(BACKLOG)對應。
 
 ## Context
 
@@ -78,7 +78,7 @@ Promote **Multi-language(en/zh)** 入 Tier 1,建 i18n 機制:
 
 | 決定者 | 範圍 | 狀態 |
 |---|---|---|
-| **Stakeholder**(via decision-form) | H4 Tier 邊界移動 + APAC business driver | ⏳ 待 |
-| **Chris**(技術 Lead) | H1 i18n 架構 + H2 `next-intl` dependency | ⏳ 待 |
+| **Stakeholder**(via decision-form Q23) | H4 Tier 邊界移動 + APAC business driver | ✅ Approved 2026-07-14(driver = 內部 + 外部 both)|
+| **Chris**(技術 Lead) | H1 i18n 架構 + H2 `next-intl` dependency | ✅ Approved 2026-07-14 |
 
-**雙 approve 前 Status 保持 Proposed,不得實作 code。** approve 後 → 建 multi-day phase plan(§10 R1)+ H7 design sub-gate。
+**雙 approve 完成(2026-07-14)。** 下一步 → 建 i18n multi-day phase plan(§10 R1)+ H7 design sub-gate;**implement code 前需 phase plan committed**。Tier 邊界 amendment(architecture.md §11 Multi-language 移出 Tier 2 + CLAUDE.md §5.4 H4)為 phase 首個 deliverable。
