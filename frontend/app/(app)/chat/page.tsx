@@ -1212,13 +1212,14 @@ function MessageRow({
   showImages: boolean;
   onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
 }) {
+  const t = useTranslations('Chat');
   if (message.role === 'user') {
     return (
       <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-        <div className="avatar avatar-sm">You</div>
+        <div className="avatar avatar-sm">{t('avatarYou')}</div>
         <div style={{ flex: 1 }}>
           <div className="muted mono text-xs" style={{ marginBottom: 4 }}>
-            you · {formatTime(message.at)}
+            {t('userMeta', { time: formatTime(message.at) })}
           </div>
           <div
             style={{
@@ -1298,10 +1299,10 @@ function MessageRow({
           <span style={{ fontSize: 13, fontWeight: 600 }}>EKP</span>
           <span className="muted mono text-xs">
             {message.model && `${message.model} · `}
-            {message.rerankerUsed || 'cohere-v4.0-pro'} · {message.citations.length} citation
-            {message.citations.length === 1 ? '' : 's'}
+            {message.rerankerUsed || 'cohere-v4.0-pro'} ·{' '}
+            {t('citationCount', { count: message.citations.length })}
             {dedupedImages.length > 0 &&
-              ` · ${dedupedImages.length} with screenshot${dedupedImages.length === 1 ? '' : 's'}`}
+              ` · ${t('withScreenshotCount', { count: dedupedImages.length })}`}
           </span>
           <span className="spacer" style={{ flex: 1 }} />
           {message.latencyMs !== null && (
@@ -1329,8 +1330,8 @@ function MessageRow({
           >
             <RefreshCw size={12} style={{ color: 'oklch(var(--accent))', flexShrink: 0 }} />
             <span>
-              <b>CRAG L2 re-retrieve</b> · {message.cragIterations} iteration
-              {message.cragIterations === 1 ? '' : 's'}
+              <b>{t('cragReretrieve')}</b> ·{' '}
+              {t('cragIterations', { count: message.cragIterations })}
             </span>
           </div>
         )}
@@ -1367,7 +1368,9 @@ function MessageRow({
                 onOpenScreenshot={onOpenScreenshot}
               />
             ) : (
-              <span className="muted">{message.isStreaming ? 'Thinking…' : '(no content)'}</span>
+              <span className="muted">
+                {message.isStreaming ? t('thinking') : t('noContent')}
+              </span>
             )}
           </div>
         )}
@@ -1907,6 +1910,7 @@ function FootnoteList({
   citations: Citation[];
   onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
 }) {
+  const t = useTranslations('Chat');
   return (
     <ol
       style={{
@@ -1933,7 +1937,7 @@ function FootnoteList({
               onClick={() => onOpenScreenshot(c, c.embedded_images[0]!)}
               style={{ marginLeft: 6 }}
             >
-              <Layers size={10} /> Screenshot
+              <Layers size={10} /> {t('screenshot')}
             </button>
           )}
         </li>
@@ -1964,10 +1968,14 @@ function InlineImageCard({
   figureIdx: number;
   onOpen: () => void;
 }) {
+  const t = useTranslations('Chat');
   const title = imageTitle(image, citation);
   // BUG-026 C-ii — attribute to the image's OWN section (source_section) so a
   // neighbour-attached image shows its true section, not the citing chunk's.
-  const caption = `Citation [${citationIdx}] · ${imageSectionPath(image, citation).join(' › ')}`;
+  const caption = t('citationCaption', {
+    idx: citationIdx,
+    path: imageSectionPath(image, citation).join(' › '),
+  });
   return (
     <figure
       style={{
@@ -2009,7 +2017,7 @@ function InlineImageCard({
               onOpen();
             }}
           >
-            <Eye size={11} /> Full size
+            <Eye size={11} /> {t('fullSize')}
           </button>
         </div>
       </div>
@@ -2024,7 +2032,7 @@ function InlineImageCard({
           gap: 10,
         }}
       >
-        <span className="mono muted text-xs">figure {figureIdx}</span>
+        <span className="mono muted text-xs">{t('figureLabel', { n: figureIdx })}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
@@ -2073,6 +2081,7 @@ function ImageGallery({
   kbId: string;
   onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
 }) {
+  const t = useTranslations('Chat');
   return (
     <div style={{ marginTop: 18 }}>
       <div
@@ -2091,7 +2100,7 @@ function ImageGallery({
             fontWeight: 600,
           }}
         >
-          Referenced screenshots
+          {t('referencedScreenshots')}
         </span>
         {/* BUG-031 (A) — badge shows TRUE total (e.g. 24) even when the grid is
             capped to INLINE_IMAGE_CAP, so the count stays honest. */}
@@ -2102,11 +2111,11 @@ function ImageGallery({
             kbId may be '' before the KB list loads → fall back to a static button. */}
         {kbId ? (
           <Link href={`/kb/${kbId}?tab=images`} className="btn btn-ghost btn-xs">
-            View all in Image Library →
+            {t('viewAllImages')}
           </Link>
         ) : (
           <button type="button" className="btn btn-ghost btn-xs">
-            View all in Image Library →
+            {t('viewAllImages')}
           </button>
         )}
       </div>
@@ -2212,6 +2221,7 @@ function SourcesStrip({
   citations: Citation[];
   onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
 }) {
+  const t = useTranslations('Chat');
   const docCount = new Set(citations.map((c) => c.doc_id)).size;
   return (
     <div
@@ -2241,11 +2251,10 @@ function SourcesStrip({
             color: 'oklch(var(--foreground))',
           }}
         >
-          Sources
+          {t('sources')}
         </span>
         <span className="muted text-xs">
-          · {citations.length} chunks across {docCount} document
-          {docCount === 1 ? '' : 's'}
+          {t('sourcesMeta', { chunks: citations.length, docs: docCount })}
         </span>
       </div>
       {/* minmax(0,1fr) not 1fr — `1fr` = minmax(auto,1fr) lets a long unbroken
@@ -2282,6 +2291,7 @@ function SourceDocCard({
   idx: number;
   onOpenScreenshot: () => void;
 }) {
+  const t = useTranslations('Chat');
   const hasImage = citation.embedded_images.length > 0;
   // BUG-021 — use server-side authoritative doc_format from Citation schema
   // (Literal docx/pdf/pptx). Earlier doc_id ext-sniff fell back to 'unknown'
@@ -2349,7 +2359,9 @@ function SourceDocCard({
             marginTop: 6,
           }}
         >
-          <span className="mono muted text-xs">chunk #{citation.chunk_index}</span>
+          <span className="mono muted text-xs">
+            {t('chunkNum', { n: citation.chunk_index })}
+          </span>
           <div
             style={{
               flex: 1,
@@ -2380,14 +2392,14 @@ function SourceDocCard({
         <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
           {hasImage && (
             <button type="button" className="btn btn-ghost btn-xs" onClick={onOpenScreenshot}>
-              <Layers size={10} /> Screenshot
+              <Layers size={10} /> {t('screenshot')}
             </button>
           )}
           <Link
             href={`/kb/drive_user_manuals/docs/${citation.doc_id}`}
             className="btn btn-ghost btn-xs"
           >
-            <LinkIcon size={10} /> Open doc
+            <LinkIcon size={10} /> {t('openDoc')}
           </Link>
         </div>
       </div>
@@ -2431,6 +2443,7 @@ function CitationPanel({
   onClose: () => void;
   onOpenScreenshot: (c: Citation, img: ImageRef) => void;
 }) {
+  const t = useTranslations('Chat');
   const imageCount = citations.filter((c) => c.embedded_images.length > 0).length;
   return (
     <aside
@@ -2451,10 +2464,9 @@ function CitationPanel({
         }}
       >
         <div>
-          <div style={{ fontSize: 13.5, fontWeight: 600 }}>Sources</div>
+          <div style={{ fontSize: 13.5, fontWeight: 600 }}>{t('sources')}</div>
           <div className="muted text-xs">
-            {citations.length} chunk{citations.length === 1 ? '' : 's'} · {imageCount} with
-            screenshot{imageCount === 1 ? '' : 's'} · sorted by relevance
+            {t('panelMeta', { chunks: citations.length, images: imageCount })}
           </div>
         </div>
         <div className="spacer" style={{ flex: 1 }} />
@@ -2496,6 +2508,7 @@ function PanelSourceCard({
   idx: number;
   onOpenScreenshot: () => void;
 }) {
+  const t = useTranslations('Chat');
   const hasImage = citation.embedded_images.length > 0;
   // BUG-021 — use server-side authoritative doc_format from Citation schema
   // (Literal docx/pdf/pptx). Earlier doc_id ext-sniff fell back to 'unknown'
@@ -2580,10 +2593,12 @@ function PanelSourceCard({
           marginTop: 6,
         }}
       >
-        <span className="mono muted text-xs">chunk #{citation.chunk_index}</span>
+        <span className="mono muted text-xs">
+          {t('chunkNum', { n: citation.chunk_index })}
+        </span>
         {hasImage && (
           <button type="button" className="btn btn-ghost btn-xs" onClick={onOpenScreenshot}>
-            <Layers size={10} /> Screenshot
+            <Layers size={10} /> {t('screenshot')}
           </button>
         )}
         <div style={{ flex: 1 }} />
@@ -2591,7 +2606,7 @@ function PanelSourceCard({
           href={`/kb/drive_user_manuals/docs/${citation.doc_id}`}
           className="btn btn-ghost btn-xs"
         >
-          Open →
+          {t('openArrow')}
         </Link>
       </div>
     </div>
@@ -2613,6 +2628,7 @@ function FeedbackBar({
   citations: Citation[];
   imageCount: number;
 }) {
+  const t = useTranslations('Chat');
   const [rating, setRating] = useState<'thumbs_up' | 'thumbs_down' | null>(null);
   const [showCommentBox, setShowCommentBox] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -2644,12 +2660,12 @@ function FeedbackBar({
         <button
           type="button"
           className="btn btn-ghost btn-icon btn-xs"
-          title={copied ? 'Copied' : 'Copy answer'}
+          title={copied ? t('copied') : t('copyAnswer')}
           onClick={handleCopy}
         >
           <Copy size={12} />
         </button>
-        <button type="button" className="btn btn-ghost btn-icon btn-xs" title="Regenerate">
+        <button type="button" className="btn btn-ghost btn-icon btn-xs" title={t('regenerate')}>
           <RefreshCw size={12} />
         </button>
         <div
@@ -2661,7 +2677,7 @@ function FeedbackBar({
           }}
         />
         <span className="muted text-xs" style={{ marginRight: 2 }}>
-          Was this helpful?
+          {t('wasHelpful')}
         </span>
         <button
           type="button"
@@ -2679,7 +2695,7 @@ function FeedbackBar({
               : undefined
           }
         >
-          <ArrowUp size={11} /> Yes
+          <ArrowUp size={11} /> {t('yes')}
         </button>
         <button
           type="button"
@@ -2697,16 +2713,15 @@ function FeedbackBar({
               : undefined
           }
         >
-          <ArrowDown size={11} /> No
+          <ArrowDown size={11} /> {t('no')}
         </button>
         <span className="spacer" style={{ flex: 1 }} />
         <span
           className="muted mono text-xs"
           style={{ display: 'flex', alignItems: 'center', gap: 8 }}
         >
-          <Layers size={10} /> {citations.length} citation
-          {citations.length === 1 ? '' : 's'} · {imageCount} with screenshot
-          {imageCount === 1 ? '' : 's'}
+          <Layers size={10} />{' '}
+          {t('feedbackMeta', { citations: citations.length, images: imageCount })}
         </span>
       </div>
 
@@ -2729,9 +2744,7 @@ function FeedbackBar({
             }}
           >
             <span className="text-xs" style={{ fontWeight: 500 }}>
-              {rating === 'thumbs_up'
-                ? 'Glad it helped! Tell us more (optional)'
-                : 'Sorry about that. What went wrong? (optional)'}
+              {rating === 'thumbs_up' ? t('commentUp') : t('commentDown')}
             </span>
             <div className="spacer" style={{ flex: 1 }} />
             <button
@@ -2747,8 +2760,8 @@ function FeedbackBar({
             rows={2}
             placeholder={
               rating === 'thumbs_up'
-                ? 'What worked well?'
-                : 'Missing info, wrong answer, refused incorrectly…'
+                ? t('commentPlaceholderUp')
+                : t('commentPlaceholderDown')
             }
             style={{ minHeight: 50, fontSize: 12.5 }}
           />
@@ -2769,10 +2782,10 @@ function FeedbackBar({
               className="btn btn-ghost btn-xs"
               onClick={() => setShowCommentBox(false)}
             >
-              Skip
+              {t('skip')}
             </button>
             <button type="button" className="btn btn-accent btn-xs">
-              Submit feedback
+              {t('submitFeedback')}
             </button>
           </div>
         </div>
@@ -2807,6 +2820,7 @@ function ScreenshotModal({
   kbId: string;
   onClose: () => void;
 }) {
+  const t = useTranslations('Chat');
   // CH-004 — click-image-to-zoom progressive enhancement on top of the
   // mockup-faithful 2-col layout (BUG-021 amendment baseline). The 2-col
   // grid compresses the image to ~62% of modal width; user opts in to a
@@ -2887,7 +2901,7 @@ function ScreenshotModal({
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14.5, fontWeight: 600 }}>
-                {citation.chunk_title || 'Screenshot'}
+                {citation.chunk_title || t('screenshot')}
               </div>
               <div
                 className="muted mono text-xs"
@@ -2897,7 +2911,7 @@ function ScreenshotModal({
                   textOverflow: 'ellipsis',
                 }}
               >
-                {citation.doc_title} · chunk #{citation.chunk_index}
+                {citation.doc_title} · {t('chunkNum', { n: citation.chunk_index })}
               </div>
             </div>
             <span className="mono" style={{ fontSize: 13, fontWeight: 600 }}>
@@ -2907,7 +2921,7 @@ function ScreenshotModal({
               type="button"
               className="btn btn-ghost btn-icon btn-sm"
               onClick={onClose}
-              aria-label="Close screenshot"
+              aria-label={t('closeScreenshot')}
             >
               <XIcon size={14} />
             </button>
@@ -2938,7 +2952,7 @@ function ScreenshotModal({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={image.blob_url}
-                alt={image.alt_text || citation.chunk_title || 'Screenshot'}
+                alt={image.alt_text || citation.chunk_title || t('screenshot')}
                 onClick={(e) => {
                   // CH-004 — escalate to full-viewport zoom overlay; stop
                   // propagation so the click does not bubble to the dialog
@@ -2980,7 +2994,7 @@ function ScreenshotModal({
                   {citation.section_path.length > 0 ? (
                     citation.section_path.map((s, j) => <span key={j}>{s}</span>)
                   ) : (
-                    <span className="muted">(root)</span>
+                    <span className="muted">{t('rootLabel')}</span>
                   )}
                 </div>
               </div>
@@ -3014,7 +3028,7 @@ function ScreenshotModal({
                     textTransform: 'uppercase',
                   }}
                 >
-                  Section preview
+                  {t('sectionPreview')}
                 </div>
                 <div
                   style={{
@@ -3026,7 +3040,7 @@ function ScreenshotModal({
                     border: '1px solid oklch(var(--border))',
                   }}
                 >
-                  {citation.chunk_title || image.alt_text || '(no preview)'}
+                  {citation.chunk_title || image.alt_text || t('noPreview')}
                 </div>
               </div>
               <div className="spacer" style={{ flex: 1 }} />
@@ -3041,7 +3055,7 @@ function ScreenshotModal({
                 }}
                 onClick={onClose}
               >
-                <FileText size={14} /> Open in Document Detail
+                <FileText size={14} /> {t('openInDocDetail')}
               </Link>
             </div>
           </div>
@@ -3056,7 +3070,7 @@ function ScreenshotModal({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Full-resolution screenshot"
+          aria-label={t('fullResScreenshot')}
           onClick={() => setIsZoomed(false)}
           style={{
             position: 'fixed',
@@ -3073,7 +3087,7 @@ function ScreenshotModal({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={image.blob_url}
-            alt={image.alt_text || citation.chunk_title || 'Screenshot full-resolution'}
+            alt={image.alt_text || citation.chunk_title || t('fullResScreenshot')}
             onClick={(e) => {
               e.stopPropagation();
               setIsZoomed(false);
@@ -3111,6 +3125,7 @@ function ChatComposer({
   onStop: () => void;
   textareaRef: React.MutableRefObject<HTMLTextAreaElement | null>;
 }) {
+  const t = useTranslations('Chat');
   function handleKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -3142,7 +3157,7 @@ function ChatComposer({
           ref={textareaRef}
           className="input"
           rows={1}
-          placeholder="Ask about Ricoh financial software… (Enter to send · Shift+Enter for newline)"
+          placeholder={t('composerPlaceholder')}
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={handleKey}
@@ -3162,10 +3177,10 @@ function ChatComposer({
             type="button"
             className="btn btn-secondary btn-lg"
             onClick={onStop}
-            title="Stop streaming"
+            title={t('stopStreaming')}
             style={{ justifyContent: 'center', gap: 6 }}
           >
-            <Square size={14} /> Stop
+            <Square size={14} /> {t('stop')}
           </button>
         ) : (
           <button
@@ -3174,12 +3189,12 @@ function ChatComposer({
             disabled={!input.trim()}
             style={{ justifyContent: 'center', gap: 6 }}
           >
-            <Send size={14} /> Send
+            <Send size={14} /> {t('send')}
           </button>
         )}
       </div>
       <div className="muted mono text-xs" style={{ marginTop: 8, textAlign: 'center' }}>
-        Hybrid retrieval · Cohere v4.0-pro rerank · GPT-5.5 synthesis · CRAG L2 self-correction
+        {t('composerFooter')}
       </div>
     </form>
   );

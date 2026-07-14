@@ -433,6 +433,8 @@
     "rootLabel": "(根層)",
     "noPreview": "(無預覽)",
     "openInDocDetail": "在文件詳情中開啟",
+    "closeScreenshot": "關閉截圖",
+    "fullResScreenshot": "完整解析度截圖",
     "composerPlaceholder": "詢問 Ricoh 財務軟體相關問題…(Enter 送出 · Shift+Enter 換行)",
     "stop": "停止",
     "stopStreaming": "停止串流",
