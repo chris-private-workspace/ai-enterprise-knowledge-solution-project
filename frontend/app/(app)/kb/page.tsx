@@ -35,6 +35,7 @@ import {
   Zap,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
@@ -44,11 +45,12 @@ type StatusKind = 'indexed' | 'empty' | 'archived';
 type StatusFilter = StatusKind | 'all';
 type ViewKind = 'grid' | 'table';
 
-const STATUS_FILTER_LABEL: Record<StatusFilter, string> = {
-  all: 'Status: All',
-  indexed: 'Status: Indexed',
-  empty: 'Status: Empty',
-  archived: 'Status: Archived',
+// i18n keys under the `KbList` message namespace (W103 F4 externalize).
+const STATUS_FILTER_KEY: Record<StatusFilter, string> = {
+  all: 'statusAll',
+  indexed: 'statusIndexed',
+  empty: 'statusEmpty',
+  archived: 'statusArchived',
 };
 
 const VIEW_KEY = 'ekp-kb-list-view';
@@ -59,15 +61,18 @@ function deriveStatus(kb: KbStatus): StatusKind {
   return 'indexed';
 }
 
-function formatRelative(iso: string | null | undefined): string {
+function formatRelative(
+  iso: string | null | undefined,
+  t: ReturnType<typeof useTranslations>,
+): string {
   if (!iso) return '—';
   const ts = new Date(iso).getTime();
   if (Number.isNaN(ts)) return '—';
   const mins = Math.floor((Date.now() - ts) / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  if (mins < 60 * 24) return `${Math.floor(mins / 60)}h ago`;
-  return `${Math.floor(mins / 60 / 24)}d ago`;
+  if (mins < 1) return t('relativeJustNow');
+  if (mins < 60) return t('relativeMinutes', { mins });
+  if (mins < 60 * 24) return t('relativeHours', { hours: Math.floor(mins / 60) });
+  return t('relativeDays', { days: Math.floor(mins / 60 / 24) });
 }
 
 function sortByLastIndexed(a: KbStatus, b: KbStatus): number {
@@ -77,6 +82,7 @@ function sortByLastIndexed(a: KbStatus, b: KbStatus): number {
 }
 
 export default function KbListPage() {
+  const t = useTranslations('KbList');
   const query = useQuery<KbStatus[]>({
     queryKey: ['kb', 'list'],
     queryFn: kbApi.list,
@@ -124,11 +130,11 @@ export default function KbListPage() {
         {/* Page header — mockup lines 12-31 */}
         <div className="page-header">
           <div>
-            <h1 className="page-title">Knowledge bases</h1>
+            <h1 className="page-title">{t('title')}</h1>
             <p className="page-subtitle">
-              Each KB is provisioned with its own Azure AI Search index (
-              <span className="mono">ekp-kb-&lt;kb_id&gt;-v1</span>, 1024d HNSW)
-              per ADR-0018.
+              {t('subtitlePrefix')}
+              <span className="mono">ekp-kb-&lt;kb_id&gt;-v1</span>
+              {t('subtitleSuffix')}
             </p>
           </div>
           <div className="page-actions">
@@ -139,7 +145,7 @@ export default function KbListPage() {
                 data-active={view === 'grid'}
                 onClick={() => pickView('grid')}
               >
-                <Layers size={13} /> Grid
+                <Layers size={13} /> {t('viewGrid')}
               </button>
               <button
                 type="button"
@@ -147,20 +153,20 @@ export default function KbListPage() {
                 data-active={view === 'table'}
                 onClick={() => pickView('table')}
               >
-                <Filter size={13} /> Table
+                <Filter size={13} /> {t('viewTable')}
               </button>
             </div>
             <button
               type="button"
               className="btn btn-secondary btn-sm"
               disabled
-              title="Export — Tier 2 (post-Beta)"
+              title={t('exportTitle')}
               style={{ opacity: 0.5, cursor: 'default' }}
             >
-              <Download size={13} /> Export
+              <Download size={13} /> {t('export')}
             </button>
             <Link href="/kb/new" className="btn btn-primary btn-sm">
-              <Plus size={13} /> New KB
+              <Plus size={13} /> {t('newKb')}
             </Link>
           </div>
         </div>
@@ -180,7 +186,7 @@ export default function KbListPage() {
             </span>
             <input
               className="input"
-              placeholder="Filter by name, owner, tag…"
+              placeholder={t('filterPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -197,9 +203,9 @@ export default function KbListPage() {
               const idx = order.indexOf(statusFilter);
               setStatusFilter(order[(idx + 1) % order.length]!);
             }}
-            title="Click to cycle status filter"
+            title={t('statusCycleTitle')}
           >
-            <Filter size={13} /> {STATUS_FILTER_LABEL[statusFilter]}
+            <Filter size={13} /> {t(STATUS_FILTER_KEY[statusFilter])}
           </button>
 
           {/* Tag filter — mockup line 40 (per W22 B-i policy:render mockup
@@ -209,15 +215,19 @@ export default function KbListPage() {
             type="button"
             className="btn btn-secondary btn-sm"
             disabled
-            title="Tag filtering — pending backend `tags[]` field"
+            title={t('tagTitle')}
             style={{ opacity: 0.5, cursor: 'default' }}
           >
-            <Tag size={13} /> Tag: Any
+            <Tag size={13} /> {t('tagAny')}
           </button>
 
           <div className="spacer" style={{ flex: 1 }} />
           <div className="text-xs muted mono">
-            {visible.length} of {(query.data ?? []).length} KBs · {totalDocs} docs total
+            {t('countMeta', {
+              visible: visible.length,
+              total: (query.data ?? []).length,
+              docs: totalDocs,
+            })}
           </div>
         </div>
 
@@ -227,7 +237,7 @@ export default function KbListPage() {
             className="text-xs muted"
             style={{ padding: '48px 18px', textAlign: 'center' }}
           >
-            Loading knowledge bases…
+            {t('loading')}
           </div>
         ) : visible.length === 0 ? (
           <KbEmpty
@@ -254,6 +264,7 @@ export default function KbListPage() {
 // ──────────────────────────────────────────────────────────────────────────
 
 function KbCard({ kb }: { kb: KbStatus }) {
+  const t = useTranslations('KbList');
   const status = deriveStatus(kb);
   return (
     <Link
@@ -298,7 +309,7 @@ function KbCard({ kb }: { kb: KbStatus }) {
           <Zap size={11} /> R@5 —%
         </span>
         <span style={{ marginLeft: 'auto' }}>
-          {formatRelative(kb.last_indexed_at)}
+          {formatRelative(kb.last_indexed_at, t)}
         </span>
       </div>
     </Link>
@@ -310,21 +321,22 @@ function KbCard({ kb }: { kb: KbStatus }) {
 // ──────────────────────────────────────────────────────────────────────────
 
 function KbTable({ rows }: { rows: KbStatus[] }) {
+  const t = useTranslations('KbList');
   return (
     <div className="table-wrap">
       <table className="table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Status</th>
-            <th>Chunk strategy</th>
-            <th className="col-num">Docs</th>
-            <th className="col-num">Chunks</th>
-            <th className="col-num">Storage</th>
+            <th>{t('colName')}</th>
+            <th>{t('colStatus')}</th>
+            <th>{t('colChunkStrategy')}</th>
+            <th className="col-num">{t('colDocs')}</th>
+            <th className="col-num">{t('colChunks')}</th>
+            <th className="col-num">{t('colStorage')}</th>
             <th className="col-num">R@5</th>
-            <th>Owner</th>
-            <th className="col-num">Last indexed</th>
-            <th className="col-shrink" aria-label="Row actions" />
+            <th>{t('colOwner')}</th>
+            <th className="col-num">{t('colLastIndexed')}</th>
+            <th className="col-shrink" aria-label={t('rowActions')} />
           </tr>
         </thead>
         <tbody>
@@ -383,14 +395,14 @@ function KbTable({ rows }: { rows: KbStatus[] }) {
                 {/* Owner — W22 B-i placeholder until backend `owner` field */}
                 <td>—</td>
                 <td className="col-num text-xs">
-                  {formatRelative(kb.last_indexed_at)}
+                  {formatRelative(kb.last_indexed_at, t)}
                 </td>
                 <td className="col-shrink">
                   <button
                     type="button"
                     className="btn btn-ghost btn-icon btn-xs"
-                    title="Row actions"
-                    aria-label="Row actions"
+                    title={t('rowActions')}
+                    aria-label={t('rowActions')}
                     onClick={(e) => e.preventDefault()}
                   >
                     <MoreHorizontal size={14} />
@@ -406,6 +418,7 @@ function KbTable({ rows }: { rows: KbStatus[] }) {
 }
 
 function KbEmpty({ hasFilter }: { hasFilter: boolean }) {
+  const t = useTranslations('KbList');
   return (
     <div
       style={{
@@ -438,16 +451,14 @@ function KbEmpty({ hasFilter }: { hasFilter: boolean }) {
           color: 'oklch(var(--foreground))',
         }}
       >
-        {hasFilter ? 'No knowledge bases match' : 'No knowledge bases yet'}
+        {hasFilter ? t('emptyMatchTitle') : t('emptyTitle')}
       </div>
       <div className="text-xs muted" style={{ marginBottom: 16 }}>
-        {hasFilter
-          ? 'Adjust your search / status filter.'
-          : 'Create your first KB to start ingesting documents.'}
+        {hasFilter ? t('emptyMatchDesc') : t('emptyDesc')}
       </div>
       {!hasFilter && (
         <Link href="/kb/new" className="btn btn-primary btn-sm">
-          <Plus size={13} /> Create knowledge base
+          <Plus size={13} /> {t('createKb')}
         </Link>
       )}
     </div>
