@@ -433,6 +433,8 @@
     "rootLabel": "(root)",
     "noPreview": "(no preview)",
     "openInDocDetail": "Open in Document Detail",
+    "closeScreenshot": "Close screenshot",
+    "fullResScreenshot": "Full-resolution screenshot",
     "composerPlaceholder": "Ask about Ricoh financial software… (Enter to send · Shift+Enter for newline)",
     "stop": "Stop",
     "stopStreaming": "Stop streaming",
