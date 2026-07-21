@@ -38,8 +38,12 @@
   /* Font CSS vars — backed by next/font/google in layout.tsx
      (--font-inter / --font-jetbrains-mono are CSS variable names assigned by
      `next/font`); fallbacks preserved for SSR + runtime safety. */
-  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", sans-serif;
-  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  /* CJK fallbacks (W103 F3.4, ADR-0075 en/zh) — appended AFTER the Latin fonts
+     so they only engage for glyphs Inter / JetBrains Mono lack (i.e. Chinese);
+     en rendering is untouched by construction. TC-first order: PingFang TC
+     (macOS) → Microsoft JhengHei (Windows) → Noto Sans TC (Linux / Android). */
+  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, "SF Mono", Menlo, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", monospace;
 
   --density-row: 44px;
   --density-pad: 16px;

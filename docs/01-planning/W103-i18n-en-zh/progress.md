@@ -105,3 +105,22 @@
 - **`frontend-deploy.yml` 冇跑 vitest = 制度性缺口**:呢個先係「積咗一個月冇人發現」的根因(W103 自己嗰 95 條、pre-existing 嗰 18 條,都係同一個窿漏出去)。補 CI 步驟屬 workflow 改動(非 W103 scope)→ 已記 **BACKLOG B-27**。
 - **BACKLOG 舊條目升級**:W101 早已記錄「14 個既有 frontend test fail…疑 kb config schema 演進後 test stale」。今次以 commit 時序逐條查實根因(CH-023 中文→英文 / `IMAGE_DENSE_PRESET` mock / W83 badge),數字校正為 **18 條 5 檔**,由「疑」升級為「確認 + 修法明確」。W101 用 `git diff` 證、W103 用 commit 時序證 —— 兩條獨立證據鏈結論一致。
 - **測試 flakiness(新觀察)**:機器負載高時 `chat-bug034` / `chat-inline-image-interleave` 各有 1 條會因 async 等待逾時假紅 —— 全套 133 秒嗰次紅,單獨跑 33 秒嗰次 **6/6 全綠**。故**穩定基線 = 5 檔 / 18 條**,唔係 7 檔 / 20 條。入 CI 之前宜先調 `testTimeout`(已記入 B-27)。
+
+---
+
+## Day 3(2026-07-21)— F3.4 CJK font fallback(F7 真正收乾淨)
+
+**Context**:F7.1–F7.4 已收,F3.4(kickoff 時 🚧 defer 到 F7)係 F7 弧最後一項。
+
+**已做(跟足 DESIGN_SYSTEM.md §7.1 四層同步程序)**:
+- **設計決定**:系統 CJK 字體 fallback,**唔自 host** —— 自 host Noto Sans TC 要 build-time 下載(撞 B-26 MITM)+ 幾 MB 字檔 + H2 新依賴考量;系統字體零依賴零下載(Karpathy §1.2)。TC 選序:`PingFang TC`(macOS)→ `Microsoft JhengHei`(Windows)→ `Noto Sans TC`(Linux / Android)。
+- **關鍵機制**:CJK 字體放喺**所有 Latin 字體之後**、generic keyword 之前 —— fallback 只喺 Inter / JetBrains Mono 缺 glyph(即中文字符)時先引用,**en 版面零影響 by construction**(呢個係 H7 零回歸的機制保證,唔靠肉眼)。
+- 四層改動:①`references/design-mockups/styles.css`(canonical,`--font-sans` / `--font-mono` + 註解)②`frontend/app/styles-mockup.css`(同步,保留 next/font `var()` 前綴 adaptation)③`globals.css` **不動**(§7 圖明寫 layer 3 只 carry color tokens)④`tokens.ts` fontFamily mirror。⑤連帶 DESIGN_SYSTEM.md §1.5 font 表 + CJK fallback 說明。
+- **驗證**:`tsc` EXIT=0 · `next lint` EXIT=0 · `[oklch` grep 零 hit(§7.1 step 5)· **§7.3 diff 證零新增 drift**(diff 有 79 行,但 HEAD 版已有一模一樣的 79 行 —— 全屬 W22 F1-pivot documented adaptation:layer 2 有意剝走 color tokens 移去 globals.css,header comment 講明)· dark mode 步驟不適用(font 無 dark 分支)。
+- **Browser 實證**(dashboard):computed `font-family` 已帶新 stack;**新舊 stack render 中文有實差**(bitmap 對比 —— 證明 fallback 有實效,唔係 no-op);本機裝有 Microsoft JhengHei + Noto Sans TC(bitmap 存在性探測);zh 態中文以黑體一致 render(無襯線混雜 / 缺字方格);**en 態截圖對比零回歸**。
+- **測量方法教訓**:①canvas **寬度比較**法對 CJK 無效 —— 中文字喺任何字體都係全形 1em 闊 → false negative;②`document.fonts.check` 對唔存在嘅字體有 false positive(Chromium 已知);③跨 stack bitmap 全等比較太嚴 —— stack 版嘅 font metrics 由 primary font(Inter)決定,同單 family 版有 sub-pixel 位移。可靠組合 = 「family, monospace」vs「monospace」bitmap **存在性**探測 + 新舊 stack **實差**探測;「精確邊隻 render」留畀 CSS fallback 標準行為保證,唔值得再挖(Karpathy §1.1 唔 rabbit hole)。
+
+**下一步**:F7 弧全收(F7.1–F7.4 + F3.4)。餘 **F5.2** glossary(乙類術語)→ **F5.3 用戶校對 zh(卡用戶)** → **F6** toggle 正式化 + Labs / Settings 語言組 stale → **F8** closeout 五項。
+
+**Commits**:
+- (本批 commit)W103 F3.4 CJK font fallback — §7.1 四層同步。
