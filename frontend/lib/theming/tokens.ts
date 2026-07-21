@@ -96,10 +96,12 @@ export const ekpTokens = {
   /**
    * Font families — spec-locked per architecture.md v6 §5.1
    * (Inter sans + JetBrains Mono — distinct from Dify SF Pro).
+   * CJK fallbacks (W103 F3.4, ADR-0075 en/zh) appended AFTER the Latin fonts —
+   * they only engage for glyphs the Latin fonts lack, so en output is unchanged.
    */
   fontFamily: {
-    sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-    mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+    sans: ['Inter', 'system-ui', '-apple-system', 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC', 'sans-serif'],
+    mono: ['JetBrains Mono', 'ui-monospace', 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC', 'monospace'],
   },
 
   /**

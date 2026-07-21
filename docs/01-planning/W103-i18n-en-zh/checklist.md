@@ -15,11 +15,11 @@
 - [x] F2.3 裝唔到 fallback — N/A(裝成功,無需 fallback)
 - [x] F2.4 版本鎖定 package.json(`next-intl: ^4.13.2`)+ pnpm-lock.yaml + tsc baseline clean
 
-## F3 — i18n 機制搭建 ✅(F3.4 🚧→F7)
+## F3 — i18n 機制搭建 ✅
 - [x] F3.1 D-2 locale 機制拍板 — **甲 cookie-based**(next-intl without i18n routing;URL 不變,對齊 W18 flat URL;2026-07-14 用戶 AskUserQuestion)
 - [x] F3.2 next-intl config + provider — next.config.mjs `createNextIntlPlugin` + i18n/request.ts(cookie `NEXT_LOCALE`)+ layout `<NextIntlClientProvider>` + messages/en.json + zh.json 骨架
 - [x] F3.3 layout.tsx lang 動態化 — RootLayout async + `<html lang={locale}>`(getLocale)
-- [ ] F3.4 CJK font fallback — 🚧 **defer → F7**(觸 design token 4-layer sync DESIGN_SYSTEM.md §7 + H7 fidelity;瀏覽器預設已 fallback 顯示 CJK,明確 CJK font stack 歸 F7 逐 view 走查處理)
+- [x] F3.4 CJK font fallback —(原 🚧 defer → F7,2026-07-21 F7 收尾時完成)`--font-sans` / `--font-mono` 尾部加 `"PingFang TC", "Microsoft JhengHei", "Noto Sans TC"`(Latin 字體之後、generic 之前 — 只喺 Inter / JetBrains Mono 缺 glyph 時引用,en 零影響 by construction)。**跟足 DESIGN_SYSTEM.md §7.1 四層同步**:styles.css(canonical)→ styles-mockup.css(保留 next/font var 前綴 adaptation)→ globals.css 不動(只 carry color)→ tokens.ts fontFamily mirror + DESIGN_SYSTEM.md §1.5 表同步。**唔自 host** Noto Sans TC(避 build-time 下載撞 B-26 + 幾 MB 字檔;系統字體零依賴,Karpathy §1.2)。驗證:tsc / lint / `[oklch` grep 全過;§7.3 diff 證零新增 drift(79 行差異 pre-existing = W22 documented adaptation);browser 實證 stack 生效 + 新舊 render 有實差 + 本機有 JhengHei / Noto Sans TC;en / zh 截圖對比零回歸
 - [x] F3.5 SSR-safe 驗 — tsc clean + build 成功(17 routes SSR;繞 font MITM cert 後證實 i18n build OK,無 hydration error)
 
 ## F4 — en dictionary externalize(🚧 增量進行中)

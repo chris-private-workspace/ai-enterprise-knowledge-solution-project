@@ -111,10 +111,12 @@ Dark mode shadows use stronger alpha (0.3-0.6 vs 0.04-0.10 in light) to remain v
 
 | CSS var | Family | Use |
 |---|---|---|
-| `--font-sans` | `Inter, ui-sans-serif, system-ui, ...` | All body text, UI labels, headings |
-| `--font-mono` | `JetBrains Mono, ui-monospace, "SF Mono", Menlo, ...` | KB ids, hashes, timestamps, code, technical IDs |
+| `--font-sans` | `Inter, ui-sans-serif, system-ui, ..., "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif` | All body text, UI labels, headings |
+| `--font-mono` | `JetBrains Mono, ui-monospace, "SF Mono", Menlo, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", monospace` | KB ids, hashes, timestamps, code, technical IDs |
 
 Body inherits `font-sans` 14px line-height 1.5. Mono used via `<span className="mono">` or `.mono` utility class.
+
+**CJK fallbacks** (W103 F3.4, ADR-0075 en/zh): the three CJK families sit AFTER every Latin font, so they only engage for glyphs Inter / JetBrains Mono lack (i.e. Chinese) — en rendering is untouched by construction. TC-first order: PingFang TC (macOS) → Microsoft JhengHei (Windows) → Noto Sans TC (Linux / Android). System fonts only — no self-hosted CJK font (avoids build-time download vs B-26 MITM + multi-MB font payload; per Karpathy §1.2 simplicity).
 
 ### 1.6 Density
 
